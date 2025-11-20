@@ -1,4 +1,4 @@
-# Vite + React + Mantine Application
+# ReLIFE Web Interface
 
 A minimal, modern web application built with Vite, React, TypeScript, and Mantine UI. This app serves as the primary web interface (UI) for the ReLIFE Platform Services, including the technical, forecasting, and financial services.
 
