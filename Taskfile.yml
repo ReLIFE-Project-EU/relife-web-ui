@@ -10,6 +10,7 @@ dotenv:
 
 tasks:
   default:
+    silent: true
     cmds:
       - task --list
 
@@ -50,3 +51,9 @@ tasks:
     cmds:
       - npm run format
       - npm run lint
+
+  dev:
+    desc: "Start the frontend development server and all backend services using Docker"
+    cmds:
+      - task: up
+      - npm run dev

@@ -1,25 +1,4 @@
 :8080 {
-	# Serve the built React application
-	root * /srv/dist
-
-	# API reverse proxy
-	handle_path /api/technical/* {
-		reverse_proxy {$API_TECHNICAL_URL:http://financial:9090}
-	}
-
-	handle_path /api/financial/* {
-		reverse_proxy {$API_FINANCIAL_URL:http://forecasting:9090}
-	}
-
-	handle_path /api/forecasting/* {
-		reverse_proxy {$API_FORECASTING_URL:http://technical:9090}
-	}
-
-	# Single-page application fallback
-	# Serve index.html for all non-API routes
-	try_files {path} /index.html
-	file_server
-
 	# Enable gzip compression
 	encode gzip
 
@@ -28,5 +7,26 @@
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+
+	# API reverse proxy
+	handle_path /api/technical/* {
+		reverse_proxy {$API_TECHNICAL_URL:http://technical:9090}
+	}
+
+	handle_path /api/financial/* {
+		reverse_proxy {$API_FINANCIAL_URL:http://financial:9090}
+	}
+
+	handle_path /api/forecasting/* {
+		reverse_proxy {$API_FORECASTING_URL:http://forecasting:9090}
+	}
+
+	# Single-page application fallback
+	# Serve index.html for all non-API routes
+	handle {
+		root * /srv/dist
+		try_files {path} /index.html
+		file_server
 	}
 }

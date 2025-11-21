@@ -1,17 +1,13 @@
-import { Container, Title, Text, Button, Stack } from "@mantine/core";
-import { useState } from "react";
+import { Container, Stack, Text, Title } from "@mantine/core";
+import { ServiceStatus } from "./components/ServiceStatus";
 
 function App() {
-  const [count, setCount] = useState(0);
-
   return (
     <Container size="sm" py="xl">
       <Stack align="center" gap="lg">
-        <Title order={1}>Vite + React + Mantine</Title>
-        <Text size="lg">A minimal modern web application</Text>
-        <Button onClick={() => setCount((count) => count + 1)}>
-          Count is {count}
-        </Button>
+        <ServiceStatus autoRefresh={30000} />
+        <Title order={1}>ReLIFE Platform</Title>
+        <Text size="lg">A platform for the ReLIFE project</Text>
       </Stack>
     </Container>
   );

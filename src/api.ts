@@ -16,32 +16,43 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return response.json();
 }
 
+interface OpenAPISpec {
+  openapi: string;
+  info: {
+    title: string;
+    version: string;
+  };
+}
+
 export const api = {
-  // Service 1 endpoints
-  service1: {
-    get: <T>(path: string) => request<T>(`/service1${path}`),
+  // Financial service endpoints
+  financial: {
+    ping: () => request<OpenAPISpec>("/financial/openapi.json"),
+    get: <T>(path: string) => request<T>(`/financial${path}`),
     post: <T>(path: string, data: unknown) =>
-      request<T>(`/service1${path}`, {
+      request<T>(`/financial${path}`, {
         method: "POST",
         body: JSON.stringify(data),
       }),
   },
 
-  // Service 2 endpoints
-  service2: {
-    get: <T>(path: string) => request<T>(`/service2${path}`),
+  // Technical service endpoints
+  technical: {
+    ping: () => request<OpenAPISpec>("/technical/openapi.json"),
+    get: <T>(path: string) => request<T>(`/technical${path}`),
     post: <T>(path: string, data: unknown) =>
-      request<T>(`/service2${path}`, {
+      request<T>(`/technical${path}`, {
         method: "POST",
         body: JSON.stringify(data),
       }),
   },
 
-  // Service 3 endpoints
-  service3: {
-    get: <T>(path: string) => request<T>(`/service3${path}`),
+  // Forecasting service endpoints
+  forecasting: {
+    ping: () => request<OpenAPISpec>("/forecasting/openapi.json"),
+    get: <T>(path: string) => request<T>(`/forecasting${path}`),
     post: <T>(path: string, data: unknown) =>
-      request<T>(`/service3${path}`, {
+      request<T>(`/forecasting${path}`, {
         method: "POST",
         body: JSON.stringify(data),
       }),
