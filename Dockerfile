@@ -23,6 +23,9 @@ RUN npm run build
 # Stage 2: Production server with Caddy
 FROM caddy:2-alpine
 
+# Install curl for healthchecks
+RUN apk add --no-cache curl
+
 # Copy the built application from builder stage
 COPY --from=builder /app/dist /srv/dist
 

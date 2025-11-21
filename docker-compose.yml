@@ -1,0 +1,54 @@
+name: relife-platform
+
+x-api-service-defaults: &api-service-defaults
+  platform: linux/amd64
+  environment:
+    API_HOST: 0.0.0.0
+    API_PORT: 9090
+    SUPABASE_URL: ${SUPABASE_URL}
+    SUPABASE_KEY: ${SUPABASE_KEY}
+    KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+    KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+    KEYCLOAK_REALM_URL: ${KEYCLOAK_REALM_URL}
+    ADMIN_ROLE_NAME: ${ADMIN_ROLE_NAME}
+    BUCKET_NAME: ${BUCKET_NAME}
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:9090/docs"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 30s
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - ${HOST_PORT_CADDY}:8080
+    depends_on:
+      financial:
+        condition: service_healthy
+      forecasting:
+        condition: service_healthy
+      technical:
+        condition: service_healthy
+    environment:
+      API_TECHNICAL_URL: http://technical:9090
+      API_FORECASTING_URL: http://forecasting:9090
+      API_FINANCIAL_URL: http://financial:9090
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+  financial:
+    image: ghcr.io/relife-project-eu/relife-financial-service:${IMAGE_TAG_FINANCIAL}
+    <<: *api-service-defaults
+  forecasting:
+    image: ghcr.io/relife-project-eu/relife-forecasting-service:${IMAGE_TAG_FORECASTING}
+    <<: *api-service-defaults
+  technical:
+    image: ghcr.io/relife-project-eu/relife-technical-service:${IMAGE_TAG_TECHNICAL}
+    <<: *api-service-defaults

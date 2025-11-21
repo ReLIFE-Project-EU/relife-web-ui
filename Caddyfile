@@ -4,15 +4,15 @@
 
 	# API reverse proxy
 	handle_path /api/technical/* {
-		reverse_proxy {$API_TECHNICAL_URL:http://relife-financial:8000}
+		reverse_proxy {$API_TECHNICAL_URL:http://financial:9090}
 	}
 
 	handle_path /api/financial/* {
-		reverse_proxy {$API_FINANCIAL_URL:http://relife-forecasting:8000}
+		reverse_proxy {$API_FINANCIAL_URL:http://forecasting:9090}
 	}
 
 	handle_path /api/forecasting/* {
-		reverse_proxy {$API_FORECASTING_URL:http://relife-technical:8000}
+		reverse_proxy {$API_FORECASTING_URL:http://technical:9090}
 	}
 
 	# Single-page application fallback

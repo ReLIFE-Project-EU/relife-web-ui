@@ -1,0 +1,52 @@
+version: 3
+
+vars: {}
+
+env: {}
+
+dotenv:
+  - .env
+  - .env.default
+
+tasks:
+  default:
+    cmds:
+      - task --list
+
+  debug-env:
+    desc: "Display all environment variables that are currently set"
+    silent: true
+    cmds:
+      - |
+        grep -E '^[A-Z_]+=' {{.ROOT_DIR}}/.env.default | cut -d= -f1 | while read var; do
+          if [ -n "${!var:-}" ]; then
+            echo "${var}=${!var}"
+          fi
+        done
+
+  up:
+    desc: "Start all services in detached mode, rebuild images, and wait for health checks"
+    cmds:
+      - docker compose up -d --build --wait
+
+  down:
+    desc: "Stop and remove all running containers and networks"
+    cmds:
+      - docker compose down
+
+  pull:
+    desc: "Force pull the latest versions of all images defined in docker-compose.yml"
+    cmds:
+      - docker compose pull
+
+  clean:
+    prompt: "Are you sure you want to clean the services? This will remove all containers and volumes."
+    desc: "Stop and remove all containers, networks, and volumes (destructive operation)"
+    cmds:
+      - docker compose down -v
+
+  format-lint:
+    desc: "Run Prettier and ESLint to auto-format and check code style and quality"
+    cmds:
+      - npm run format
+      - npm run lint
