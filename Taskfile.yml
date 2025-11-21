@@ -5,7 +5,7 @@ vars: {}
 env: {}
 
 dotenv:
-  - .env
+  - .env.local
   - .env.default
 
 tasks:
