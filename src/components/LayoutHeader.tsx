@@ -5,6 +5,7 @@ import {
   Text,
   ActionIcon,
   Tooltip,
+  Image,
 } from "@mantine/core";
 import { IconBook, IconLogin } from "@tabler/icons-react";
 import { ServiceStatus } from "./ServiceStatus";
@@ -26,6 +27,7 @@ export const LayoutHeader = ({ opened, onToggle }: LayoutHeaderProps) => {
             size="sm"
             aria-label="Toggle navigation"
           />
+          <Image src="/relife.png" alt="ReLIFE Logo" h={32} w="auto" />
           <Text size="lg" fw={700}>
             ReLIFE Platform
           </Text>
