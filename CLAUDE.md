@@ -2,6 +2,40 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Tech Stack Versions
+
+**CRITICAL**: Always verify that any proposed changes, API usage, or code examples are compatible with the exact versions listed below. Do not suggest features, APIs, or patterns from different versions.
+
+### Core Dependencies
+
+- **React**: `^19.2.0`
+- **React DOM**: `^19.2.0`
+- **TypeScript**: `~5.9.3`
+- **Vite**: `^7.2.4`
+
+### UI Framework
+
+- **Mantine Core**: `^8.3.8`
+- **Mantine Hooks**: `^8.3.8`
+- **Tabler Icons React**: `^3.35.0`
+
+### Development Tools
+
+- **@vitejs/plugin-react**: `^5.1.1`
+- **ESLint**: `^9.39.1`
+- **TypeScript ESLint**: `^8.46.4`
+- **Prettier**: `^3.6.2`
+
+### TypeScript Configuration
+
+- **Target**: `ES2022`
+- **Module**: `ESNext`
+- **JSX**: `react-jsx`
+- **Strict mode**: Enabled
+- **Module Resolution**: `bundler`
+
+**When in doubt**, consult the official documentation for the specific versions listed above, not the latest documentation.
+
 ## Code Style
 
 ### General Principles
