@@ -32,8 +32,8 @@ export const LayoutFooter = forwardRef<HTMLDivElement>((_, ref) => {
       <Stack gap={0} justify="space-between" h="100%">
         {/* Top Section: EU Notice & Brand */}
         <Box
-          py="md"
-          px="md"
+          py="sm"
+          px="sm"
           style={{
             borderBottom:
               "1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5))",
@@ -64,10 +64,10 @@ export const LayoutFooter = forwardRef<HTMLDivElement>((_, ref) => {
           </Group>
         </Box>
 
-        <Box py="md" px="lg">
+        <Box py="sm" px="sm">
           <Group justify="space-between" align="center">
             <Text size="xs" c="dimmed">
-              © {currentYear} ReLIFE Platform. All rights reserved.
+              © {currentYear} ReLIFE Project. All rights reserved.
             </Text>
 
             <Group gap="sm">
