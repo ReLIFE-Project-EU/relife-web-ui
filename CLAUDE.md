@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Keep it minimal**: Do not add new dependencies unless strictly necessary and clearly justified.
 - **Prefer built-in features** from Vite, React, and Mantine over external libraries.
 - **Use TypeScript** with strict typing (`strict: true`) and avoid `any` unless unavoidable (and document why).
+- **Always prefer Mantine components and layout primitives**: Use built-in Mantine components for all UI and layout needs. Custom CSS should only be used as a last resort when Mantine does not provide a clean, comparable solution.
 
 ### Project Structure
 
