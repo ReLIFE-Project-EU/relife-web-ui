@@ -1,15 +1,36 @@
-import { AppShell, Stack, NavLink } from "@mantine/core";
+import { AppShell, ScrollArea } from "@mantine/core";
 import {
-  IconHome,
-  IconChartLine,
   IconCalculator,
   IconChartDots,
+  IconChartLine,
+  IconFileAnalytics,
+  IconHome,
 } from "@tabler/icons-react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import classes from "./LayoutNavbar.module.css";
+import { LinksGroup } from "./NavbarLinksGroup";
+
+const mockdata = [
+  { label: "Home", icon: IconHome, link: "#" },
+  { label: "Financial Analysis", icon: IconCalculator, link: "#financial" },
+  { label: "Technical Analysis", icon: IconChartLine, link: "#technical" },
+  { label: "Forecasting", icon: IconChartDots, link: "#forecasting" },
+  {
+    label: "Reports",
+    icon: IconFileAnalytics,
+    initiallyOpened: true,
+    link: "#reports",
+    links: [
+      { label: "Monthly Overview", link: "#reports/monthly" },
+      { label: "Yearly Summary", link: "#reports/yearly" },
+      { label: "Export Data", link: "#reports/export" },
+    ],
+  },
+];
 
 export const LayoutNavbar = () => {
   const [activeHash, setActiveHash] = useState<string>(
-    window.location.hash || "#"
+    window.location.hash || "#",
   );
 
   useEffect(() => {
@@ -24,34 +45,33 @@ export const LayoutNavbar = () => {
     };
   }, []);
 
+  const links = mockdata.map((item) => {
+    const hasActiveChild = item.links?.some(
+      (child) => child.link === activeHash || activeHash.startsWith(child.link),
+    );
+
+    return (
+      <LinksGroup
+        {...item}
+        key={item.label}
+        active={
+          item.link === activeHash ||
+          (item.link === "#" && activeHash === "#") ||
+          hasActiveChild
+        }
+        activeHash={activeHash}
+        onNavigate={(link) => {
+          window.location.hash = link;
+        }}
+      />
+    );
+  });
+
   return (
-    <AppShell.Navbar p="md">
-      <Stack gap="xs">
-        <NavLink
-          label="Home"
-          leftSection={<IconHome size={20} />}
-          active={activeHash === "#" || activeHash === ""}
-          href="#"
-        />
-        <NavLink
-          label="Financial Analysis"
-          leftSection={<IconCalculator size={20} />}
-          active={activeHash === "#financial"}
-          href="#financial"
-        />
-        <NavLink
-          label="Technical Analysis"
-          leftSection={<IconChartLine size={20} />}
-          active={activeHash === "#technical"}
-          href="#technical"
-        />
-        <NavLink
-          label="Forecasting"
-          leftSection={<IconChartDots size={20} />}
-          active={activeHash === "#forecasting"}
-          href="#forecasting"
-        />
-      </Stack>
+    <AppShell.Navbar className={classes.navbar}>
+      <ScrollArea className={classes.links}>
+        <div className={classes.linksInner}>{links}</div>
+      </ScrollArea>
     </AppShell.Navbar>
   );
 };

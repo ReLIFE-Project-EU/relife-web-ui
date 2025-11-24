@@ -24,7 +24,10 @@ export const Layout = ({ children }: LayoutProps) => {
     >
       <LayoutHeader opened={opened} onToggle={toggle} />
       <LayoutNavbar />
-      <AppShell.Main display="flex" style={{ flexDirection: "column", minHeight: "100vh" }}>
+      <AppShell.Main
+        display="flex"
+        style={{ flexDirection: "column", minHeight: "100vh" }}
+      >
         <Box flex={1} p="md">
           {children}
         </Box>
