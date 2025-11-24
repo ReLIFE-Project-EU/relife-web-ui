@@ -3,9 +3,9 @@ import {
   Loader,
   ActionIcon,
   Tooltip,
-  Indicator,
   Stack,
   Text,
+  ThemeIcon,
 } from "@mantine/core";
 import {
   IconRefresh,
@@ -29,7 +29,6 @@ export const ServiceStatus = ({
     useServiceHealth(autoRefresh);
 
   const allHealthy = financial && technical && forecasting;
-  const anyUnhealthy = !financial || !technical || !forecasting;
   const allUnhealthy = !financial && !technical && !forecasting;
 
   const getStatusColor = () => {
@@ -39,8 +38,8 @@ export const ServiceStatus = ({
   };
 
   const getStatusIcon = () => {
-    if (allHealthy) return <IconCloudCheck size={18} />;
-    return <IconCloudX size={18} />;
+    if (allHealthy) return <IconCloudCheck size={20} />;
+    return <IconCloudX size={20} />;
   };
 
   const getTooltipContent = () => {
@@ -79,15 +78,14 @@ export const ServiceStatus = ({
         multiline
       >
         <Group gap={4} align="center">
-          <Indicator
+          <ThemeIcon
             color={getStatusColor()}
-            size={8}
-            position="bottom-end"
-            processing={anyUnhealthy || isLoading}
-            disabled={isLoading}
+            size="lg"
+            variant="light"
+            radius="xl"
           >
             {getStatusIcon()}
-          </Indicator>
+          </ThemeIcon>
           {isLoading && <Loader size={14} />}
         </Group>
       </Tooltip>
