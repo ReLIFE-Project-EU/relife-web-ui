@@ -6,63 +6,38 @@ import {
   IconFileAnalytics,
   IconHome,
 } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import classes from "./LayoutNavbar.module.css";
 import { LinksGroup } from "./NavbarLinksGroup";
 
-const mockdata = [
-  { label: "Home", icon: IconHome, link: "#" },
-  { label: "Financial Analysis", icon: IconCalculator, link: "#financial" },
-  { label: "Technical Analysis", icon: IconChartLine, link: "#technical" },
-  { label: "Forecasting", icon: IconChartDots, link: "#forecasting" },
+const navigationData = [
+  { label: "Home", icon: IconHome, link: "/" },
+  { label: "Financial Analysis", icon: IconCalculator, link: "/financial" },
+  { label: "Technical Analysis", icon: IconChartLine, link: "/technical" },
+  { label: "Forecasting", icon: IconChartDots, link: "/forecasting" },
   {
     label: "Reports",
     icon: IconFileAnalytics,
     initiallyOpened: true,
-    link: "#reports",
-    links: [
-      { label: "Monthly Overview", link: "#reports/monthly" },
-      { label: "Yearly Summary", link: "#reports/yearly" },
-      { label: "Export Data", link: "#reports/export" },
-    ],
+    links: [{ label: "Export Data", link: "/reports/export" }],
   },
 ];
 
 export const LayoutNavbar = () => {
-  const [activeHash, setActiveHash] = useState<string>(
-    window.location.hash || "#",
-  );
+  const location = useLocation();
+  const activePath = location.pathname;
 
-  useEffect(() => {
-    const handleHashChange = () => {
-      setActiveHash(window.location.hash || "#");
-    };
-
-    window.addEventListener("hashchange", handleHashChange);
-
-    return () => {
-      window.removeEventListener("hashchange", handleHashChange);
-    };
-  }, []);
-
-  const links = mockdata.map((item) => {
+  const links = navigationData.map((item) => {
     const hasActiveChild = item.links?.some(
-      (child) => child.link === activeHash || activeHash.startsWith(child.link),
+      (child) => child.link === activePath || activePath.startsWith(child.link),
     );
 
     return (
       <LinksGroup
         {...item}
         key={item.label}
-        active={
-          item.link === activeHash ||
-          (item.link === "#" && activeHash === "#") ||
-          hasActiveChild
-        }
-        activeHash={activeHash}
-        onNavigate={(link) => {
-          window.location.hash = link;
-        }}
+        active={item.link === activePath || hasActiveChild}
+        activePath={activePath}
       />
     );
   });
