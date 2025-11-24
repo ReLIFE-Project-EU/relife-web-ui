@@ -42,6 +42,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Prefer **Mantine props and `sx`** for styling over global CSS.
 - Use CSS variables or Mantine theme tokens for colors and spacing; avoid hard-coded values (magic numbers).
 - Keep consistent spacing & typography using the theme scale.
+- **Avoid emojis** in UI code; prefer native icon libraries (e.g. `@tabler/icons-react`) that are already included as dependencies.
 
 ### Error Handling & UX
 

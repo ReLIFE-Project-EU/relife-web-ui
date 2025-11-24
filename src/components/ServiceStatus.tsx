@@ -1,74 +1,109 @@
-import { Badge, Group, Loader, ActionIcon, Alert } from "@mantine/core";
+import {
+  Group,
+  Loader,
+  ActionIcon,
+  Tooltip,
+  Indicator,
+  Stack,
+  Text,
+} from "@mantine/core";
 import {
   IconRefresh,
-  IconAlertCircle,
-  IconCheck,
-  IconX,
+  IconCloudCheck,
+  IconCloudX,
+  IconCircleCheck,
+  IconCircleX,
 } from "@tabler/icons-react";
 import { useServiceHealth } from "../hooks/useServiceHealth";
 
 interface ServiceStatusProps {
   autoRefresh?: number;
+  showRefresh?: boolean;
 }
 
-export const ServiceStatus = ({ autoRefresh }: ServiceStatusProps) => {
-  const { financial, technical, forecasting, isLoading, error, refresh } =
+export const ServiceStatus = ({
+  autoRefresh,
+  showRefresh = false,
+}: ServiceStatusProps) => {
+  const { financial, technical, forecasting, isLoading, refresh } =
     useServiceHealth(autoRefresh);
 
-  const getServiceBadge = (
-    name: string,
-    healthy: boolean,
-    icon: React.ReactNode,
-  ) => (
-    <Badge
-      color={healthy ? "green" : "red"}
-      variant="filled"
-      leftSection={icon}
-    >
-      {name}
-    </Badge>
-  );
+  const allHealthy = financial && technical && forecasting;
+  const anyUnhealthy = !financial || !technical || !forecasting;
+  const allUnhealthy = !financial && !technical && !forecasting;
+
+  const getStatusColor = () => {
+    if (allHealthy) return "green";
+    if (allUnhealthy) return "red";
+    return "yellow";
+  };
+
+  const getStatusIcon = () => {
+    if (allHealthy) return <IconCloudCheck size={18} />;
+    return <IconCloudX size={18} />;
+  };
+
+  const getTooltipContent = () => {
+    if (isLoading) {
+      return <Text size="xs">Loading service status...</Text>;
+    }
+
+    const services = [
+      { name: "Financial", status: financial },
+      { name: "Technical", status: technical },
+      { name: "Forecasting", status: forecasting },
+    ];
+
+    return (
+      <Stack gap={4}>
+        {services.map(({ name, status }) => (
+          <Group key={name} gap={6}>
+            {status ? (
+              <IconCircleCheck size={14} color="var(--mantine-color-green-6)" />
+            ) : (
+              <IconCircleX size={14} color="var(--mantine-color-red-6)" />
+            )}
+            <Text size="xs">{name}</Text>
+          </Group>
+        ))}
+      </Stack>
+    );
+  };
 
   return (
-    <Group gap="sm" align="center">
-      {isLoading && <Loader size="xs" />}
-      {!isLoading && (
-        <>
-          {getServiceBadge(
-            "Financial",
-            financial,
-            financial ? <IconCheck size={14} /> : <IconX size={14} />,
-          )}
-          {getServiceBadge(
-            "Technical",
-            technical,
-            technical ? <IconCheck size={14} /> : <IconX size={14} />,
-          )}
-          {getServiceBadge(
-            "Forecasting",
-            forecasting,
-            forecasting ? <IconCheck size={14} /> : <IconX size={14} />,
-          )}
-          <ActionIcon
-            variant="subtle"
-            color="gray"
-            onClick={refresh}
+    <Group gap="xs" align="center">
+      <Tooltip
+        label={getTooltipContent()}
+        position="bottom"
+        withArrow
+        multiline
+      >
+        <Group gap={4} align="center">
+          <Indicator
+            color={getStatusColor()}
+            size={8}
+            position="bottom-end"
+            processing={anyUnhealthy || isLoading}
             disabled={isLoading}
-            aria-label="Refresh service status"
           >
-            <IconRefresh size={16} />
-          </ActionIcon>
-        </>
-      )}
-      {error && (
-        <Alert
-          icon={<IconAlertCircle size={16} />}
-          color="red"
-          variant="light"
-          p="xs"
+            {getStatusIcon()}
+          </Indicator>
+          {isLoading && <Loader size={14} />}
+        </Group>
+      </Tooltip>
+      {showRefresh && (
+        <ActionIcon
+          variant="subtle"
+          color="gray"
+          onClick={refresh}
+          disabled={isLoading}
+          aria-label="Refresh service status"
+          aria-busy={isLoading}
+          aria-disabled={isLoading}
+          size="sm"
         >
-          {error}
-        </Alert>
+          <IconRefresh size={14} />
+        </ActionIcon>
       )}
     </Group>
   );
