@@ -17,8 +17,8 @@
 }
 
 .control[data-active="true"] {
-  background-color: var(--mantine-color-blue-light);
-  color: var(--mantine-color-blue-light-color);
+  background-color: var(--mantine-primary-color-light);
+  color: var(--mantine-primary-color-light-color);
 }
 
 .link {
@@ -43,8 +43,8 @@
 }
 
 .link[data-active="true"] {
-  background-color: var(--mantine-color-blue-light);
-  color: var(--mantine-color-blue-light-color);
+  background-color: var(--mantine-primary-color-light);
+  color: var(--mantine-primary-color-light-color);
 }
 
 .chevron {
