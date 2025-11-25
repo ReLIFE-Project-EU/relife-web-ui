@@ -8,7 +8,7 @@ interface LayoutHeaderProps {
 
 export const LayoutHeader = ({ opened, onToggle }: LayoutHeaderProps) => {
   return (
-    <AppShell.Header>
+    <AppShell.Header bg="relife.7" c="white" withBorder={false}>
       <Group h="100%" px="md" justify="space-between">
         <Group gap="md">
           <Burger
@@ -16,6 +16,7 @@ export const LayoutHeader = ({ opened, onToggle }: LayoutHeaderProps) => {
             onClick={onToggle}
             hiddenFrom="lg"
             size="sm"
+            color="white"
             aria-label="Toggle navigation"
           />
           <Image src="/relife.png" alt="ReLIFE Logo" h={32} w="auto" />

@@ -81,7 +81,7 @@ export const ServiceStatus = ({
           <ThemeIcon
             color={getStatusColor()}
             size="lg"
-            variant="light"
+            variant="white"
             radius="xl"
           >
             {getStatusIcon()}
