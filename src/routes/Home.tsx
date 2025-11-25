@@ -55,6 +55,8 @@ export const Home = () => {
       <Box
         bg="var(--mantine-color-gray-0)"
         py={{ base: 60, md: 100 }}
+        ml="lg"
+        mr="lg"
         style={{ borderRadius: "2rem" }}
       >
         <Container size="lg">
