@@ -1,4 +1,17 @@
-import { AppShell, Burger, Group, Image, Text } from "@mantine/core";
+import {
+  AppShell,
+  Avatar,
+  Burger,
+  Button,
+  Group,
+  Image,
+  Loader,
+  Menu,
+  Text,
+} from "@mantine/core";
+import { IconLogin, IconLogout } from "@tabler/icons-react";
+import { getKeycloakLogoutUrl, signInWithKeycloak, supabase } from "../auth";
+import { useSupabaseSession, useWhoami } from "../hooks/useAuth";
 import { ServiceStatus } from "./ServiceStatus";
 
 interface LayoutHeaderProps {
@@ -7,6 +20,30 @@ interface LayoutHeaderProps {
 }
 
 export const LayoutHeader = ({ opened, onToggle }: LayoutHeaderProps) => {
+  const { session, loading: sessionLoading } = useSupabaseSession();
+  const { fullName, loading: profileLoading } = useWhoami(session);
+
+  const handleLogin = async () => {
+    try {
+      const { error } = await signInWithKeycloak({ supabase });
+      if (error) {
+        console.error("Failed to sign in with Keycloak:", error);
+        // TODO: Show user-friendly error notification (e.g., using Mantine notifications)
+      }
+    } catch (error) {
+      console.error("Failed to sign in with Keycloak:", error);
+      // TODO: Show user-friendly error notification (e.g., using Mantine notifications)
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    const logoutUrl = getKeycloakLogoutUrl();
+    if (logoutUrl) {
+      window.location.assign(logoutUrl);
+    }
+  };
+
   return (
     <AppShell.Header bg="relife.7" c="white" withBorder={false}>
       <Group h="100%" px="md" justify="space-between">
@@ -27,6 +64,55 @@ export const LayoutHeader = ({ opened, onToggle }: LayoutHeaderProps) => {
 
         <Group gap="sm">
           <ServiceStatus autoRefresh={30000} />
+
+          {!sessionLoading && (
+            <>
+              {session ? (
+                <Menu shadow="md" width={200}>
+                  <Menu.Target>
+                    <Button
+                      variant="subtle"
+                      color="gray.0"
+                      leftSection={
+                        <Avatar radius="xl" size="sm" color="relife.5" />
+                      }
+                    >
+                      {profileLoading ? (
+                        <Loader size="xs" color="white" />
+                      ) : (
+                        <Text
+                          span
+                          truncate
+                          maw={{ base: 50, sm: 150, md: 200 }}
+                        >
+                          {fullName || session.user.email}
+                        </Text>
+                      )}
+                    </Button>
+                  </Menu.Target>
+
+                  <Menu.Dropdown>
+                    <Menu.Item
+                      color="red"
+                      leftSection={<IconLogout size={14} />}
+                      onClick={handleLogout}
+                    >
+                      Sign out
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              ) : (
+                <Button
+                  variant="white"
+                  size="sm"
+                  onClick={handleLogin}
+                  leftSection={<IconLogin size={20} stroke={1.5} />}
+                >
+                  Sign In
+                </Button>
+              )}
+            </>
+          )}
         </Group>
       </Group>
     </AppShell.Header>

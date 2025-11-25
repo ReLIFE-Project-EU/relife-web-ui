@@ -77,17 +77,14 @@ export const ServiceStatus = ({
         withArrow
         multiline
       >
-        <Group gap={4} align="center">
-          <ThemeIcon
-            color={getStatusColor()}
-            size="lg"
-            variant="white"
-            radius="xl"
-          >
-            {getStatusIcon()}
-          </ThemeIcon>
-          {isLoading && <Loader size={14} />}
-        </Group>
+        <ThemeIcon
+          color={getStatusColor()}
+          size="lg"
+          variant="white"
+          radius="xl"
+        >
+          {isLoading ? <Loader size={20} /> : getStatusIcon()}
+        </ThemeIcon>
       </Tooltip>
       {showRefresh && (
         <ActionIcon

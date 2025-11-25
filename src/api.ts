@@ -1,3 +1,4 @@
+import { supabase } from "./auth";
 import type {
   AuthenticatedUser,
   FileUploadResponse,
@@ -43,25 +44,31 @@ import type {
 
 const API_BASE = "/api";
 
-let authToken: string | null = null;
-
-export const setAuthToken = (token: string | null) => {
-  authToken = token;
-};
-
 // ============================================================================
 // Core Request Functions
 // ============================================================================
 
+async function getAuthToken(): Promise<string | null> {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    return session?.access_token || null;
+  } catch (error) {
+    console.error("Failed to get authentication session:", error);
+    return null;
+  }
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = await getAuthToken();
   const headers: HeadersInit = {
     "Content-Type": "application/json",
     ...options?.headers,
   };
 
-  if (authToken) {
-    (headers as Record<string, string>)["Authorization"] =
-      `Bearer ${authToken}`;
+  if (token) {
+    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
 
   const response = await fetch(`${API_BASE}${path}`, {
@@ -87,10 +94,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 async function uploadRequest<T>(path: string, formData: FormData): Promise<T> {
+  const token = await getAuthToken();
   const headers: HeadersInit = {};
 
-  if (authToken) {
-    headers["Authorization"] = `Bearer ${authToken}`;
+  if (token) {
+    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
 
   const response = await fetch(`${API_BASE}${path}`, {
@@ -117,10 +125,11 @@ async function uploadRequest<T>(path: string, formData: FormData): Promise<T> {
 }
 
 async function downloadRequest(path: string): Promise<Blob> {
+  const token = await getAuthToken();
   const headers: HeadersInit = {};
 
-  if (authToken) {
-    headers["Authorization"] = `Bearer ${authToken}`;
+  if (token) {
+    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
 
   const response = await fetch(`${API_BASE}${path}`, { headers });
