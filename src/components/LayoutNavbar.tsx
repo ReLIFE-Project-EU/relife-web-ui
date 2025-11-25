@@ -5,11 +5,19 @@ import {
   IconHome,
   IconTrendingUp,
 } from "@tabler/icons-react";
+import React from "react";
 import { useLocation } from "react-router-dom";
 import classes from "./LayoutNavbar.module.css";
 import { LinksGroup } from "./NavbarLinksGroup";
 
-const navigationData = [
+interface NavItem {
+  label: string;
+  icon: React.FC<{ size?: number | string; style?: React.CSSProperties }>;
+  link?: string;
+  links?: { label: string; link: string }[];
+}
+
+const navigationData: NavItem[] = [
   { label: "Home", icon: IconHome, link: "/" },
   { label: "Financial Analysis", icon: IconChartPie, link: "/financial" },
   {
