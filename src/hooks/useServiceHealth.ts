@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api";
+import { financial, forecasting, technical } from "../api";
 
 export interface ServiceHealthStatus {
   financial: boolean;
@@ -23,9 +23,9 @@ export const useServiceHealth = (autoRefresh?: number) => {
     setStatus((prev) => ({ ...prev, isLoading: true, error: null }));
 
     const results = await Promise.allSettled([
-      api.financial.ping(),
-      api.technical.ping(),
-      api.forecasting.ping(),
+      financial.health(),
+      technical.health(),
+      forecasting.health(),
     ]);
 
     console.debug("[useServiceHealth] Health check results:", {
