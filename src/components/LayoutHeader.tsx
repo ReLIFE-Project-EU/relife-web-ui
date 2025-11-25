@@ -1,13 +1,4 @@
-import {
-  AppShell,
-  Burger,
-  Group,
-  Text,
-  ActionIcon,
-  Tooltip,
-  Image,
-} from "@mantine/core";
-import { IconBook, IconLogin } from "@tabler/icons-react";
+import { AppShell, Burger, Group, Image, Text } from "@mantine/core";
 import { ServiceStatus } from "./ServiceStatus";
 
 interface LayoutHeaderProps {
@@ -35,32 +26,6 @@ export const LayoutHeader = ({ opened, onToggle }: LayoutHeaderProps) => {
 
         <Group gap="sm">
           <ServiceStatus autoRefresh={30000} />
-
-          <Tooltip label="View documentation">
-            <ActionIcon
-              variant="subtle"
-              color="gray"
-              size="lg"
-              component="a"
-              href="#docs"
-              aria-label="Documentation"
-            >
-              <IconBook size={20} />
-            </ActionIcon>
-          </Tooltip>
-
-          <Tooltip label="Sign in to your account">
-            <ActionIcon
-              variant="subtle"
-              color="gray"
-              size="lg"
-              component="a"
-              href="#login"
-              aria-label="Login"
-            >
-              <IconLogin size={20} />
-            </ActionIcon>
-          </Tooltip>
         </Group>
       </Group>
     </AppShell.Header>
