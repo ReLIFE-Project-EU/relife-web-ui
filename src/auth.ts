@@ -14,7 +14,7 @@ export function getClient() {
   return createClient(
     SUPABASE_CONFIG.url,
     SUPABASE_CONFIG.anonKey,
-    SUPABASE_CLIENT_CONFIG,
+    SUPABASE_CLIENT_CONFIG
   );
 }
 
@@ -42,12 +42,14 @@ export function getKeycloakClientId(): string {
 export async function signInWithKeycloak(params: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: SupabaseClient<any, any, any>;
+  redirectTo?: string;
 }) {
-  const { supabase } = params;
+  const { supabase, redirectTo } = params;
   return supabase.auth.signInWithOAuth({
     provider: "keycloak",
     options: {
       scopes: "openid",
+      redirectTo: redirectTo ?? window.location.origin,
     },
   });
 }
