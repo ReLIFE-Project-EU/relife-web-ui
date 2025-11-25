@@ -52,6 +52,30 @@ tasks:
       - npm run format
       - npm run lint
 
+  fetch-specs:
+    desc: "Fetch OpenAPI specifications from running services and save them to api-specs directory"
+    vars:
+      TIMESTAMP:
+        sh: date +%Y%m%d-%H%M%S
+      FINANCIAL: financial
+      FORECASTING: forecasting
+      TECHNICAL: technical
+    cmds:
+      - mkdir -p {{.ROOT_DIR}}/api-specs/{{.TIMESTAMP}}
+      - >
+        docker compose exec -T {{.FINANCIAL}}
+        curl -s -f http://localhost:9090/openapi.json > 
+        {{.ROOT_DIR}}/api-specs/{{.TIMESTAMP}}/{{.FINANCIAL}}.json
+      - >
+        docker compose exec -T {{.FORECASTING}}
+        curl -s -f http://localhost:9090/openapi.json > 
+        {{.ROOT_DIR}}/api-specs/{{.TIMESTAMP}}/{{.FORECASTING}}.json
+      - >
+        docker compose exec -T {{.TECHNICAL}}
+        curl -s -f http://localhost:9090/openapi.json > 
+        {{.ROOT_DIR}}/api-specs/{{.TIMESTAMP}}/{{.TECHNICAL}}.json
+      - echo "OpenAPI specs saved to {{.ROOT_DIR}}/api-specs/{{.TIMESTAMP}}"
+
   dev:
     desc: "Start the frontend development server and all backend services using Docker"
     cmds:

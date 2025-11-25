@@ -9,6 +9,8 @@
 
 .claude
 
+TEMP-*.md
+
 ### Vite React
 ##############
 
