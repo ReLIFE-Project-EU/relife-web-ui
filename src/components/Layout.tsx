@@ -1,8 +1,8 @@
-import { AppShell } from "@mantine/core";
+import { AppShell, Box } from "@mantine/core";
 import { useDisclosure, useElementSize } from "@mantine/hooks";
 import type { ReactNode } from "react";
-import { LayoutHeader } from "./LayoutHeader";
 import { LayoutFooter } from "./LayoutFooter";
+import { LayoutHeader } from "./LayoutHeader";
 import { LayoutNavbar } from "./LayoutNavbar";
 
 interface LayoutProps {
@@ -29,7 +29,9 @@ export const Layout = ({ children }: LayoutProps) => {
     >
       <LayoutHeader opened={opened} onToggle={toggle} />
       <LayoutNavbar />
-      <AppShell.Main>{children}</AppShell.Main>
+      <AppShell.Main>
+        <Box pt="lg">{children}</Box>
+      </AppShell.Main>
       <LayoutFooter ref={footerRef} />
     </AppShell>
   );

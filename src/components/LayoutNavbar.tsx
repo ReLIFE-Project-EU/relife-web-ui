@@ -1,11 +1,5 @@
 import { AppShell, ScrollArea } from "@mantine/core";
-import {
-  IconCalculator,
-  IconChartDots,
-  IconChartLine,
-  IconFileAnalytics,
-  IconHome,
-} from "@tabler/icons-react";
+import { IconCalculator, IconHome } from "@tabler/icons-react";
 import { useLocation } from "react-router-dom";
 import classes from "./LayoutNavbar.module.css";
 import { LinksGroup } from "./NavbarLinksGroup";
@@ -13,14 +7,6 @@ import { LinksGroup } from "./NavbarLinksGroup";
 const navigationData = [
   { label: "Home", icon: IconHome, link: "/" },
   { label: "Financial Analysis", icon: IconCalculator, link: "/financial" },
-  { label: "Technical Analysis", icon: IconChartLine, link: "/technical" },
-  { label: "Forecasting", icon: IconChartDots, link: "/forecasting" },
-  {
-    label: "Reports",
-    icon: IconFileAnalytics,
-    initiallyOpened: true,
-    links: [{ label: "Export Data", link: "/reports/export" }],
-  },
 ];
 
 export const LayoutNavbar = () => {
