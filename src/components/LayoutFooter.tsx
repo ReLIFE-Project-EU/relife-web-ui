@@ -30,11 +30,14 @@ export const LayoutFooter = forwardRef<HTMLDivElement>((_, ref) => {
               fit="contain"
               style={{ flexShrink: 0 }}
             />
-            <Text size="xs" c="dimmed" lh={1.4}>
-              Co-Funded by the European Union. Views and opinions expressed are
-              however those of the author(s) only and do not necessarily reflect
-              those of the European Union or CINEA. Neither the European Union
-              nor CINEA can be held responsible for them.
+            <Text size="xs" visibleFrom="sm" c="dimmed" lh={1.4}>
+              Co-Funded by the European Union.{" "}
+              <Text span visibleFrom="md" inherit>
+                Views and opinions expressed are however those of the author(s)
+                only and do not necessarily reflect those of the European Union
+                or CINEA. Neither the European Union nor CINEA can be held
+                responsible for them.
+              </Text>
             </Text>
           </Group>
 

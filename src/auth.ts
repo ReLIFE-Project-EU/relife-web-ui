@@ -14,7 +14,7 @@ export function getClient() {
   return createClient(
     SUPABASE_CONFIG.url,
     SUPABASE_CONFIG.anonKey,
-    SUPABASE_CLIENT_CONFIG
+    SUPABASE_CLIENT_CONFIG,
   );
 }
 

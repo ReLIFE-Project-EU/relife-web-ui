@@ -8,6 +8,7 @@ import {
   Loader,
   Menu,
   Text,
+  ActionIcon,
 } from "@mantine/core";
 import { IconLogin, IconLogout } from "@tabler/icons-react";
 import { getKeycloakLogoutUrl, signInWithKeycloak, supabase } from "../auth";
@@ -57,7 +58,7 @@ export const LayoutHeader = ({ opened, onToggle }: LayoutHeaderProps) => {
             aria-label="Toggle navigation"
           />
           <Image src="/relife.png" alt="ReLIFE Logo" h={32} w="auto" />
-          <Text size="lg" fw={700}>
+          <Text size="lg" fw={700} visibleFrom="sm">
             ReLIFE Platform
           </Text>
         </Group>
@@ -102,14 +103,26 @@ export const LayoutHeader = ({ opened, onToggle }: LayoutHeaderProps) => {
                   </Menu.Dropdown>
                 </Menu>
               ) : (
-                <Button
-                  variant="white"
-                  size="sm"
-                  onClick={handleLogin}
-                  leftSection={<IconLogin size={20} stroke={1.5} />}
-                >
-                  Sign In
-                </Button>
+                <>
+                  <Button
+                    variant="white"
+                    size="sm"
+                    onClick={handleLogin}
+                    leftSection={<IconLogin size={20} stroke={1.5} />}
+                    visibleFrom="sm"
+                  >
+                    Sign In
+                  </Button>
+                  <ActionIcon
+                    variant="white"
+                    size="lg"
+                    onClick={handleLogin}
+                    hiddenFrom="sm"
+                    aria-label="Sign In"
+                  >
+                    <IconLogin size={20} stroke={1.5} />
+                  </ActionIcon>
+                </>
               )}
             </>
           )}

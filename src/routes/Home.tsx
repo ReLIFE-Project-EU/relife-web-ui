@@ -73,19 +73,12 @@ export const Home = () => {
               </Text>
               <Title
                 order={1}
-                style={{
-                  fontSize: "3rem",
-                  fontWeight: 900,
-                  lineHeight: 1.1,
-                }}
+                fz={{ base: 36, sm: 48, md: 60 }}
+                fw={900}
+                lh={1.1}
               >
                 Unlocking Data for{" "}
-                <Text
-                  component="span"
-                  c="relife.6"
-                  inherit
-                  style={{ whiteSpace: "nowrap" }}
-                >
+                <Text component="span" c="relife.6" inherit>
                   Deep Renovation
                 </Text>
               </Title>
