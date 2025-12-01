@@ -11,6 +11,9 @@
 
 TEMP-*.md
 
+# External services source code
+external-services/
+
 ### Vite React
 ##############
 

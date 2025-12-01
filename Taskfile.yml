@@ -76,6 +76,14 @@ tasks:
         {{.ROOT_DIR}}/api-specs/{{.TIMESTAMP}}/{{.TECHNICAL}}.json
       - echo "OpenAPI specs saved to {{.ROOT_DIR}}/api-specs/{{.TIMESTAMP}}"
 
+  fetch-sources:
+    desc: "Fetch source code for ReLIFE services (default: main, usage: task fetch-sources TREEISH=v1.0.0)"
+    vars:
+      TREEISH: '{{.TREEISH | default "main"}}'
+      TARGET_DIR: "external-services"
+    cmds:
+      - ./scripts/fetch-sources.sh "{{.TREEISH}}" "{{.TARGET_DIR}}"
+
   dev:
     desc: "Start the frontend development server and all backend services using Docker"
     cmds:
