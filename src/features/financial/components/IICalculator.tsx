@@ -13,6 +13,7 @@ import {
 } from "@mantine/core";
 import {
   IconAlertCircle,
+  IconInfoCircle,
   IconCalculator,
   IconCash,
   IconCoin,
@@ -107,10 +108,11 @@ export const IICalculator = () => {
             Initial Investment (II)
           </Text>
         </Group>
-        <Text size="sm" c="dimmed">
-          Calculate the total initial investment required, considering loans and
-          subsidies.
-        </Text>
+        <Alert variant="light" color="blue" icon={<IconInfoCircle size={16} />}>
+          Estimates the net upfront cash required to start the project. It takes
+          into account the total capital expenditure (CAPEX) minus any loans and
+          subsidies available.
+        </Alert>
 
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
           <NumberInput

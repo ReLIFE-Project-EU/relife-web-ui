@@ -14,6 +14,7 @@ import {
 } from "@mantine/core";
 import {
   IconAlertCircle,
+  IconInfoCircle,
   IconCalculator,
   IconCoin,
   IconReceipt,
@@ -51,6 +52,13 @@ export const OPEXCalculator = () => {
       const energyMix = parseArrayInput(energyMixStr);
       const energyPrices = parseArrayInput(energyPricesStr);
 
+      // Validate energy arrays have matching lengths
+      if (energyMix.length !== energyPrices.length) {
+        throw new Error(
+          `Energy mix and energy prices must have the same number of values. Got ${energyMix.length} energy sources but ${energyPrices.length} prices.`,
+        );
+      }
+
       const request: OPEXRequest = {
         maintenance_cost: maintenanceCostNum,
         energy_mix: energyMix,
@@ -83,9 +91,12 @@ export const OPEXCalculator = () => {
             Operational Expenses (OPEX)
           </Text>
         </Group>
-        <Text size="sm" c="dimmed">
-          Calculate the operational expenses of the project.
-        </Text>
+        <Alert variant="light" color="blue" icon={<IconInfoCircle size={16} />}>
+          Operational Expenses (OPEX) are the ongoing costs required to operate
+          a system or project. This includes annual maintenance costs plus
+          energy consumption costs calculated from your energy mix (kWh per
+          source) and respective energy prices (€/kWh).
+        </Alert>
 
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
           <NumberInput
@@ -100,7 +111,7 @@ export const OPEXCalculator = () => {
 
         <Textarea
           label="Energy Mix"
-          description="Energy consumption from each source (kWh, comma separated)"
+          description="Energy consumption from each source in kWh (comma separated). Must match the number of energy prices."
           value={energyMixStr}
           onChange={(e) => setEnergyMixStr(e.currentTarget.value)}
           rows={2}
@@ -108,7 +119,7 @@ export const OPEXCalculator = () => {
 
         <Textarea
           label="Energy Prices"
-          description="Price per unit for each energy source (comma separated)"
+          description="Price per kWh for each energy source (€/kWh, comma separated). Must match the number of energy sources."
           value={energyPricesStr}
           onChange={(e) => setEnergyPricesStr(e.currentTarget.value)}
           rows={2}

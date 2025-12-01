@@ -14,6 +14,7 @@ import {
 } from "@mantine/core";
 import {
   IconAlertCircle,
+  IconInfoCircle,
   IconCalculator,
   IconCoin,
   IconPercentage,
@@ -79,6 +80,13 @@ export const ROICalculator = () => {
       const energyMix = parseArrayInput(energyMixStr);
       const energyPrices = parseArrayInput(energyPricesStr);
 
+      // Validate energy arrays have matching lengths
+      if (energyMix.length !== energyPrices.length) {
+        throw new Error(
+          `Energy mix and energy prices must have the same number of values. Got ${energyMix.length} energy sources but ${energyPrices.length} prices.`,
+        );
+      }
+
       const request: ROIRequest = {
         capex: capexNum,
         interest_rate: interestRateNum,
@@ -118,9 +126,11 @@ export const ROICalculator = () => {
             Return on Investment (ROI)
           </Text>
         </Group>
-        <Text size="sm" c="dimmed">
-          Calculate the Return on Investment for the project.
-        </Text>
+        <Alert variant="light" color="blue" icon={<IconInfoCircle size={16} />}>
+          Measures the efficiency of the investment. It shows the percentage
+          return you get back relative to the cost, factoring in savings,
+          expenses, and financing over the project life.
+        </Alert>
 
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
           <NumberInput
@@ -192,7 +202,7 @@ export const ROICalculator = () => {
 
         <Textarea
           label="Energy Mix"
-          description="Energy consumption from each source (kWh, comma separated)"
+          description="Energy consumption from each source in kWh (comma separated). Must match the number of energy prices."
           value={energyMixStr}
           onChange={(e) => setEnergyMixStr(e.currentTarget.value)}
           rows={2}
@@ -200,7 +210,7 @@ export const ROICalculator = () => {
 
         <Textarea
           label="Energy Prices"
-          description="Price per unit for each energy source (comma separated)"
+          description="Price per kWh for each energy source (€/kWh, comma separated). Must match the number of energy sources."
           value={energyPricesStr}
           onChange={(e) => setEnergyPricesStr(e.currentTarget.value)}
           rows={2}

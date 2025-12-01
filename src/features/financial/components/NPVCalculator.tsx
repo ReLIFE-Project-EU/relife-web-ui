@@ -14,6 +14,7 @@ import {
 } from "@mantine/core";
 import {
   IconAlertCircle,
+  IconInfoCircle,
   IconCalculator,
   IconChartLine,
   IconCoin,
@@ -102,10 +103,12 @@ export const NPVCalculator = () => {
             Net Present Value (NPV)
           </Text>
         </Group>
-        <Text size="sm" c="dimmed">
-          Calculate the difference between the present value of cash inflows and
-          the present value of cash outflows over a period of time.
-        </Text>
+        <Alert variant="light" color="blue" icon={<IconInfoCircle size={16} />}>
+          Net Present Value (NPV) calculates the present value of all future
+          cash flows discounted to today, minus the initial investment. A
+          positive NPV indicates the project generates more value than it costs,
+          making it financially worthwhile.
+        </Alert>
 
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
           <NumberInput

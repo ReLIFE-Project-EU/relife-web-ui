@@ -14,6 +14,7 @@ import {
 } from "@mantine/core";
 import {
   IconAlertCircle,
+  IconInfoCircle,
   IconCalculator,
   IconCoin,
   IconTrendingUp,
@@ -72,12 +73,19 @@ export const IRRCalculator = () => {
         !Number.isFinite(projectLifetimeNum)
       ) {
         throw new Error(
-          "Invalid numeric input. Please ensure all fields contain valid numbers.",
+          "Invalid numeric input. Please ensure all fields contain valid numbers."
         );
       }
 
       const energyMix = parseArrayInput(energyMixStr);
       const energyPrices = parseArrayInput(energyPricesStr);
+
+      // Validate energy arrays have matching lengths
+      if (energyMix.length !== energyPrices.length) {
+        throw new Error(
+          `Energy mix and energy prices must have the same number of values. Got ${energyMix.length} energy sources but ${energyPrices.length} prices.`
+        );
+      }
 
       const request: IRRRequest = {
         capex: capexNum,
@@ -98,7 +106,7 @@ export const IRRCalculator = () => {
     } catch (err) {
       console.error(err);
       setError(
-        err instanceof Error ? err.message : "An unknown error occurred",
+        err instanceof Error ? err.message : "An unknown error occurred"
       );
     } finally {
       setLoading(false);
@@ -116,12 +124,14 @@ export const IRRCalculator = () => {
         <Group>
           <IconTrendingUp size={24} />
           <Text fw={500} size="lg">
-            Internal Rate of Return (IRR)
+            Simple Annual Return Ratio
           </Text>
         </Group>
-        <Text size="sm" c="dimmed">
-          Calculate the Internal Rate of Return for the project.
-        </Text>
+        <Alert variant="light" color="blue" icon={<IconInfoCircle size={16} />}>
+          Calculates the annual return as a ratio of net savings to initial
+          investment. This shows what percentage return you get per year
+          relative to your upfront cost after accounting for all expenses.
+        </Alert>
 
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
           <NumberInput
@@ -200,7 +210,7 @@ export const IRRCalculator = () => {
 
         <Textarea
           label="Energy Mix"
-          description="Energy consumption from each source (kWh, comma separated)"
+          description="Energy consumption from each source in kWh (comma separated). Must match the number of energy prices."
           value={energyMixStr}
           onChange={(e) => setEnergyMixStr(e.currentTarget.value)}
           rows={2}
@@ -208,7 +218,7 @@ export const IRRCalculator = () => {
 
         <Textarea
           label="Energy Prices"
-          description="Price per unit for each energy source (comma separated)"
+          description="Price per kWh for each energy source (€/kWh, comma separated). Must match the number of energy sources."
           value={energyPricesStr}
           onChange={(e) => setEnergyPricesStr(e.currentTarget.value)}
           rows={2}
@@ -220,7 +230,7 @@ export const IRRCalculator = () => {
           mt="md"
           disabled={loading}
         >
-          Calculate IRR
+          Calculate Return Ratio
         </Button>
 
         {error && (
@@ -243,7 +253,7 @@ export const IRRCalculator = () => {
           >
             <Stack gap="xs">
               <Group justify="space-between">
-                <Text fw={500}>Internal Rate of Return:</Text>
+                <Text fw={500}>Simple Annual Return Ratio:</Text>
                 <Text fw={700} size="xl">
                   {(result.irr * 100).toFixed(2)}%
                 </Text>
