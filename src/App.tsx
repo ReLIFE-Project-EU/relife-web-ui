@@ -12,14 +12,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/financial" element={<FinancialCalculator />} />
-        <Route
-          path="/technical"
-          element={
-            <ProtectedRoute>
-              <TechnicalAnalysis />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/technical" element={<TechnicalAnalysis />} />
         <Route
           path="/forecasting"
           element={
