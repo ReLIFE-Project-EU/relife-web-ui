@@ -73,7 +73,7 @@ export const IRRCalculator = () => {
         !Number.isFinite(projectLifetimeNum)
       ) {
         throw new Error(
-          "Invalid numeric input. Please ensure all fields contain valid numbers."
+          "Invalid numeric input. Please ensure all fields contain valid numbers.",
         );
       }
 
@@ -83,7 +83,7 @@ export const IRRCalculator = () => {
       // Validate energy arrays have matching lengths
       if (energyMix.length !== energyPrices.length) {
         throw new Error(
-          `Energy mix and energy prices must have the same number of values. Got ${energyMix.length} energy sources but ${energyPrices.length} prices.`
+          `Energy mix and energy prices must have the same number of values. Got ${energyMix.length} energy sources but ${energyPrices.length} prices.`,
         );
       }
 
@@ -106,7 +106,7 @@ export const IRRCalculator = () => {
     } catch (err) {
       console.error(err);
       setError(
-        err instanceof Error ? err.message : "An unknown error occurred"
+        err instanceof Error ? err.message : "An unknown error occurred",
       );
     } finally {
       setLoading(false);

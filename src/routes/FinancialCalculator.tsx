@@ -16,12 +16,12 @@ import { ROICalculator } from "../features/financial/components/ROICalculator";
 // Main Page Component
 // ============================================================================
 
-export const FinancialAnalysis = () => {
+export const FinancialCalculator = () => {
   return (
     <Container size="xl">
       <Stack gap="lg">
         <div>
-          <Title order={1}>Financial Analysis</Title>
+          <Title order={1}>Financial Calculator</Title>
           <Text size="lg" c="dimmed">
             Evaluate project feasibility using standard financial metrics.
           </Text>

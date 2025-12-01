@@ -13,7 +13,7 @@ import {
 } from "@mantine/core";
 import {
   IconArrowRight,
-  IconChartPie,
+  IconCalculator,
   IconDeviceAnalytics,
   IconTrendingUp,
 } from "@tabler/icons-react";
@@ -21,10 +21,10 @@ import { useNavigate } from "react-router-dom";
 
 const features = [
   {
-    title: "Financial Analysis",
+    title: "Financial Calculator",
     description:
       "Evaluate investment scenarios, calculate ROI, and assess economic indicators for deep renovation projects.",
-    icon: IconChartPie,
+    icon: IconCalculator,
     link: "/financial",
     color: "blue",
   },

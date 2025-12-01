@@ -1,6 +1,6 @@
 import { AppShell, ScrollArea } from "@mantine/core";
 import {
-  IconChartPie,
+  IconCalculator,
   IconDeviceAnalytics,
   IconHome,
   IconTrendingUp,
@@ -19,7 +19,7 @@ interface NavItem {
 
 const navigationData: NavItem[] = [
   { label: "Home", icon: IconHome, link: "/" },
-  { label: "Financial Analysis", icon: IconChartPie, link: "/financial" },
+  { label: "Financial Calculator", icon: IconCalculator, link: "/financial" },
   {
     label: "Technical Analysis",
     icon: IconDeviceAnalytics,
