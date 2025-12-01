@@ -1,6 +1,9 @@
 version: 3
 
-vars: {}
+vars:
+  FINANCIAL_REPO: "https://github.com/ReLIFE-Project-EU/relife-financial-service.git"
+  FORECASTING_REPO: "https://github.com/ReLIFE-Project-EU/relife-forecasting-service.git"
+  TECHNICAL_REPO: "https://github.com/ReLIFE-Project-EU/relife-technical-service.git"
 
 env: {}
 
@@ -77,12 +80,26 @@ tasks:
       - echo "OpenAPI specs saved to {{.ROOT_DIR}}/api-specs/{{.TIMESTAMP}}"
 
   fetch-sources:
-    desc: "Fetch source code for ReLIFE services (default: main, usage: task fetch-sources TREEISH=v1.0.0)"
+    desc: "Fetch source code for ReLIFE services (usage: task fetch-sources FINANCIAL_TREEISH=... FORECASTING_TREEISH=...)"
     vars:
-      TREEISH: '{{.TREEISH | default "main"}}'
       TARGET_DIR: "external-services"
+      DEFAULT_TREEISH: '{{.TREEISH | default "main"}}'
     cmds:
-      - ./scripts/fetch-sources.sh "{{.TREEISH}}" "{{.TARGET_DIR}}"
+      - >
+        ./scripts/fetch-sources.sh
+        "{{.FINANCIAL_REPO}}" 
+        "{{.FINANCIAL_TREEISH | default .DEFAULT_TREEISH}}"
+        "{{.TARGET_DIR}}/relife-financial-service"
+      - >
+        ./scripts/fetch-sources.sh
+        "{{.FORECASTING_REPO}}" 
+        "{{.FORECASTING_TREEISH | default .DEFAULT_TREEISH}}"
+        "{{.TARGET_DIR}}/relife-forecasting-service"
+      - >
+        ./scripts/fetch-sources.sh
+        "{{.TECHNICAL_REPO}}" 
+        "{{.TECHNICAL_TREEISH | default .DEFAULT_TREEISH}}"
+        "{{.TARGET_DIR}}/relife-technical-service"
 
   dev:
     desc: "Start the frontend development server and all backend services using Docker"
