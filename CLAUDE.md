@@ -123,3 +123,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - Local-relative imports
 
 - Avoid dead code, unused imports, and commented-out blocks—delete them instead.
+
+## Universal Dos/Don'ts
+
+### Don't
+
+- Add dependencies unless native APIs are insufficient.
+- Leave dependency versions unpinned—always specify range (at least major).
+- Make large, unfocused commits; prefer atomic changes.
+- Omit root-level README.md.
+- Work outside of a git directory.
+- Commit secrets—use env vars.
+- Hardcode values; use named constants/config.
+- Over-optimize before profiling.
+- Ignore errors; handle all failures visibly.
+- Rely on mutable globals.
+- Leave dead code or commented-out sections.
+- Use inline CSS/styles or violate framework conventions.
+
+### Do
+
+- Clarify requirements with short planning, especially for ambiguous work.
+- Search GitHub/GitLab for real code patterns before complex implementation.
+- Confirm framework/library versions before writing code.
+- Make atomic, descriptive commits.
+- Generate automated smoke tests for key logic. Invite user guidance for complex test cases.
+- Document the reasoning behind key code decisions.
+- Ensure code passes local lint/build before pushing.
+- Sanitize inputs and follow security best practices (e.g., OWASP Top 10).
