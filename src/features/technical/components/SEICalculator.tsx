@@ -1,5 +1,5 @@
 import { IconPlant2 } from "@tabler/icons-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { technical } from "../../../api";
 import type { SEIRequest, SEIResponse } from "../../../types/technical";
 import { useCalculator } from "../hooks/useCalculator";
@@ -8,9 +8,17 @@ import { CalculatorLayout } from "./CalculatorLayout";
 import { MetricInputGroup } from "./MetricInputGroup";
 import { ResultDisplay } from "./ResultDisplay";
 
-export const SEICalculator = () => {
-  const { loading, error, result, profile, setProfile, handleCalculate } =
+interface SEICalculatorProps {
+  profile: string;
+}
+
+export const SEICalculator = ({ profile }: SEICalculatorProps) => {
+  const { loading, error, result, handleCalculate, clearResult } =
     useCalculator<SEIRequest, SEIResponse>(technical.calculateSEI);
+
+  useEffect(() => {
+    clearResult();
+  }, [profile, clearResult]);
 
   const [embodiedCarbonKpi, setEmbodiedCarbonKpi] = useState<string | number>(
     500,
@@ -46,8 +54,6 @@ export const SEICalculator = () => {
       description="Calculate the Sustainability Environmental Index based on embodied carbon and global warming potential."
       loading={loading}
       error={error}
-      profile={profile}
-      onProfileChange={setProfile}
       onCalculate={onCalculate}
       calculateButtonLabel="Calculate SEI"
     >

@@ -1,5 +1,5 @@
 import { IconCoins } from "@tabler/icons-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { technical } from "../../../api";
 import type { FVRequest, FVResponse } from "../../../types/technical";
 import { useCalculator } from "../hooks/useCalculator";
@@ -8,9 +8,17 @@ import { CalculatorLayout } from "./CalculatorLayout";
 import { MetricInputGroup } from "./MetricInputGroup";
 import { ResultDisplay } from "./ResultDisplay";
 
-export const FVCalculator = () => {
-  const { loading, error, result, profile, setProfile, handleCalculate } =
+interface FVCalculatorProps {
+  profile: string;
+}
+
+export const FVCalculator = ({ profile }: FVCalculatorProps) => {
+  const { loading, error, result, handleCalculate, clearResult } =
     useCalculator<FVRequest, FVResponse>(technical.calculateFV);
+
+  useEffect(() => {
+    clearResult();
+  }, [profile, clearResult]);
 
   const [iiKpi, setIiKpi] = useState<string | number>(500000);
   const [iiMin, setIiMin] = useState<string | number>(300000);
@@ -54,8 +62,6 @@ export const FVCalculator = () => {
       description="Calculate the Financial Viability score based on investment metrics, operating costs, and expected returns."
       loading={loading}
       error={error}
-      profile={profile}
-      onProfileChange={setProfile}
       onCalculate={onCalculate}
       calculateButtonLabel="Calculate FV"
     >

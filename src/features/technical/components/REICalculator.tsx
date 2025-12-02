@@ -1,5 +1,5 @@
 import { IconLeaf } from "@tabler/icons-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { technical } from "../../../api";
 import type { REIRequest, REIResponse } from "../../../types/technical";
 import { useCalculator } from "../hooks/useCalculator";
@@ -8,9 +8,17 @@ import { CalculatorLayout } from "./CalculatorLayout";
 import { MetricInputGroup } from "./MetricInputGroup";
 import { ResultDisplay } from "./ResultDisplay";
 
-export const REICalculator = () => {
-  const { loading, error, result, profile, setProfile, handleCalculate } =
+interface REICalculatorProps {
+  profile: string;
+}
+
+export const REICalculator = ({ profile }: REICalculatorProps) => {
+  const { loading, error, result, handleCalculate, clearResult } =
     useCalculator<REIRequest, REIResponse>(technical.calculateREI);
+
+  useEffect(() => {
+    clearResult();
+  }, [profile, clearResult]);
 
   const [stCoverageKpi, setStCoverageKpi] = useState<string | number>(30);
   const [stCoverageMin, setStCoverageMin] = useState<string | number>(0);
@@ -47,8 +55,6 @@ export const REICalculator = () => {
       description="Calculate the Renewable Energy Index based on solar coverage, onsite renewable generation, and energy export."
       loading={loading}
       error={error}
-      profile={profile}
-      onProfileChange={setProfile}
       onCalculate={onCalculate}
       calculateButtonLabel="Calculate REI"
     >

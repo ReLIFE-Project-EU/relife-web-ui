@@ -1,5 +1,5 @@
 import { IconUsers } from "@tabler/icons-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { technical } from "../../../api";
 import type { UCRequest, UCResponse } from "../../../types/technical";
 import { useCalculator } from "../hooks/useCalculator";
@@ -8,9 +8,17 @@ import { CalculatorLayout } from "./CalculatorLayout";
 import { MetricInputGroup } from "./MetricInputGroup";
 import { ResultDisplay } from "./ResultDisplay";
 
-export const UCCalculator = () => {
-  const { loading, error, result, profile, setProfile, handleCalculate } =
+interface UCCalculatorProps {
+  profile: string;
+}
+
+export const UCCalculator = ({ profile }: UCCalculatorProps) => {
+  const { loading, error, result, handleCalculate, clearResult } =
     useCalculator<UCRequest, UCResponse>(technical.calculateUC);
+
+  useEffect(() => {
+    clearResult();
+  }, [profile, clearResult]);
 
   const [tempKpi, setTempKpi] = useState<string | number>(21);
   const [tempMin, setTempMin] = useState<string | number>(18);
@@ -40,8 +48,6 @@ export const UCCalculator = () => {
       description="Calculate the User Comfort score based on thermal comfort parameters (temperature and humidity)."
       loading={loading}
       error={error}
-      profile={profile}
-      onProfileChange={setProfile}
       onCalculate={onCalculate}
       calculateButtonLabel="Calculate UC"
     >

@@ -1,4 +1,11 @@
-import { Container, Stack, Tabs, Text, Title } from "@mantine/core";
+import {
+  Container,
+  SegmentedControl,
+  Stack,
+  Tabs,
+  Text,
+  Title,
+} from "@mantine/core";
 import {
   IconBolt,
   IconCoins,
@@ -6,13 +13,20 @@ import {
   IconPlant2,
   IconUsers,
 } from "@tabler/icons-react";
+import { useState } from "react";
 import { EECalculator } from "../features/technical/components/EECalculator";
 import { FVCalculator } from "../features/technical/components/FVCalculator";
 import { REICalculator } from "../features/technical/components/REICalculator";
 import { SEICalculator } from "../features/technical/components/SEICalculator";
 import { UCCalculator } from "../features/technical/components/UCCalculator";
+import {
+  DEFAULT_PROFILE,
+  TECHNICAL_PROFILES,
+} from "../features/technical/utils";
 
 export const TechnicalAnalysis = () => {
+  const [profile, setProfile] = useState<string>(DEFAULT_PROFILE);
+
   return (
     <Container size="xl">
       <Stack gap="lg">
@@ -23,7 +37,23 @@ export const TechnicalAnalysis = () => {
           </Text>
         </div>
 
-        <Tabs defaultValue="ee" keepMounted={false}>
+        <Stack gap="xs">
+          <Text size="sm" fw={500}>
+            Optimization Profile
+          </Text>
+          <SegmentedControl
+            value={profile}
+            onChange={setProfile}
+            data={[...TECHNICAL_PROFILES]}
+            fullWidth
+          />
+          <Text size="xs" c="dimmed">
+            Select the weighting profile for all calculations. This profile will
+            be applied consistently across all technical indicators.
+          </Text>
+        </Stack>
+
+        <Tabs defaultValue="ee" keepMounted={true}>
           <Tabs.List>
             <Tabs.Tab value="ee" leftSection={<IconBolt size={14} />}>
               Energy Efficiency (EE)
@@ -43,23 +73,23 @@ export const TechnicalAnalysis = () => {
           </Tabs.List>
 
           <Tabs.Panel value="ee" pt="md">
-            <EECalculator />
+            <EECalculator profile={profile} />
           </Tabs.Panel>
 
           <Tabs.Panel value="rei" pt="md">
-            <REICalculator />
+            <REICalculator profile={profile} />
           </Tabs.Panel>
 
           <Tabs.Panel value="sei" pt="md">
-            <SEICalculator />
+            <SEICalculator profile={profile} />
           </Tabs.Panel>
 
           <Tabs.Panel value="uc" pt="md">
-            <UCCalculator />
+            <UCCalculator profile={profile} />
           </Tabs.Panel>
 
           <Tabs.Panel value="fv" pt="md">
-            <FVCalculator />
+            <FVCalculator profile={profile} />
           </Tabs.Panel>
         </Tabs>
       </Stack>

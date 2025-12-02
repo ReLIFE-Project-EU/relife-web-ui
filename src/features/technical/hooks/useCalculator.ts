@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { DEFAULT_PROFILE } from "../utils";
+import { useCallback, useState } from "react";
 
 export const useCalculator = <TRequest, TResponse>(
   apiCall: (request: TRequest) => Promise<TResponse>,
@@ -7,7 +6,6 @@ export const useCalculator = <TRequest, TResponse>(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<TResponse | null>(null);
-  const [profile, setProfile] = useState<string>(DEFAULT_PROFILE);
 
   const handleCalculate = async (request: TRequest) => {
     if (loading) return;
@@ -29,12 +27,16 @@ export const useCalculator = <TRequest, TResponse>(
     }
   };
 
+  const clearResult = useCallback(() => {
+    setResult(null);
+    setError(null);
+  }, []);
+
   return {
     loading,
     error,
     result,
-    profile,
-    setProfile,
     handleCalculate,
+    clearResult,
   };
 };

@@ -4,7 +4,6 @@ import {
   Button,
   Group,
   LoadingOverlay,
-  Select,
   Stack,
   Text,
 } from "@mantine/core";
@@ -13,7 +12,7 @@ import {
   IconCalculator,
   IconInfoCircle,
 } from "@tabler/icons-react";
-import { LOADING_OVERLAY_PROPS, TECHNICAL_PROFILES } from "../utils";
+import { LOADING_OVERLAY_PROPS } from "../utils";
 
 interface CalculatorLayoutProps {
   title: string;
@@ -21,8 +20,6 @@ interface CalculatorLayoutProps {
   description: string;
   loading: boolean;
   error: string | null;
-  profile: string;
-  onProfileChange: (value: string) => void;
   onCalculate: () => void;
   calculateButtonLabel: string;
   children: React.ReactNode;
@@ -34,8 +31,6 @@ export const CalculatorLayout = ({
   description,
   loading,
   error,
-  profile,
-  onProfileChange,
   onCalculate,
   calculateButtonLabel,
   children,
@@ -54,15 +49,6 @@ export const CalculatorLayout = ({
         <Alert variant="light" color="blue" icon={<IconInfoCircle size={16} />}>
           {description}
         </Alert>
-
-        <Select
-          label="Optimization Profile"
-          description="Select the weighting profile for the calculation"
-          data={TECHNICAL_PROFILES}
-          value={profile}
-          onChange={(value) => value && onProfileChange(value)}
-          allowDeselect={false}
-        />
 
         {children}
 

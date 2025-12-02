@@ -1,5 +1,5 @@
 import { IconBolt } from "@tabler/icons-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { technical } from "../../../api";
 import type { EERequest, EEResponse } from "../../../types/technical";
 import { useCalculator } from "../hooks/useCalculator";
@@ -8,9 +8,17 @@ import { CalculatorLayout } from "./CalculatorLayout";
 import { MetricInputGroup } from "./MetricInputGroup";
 import { ResultDisplay } from "./ResultDisplay";
 
-export const EECalculator = () => {
-  const { loading, error, result, profile, setProfile, handleCalculate } =
+interface EECalculatorProps {
+  profile: string;
+}
+
+export const EECalculator = ({ profile }: EECalculatorProps) => {
+  const { loading, error, result, handleCalculate, clearResult } =
     useCalculator<EERequest, EEResponse>(technical.calculateEE);
+
+  useEffect(() => {
+    clearResult();
+  }, [profile, clearResult]);
 
   const [envelopeKpi, setEnvelopeKpi] = useState<string | number>(0.5);
   const [envelopeMin, setEnvelopeMin] = useState<string | number>(0.1);
@@ -54,8 +62,6 @@ export const EECalculator = () => {
       description="Calculate the Energy Efficiency score based on building envelope and system performance indicators."
       loading={loading}
       error={error}
-      profile={profile}
-      onProfileChange={setProfile}
       onCalculate={onCalculate}
       calculateButtonLabel="Calculate EE"
     >
