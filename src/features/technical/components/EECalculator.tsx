@@ -44,12 +44,15 @@ export const EECalculator = ({ profile }: EECalculatorProps) => {
       window_kpi: Number(windowKpi),
       window_min: Number(windowMin),
       window_max: Number(windowMax),
+      // Swap min/max for Heating (High Efficiency is Good, but backend assumes Low is Good/Cost-like)
+      // Swapping min/max allows backend's normalize_low to work correctly for "High is Good" metrics
       heating_system_kpi: Number(heatingKpi),
-      heating_system_min: Number(heatingMin),
-      heating_system_max: Number(heatingMax),
+      heating_system_min: Number(heatingMax),
+      heating_system_max: Number(heatingMin),
+      // Swap min/max for Cooling for the same reason
       cooling_system_kpi: Number(coolingKpi),
-      cooling_system_min: Number(coolingMin),
-      cooling_system_max: Number(coolingMax),
+      cooling_system_min: Number(coolingMax),
+      cooling_system_max: Number(coolingMin),
       profile: profile,
     };
     handleCalculate(request);
