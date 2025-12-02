@@ -31,6 +31,7 @@ tasks:
   up:
     desc: "Start all services in detached mode, rebuild images, and wait for health checks"
     cmds:
+      - task: pull
       - docker compose up -d --build --wait
 
   down:
