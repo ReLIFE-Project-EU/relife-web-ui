@@ -1,5 +1,6 @@
 import {
   Container,
+  Group,
   SegmentedControl,
   Stack,
   Tabs,
@@ -7,6 +8,7 @@ import {
   Title,
 } from "@mantine/core";
 import {
+  IconArmchair,
   IconBolt,
   IconCoins,
   IconLeaf,
@@ -19,10 +21,7 @@ import { FVCalculator } from "../features/technical/components/FVCalculator";
 import { REICalculator } from "../features/technical/components/REICalculator";
 import { SEICalculator } from "../features/technical/components/SEICalculator";
 import { UCCalculator } from "../features/technical/components/UCCalculator";
-import {
-  DEFAULT_PROFILE,
-  TECHNICAL_PROFILES,
-} from "../features/technical/utils";
+import { DEFAULT_PROFILE } from "../features/technical/utils";
 
 export const TechnicalAnalysis = () => {
   const [profile, setProfile] = useState<string>(DEFAULT_PROFILE);
@@ -44,7 +43,35 @@ export const TechnicalAnalysis = () => {
           <SegmentedControl
             value={profile}
             onChange={setProfile}
-            data={[...TECHNICAL_PROFILES]}
+            data={[
+              {
+                value: "Environment-Oriented",
+                label: (
+                  <Group gap={8} wrap="nowrap" justify="center">
+                    <IconLeaf size={16} />
+                    <span>Environment</span>
+                  </Group>
+                ),
+              },
+              {
+                value: "Comfort-Oriented",
+                label: (
+                  <Group gap={8} wrap="nowrap" justify="center">
+                    <IconArmchair size={16} />
+                    <span>Comfort</span>
+                  </Group>
+                ),
+              },
+              {
+                value: "Financally-Oriented",
+                label: (
+                  <Group gap={8} wrap="nowrap" justify="center">
+                    <IconCoins size={16} />
+                    <span>Financial</span>
+                  </Group>
+                ),
+              },
+            ]}
             fullWidth
           />
           <Text size="xs" c="dimmed">
