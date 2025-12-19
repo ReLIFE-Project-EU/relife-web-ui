@@ -2,6 +2,49 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ReLIFE Project Context
+
+This repository implements the **ReLIFE Web UI**, part of the EU LIFE program ReLIFE project for building energy renovation in Europe.
+
+### D3.2 Requirements Document
+
+**IMPORTANT**: Before implementing features, consult [`D32_WEB_UI_GUIDANCE.md`](./D32_WEB_UI_GUIDANCE.md) which contains Web UI-relevant requirements extracted from deliverable D3.2 "Methodological Frameworks of ReLIFE Services".
+
+#### Key Architectural Constraints from D3.2
+
+1. **Three Distinct Tools** must be implemented:
+   - **Renovation Strategy Explorer** (Group 1: policymakers, researchers)
+   - **Portfolio Renovation Advisor** (Group 2: financial institutions, ESCOs)
+   - **Home Renovation Assistant** (Group 3: homeowners)
+
+2. **Three Backend Services** the UI must integrate with:
+   - **Financial Service**: Funding options, financial indicators (NPV, IRR, ROI, PP, DPP, ARV), risk assessment
+   - **Forecasting Service**: Building energy simulation, climate scenarios (present/2030/2050)
+   - **Technical Service**: Technical sheets, MCDA with 5 pillars, building stock analysis
+
+3. **MCDA Framework**: Five evaluation pillars with predefined user personas (Environmentally Conscious, Comfort-Driven, Cost-Optimization Oriented)
+
+4. **Compliance Requirements**: GDPR, role-based access, data minimization, consent management
+
+#### When to Consult D32_WEB_UI_GUIDANCE.md
+
+- Implementing any of the three tools or their workflows
+- Adding forms for building data input (three pathways: archetype, custom, modified)
+- Displaying financial indicators or risk assessment results
+- Implementing MCDA scoring or persona selection
+- Adding EPC-based reporting features
+- Designing data flows between services
+
+#### Handling Conflicts with D3.2
+
+**IMPORTANT**: If D3.2 requirements or guidelines conflict with the current task, user instructions, or practical implementation constraints:
+
+1. **Do NOT silently deviate** from D3.2 or make assumptions
+2. **Prompt the user for clarification** before proceeding
+3. Clearly explain the conflict and present options
+
+D3.2 represents formal project requirements, but implementation realities may require adjustments. The user must explicitly approve any deviation from documented requirements.
+
 ## Tech Stack Versions
 
 **CRITICAL**: Always verify that any proposed changes, API usage, or code examples are compatible with the exact versions listed below. Do not suggest features, APIs, or patterns from different versions.
