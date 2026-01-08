@@ -8,16 +8,10 @@ import type {
 } from "./types/common";
 import { APIError, ServiceType } from "./types/common";
 import type {
-  IIRequest,
-  IIResponse,
-  IRRRequest,
-  IRRResponse,
-  NPVRequest,
-  NPVResponse,
-  OPEXRequest,
-  OPEXResponse,
-  ROIRequest,
-  ROIResponse,
+  ARVRequest,
+  ARVResponse,
+  RiskAssessmentRequest,
+  RiskAssessmentResponse,
 } from "./types/financial";
 import type {
   BuildingPayload,
@@ -69,6 +63,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (token) {
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+  } else {
+    console.warn("No auth token available for request to", path);
   }
 
   const response = await fetch(`${API_BASE}${path}`, {
@@ -87,6 +83,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
       // No JSON body or parsing failed
     }
 
+    console.error(`API Error ${response.status} for ${path}`, validationErrors);
     throw new APIError(response.status, response.statusText, validationErrors);
   }
 
@@ -176,32 +173,22 @@ const createServiceApi = (service: ServiceType) => ({
 export const financial = {
   ...createServiceApi(ServiceType.FINANCIAL),
 
-  calculateNPV: (data: NPVRequest) =>
-    request<NPVResponse>("/financial/financial/npv", {
+  /**
+   * Perform Monte Carlo risk assessment for energy retrofit project.
+   * Runs 10,000 scenarios to assess financial risk and returns.
+   */
+  assessRisk: (data: RiskAssessmentRequest) =>
+    request<RiskAssessmentResponse>("/financial/risk-assessment", {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
-  calculateII: (data: IIRequest) =>
-    request<IIResponse>("/financial/financial/ii", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-
-  calculateOPEX: (data: OPEXRequest) =>
-    request<OPEXResponse>("/financial/financial/opex", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-
-  calculateROI: (data: ROIRequest) =>
-    request<ROIResponse>("/financial/financial/roi", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-
-  calculateIRR: (data: IRRRequest) =>
-    request<IRRResponse>("/financial/financial/irr", {
+  /**
+   * Calculate After Renovation Value (ARV) for a property.
+   * Predicts property value based on characteristics and energy class.
+   */
+  calculateARV: (data: ARVRequest) =>
+    request<ARVResponse>("/financial/arv", {
       method: "POST",
       body: JSON.stringify(data),
     }),

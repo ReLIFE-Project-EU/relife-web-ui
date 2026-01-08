@@ -32,7 +32,14 @@ function App() {
         <Route path="/home-assistant" element={<HomeAssistantLanding />} />
 
         {/* Expert Tools - Direct access to underlying calculators */}
-        <Route path="/financial" element={<FinancialCalculator />} />
+        <Route
+          path="/financial"
+          element={
+            <ProtectedRoute>
+              <FinancialCalculator />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/technical" element={<TechnicalAnalysis />} />
         <Route
           path="/forecasting"
