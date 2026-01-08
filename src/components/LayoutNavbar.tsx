@@ -1,9 +1,10 @@
 import { AppShell, ScrollArea } from "@mantine/core";
 import {
-  IconCalculator,
-  IconDeviceAnalytics,
+  IconBriefcase,
+  IconBuildingEstate,
   IconHome,
-  IconTrendingUp,
+  IconHomeHeart,
+  IconTools,
 } from "@tabler/icons-react";
 import React from "react";
 import { useLocation } from "react-router-dom";
@@ -19,13 +20,38 @@ interface NavItem {
 
 const navigationData: NavItem[] = [
   { label: "Home", icon: IconHome, link: "/" },
-  { label: "Financial Calculator", icon: IconCalculator, link: "/financial" },
+
+  // Group 1: Policymakers, researchers
   {
-    label: "Technical Analysis",
-    icon: IconDeviceAnalytics,
-    link: "/technical",
+    label: "Strategy Explorer",
+    icon: IconBuildingEstate,
+    links: [{ label: "Overview", link: "/strategy-explorer" }],
   },
-  { label: "Forecasting", icon: IconTrendingUp, link: "/forecasting" },
+
+  // Group 2: Financial institutions, ESCOs
+  {
+    label: "Portfolio Advisor",
+    icon: IconBriefcase,
+    links: [{ label: "Overview", link: "/portfolio-advisor" }],
+  },
+
+  // Group 3: Homeowners
+  {
+    label: "Home Assistant",
+    icon: IconHomeHeart,
+    links: [{ label: "Overview", link: "/home-assistant" }],
+  },
+
+  // Direct access to underlying calculators and services
+  {
+    label: "Expert Tools",
+    icon: IconTools,
+    links: [
+      { label: "Financial Calculator", link: "/financial" },
+      { label: "Technical Analysis", link: "/technical" },
+      { label: "Forecasting", link: "/forecasting" },
+    ],
+  },
 ];
 
 export const LayoutNavbar = () => {

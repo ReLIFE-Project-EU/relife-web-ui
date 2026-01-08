@@ -4,13 +4,34 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { FinancialCalculator } from "./routes/FinancialCalculator";
 import { Forecasting } from "./routes/Forecasting";
 import { Home } from "./routes/Home";
+import { HomeAssistantLanding } from "./routes/HomeAssistantLanding";
+import { PortfolioAdvisorLanding } from "./routes/PortfolioAdvisorLanding";
+import { StrategyExplorerLanding } from "./routes/StrategyExplorerLanding";
 import { TechnicalAnalysis } from "./routes/TechnicalAnalysis";
 
 function App() {
   return (
     <Layout>
       <Routes>
+        {/* Home - Tool Selector */}
         <Route path="/" element={<Home />} />
+
+        {/* Group 1: Strategy Explorer (Policymakers, Researchers) */}
+        <Route
+          path="/strategy-explorer"
+          element={<StrategyExplorerLanding />}
+        />
+
+        {/* Group 2: Portfolio Advisor (Financial Institutions, ESCOs) */}
+        <Route
+          path="/portfolio-advisor"
+          element={<PortfolioAdvisorLanding />}
+        />
+
+        {/* Group 3: Home Assistant (Homeowners) */}
+        <Route path="/home-assistant" element={<HomeAssistantLanding />} />
+
+        {/* Expert Tools - Direct access to underlying calculators */}
         <Route path="/financial" element={<FinancialCalculator />} />
         <Route path="/technical" element={<TechnicalAnalysis />} />
         <Route

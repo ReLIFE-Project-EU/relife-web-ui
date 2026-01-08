@@ -1,4 +1,5 @@
 import {
+  Badge,
   Box,
   Button,
   Card,
@@ -13,36 +14,39 @@ import {
 } from "@mantine/core";
 import {
   IconArrowRight,
-  IconCalculator,
-  IconDeviceAnalytics,
-  IconTrendingUp,
+  IconBriefcase,
+  IconBuildingEstate,
+  IconHomeHeart,
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 
-const features = [
+const tools = [
   {
-    title: "Financial Calculator",
+    title: "Renovation Strategy Explorer",
+    badge: "Policymakers & Researchers",
     description:
-      "Evaluate investment scenarios, calculate ROI, and assess economic indicators for deep renovation projects.",
-    icon: IconCalculator,
-    link: "/financial",
+      "Analyze building stock at national and regional levels. Develop evidence-based renovation strategies and track policy impacts.",
+    icon: IconBuildingEstate,
+    link: "/strategy-explorer",
     color: "blue",
   },
   {
-    title: "Technical Analysis",
+    title: "Portfolio Renovation Advisor",
+    badge: "Financial Institutions & ESCOs",
     description:
-      "Detailed assessment of building performance, energy efficiency ratings, and technical specifications.",
-    icon: IconDeviceAnalytics,
-    link: "/technical",
+      "Professional tools for portfolio-level renovation assessment. Evaluate multiple buildings with detailed financial analysis.",
+    icon: IconBriefcase,
+    link: "/portfolio-advisor",
     color: "teal",
   },
   {
-    title: "Forecasting",
+    title: "Home Renovation Assistant",
+    badge: "Homeowners",
     description:
-      "Predict future energy savings, cost reductions, and long-term performance trends using advanced models.",
-    icon: IconTrendingUp,
-    link: "/forecasting",
-    color: "violet",
+      "Your personal guide to home renovation. Get clear, easy-to-understand advice on improving your home's energy efficiency.",
+    icon: IconHomeHeart,
+    link: "/home-assistant",
+    color: "orange",
   },
 ];
 
@@ -105,12 +109,12 @@ export const Home = () => {
         </Container>
       </Box>
 
-      {/* Main Tools Section */}
+      {/* Tool Selection Section */}
       <Container size="lg" mt={-40}>
         <SimpleGrid cols={{ base: 1, md: 3 }} spacing="xl">
-          {features.map((feature) => (
+          {tools.map((tool) => (
             <Card
-              key={feature.title}
+              key={tool.title}
               padding="xl"
               radius="lg"
               withBorder
@@ -118,8 +122,10 @@ export const Home = () => {
               style={{
                 transition: "transform 0.2s ease, box-shadow 0.2s ease",
                 cursor: "pointer",
+                display: "flex",
+                flexDirection: "column",
               }}
-              onClick={() => navigate(feature.link)}
+              onClick={() => navigate(tool.link)}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "translateY(-5px)";
                 e.currentTarget.style.boxShadow = "var(--mantine-shadow-md)";
@@ -133,24 +139,27 @@ export const Home = () => {
                 size={60}
                 radius="md"
                 variant="light"
-                color={feature.color}
-                mb="lg"
+                color={tool.color}
+                mb="md"
               >
-                <feature.icon size={32} stroke={1.5} />
+                <tool.icon size={32} stroke={1.5} />
               </ThemeIcon>
+              <Badge color={tool.color} variant="light" mb="sm">
+                {tool.badge}
+              </Badge>
               <Title order={3} mb="sm">
-                {feature.title}
+                {tool.title}
               </Title>
               <Text c="dimmed" mb="xl" style={{ flex: 1 }}>
-                {feature.description}
+                {tool.description}
               </Text>
               <Group mt="auto">
-                <Text c={feature.color} fw={600} size="sm">
-                  Open Tool
+                <Text c={tool.color} fw={600} size="sm">
+                  Get Started
                 </Text>
                 <IconArrowRight
                   size={16}
-                  color={`var(--mantine-color-${feature.color}-6)`}
+                  color={`var(--mantine-color-${tool.color}-6)`}
                 />
               </Group>
             </Card>

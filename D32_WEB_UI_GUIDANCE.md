@@ -10,6 +10,7 @@
 This document extracts and synthesizes Web UI-relevant guidance from D3.2 "Methodological Frameworks of ReLIFE Services". D3.2 defines the methodological foundations for three core ReLIFE services (Financial, Forecasting, and Technical) and specifies how they must interact to support three distinct user-facing tools.
 
 **Key Takeaways for Web UI Implementation:**
+
 - The Web UI must support **three distinct tools** targeting different user groups
 - Each tool combines all three services but presents them differently based on user expertise
 - Specific data input/output contracts are defined for each service
@@ -118,24 +119,29 @@ D3.2 explicitly defines these user requirements that the Web UI must address:
 D3.2 explicitly defines these technical requirements:
 
 ### Architecture & Infrastructure
+
 - **TR1 Scalability**: UI must handle varying loads
 - **TR10 Performance optimization**: Fast load times required
 
 ### Data Management & Integration
+
 - **TR13 Input data set uploads**: Allow users to upload CSV and other common formats
 - **TR14 Validation of user inputs**: Implement input validation and quality checks
 - **TR15 History of job submissions**: Maintain record of past jobs/results
 - **TR16 Unified data storage & retrieval**: Single interface for diverse data types
 
 ### Interoperability & Services Integration
+
 - **TR3 Interoperability**: APIs based on OpenAPI/HTTP standards
 - **TR9 Support for long-running jobs**: Provide notifications for background processes
 
 ### User Management & Access Control
+
 - **TR6 Central identity provider**: Single sign-on across all tools
 - **TR12 Role-based access management**: Assign roles and permissions to users
 
 ### User Tools & Functional Features
+
 - **TR4 User interface & experience**: Three web tools with consistent design and API integration
 - **TR17 Pre-validated renovation packages**: Tailored to archetypes/regions
 - **TR18 Exportable reports**: Generate and export service outcomes
@@ -150,6 +156,7 @@ D3.2 explicitly defines these technical requirements:
 ### 5.1 Financial Service
 
 #### Funding Options (User Input Required)
+
 The UI must support selection and combination of three funding types:
 
 | Funding Type | Required User Inputs                                          |
@@ -158,7 +165,7 @@ The UI must support selection and combination of three funding types:
 | **Subsidy**  | Subsidy amount (EUR)                                          |
 | **On-Bill**  | Loan amount (EUR), Percentage of energy savings for repayment |
 
-*Note: Funding options can be combined.*
+_Note: Funding options can be combined._
 
 #### Financial Indicators to Display
 
@@ -174,6 +181,7 @@ The UI must support selection and combination of three funding types:
 | After Renovation Value (ARV)    | Post-renovation market price | Estimated property value      |
 
 #### Risk Assessment Display
+
 - **Monte Carlo simulation results**: Show range of outcomes (worst/typical/best case)
 - **Probability distributions**: Histogram visualizations for financial indicators
 - **80% confidence intervals**: For energy prices, inflation, interest rate forecasts
@@ -192,6 +200,7 @@ The UI must support selection and combination of three funding types:
 ### 5.2 Forecasting Service
 
 #### Building Definition Pathways
+
 The UI must support **three pathways** for building input:
 
 1. **Option A - Reference Archetype**: Select from predefined building archetypes
@@ -221,7 +230,9 @@ The UI must support **three pathways** for building input:
 | EPC Estimation     | Estimated EPC class (where available)            |
 
 #### Climate Scenarios
+
 UI should support simulation under:
+
 - Present-day conditions (TMY)
 - Near future (2030 projection)
 - Mid-century (2050 projection)
@@ -229,7 +240,9 @@ UI should support simulation under:
 ### 5.3 Technical Service
 
 #### Technical Sheets
+
 Standardized information cards with 8 sections:
+
 1. Description
 2. Application
 3. Generic Information (advantages/disadvantages)
@@ -239,7 +252,7 @@ Standardized information cards with 8 sections:
 7. Maintenance Data
 8. Cost of Labor and Materials
 
-*Categories: Building Envelope, HVAC Systems, On-site Renewables*
+_Categories: Building Envelope, HVAC Systems, On-site Renewables_
 
 #### Multi-Criteria Decision Analysis (MCDA)
 
@@ -263,9 +276,10 @@ The UI must support selection of user personas with predefined pillar weights:
 | **Comfort-Driven**             | User Comfort       | Energy Efficiency  | Financial          | Sustainability     | RES Integration    |
 | **Cost-Optimization Oriented** | Financial          | Energy Efficiency  | RES Integration    | User Comfort       | Sustainability     |
 
-*Alternative: Allow users to define custom weights via AHP procedure*
+_Alternative: Allow users to define custom weights via AHP procedure_
 
 ##### TOPSIS Display
+
 - Show normalized scores (0-100) for each criterion
 - Display relative closeness score (0-1) for ranking
 - Higher closeness = closer to ideal solution
@@ -419,4 +433,4 @@ For detailed methodology, consult these D3.2 sections:
 
 ---
 
-*Document generated from analysis of D3.2 Methodological Frameworks of ReLIFE Services (v0.5, October 2025)*
+_Document generated from analysis of D3.2 Methodological Frameworks of ReLIFE Services (v0.5, October 2025)_
