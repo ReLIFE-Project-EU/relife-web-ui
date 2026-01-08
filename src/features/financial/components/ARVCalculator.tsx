@@ -265,11 +265,7 @@ export const ARVCalculator = () => {
         </Button>
 
         {error && (
-          <Alert
-            color="red"
-            title="Error"
-            icon={<IconAlertCircle size={16} />}
-          >
+          <Alert color="red" title="Error" icon={<IconAlertCircle size={16} />}>
             {error}
           </Alert>
         )}

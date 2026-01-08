@@ -237,11 +237,7 @@ export const RiskAssessmentCalculator = () => {
         </Button>
 
         {error && (
-          <Alert
-            color="red"
-            title="Error"
-            icon={<IconAlertCircle size={16} />}
-          >
+          <Alert color="red" title="Error" icon={<IconAlertCircle size={16} />}>
             {error}
           </Alert>
         )}
@@ -316,7 +312,13 @@ export const RiskAssessmentCalculator = () => {
                   <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }}>
                     {Object.entries(result.probabilities).map(
                       ([key, value]) => (
-                        <Card key={key} withBorder p="sm" radius="md" bg="teal.0">
+                        <Card
+                          key={key}
+                          withBorder
+                          p="sm"
+                          radius="md"
+                          bg="teal.0"
+                        >
                           <Text size="sm" c="dimmed">
                             {key}
                           </Text>

@@ -1,6 +1,7 @@
 import {
   Badge,
   Box,
+  Button,
   Card,
   Container,
   List,
@@ -11,36 +12,42 @@ import {
   Title,
 } from "@mantine/core";
 import {
+  IconArrowRight,
   IconBulb,
   IconCoin,
   IconHome2,
   IconListCheck,
 } from "@tabler/icons-react";
+import { Link } from "react-router-dom";
 
-const plannedFeatures = [
+const features = [
   {
     icon: IconHome2,
     title: "My Building",
     description:
-      "Simple building input with three pathways: select an archetype, enter custom details, or modify an existing template.",
+      "Enter your building details including location, type, systems, and more to estimate energy performance.",
+    available: true,
   },
   {
     icon: IconListCheck,
     title: "Renovation Options",
     description:
-      "Browse pre-validated renovation packages with clear explanations of what each option includes.",
+      "Browse pre-validated renovation packages (Soft, Regular, Deep) with clear explanations of what each includes.",
+    available: true,
   },
   {
     icon: IconCoin,
     title: "Cost & Savings",
     description:
-      "Understand renovation costs, available funding options, and estimated energy savings in plain language.",
+      "Configure funding options (loans, subsidies, on-bill) and see financial indicators like NPV, ROI, and payback time.",
+    available: true,
   },
   {
     icon: IconBulb,
     title: "Personalized Recommendations",
     description:
-      "Get tailored renovation suggestions based on your priorities: comfort, cost savings, or environmental impact.",
+      "Get ranked renovation suggestions based on your priorities: comfort, cost savings, or environmental impact.",
+    available: true,
   },
 ];
 
@@ -56,11 +63,20 @@ export const HomeAssistantLanding = () => {
           <Title order={1} mb="sm">
             Home Renovation Assistant
           </Title>
-          <Text c="dimmed" size="lg" maw={700}>
+          <Text c="dimmed" size="lg" maw={700} mb="lg">
             Your personal guide to home renovation. Get clear,
             easy-to-understand advice on improving your home's energy
             efficiency, comfort, and value.
           </Text>
+          <Button
+            component={Link}
+            to="/home-assistant/tool"
+            size="lg"
+            rightSection={<IconArrowRight size={18} />}
+            color="orange"
+          >
+            Start Renovation Planning
+          </Button>
         </Box>
 
         {/* Target Users */}
@@ -76,13 +92,13 @@ export const HomeAssistantLanding = () => {
           </List>
         </Card>
 
-        {/* Planned Features */}
+        {/* Features */}
         <Box>
           <Title order={2} mb="lg">
-            Planned Features
+            Features
           </Title>
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-            {plannedFeatures.map((feature) => (
+            {features.map((feature) => (
               <Card key={feature.title} withBorder radius="md" p="lg">
                 <ThemeIcon size={44} radius="md" variant="light" color="orange">
                   <feature.icon size={24} />
@@ -93,8 +109,12 @@ export const HomeAssistantLanding = () => {
                 <Text size="sm" c="dimmed">
                   {feature.description}
                 </Text>
-                <Badge mt="md" color="gray" variant="light">
-                  Coming Soon
+                <Badge
+                  mt="md"
+                  color={feature.available ? "green" : "gray"}
+                  variant="light"
+                >
+                  {feature.available ? "Available" : "Coming Soon"}
                 </Badge>
               </Card>
             ))}
@@ -106,12 +126,44 @@ export const HomeAssistantLanding = () => {
           <Title order={4} mb="sm">
             How It Works
           </Title>
-          <Text size="sm" c="dimmed">
-            This tool provides a simplified interface to building simulation,
-            cost and funding information, and scenario ranking. All results are
-            presented in plain language with clear recommendations.
+          <Text size="sm" c="dimmed" mb="md">
+            The Home Renovation Assistant guides you through three simple steps:
           </Text>
+          <List size="sm" spacing="xs">
+            <List.Item>
+              <Text span fw={500}>
+                Step 1:
+              </Text>{" "}
+              Enter your building information to get an energy performance
+              estimate
+            </List.Item>
+            <List.Item>
+              <Text span fw={500}>
+                Step 2:
+              </Text>{" "}
+              Select renovation packages and configure funding options
+            </List.Item>
+            <List.Item>
+              <Text span fw={500}>
+                Step 3:
+              </Text>{" "}
+              Compare scenarios and get personalized recommendations
+            </List.Item>
+          </List>
         </Card>
+
+        {/* Bottom CTA */}
+        <Box ta="center" py="lg">
+          <Button
+            component={Link}
+            to="/home-assistant/tool"
+            size="xl"
+            rightSection={<IconArrowRight size={20} />}
+            color="orange"
+          >
+            Get Started
+          </Button>
+        </Box>
       </Stack>
     </Container>
   );

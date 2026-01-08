@@ -5,6 +5,7 @@ import { FinancialCalculator } from "./routes/FinancialCalculator";
 import { Forecasting } from "./routes/Forecasting";
 import { Home } from "./routes/Home";
 import { HomeAssistantLanding } from "./routes/HomeAssistantLanding";
+import { HomeAssistantTool } from "./routes/HomeAssistantTool";
 import { PortfolioAdvisorLanding } from "./routes/PortfolioAdvisorLanding";
 import { StrategyExplorerLanding } from "./routes/StrategyExplorerLanding";
 import { TechnicalAnalysis } from "./routes/TechnicalAnalysis";
@@ -30,6 +31,7 @@ function App() {
 
         {/* Group 3: Home Assistant (Homeowners) */}
         <Route path="/home-assistant" element={<HomeAssistantLanding />} />
+        <Route path="/home-assistant/tool" element={<HomeAssistantTool />} />
 
         {/* Expert Tools - Direct access to underlying calculators */}
         <Route
