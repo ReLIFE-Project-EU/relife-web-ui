@@ -12,6 +12,7 @@ x-api-service-defaults: &api-service-defaults
     KEYCLOAK_REALM_URL: ${KEYCLOAK_REALM_URL}
     ADMIN_ROLE_NAME: ${ADMIN_ROLE_NAME}
     BUCKET_NAME: ${BUCKET_NAME}
+    LOG_LEVEL: ${SERVICE_LOG_LEVEL}
   healthcheck:
     test: ["CMD", "curl", "-f", "http://localhost:9090/docs"]
     interval: 30s
