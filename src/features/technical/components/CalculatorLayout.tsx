@@ -1,18 +1,9 @@
-import {
-  Alert,
-  Box,
-  Button,
-  Group,
-  LoadingOverlay,
-  Stack,
-  Text,
-} from "@mantine/core";
+import { Alert, Button, Group, Stack, Text } from "@mantine/core";
 import {
   IconAlertCircle,
   IconCalculator,
   IconInfoCircle,
 } from "@tabler/icons-react";
-import { LOADING_OVERLAY_PROPS } from "../utils";
 
 interface CalculatorLayoutProps {
   title: string;
@@ -25,6 +16,13 @@ interface CalculatorLayoutProps {
   children: React.ReactNode;
 }
 
+/**
+ * CalculatorLayout
+ *
+ * Layout component for calculator forms. Loading overlay is now handled
+ * globally via GlobalLoadingOverlay, but `loading` prop is still used
+ * to disable the calculate button during operations.
+ */
 export const CalculatorLayout = ({
   title,
   icon,
@@ -36,42 +34,39 @@ export const CalculatorLayout = ({
   children,
 }: CalculatorLayoutProps) => {
   return (
-    <Box pos="relative">
-      <LoadingOverlay visible={loading} {...LOADING_OVERLAY_PROPS} />
-      <Stack gap="md">
-        <Group>
-          {icon}
-          <Text fw={500} size="lg">
-            {title}
-          </Text>
-        </Group>
+    <Stack gap="md">
+      <Group>
+        {icon}
+        <Text fw={500} size="lg">
+          {title}
+        </Text>
+      </Group>
 
-        <Alert variant="light" color="blue" icon={<IconInfoCircle size={16} />}>
-          {description}
-        </Alert>
+      <Alert variant="light" color="blue" icon={<IconInfoCircle size={16} />}>
+        {description}
+      </Alert>
 
-        {children}
+      {children}
 
-        <Button
-          onClick={onCalculate}
-          leftSection={<IconCalculator size={16} />}
+      <Button
+        onClick={onCalculate}
+        leftSection={<IconCalculator size={16} />}
+        mt="md"
+        disabled={loading}
+      >
+        {calculateButtonLabel}
+      </Button>
+
+      {error && (
+        <Alert
+          color="red"
+          title="Error"
+          icon={<IconAlertCircle size={16} />}
           mt="md"
-          disabled={loading}
         >
-          {calculateButtonLabel}
-        </Button>
-
-        {error && (
-          <Alert
-            color="red"
-            title="Error"
-            icon={<IconAlertCircle size={16} />}
-            mt="md"
-          >
-            {error}
-          </Alert>
-        )}
-      </Stack>
-    </Box>
+          {error}
+        </Alert>
+      )}
+    </Stack>
   );
 };

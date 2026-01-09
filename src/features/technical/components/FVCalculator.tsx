@@ -14,7 +14,10 @@ interface FVCalculatorProps {
 
 export const FVCalculator = ({ profile }: FVCalculatorProps) => {
   const { loading, error, result, handleCalculate, clearResult } =
-    useCalculator<FVRequest, FVResponse>(technical.calculateFV);
+    useCalculator<FVRequest, FVResponse>(
+      technical.calculateFV,
+      "FVCalculator.calculate",
+    );
 
   useEffect(() => {
     clearResult();

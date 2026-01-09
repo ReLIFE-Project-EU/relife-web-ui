@@ -14,7 +14,10 @@ interface SEICalculatorProps {
 
 export const SEICalculator = ({ profile }: SEICalculatorProps) => {
   const { loading, error, result, handleCalculate, clearResult } =
-    useCalculator<SEIRequest, SEIResponse>(technical.calculateSEI);
+    useCalculator<SEIRequest, SEIResponse>(
+      technical.calculateSEI,
+      "SEICalculator.calculate",
+    );
 
   useEffect(() => {
     clearResult();

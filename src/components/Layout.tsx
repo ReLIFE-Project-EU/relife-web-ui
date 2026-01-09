@@ -1,6 +1,7 @@
 import { AppShell, Box } from "@mantine/core";
 import { useDisclosure, useElementSize } from "@mantine/hooks";
 import type { ReactNode } from "react";
+import { GlobalLoadingOverlay } from "./GlobalLoadingOverlay";
 import { LayoutFooter } from "./LayoutFooter";
 import { LayoutHeader } from "./LayoutHeader";
 import { LayoutNavbar } from "./LayoutNavbar";
@@ -17,22 +18,25 @@ export const Layout = ({ children }: LayoutProps) => {
   const computedFooterHeight = footerHeight || DEFAULT_FOOTER_HEIGHT;
 
   return (
-    <AppShell
-      padding="md"
-      header={{ height: 60 }}
-      navbar={{
-        width: 280,
-        breakpoint: "lg",
-        collapsed: { mobile: !opened },
-      }}
-      footer={{ height: computedFooterHeight }}
-    >
-      <LayoutHeader opened={opened} onToggle={toggle} />
-      <LayoutNavbar />
-      <AppShell.Main>
-        <Box pt="lg">{children}</Box>
-      </AppShell.Main>
-      <LayoutFooter ref={footerRef} />
-    </AppShell>
+    <>
+      <GlobalLoadingOverlay />
+      <AppShell
+        padding="md"
+        header={{ height: 60 }}
+        navbar={{
+          width: 280,
+          breakpoint: "lg",
+          collapsed: { mobile: !opened },
+        }}
+        footer={{ height: computedFooterHeight }}
+      >
+        <LayoutHeader opened={opened} onToggle={toggle} />
+        <LayoutNavbar />
+        <AppShell.Main>
+          <Box pt="lg">{children}</Box>
+        </AppShell.Main>
+        <LayoutFooter ref={footerRef} />
+      </AppShell>
+    </>
   );
 };

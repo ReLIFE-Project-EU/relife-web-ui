@@ -5,12 +5,15 @@ import { MantineProvider } from "@mantine/core";
 import "@mantine/core/styles.css";
 import App from "./App.tsx";
 import { theme } from "./theme";
+import { GlobalLoadingProvider } from "./contexts/global-loading";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
       <MantineProvider theme={theme}>
-        <App />
+        <GlobalLoadingProvider>
+          <App />
+        </GlobalLoadingProvider>
       </MantineProvider>
     </BrowserRouter>
   </StrictMode>,

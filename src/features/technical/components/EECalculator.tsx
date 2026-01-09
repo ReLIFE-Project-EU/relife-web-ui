@@ -14,7 +14,10 @@ interface EECalculatorProps {
 
 export const EECalculator = ({ profile }: EECalculatorProps) => {
   const { loading, error, result, handleCalculate, clearResult } =
-    useCalculator<EERequest, EEResponse>(technical.calculateEE);
+    useCalculator<EERequest, EEResponse>(
+      technical.calculateEE,
+      "EECalculator.calculate",
+    );
 
   useEffect(() => {
     clearResult();

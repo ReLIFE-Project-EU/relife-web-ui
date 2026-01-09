@@ -14,7 +14,10 @@ interface REICalculatorProps {
 
 export const REICalculator = ({ profile }: REICalculatorProps) => {
   const { loading, error, result, handleCalculate, clearResult } =
-    useCalculator<REIRequest, REIResponse>(technical.calculateREI);
+    useCalculator<REIRequest, REIResponse>(
+      technical.calculateREI,
+      "REICalculator.calculate",
+    );
 
   useEffect(() => {
     clearResult();

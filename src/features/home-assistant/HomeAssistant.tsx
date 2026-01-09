@@ -5,8 +5,6 @@
 
 import {
   Container,
-  LoadingOverlay,
-  Portal,
   Stepper,
   Title,
   Text,
@@ -20,6 +18,7 @@ import {
   IconChartBar,
   IconRefresh,
 } from "@tabler/icons-react";
+import { useSyncGlobalLoading } from "../../contexts/global-loading";
 import { HomeAssistantProvider } from "./context/HomeAssistantContext";
 import { HomeAssistantServiceProvider } from "./context/ServiceContext";
 import { useHomeAssistant } from "./hooks/useHomeAssistant";
@@ -35,6 +34,11 @@ import {
  */
 function HomeAssistantWizard() {
   const { state, dispatch } = useHomeAssistant();
+
+  // Sync local loading states to the global loading overlay
+  useSyncGlobalLoading(state.isEstimating, "HomeAssistant.estimate");
+  useSyncGlobalLoading(state.isEvaluating, "HomeAssistant.evaluate");
+  useSyncGlobalLoading(state.isRanking, "HomeAssistant.rank");
 
   const handleStepClick = (step: number) => {
     // Only allow going back to previous steps or staying on current
@@ -61,88 +65,72 @@ function HomeAssistantWizard() {
     }
   };
 
-  // Combined loading state for any async operation
-  const isLoading = state.isEstimating || state.isEvaluating || state.isRanking;
-
   return (
-    <>
-      <Portal>
-        <LoadingOverlay
-          visible={isLoading}
-          zIndex={1000}
-          overlayProps={{ blur: 2 }}
-          style={{
-            position: "fixed",
-            inset: 0,
-          }}
-        />
-      </Portal>
-      <Container size="xl" py="xl">
-        <Stack gap="xl">
-          {/* Header */}
-          <Group justify="space-between" align="flex-start">
-            <div>
-              <Title order={1} mb="xs">
-                Home Renovation Assistant
-              </Title>
-              <Text c="dimmed" size="lg">
-                Your personal guide to home renovation planning
-              </Text>
-            </div>
+    <Container size="xl" py="xl">
+      <Stack gap="xl">
+        {/* Header */}
+        <Group justify="space-between" align="flex-start">
+          <div>
+            <Title order={1} mb="xs">
+              Home Renovation Assistant
+            </Title>
+            <Text c="dimmed" size="lg">
+              Your personal guide to home renovation planning
+            </Text>
+          </div>
 
-            {/* Reset button - only show after step 1 */}
-            {state.currentStep > 0 && (
-              <Button
-                variant="subtle"
-                color="gray"
-                leftSection={<IconRefresh size={16} />}
-                onClick={handleReset}
-                size="sm"
-              >
-                Start Over
-              </Button>
-            )}
-          </Group>
+          {/* Reset button - only show after step 1 */}
+          {state.currentStep > 0 && (
+            <Button
+              variant="subtle"
+              color="gray"
+              leftSection={<IconRefresh size={16} />}
+              onClick={handleReset}
+              size="sm"
+            >
+              Start Over
+            </Button>
+          )}
+        </Group>
 
-          {/* Stepper */}
-          <Stepper
-            active={state.currentStep}
-            onStepClick={handleStepClick}
-            allowNextStepsSelect={false}
+        {/* Stepper */}
+        <Stepper
+          active={state.currentStep}
+          onStepClick={handleStepClick}
+          allowNextStepsSelect={false}
+        >
+          <Stepper.Step
+            label="Building Information"
+            description="Enter your building details"
+            icon={<IconHome size={18} />}
+            loading={state.isEstimating}
+            color={canAccessStep(0) ? "blue" : "gray"}
           >
-            <Stepper.Step
-              label="Building Information"
-              description="Enter your building details"
-              icon={<IconHome size={18} />}
-              loading={state.isEstimating}
-              color={canAccessStep(0) ? "blue" : "gray"}
-            >
-              <BuildingInfoStep />
-            </Stepper.Step>
+            <BuildingInfoStep />
+          </Stepper.Step>
 
-            <Stepper.Step
-              label="Energy & Renovation"
-              description="Review and select options"
-              icon={<IconBolt size={18} />}
-              loading={state.isEvaluating}
-              color={canAccessStep(1) ? "blue" : "gray"}
-            >
-              <EnergyRenovationStep />
-            </Stepper.Step>
+          <Stepper.Step
+            label="Energy & Renovation"
+            description="Review and select options"
+            icon={<IconBolt size={18} />}
+            loading={state.isEvaluating}
+            color={canAccessStep(1) ? "blue" : "gray"}
+          >
+            <EnergyRenovationStep />
+          </Stepper.Step>
 
-            <Stepper.Step
-              label="Results"
-              description="Compare and decide"
-              icon={<IconChartBar size={18} />}
-              loading={state.isRanking}
-              color={canAccessStep(2) ? "blue" : "gray"}
-            >
-              <ResultsStep />
-            </Stepper.Step>
-          </Stepper>
-        </Stack>
-      </Container>
-    </>
+          <Stepper.Step
+            label="Results"
+            description="Compare and decide"
+            icon={<IconChartBar size={18} />}
+            loading={state.isRanking}
+            color={canAccessStep(2) ? "blue" : "gray"}
+          >
+            <ResultsStep />
+          </Stepper.Step>
+        </Stepper>
+      </Stack>
+    </Container>
   );
 }
 

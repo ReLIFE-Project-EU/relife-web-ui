@@ -14,7 +14,10 @@ interface UCCalculatorProps {
 
 export const UCCalculator = ({ profile }: UCCalculatorProps) => {
   const { loading, error, result, handleCalculate, clearResult } =
-    useCalculator<UCRequest, UCResponse>(technical.calculateUC);
+    useCalculator<UCRequest, UCResponse>(
+      technical.calculateUC,
+      "UCCalculator.calculate",
+    );
 
   useEffect(() => {
     clearResult();
