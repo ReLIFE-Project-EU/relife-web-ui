@@ -25,21 +25,21 @@ const navigationData: NavItem[] = [
   {
     label: "Strategy Explorer",
     icon: IconBuildingEstate,
-    links: [{ label: "Overview", link: "/strategy-explorer" }],
+    link: "/strategy-explorer",
   },
 
   // Group 2: Financial institutions, ESCOs
   {
     label: "Portfolio Advisor",
     icon: IconBriefcase,
-    links: [{ label: "Overview", link: "/portfolio-advisor" }],
+    link: "/portfolio-advisor",
   },
 
   // Group 3: Homeowners
   {
     label: "Home Assistant",
     icon: IconHomeHeart,
-    links: [{ label: "Overview", link: "/home-assistant" }],
+    link: "/home-assistant",
   },
 
   // Direct access to underlying calculators and services
@@ -63,11 +63,16 @@ export const LayoutNavbar = () => {
       (child) => child.link === activePath || activePath.startsWith(child.link),
     );
 
+    // Check if the active path matches the direct link or is a sub-path (for tool pages)
+    const isDirectLinkActive =
+      item.link &&
+      (item.link === activePath || activePath.startsWith(item.link + "/"));
+
     return (
       <LinksGroup
         {...item}
         key={item.label}
-        active={item.link === activePath || hasActiveChild}
+        active={isDirectLinkActive || hasActiveChild}
         activePath={activePath}
       />
     );
