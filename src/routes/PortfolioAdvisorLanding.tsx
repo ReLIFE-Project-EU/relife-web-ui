@@ -93,25 +93,10 @@ export const PortfolioAdvisorLanding = () => {
                 <Text size="sm" c="dimmed">
                   {feature.description}
                 </Text>
-                <Badge mt="md" color="gray" variant="light">
-                  Coming Soon
-                </Badge>
               </Card>
             ))}
           </SimpleGrid>
         </Box>
-
-        {/* How It Works */}
-        <Card withBorder radius="md" p="lg" bg="gray.0">
-          <Title order={4} mb="sm">
-            How It Works
-          </Title>
-          <Text size="sm" c="dimmed">
-            This tool integrates portfolio data input with building simulations,
-            scenario generation and risk assessment, and multi-criteria ranking.
-            Outputs include comparative analytics and detailed risk profiles.
-          </Text>
-        </Card>
       </Stack>
     </Container>
   );

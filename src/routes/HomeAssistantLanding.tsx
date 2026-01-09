@@ -26,28 +26,24 @@ const features = [
     title: "My Building",
     description:
       "Enter your building details including location, type, systems, and more to estimate energy performance.",
-    available: true,
   },
   {
     icon: IconListCheck,
     title: "Renovation Options",
     description:
       "Browse pre-validated renovation packages (Soft, Regular, Deep) with clear explanations of what each includes.",
-    available: true,
   },
   {
     icon: IconCoin,
     title: "Cost & Savings",
     description:
       "Configure funding options (loans, subsidies, on-bill) and see financial indicators like NPV, ROI, and payback time.",
-    available: true,
   },
   {
     icon: IconBulb,
     title: "Personalized Recommendations",
     description:
       "Get ranked renovation suggestions based on your priorities: comfort, cost savings, or environmental impact.",
-    available: true,
   },
 ];
 
@@ -109,60 +105,9 @@ export const HomeAssistantLanding = () => {
                 <Text size="sm" c="dimmed">
                   {feature.description}
                 </Text>
-                <Badge
-                  mt="md"
-                  color={feature.available ? "green" : "gray"}
-                  variant="light"
-                >
-                  {feature.available ? "Available" : "Coming Soon"}
-                </Badge>
               </Card>
             ))}
           </SimpleGrid>
-        </Box>
-
-        {/* How It Works */}
-        <Card withBorder radius="md" p="lg" bg="gray.0">
-          <Title order={4} mb="sm">
-            How It Works
-          </Title>
-          <Text size="sm" c="dimmed" mb="md">
-            The Home Renovation Assistant guides you through three simple steps:
-          </Text>
-          <List size="sm" spacing="xs">
-            <List.Item>
-              <Text span fw={500}>
-                Step 1:
-              </Text>{" "}
-              Enter your building information to get an energy performance
-              estimate
-            </List.Item>
-            <List.Item>
-              <Text span fw={500}>
-                Step 2:
-              </Text>{" "}
-              Select renovation packages and configure funding options
-            </List.Item>
-            <List.Item>
-              <Text span fw={500}>
-                Step 3:
-              </Text>{" "}
-              Compare scenarios and get personalized recommendations
-            </List.Item>
-          </List>
-        </Card>
-
-        {/* Bottom CTA */}
-        <Box ta="center" py="lg">
-          <Button
-            component={Link}
-            to="/home-assistant/tool"
-            size="xl"
-            rightSection={<IconArrowRight size={20} />}
-            color="orange"
-          >
-            Get Started
-          </Button>
         </Box>
       </Stack>
     </Container>

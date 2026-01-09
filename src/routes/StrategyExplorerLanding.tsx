@@ -93,25 +93,10 @@ export const StrategyExplorerLanding = () => {
                 <Text size="sm" c="dimmed">
                   {feature.description}
                 </Text>
-                <Badge mt="md" color="gray" variant="light">
-                  Coming Soon
-                </Badge>
               </Card>
             ))}
           </SimpleGrid>
         </Box>
-
-        {/* How It Works */}
-        <Card withBorder radius="md" p="lg" bg="gray.0">
-          <Title order={4} mb="sm">
-            How It Works
-          </Title>
-          <Text size="sm" c="dimmed">
-            This tool integrates building stock analysis, scenario simulations
-            with climate projections, and economic indicators to enable
-            region-level projections and strategy visualization.
-          </Text>
-        </Card>
       </Stack>
     </Container>
   );
