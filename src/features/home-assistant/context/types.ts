@@ -1,5 +1,14 @@
 /**
  * State and action types for the Home Renovation Assistant wizard.
+ *
+ * TBD INTEGRATION NOTES
+ * =====================
+ * Some types are aligned with api-specs/20260108-125427/ but the following
+ * integrations are pending finalization:
+ * - [ ] Forecasting API: BuildingInfo -> BuildingPayload mapping
+ * - [ ] Technical API: MCDA pillar endpoint integration
+ *
+ * Reference: api-specs/20260108-125427/financial.json
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -7,17 +16,31 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface BuildingInfo {
+  // Existing fields (UI-focused)
   country: string;
   climateZone: string;
-  buildingType: string;
+  buildingType: string; // UI value, maps to API PropertyType via apiMappings
   floorArea: number | null;
-  constructionPeriod: string;
-  currentEPC: string | null;
+  constructionPeriod: string; // UI dropdown value (e.g., "1971-1990")
   heatingTechnology: string;
   coolingTechnology: string;
   hotWaterTechnology: string;
   numberOfOpenings: number | null;
   glazingTechnology: string;
+
+  // Fields for Financial API (/arv endpoint)
+  lat: number | null; // Required for ARV, range: -90 to 90
+  lng: number | null; // Required for ARV, range: -180 to 180
+  constructionYear: number | null; // Integer 1800-2030, derived from constructionPeriod or user input
+  numberOfFloors: number | null; // Required for ARV, 1-100
+  floorNumber: number | null; // Optional, for apartments (0 = ground floor)
+
+  // Fields for Financial API (/risk-assessment endpoint)
+  projectLifetime: number; // Required, 1-30 years, default: 20
+
+  // Note: EPC (Energy Performance Certificate) is NOT a user input.
+  // It is calculated by the Forecasting API and used as input to the Financial API.
+  // See: api-specs/20260108-125427/financial.json - energy_class comes from energy analysis API
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -30,7 +53,7 @@ export interface EnergyMix {
 }
 
 export interface EstimationResult {
-  estimatedEPC: string; // A+ to G
+  estimatedEPC: string; // UI label (A+ to G), maps to Greek for API
   annualEnergyNeeds: number; // kWh/year
   annualEnergyCost: number; // EUR/year
   heatingCoolingNeeds: number; // kWh/year
@@ -41,6 +64,10 @@ export interface EstimationResult {
   };
   flexibilityIndex: number; // 0-100
   comfortIndex: number; // 0-100
+
+  // TBD: Verify this matches Forecasting API output format
+  // Used as input to Financial API /risk-assessment endpoint
+  annualEnergySavings: number; // kWh/year - energy savings from renovation
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -101,12 +128,70 @@ export interface RenovationScenario {
   measures: string[];
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Financial API Response Types
+// Matches api-specs/20260108-125427/financial.json schemas
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * ARV (After Renovation Value) result from POST /arv
+ */
+export interface ARVResult {
+  pricePerSqm: number; // EUR/m²
+  totalPrice: number; // EUR
+  floorArea: number; // Echo of input
+  energyClass: string; // Echo of input (Greek label)
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Point forecasts from risk assessment (P50/median values)
+ * For output_level: "private" (HRA tool), this is the main output
+ */
+export interface RiskAssessmentPointForecasts {
+  NPV: number; // Net Present Value (EUR)
+  IRR: number; // Internal Rate of Return (decimal, e.g., 0.057 = 5.7%)
+  ROI: number; // Return on Investment (decimal)
+  PBP: number; // Payback Period (years)
+  DPP: number; // Discounted Payback Period (years)
+  MonthlyAvgSavings: number; // EUR/month
+  SuccessRate: number; // Probability of positive outcome (0-1)
+}
+
+/**
+ * Metadata from risk assessment simulation
+ */
+export interface RiskAssessmentMetadata {
+  n_sims: number; // Number of Monte Carlo simulations (typically 10000)
+  project_lifetime: number;
+  capex: number; // Used CAPEX value (may come from API dataset)
+  loan_amount: number;
+  annual_loan_payment?: number;
+  loan_rate_percent?: number;
+  output_level: string;
+}
+
+/**
+ * Complete financial results combining ARV and Risk Assessment
+ */
 export interface FinancialResults {
+  // From POST /arv
+  arv: ARVResult | null;
+
+  // From POST /risk-assessment with output_level: "private"
+  riskAssessment: {
+    pointForecasts: RiskAssessmentPointForecasts;
+    metadata: RiskAssessmentMetadata;
+    cashFlowVisualization?: string; // base64 PNG (included for private level)
+  } | null;
+
+  // Legacy fields for backward compatibility during transition
+  // TODO: Remove these once all components are updated
   capitalExpenditure: number;
-  returnOnInvestment: number; // Percentage
-  paybackTime: number; // Years
-  netPresentValue: number; // EUR
-  afterRenovationValue: number; // EUR
+  returnOnInvestment: number; // Percentage (derived from ROI)
+  paybackTime: number; // Years (derived from PBP)
+  netPresentValue: number; // EUR (derived from NPV)
+  afterRenovationValue: number; // EUR (derived from ARV totalPrice)
   paybackTimeRange?: { min: number; max: number };
   npvRange?: { min: number; max: number };
 }

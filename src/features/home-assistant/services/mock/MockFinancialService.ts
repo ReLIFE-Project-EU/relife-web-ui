@@ -1,145 +1,240 @@
 /**
  * Mock Financial Service
- * Provides financial indicator calculations (NPV, ROI, Payback, ARV).
+ * Provides financial indicator calculations matching the Financial API spec.
  *
- * NOTE: In production, this would integrate with the financial service API:
- * - financial.assessRisk() for Monte Carlo simulation
- * - financial.calculateARV() for property value estimation
+ * TBD INTEGRATION NOTES
+ * =====================
+ * When integrating with the real Financial API:
+ * - [ ] Replace calculateARV() with POST /arv call
+ * - [ ] Replace assessRisk() with POST /risk-assessment call
+ * - [ ] Handle API authentication (HTTPBearer)
+ * - [ ] Map error responses appropriately
+ *
+ * Reference: api-specs/20260108-125427/financial.json
  */
 
 import type {
+  ARVResult,
+  BuildingInfo,
   EstimationResult,
   FinancialResults,
   FinancialScenario,
   FundingOptions,
   PackageId,
   RenovationScenario,
+  RiskAssessmentMetadata,
+  RiskAssessmentPointForecasts,
   ScenarioId,
 } from "../../context/types";
-import type { FinancialCalculationInput, IFinancialService } from "../types";
+import {
+  fromAPIEnergyClass,
+  HRA_OUTPUT_LEVEL,
+  toAPIEnergyClass,
+  toAPIPropertyType,
+  calculateNPV,
+  calculateIRR,
+  calculateSimplePayback,
+  calculateDiscountedPayback,
+  calculateROI,
+  applyFundingReduction,
+  type APIEnergyClass,
+} from "../../utils";
+import type {
+  ARVRequest,
+  IFinancialService,
+  RiskAssessmentRequest,
+  RiskAssessmentResponse,
+} from "../types";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Financial Constants
-// ─────────────────────────────────────────────────────────────────────────────
-
-const PROJECT_LIFETIME_YEARS = 25;
-const DISCOUNT_RATE = 0.03; // 3% annual discount rate
-
-// Scenario multipliers for financial projections
-const SCENARIO_MULTIPLIERS: Record<
-  FinancialScenario,
-  { energyPrice: number; inflation: number; propertyValue: number }
-> = {
-  baseline: { energyPrice: 1.0, inflation: 1.0, propertyValue: 1.0 },
-  optimistic: { energyPrice: 1.3, inflation: 0.9, propertyValue: 1.15 },
-  pessimistic: { energyPrice: 0.8, inflation: 1.15, propertyValue: 0.9 },
-};
-
-// EPC class impact on property value (percentage increase per class improvement)
-const EPC_VALUE_IMPACT: Record<string, number> = {
-  "A+": 0.15,
-  A: 0.12,
-  B: 0.08,
-  C: 0.04,
-  D: 0.0,
-  E: -0.03,
-  F: -0.06,
-  G: -0.1,
-};
-
-// Base property value per m² (EUR) - simplified average
-const BASE_PROPERTY_VALUE_PER_SQM = 3000;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper Functions
-// ─────────────────────────────────────────────────────────────────────────────
-
-function calculateNPV(
-  initialInvestment: number,
-  annualSavings: number,
-  discountRate: number,
-  years: number,
-): number {
-  let npv = -initialInvestment;
-
-  for (let year = 1; year <= years; year++) {
-    npv += annualSavings / Math.pow(1 + discountRate, year);
-  }
-
-  return npv;
-}
-
-function calculateSimplePayback(
-  investment: number,
-  annualSavings: number,
-): number {
-  if (annualSavings <= 0) return Infinity;
-  return investment / annualSavings;
-}
-
-function calculateROI(investment: number, totalSavings: number): number {
-  if (investment <= 0) return 0;
-  return ((totalSavings - investment) / investment) * 100;
-}
-
-function calculateARV(
-  floorArea: number,
-  _currentEPC: string, // Kept for potential future use in value change calculation
-  targetEPC: string,
-  scenario: FinancialScenario,
-): number {
-  const baseValue = floorArea * BASE_PROPERTY_VALUE_PER_SQM;
-  const targetFactor = 1 + (EPC_VALUE_IMPACT[targetEPC] || 0);
-
-  const scenarioMultiplier = SCENARIO_MULTIPLIERS[scenario].propertyValue;
-
-  // ARV = base value * target EPC factor * scenario adjustment
-  const arv = baseValue * targetFactor * scenarioMultiplier;
-
-  // Round to nearest 1000
-  return Math.round(arv / 1000) * 1000;
-}
-
-function applyFundingReduction(
-  totalCost: number,
-  fundingOptions: FundingOptions,
-): {
-  effectiveCost: number;
-  loanAmount: number;
-  subsidyAmount: number;
-} {
-  let subsidyAmount = 0;
-  let loanAmount = 0;
-
-  // Apply subsidy first
-  if (fundingOptions.subsidy.enabled) {
-    const maxSubsidy = Math.min(
-      totalCost * (fundingOptions.subsidy.percentOfTotal / 100),
-      fundingOptions.subsidy.amountLimit,
-    );
-    subsidyAmount = maxSubsidy;
-  }
-
-  // Apply loan (affects cash flow, not effective cost)
-  if (fundingOptions.loan.enabled) {
-    const maxLoan = Math.min(
-      totalCost - subsidyAmount,
-      fundingOptions.loan.amountLimit,
-    );
-    loanAmount = maxLoan;
-  }
-
-  // Effective upfront cost = total - subsidy (loan still needs to be repaid)
-  const effectiveCost = totalCost - subsidyAmount;
-
-  return { effectiveCost, loanAmount, subsidyAmount };
-}
+import {
+  MOCK_AGE_DEPRECIATION_FACTOR,
+  MOCK_BASE_PROPERTY_VALUE_PER_SQM,
+  MOCK_CAPEX_SAVINGS_MULTIPLIER,
+  MOCK_DEFAULT_LOAN_RATE,
+  MOCK_DEFAULT_LAT,
+  MOCK_DEFAULT_LNG,
+  MOCK_DEFAULT_PROJECT_LIFETIME,
+  MOCK_DELAY_SHORT,
+  MOCK_DELAY_MEDIUM,
+  MOCK_DISCOUNT_RATE,
+  MOCK_ENERGY_PRICE_EUR_PER_KWH,
+  MOCK_MIN_AGE_FACTOR,
+  MOCK_N_SIMS,
+  MOCK_RANGE_NPV_MAX,
+  MOCK_RANGE_NPV_MIN,
+  MOCK_RANGE_PAYBACK_MAX,
+  MOCK_RANGE_PAYBACK_MIN,
+  MOCK_RENOVATION_VALUE_MULTIPLIER,
+  MOCK_SUCCESS_BASE_HIGH,
+  MOCK_SUCCESS_BASE_LOW,
+  MOCK_SUCCESS_RANDOM_HIGH,
+  MOCK_SUCCESS_RANDOM_LOW,
+  MOCK_SCENARIO_MULTIPLIERS,
+  MOCK_EPC_VALUE_IMPACT,
+} from "./constants";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Service Implementation
 // ─────────────────────────────────────────────────────────────────────────────
 
+interface FinancialCalculationInput {
+  renovationCost: number;
+  annualEnergySavings: number;
+  fundingOptions: FundingOptions;
+  scenario: FinancialScenario;
+  floorArea: number;
+  targetEPC: string;
+}
+
 export class MockFinancialService implements IFinancialService {
+  /**
+   * Calculate After Renovation Value (ARV)
+   * TBD: Replace with POST /arv API call
+   */
+  async calculateARV(request: ARVRequest): Promise<ARVResult> {
+    // Simulate API delay
+    await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_SHORT));
+
+    // TBD: Real API uses trained LightGBM model on Greek property data
+    // Mock implementation uses simplified calculation
+    const epcFactor = 1 + (MOCK_EPC_VALUE_IMPACT[request.energy_class] || 0);
+
+    // Location factor (simplified - real API uses lat/lng with ML model)
+    // TBD: Implement proper location-based pricing
+    const locationFactor = 1.0;
+
+    // Age factor
+    const currentYear = new Date().getFullYear();
+    const buildingAge = currentYear - request.construction_year;
+    const ageFactor = Math.max(
+      MOCK_MIN_AGE_FACTOR,
+      1 - buildingAge * MOCK_AGE_DEPRECIATION_FACTOR,
+    );
+
+    // Renovation factor
+    const renovationFactor = request.renovated_last_5_years
+      ? MOCK_RENOVATION_VALUE_MULTIPLIER
+      : 1.0;
+
+    const pricePerSqm =
+      MOCK_BASE_PROPERTY_VALUE_PER_SQM *
+      epcFactor *
+      locationFactor *
+      ageFactor *
+      renovationFactor;
+    const totalPrice = pricePerSqm * request.floor_area;
+
+    return {
+      pricePerSqm: Math.round(pricePerSqm * 100) / 100,
+      totalPrice: Math.round(totalPrice * 100) / 100,
+      floorArea: request.floor_area,
+      energyClass: fromAPIEnergyClass(request.energy_class as APIEnergyClass),
+      metadata: {
+        model_version: "mock-v1",
+        building_age: buildingAge,
+        prediction_timestamp: new Date().toISOString(),
+      },
+    };
+  }
+
+  /**
+   * Perform risk assessment with Monte Carlo simulation
+   * TBD: Replace with POST /risk-assessment API call
+   */
+  async assessRisk(
+    request: RiskAssessmentRequest,
+  ): Promise<RiskAssessmentResponse> {
+    // Simulate API delay (real API takes 2-5 seconds for Monte Carlo)
+    await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MEDIUM));
+
+    const {
+      annual_energy_savings,
+      project_lifetime,
+      loan_amount = 0,
+      loan_term = 0,
+    } = request;
+
+    // TBD: Real API retrieves capex from internal dataset if not provided
+    // Mock uses a default based on energy savings
+    const capex =
+      request.capex ?? annual_energy_savings * MOCK_CAPEX_SAVINGS_MULTIPLIER;
+
+    // Convert energy savings to EUR
+    const annualSavingsEUR =
+      annual_energy_savings * MOCK_ENERGY_PRICE_EUR_PER_KWH;
+
+    // Calculate loan payment if applicable
+    const loanRate = MOCK_DEFAULT_LOAN_RATE;
+    let annualLoanPayment = 0;
+    if (loan_amount > 0 && loan_term > 0) {
+      // Simple amortization
+      annualLoanPayment =
+        (loan_amount * (loanRate * Math.pow(1 + loanRate, loan_term))) /
+        (Math.pow(1 + loanRate, loan_term) - 1);
+    }
+
+    // Net annual savings after loan payment
+    const netAnnualSavings = annualSavingsEUR - annualLoanPayment;
+
+    // Calculate financial indicators (P50/median values)
+    // TBD: Real API runs 10000 Monte Carlo simulations
+    const npv = calculateNPV(
+      capex,
+      netAnnualSavings,
+      MOCK_DISCOUNT_RATE,
+      project_lifetime,
+    );
+    const irr = calculateIRR(capex, netAnnualSavings, project_lifetime);
+    const pbp = calculateSimplePayback(capex, netAnnualSavings);
+    const dpp = calculateDiscountedPayback(
+      capex,
+      netAnnualSavings,
+      MOCK_DISCOUNT_RATE,
+      project_lifetime,
+    );
+    const roi = calculateROI(capex, netAnnualSavings * project_lifetime);
+    const monthlyAvgSavings = netAnnualSavings / 12;
+
+    // Success rate: probability of positive NPV
+    // TBD: Real API calculates from Monte Carlo distribution
+    const successRate =
+      npv > 0
+        ? MOCK_SUCCESS_BASE_HIGH + Math.random() * MOCK_SUCCESS_RANDOM_HIGH
+        : MOCK_SUCCESS_BASE_LOW + Math.random() * MOCK_SUCCESS_RANDOM_LOW;
+
+    const pointForecasts: RiskAssessmentPointForecasts = {
+      NPV: Math.round(npv * 100) / 100,
+      IRR: Math.round(irr * 1000) / 1000,
+      ROI: Math.round(roi * 1000) / 1000,
+      PBP: Math.round(pbp * 10) / 10,
+      DPP: Math.round(dpp * 10) / 10,
+      MonthlyAvgSavings: Math.round(monthlyAvgSavings * 100) / 100,
+      SuccessRate: Math.round(successRate * 1000) / 1000,
+    };
+
+    const metadata: RiskAssessmentMetadata = {
+      n_sims: MOCK_N_SIMS,
+      project_lifetime,
+      capex,
+      loan_amount,
+      annual_loan_payment: Math.round(annualLoanPayment * 100) / 100,
+      loan_rate_percent: loanRate * 100,
+      output_level: request.output_level,
+    };
+
+    // TBD: Real API generates cash flow visualization for private level
+    // Mock returns undefined (no visualization)
+    return {
+      pointForecasts,
+      metadata,
+      cashFlowVisualization: undefined,
+    };
+  }
+
+  /**
+   * Legacy method - kept for backward compatibility
+   * @deprecated Use calculateARV and assessRisk instead
+   */
   async calculate(input: FinancialCalculationInput): Promise<FinancialResults> {
     const {
       renovationCost,
@@ -147,23 +242,18 @@ export class MockFinancialService implements IFinancialService {
       fundingOptions,
       scenario,
       floorArea,
-      currentEPC,
       targetEPC,
     } = input;
 
-    const scenarioMultiplier = SCENARIO_MULTIPLIERS[scenario];
-
-    // Apply funding options
-    const { effectiveCost } = applyFundingReduction(
+    const scenarioMultiplier = MOCK_SCENARIO_MULTIPLIERS[scenario];
+    const { effectiveCost, loanAmount } = applyFundingReduction(
       renovationCost,
       fundingOptions,
     );
 
-    // Adjust savings based on scenario
     const adjustedAnnualSavings =
       annualEnergySavings * scenarioMultiplier.energyPrice;
 
-    // Apply on-bill repayment if enabled
     let netAnnualSavings = adjustedAnnualSavings;
     if (fundingOptions.returnsOnBills.enabled) {
       netAnnualSavings =
@@ -171,34 +261,74 @@ export class MockFinancialService implements IFinancialService {
         (1 - fundingOptions.returnsOnBills.percentOfSavedEnergy / 100);
     }
 
-    // Calculate financial indicators
+    const projectLifetime = MOCK_DEFAULT_PROJECT_LIFETIME;
     const npv = calculateNPV(
       effectiveCost,
       netAnnualSavings,
-      DISCOUNT_RATE,
-      PROJECT_LIFETIME_YEARS,
+      MOCK_DISCOUNT_RATE,
+      projectLifetime,
     );
+    const irr = calculateIRR(effectiveCost, netAnnualSavings, projectLifetime);
     const paybackTime = calculateSimplePayback(effectiveCost, netAnnualSavings);
-    const totalSavings = netAnnualSavings * PROJECT_LIFETIME_YEARS;
+    const dpp = calculateDiscountedPayback(
+      effectiveCost,
+      netAnnualSavings,
+      MOCK_DISCOUNT_RATE,
+      projectLifetime,
+    );
+    const totalSavings = netAnnualSavings * projectLifetime;
     const roi = calculateROI(effectiveCost, totalSavings);
-    const arv = calculateARV(floorArea, currentEPC, targetEPC, scenario);
+
+    // Calculate ARV using new method
+    const arvRequest: ARVRequest = {
+      lat: MOCK_DEFAULT_LAT,
+      lng: MOCK_DEFAULT_LNG,
+      floor_area: floorArea,
+      construction_year: 1990, // Default for legacy compatibility
+      number_of_floors: 4,
+      property_type: "Apartment",
+      energy_class: toAPIEnergyClass(targetEPC),
+      renovated_last_5_years: true,
+    };
+    const arvResult = await this.calculateARV(arvRequest);
 
     // Calculate ranges for uncertainty display
     const npvRange = {
-      min: npv * 0.8,
-      max: npv * 1.2,
+      min: npv * MOCK_RANGE_NPV_MIN,
+      max: npv * MOCK_RANGE_NPV_MAX,
     };
     const paybackRange = {
-      min: paybackTime * 0.85,
-      max: paybackTime * 1.15,
+      min: paybackTime * MOCK_RANGE_PAYBACK_MIN,
+      max: paybackTime * MOCK_RANGE_PAYBACK_MAX,
     };
 
     return {
+      // New structure
+      arv: arvResult,
+      riskAssessment: {
+        pointForecasts: {
+          NPV: Math.round(npv * 100) / 100,
+          IRR: Math.round(irr * 1000) / 1000,
+          ROI: Math.round(roi * 100) / 100,
+          PBP: Math.round(paybackTime * 10) / 10,
+          DPP: Math.round(dpp * 10) / 10,
+          MonthlyAvgSavings: Math.round((netAnnualSavings / 12) * 100) / 100,
+          SuccessRate: npv > 0 ? 0.85 : 0.4,
+        },
+        metadata: {
+          n_sims: MOCK_N_SIMS,
+          project_lifetime: projectLifetime,
+          capex: renovationCost,
+          loan_amount: loanAmount,
+          output_level: HRA_OUTPUT_LEVEL,
+        },
+      },
+      // Legacy fields for backward compatibility
       capitalExpenditure: Math.round(renovationCost),
-      returnOnInvestment: Math.round(roi * 10) / 10,
+      returnOnInvestment: Math.round(roi * 100) / 100,
       paybackTime: Math.round(paybackTime * 10) / 10,
       netPresentValue: Math.round(npv),
-      afterRenovationValue: arv,
+      afterRenovationValue: arvResult.totalPrice,
       npvRange: {
         min: Math.round(npvRange.min),
         max: Math.round(npvRange.max),
@@ -210,6 +340,9 @@ export class MockFinancialService implements IFinancialService {
     };
   }
 
+  /**
+   * Calculate financial results for all scenarios
+   */
   async calculateForAllScenarios(
     scenarios: RenovationScenario[],
     fundingOptions: FundingOptions,
@@ -217,6 +350,7 @@ export class MockFinancialService implements IFinancialService {
     currentEstimation: EstimationResult,
     financialScenario: FinancialScenario,
     costs: Record<PackageId, number>,
+    building: BuildingInfo,
   ): Promise<Record<ScenarioId, FinancialResults>> {
     // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 400));
@@ -225,18 +359,28 @@ export class MockFinancialService implements IFinancialService {
 
     for (const scenario of scenarios) {
       if (scenario.id === "current") {
-        // Current scenario has no renovation cost
+        // Current scenario: no renovation, just current ARV
+        const arvRequest: ARVRequest = {
+          lat: building.lat ?? MOCK_DEFAULT_LAT,
+          lng: building.lng ?? MOCK_DEFAULT_LNG,
+          floor_area: floorArea,
+          construction_year: building.constructionYear ?? 1990,
+          number_of_floors: building.numberOfFloors ?? 4,
+          floor_number: building.floorNumber,
+          property_type: toAPIPropertyType(building.buildingType),
+          energy_class: toAPIEnergyClass(currentEstimation.estimatedEPC),
+          renovated_last_5_years: false,
+        };
+        const arvResult = await this.calculateARV(arvRequest);
+
         results[scenario.id] = {
+          arv: arvResult,
+          riskAssessment: null,
           capitalExpenditure: 0,
           returnOnInvestment: 0,
           paybackTime: 0,
           netPresentValue: 0,
-          afterRenovationValue: calculateARV(
-            floorArea,
-            currentEstimation.estimatedEPC,
-            scenario.epcClass,
-            financialScenario,
-          ),
+          afterRenovationValue: arvResult.totalPrice,
         };
         continue;
       }
@@ -252,19 +396,119 @@ export class MockFinancialService implements IFinancialService {
       const costPerSqm = costs[packageId] || 0;
       const renovationCost = costPerSqm * floorArea;
 
-      // Calculate annual energy savings
+      // Calculate annual energy savings (EUR)
       const annualEnergySavings =
         currentEstimation.annualEnergyCost - scenario.annualEnergyCost;
 
-      const financialResult = await this.calculate({
+      // Use the logic from deprecated calculate() but avoid calling it directly if we want to be fully clean.
+      // However, for now, to ensure full backward compatibility and identical behavior as requested in step 4,
+      // I will keep using the calculate() method as a helper for this iteration, OR re-implement the logic inline
+      // to remove dependency on the deprecated method.
+      // The plan says "Remove the deprecated calculate method (it is unused outside the service)".
+      // But wait, the previous code used `this.calculate`. If I remove it, I must inline it here.
+
+      // Inline logic of `calculate` here to support `calculateForAllScenarios`
+      const scenarioMultiplier = MOCK_SCENARIO_MULTIPLIERS[financialScenario];
+      const { effectiveCost, loanAmount } = applyFundingReduction(
         renovationCost,
-        annualEnergySavings,
         fundingOptions,
-        scenario: financialScenario,
-        floorArea,
-        currentEPC: currentEstimation.estimatedEPC,
-        targetEPC: scenario.epcClass,
-      });
+      );
+
+      const adjustedAnnualSavings =
+        annualEnergySavings * scenarioMultiplier.energyPrice;
+
+      let netAnnualSavings = adjustedAnnualSavings;
+      if (fundingOptions.returnsOnBills.enabled) {
+        netAnnualSavings =
+          adjustedAnnualSavings *
+          (1 - fundingOptions.returnsOnBills.percentOfSavedEnergy / 100);
+      }
+
+      const projectLifetime = MOCK_DEFAULT_PROJECT_LIFETIME;
+      const npv = calculateNPV(
+        effectiveCost,
+        netAnnualSavings,
+        MOCK_DISCOUNT_RATE,
+        projectLifetime,
+      );
+      const irr = calculateIRR(
+        effectiveCost,
+        netAnnualSavings,
+        projectLifetime,
+      );
+      const paybackTime = calculateSimplePayback(
+        effectiveCost,
+        netAnnualSavings,
+      );
+      const dpp = calculateDiscountedPayback(
+        effectiveCost,
+        netAnnualSavings,
+        MOCK_DISCOUNT_RATE,
+        projectLifetime,
+      );
+      const totalSavings = netAnnualSavings * projectLifetime;
+      const roi = calculateROI(effectiveCost, totalSavings);
+
+      // ARV Request for this scenario
+      const arvRequest: ARVRequest = {
+        lat: building.lat ?? MOCK_DEFAULT_LAT,
+        lng: building.lng ?? MOCK_DEFAULT_LNG,
+        floor_area: floorArea,
+        construction_year: building.constructionYear ?? 1990,
+        number_of_floors: building.numberOfFloors ?? 4,
+        floor_number: building.floorNumber,
+        property_type: toAPIPropertyType(building.buildingType),
+        energy_class: toAPIEnergyClass(scenario.epcClass),
+        renovated_last_5_years: true,
+      };
+      const arvResult = await this.calculateARV(arvRequest);
+
+      // Uncertainty ranges
+      const npvRange = {
+        min: npv * MOCK_RANGE_NPV_MIN,
+        max: npv * MOCK_RANGE_NPV_MAX,
+      };
+      const paybackRange = {
+        min: paybackTime * MOCK_RANGE_PAYBACK_MIN,
+        max: paybackTime * MOCK_RANGE_PAYBACK_MAX,
+      };
+
+      // Construct Result
+      const financialResult: FinancialResults = {
+        arv: arvResult,
+        riskAssessment: {
+          pointForecasts: {
+            NPV: Math.round(npv * 100) / 100,
+            IRR: Math.round(irr * 1000) / 1000,
+            ROI: Math.round(roi * 100) / 100,
+            PBP: Math.round(paybackTime * 10) / 10,
+            DPP: Math.round(dpp * 10) / 10,
+            MonthlyAvgSavings: Math.round((netAnnualSavings / 12) * 100) / 100,
+            SuccessRate: npv > 0 ? 0.85 : 0.4,
+          },
+          metadata: {
+            n_sims: MOCK_N_SIMS,
+            project_lifetime: projectLifetime,
+            capex: renovationCost,
+            loan_amount: loanAmount,
+            output_level: HRA_OUTPUT_LEVEL,
+          },
+        },
+        // Legacy fields
+        capitalExpenditure: Math.round(renovationCost),
+        returnOnInvestment: Math.round(roi * 100) / 100,
+        paybackTime: Math.round(paybackTime * 10) / 10,
+        netPresentValue: Math.round(npv),
+        afterRenovationValue: arvResult.totalPrice,
+        npvRange: {
+          min: Math.round(npvRange.min),
+          max: Math.round(npvRange.max),
+        },
+        paybackTimeRange: {
+          min: Math.round(paybackRange.min * 10) / 10,
+          max: Math.round(paybackRange.max * 10) / 10,
+        },
+      };
 
       results[scenario.id] = financialResult;
     }

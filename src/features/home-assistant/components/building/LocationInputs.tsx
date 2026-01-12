@@ -1,11 +1,21 @@
 /**
  * LocationInputs Component
- * Provides country and climate zone selection.
+ * Provides country, climate zone, and coordinates selection.
+ *
+ * TBD: Consider adding a map picker or geocoding autocomplete for lat/lng
  */
 
-import { Select, SimpleGrid } from "@mantine/core";
+import { NumberInput, Select, SimpleGrid, Text } from "@mantine/core";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
+import { MOCK_COUNTRY_COORDINATES } from "../../services/mock/constants";
+import {
+  COORDINATE_DECIMAL_SCALE,
+  LATITUDE_MAX,
+  LATITUDE_MIN,
+  LONGITUDE_MAX,
+  LONGITUDE_MIN,
+} from "../../constants";
 
 export function LocationInputs() {
   const { state, dispatch } = useHomeAssistant();
@@ -21,6 +31,13 @@ export function LocationInputs() {
       const defaults = building.getDefaultsForCountry(value);
       if (Object.keys(defaults).length > 0) {
         dispatch({ type: "SET_BUILDING", building: defaults });
+      }
+
+      // Set default coordinates for the country if not already set
+      const coords = MOCK_COUNTRY_COORDINATES[value];
+      if (coords && state.building.lat === null) {
+        dispatch({ type: "UPDATE_BUILDING", field: "lat", value: coords.lat });
+        dispatch({ type: "UPDATE_BUILDING", field: "lng", value: coords.lng });
       }
     }
   };
@@ -55,6 +72,49 @@ export function LocationInputs() {
         required
         allowDeselect={false}
       />
+
+      {/* TBD: Consider replacing with map picker or geocoding autocomplete */}
+      <NumberInput
+        label="Latitude"
+        description="Geographic latitude coordinate."
+        placeholder="e.g., 48.21"
+        min={LATITUDE_MIN}
+        max={LATITUDE_MAX}
+        decimalScale={COORDINATE_DECIMAL_SCALE}
+        value={state.building.lat ?? ""}
+        onChange={(value) =>
+          dispatch({
+            type: "UPDATE_BUILDING",
+            field: "lat",
+            value: typeof value === "number" ? value : null,
+          })
+        }
+        required
+      />
+
+      <NumberInput
+        label="Longitude"
+        description="Geographic longitude coordinate."
+        placeholder="e.g., 16.37"
+        min={LONGITUDE_MIN}
+        max={LONGITUDE_MAX}
+        decimalScale={COORDINATE_DECIMAL_SCALE}
+        value={state.building.lng ?? ""}
+        onChange={(value) =>
+          dispatch({
+            type: "UPDATE_BUILDING",
+            field: "lng",
+            value: typeof value === "number" ? value : null,
+          })
+        }
+        required
+      />
+
+      <Text size="xs" c="dimmed" style={{ gridColumn: "1 / -1" }}>
+        Coordinates are used to estimate property values. They are
+        auto-populated based on country selection but can be adjusted for more
+        accurate results.
+      </Text>
     </SimpleGrid>
   );
 }

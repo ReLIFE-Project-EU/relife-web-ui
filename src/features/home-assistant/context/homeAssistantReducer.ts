@@ -2,6 +2,7 @@
  * Reducer for the Home Renovation Assistant wizard state.
  */
 
+import { PROJECT_LIFETIME_DEFAULT } from "../constants";
 import type {
   BuildingInfo,
   FundingOptions,
@@ -15,17 +16,27 @@ import type {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const initialBuilding: BuildingInfo = {
+  // Existing fields (UI-focused)
   country: "AT", // Austria as default (matches mock-up)
   climateZone: "D",
   buildingType: "apartment",
   floorArea: null,
   constructionPeriod: "1991-2000",
-  currentEPC: null,
   heatingTechnology: "biomass-central",
   coolingTechnology: "natural-airflow",
   hotWaterTechnology: "electric-boiler",
   numberOfOpenings: null,
   glazingTechnology: "double-aluminium",
+
+  // Fields for Financial API (/arv endpoint)
+  lat: null, // Required for ARV, will be set via UI
+  lng: null, // Required for ARV, will be set via UI
+  constructionYear: null, // Derived from constructionPeriod or user input
+  numberOfFloors: null, // Required for ARV
+  floorNumber: null, // Optional, for apartments
+
+  // Fields for Financial API (/risk-assessment endpoint)
+  projectLifetime: PROJECT_LIFETIME_DEFAULT, // Default: 20 years (1-30 range)
 };
 
 const initialRenovation: RenovationSelections = {

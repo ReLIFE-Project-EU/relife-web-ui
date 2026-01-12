@@ -3,8 +3,28 @@
  * Provides Multi-Criteria Decision Analysis using TOPSIS algorithm.
  * Personas and weights are from D3.2 requirements.
  *
- * NOTE: In production, this would integrate with the technical service API
- * for calculating individual pillar scores (EE, REI, SEI, UC, FV).
+ * TBD INTEGRATION NOTES
+ * =====================
+ * When integrating with the real Technical API:
+ * - [ ] Replace local TOPSIS with API pillar endpoints:
+ *       - POST /technical/ee  - Energy Efficiency pillar
+ *       - POST /financial/rei - Renewable Energy Integration pillar
+ *       - POST /technical/sei - Sustainability & Environmental Impact pillar
+ *       - POST /technical/uc  - User Comfort pillar
+ *       - POST /technical/fv  - Financial Viability pillar
+ * - [ ] Each endpoint requires KPI values with min/max bounds:
+ *       - EE: envelope_kpi, window_kpi, heating_system_kpi, cooling_system_kpi
+ *       - REI: st_coverage_kpi, onsite_res_kpi, net_energy_export_kpi
+ *       - SEI: embodied_carbon_kpi, gwp_kpi
+ *       - UC: thermal_comfort_air_temp_kpi, thermal_comfort_humidity_kpi
+ *       - FV: ii_kpi, aoc_kpi, irr_kpi, npv_kpi
+ * - [ ] Determine source of min/max normalization bounds (API config? Database?)
+ * - [ ] Implement aggregation of 5 pillar weights into final ranking
+ * - [ ] Map persona IDs to API "profile" parameter
+ *
+ * Current implementation uses local TOPSIS algorithm with D3.2 persona weights.
+ *
+ * Reference: api-specs/20260108-125427/technical.json
  */
 
 import type {
@@ -13,168 +33,10 @@ import type {
   RenovationScenario,
   ScenarioId,
 } from "../../context/types";
+import { extractCriteriaValues, topsis } from "../../utils";
 import type { IMCDAService, MCDAPersona } from "../types";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// D3.2 MCDA Personas
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const MCDA_PERSONAS: MCDAPersona[] = [
-  {
-    id: "environmentally-conscious",
-    name: "Environmentally Conscious",
-    description: "Prioritizes sustainability and renewable energy integration",
-    weights: {
-      sustainability: 0.333,
-      resIntegration: 0.267,
-      energyEfficiency: 0.2,
-      userComfort: 0.133,
-      financial: 0.067,
-    },
-  },
-  {
-    id: "comfort-driven",
-    name: "Comfort-Driven",
-    description: "Prioritizes indoor comfort and energy efficiency",
-    weights: {
-      userComfort: 0.333,
-      energyEfficiency: 0.267,
-      financial: 0.2,
-      sustainability: 0.133,
-      resIntegration: 0.067,
-    },
-  },
-  {
-    id: "cost-optimization",
-    name: "Cost-Optimization Oriented",
-    description: "Prioritizes financial returns and cost savings",
-    weights: {
-      financial: 0.333,
-      energyEfficiency: 0.267,
-      resIntegration: 0.2,
-      userComfort: 0.133,
-      sustainability: 0.067,
-    },
-  },
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TOPSIS Algorithm Implementation
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface CriteriaValues {
-  energyEfficiency: number;
-  resIntegration: number;
-  sustainability: number;
-  userComfort: number;
-  financial: number;
-}
-
-/**
- * Extract criteria values from a scenario and its financial results.
- * Higher values = better for all criteria (normalized).
- */
-function extractCriteriaValues(
-  scenario: RenovationScenario,
-  financial: FinancialResults | undefined,
-  baselineEnergy: number,
-): CriteriaValues {
-  // Energy Efficiency: inverse of energy needs (lower energy = higher score)
-  const energyEfficiency =
-    baselineEnergy > 0 ? 1 - scenario.annualEnergyNeeds / baselineEnergy : 0;
-
-  // RES Integration: based on EPC class (simplified proxy)
-  const epcOrder = ["G", "F", "E", "D", "C", "B", "A", "A+"];
-  const epcIndex = epcOrder.indexOf(scenario.epcClass);
-  const resIntegration = epcIndex >= 0 ? epcIndex / (epcOrder.length - 1) : 0;
-
-  // Sustainability: combination of energy reduction and EPC improvement
-  const sustainability = (energyEfficiency + resIntegration) / 2;
-
-  // User Comfort: directly from scenario
-  const userComfort = scenario.comfortIndex / 100;
-
-  // Financial: based on ROI and NPV (higher = better)
-  let financialScore = 0;
-  if (financial) {
-    // Normalize ROI to 0-1 range (assuming max ROI of 200%)
-    const roiScore = Math.min(
-      1,
-      Math.max(0, financial.returnOnInvestment / 200),
-    );
-    // NPV positive is good (normalize with sigmoid-like function)
-    const npvScore =
-      financial.netPresentValue > 0
-        ? 0.5 + 0.5 * Math.tanh(financial.netPresentValue / 50000)
-        : 0.5 * Math.tanh(financial.netPresentValue / 50000);
-    financialScore = (roiScore + npvScore) / 2;
-  }
-
-  return {
-    energyEfficiency: Math.max(0, Math.min(1, energyEfficiency)),
-    resIntegration: Math.max(0, Math.min(1, resIntegration)),
-    sustainability: Math.max(0, Math.min(1, sustainability)),
-    userComfort: Math.max(0, Math.min(1, userComfort)),
-    financial: Math.max(0, Math.min(1, financialScore)),
-  };
-}
-
-/**
- * TOPSIS algorithm implementation.
- * Returns closeness coefficient for each alternative (0-1, higher = better).
- */
-function topsis(
-  alternatives: CriteriaValues[],
-  weights: CriteriaValues,
-): number[] {
-  if (alternatives.length === 0) return [];
-  if (alternatives.length === 1) return [1];
-
-  const criteria: (keyof CriteriaValues)[] = [
-    "energyEfficiency",
-    "resIntegration",
-    "sustainability",
-    "userComfort",
-    "financial",
-  ];
-
-  // Step 1: Create decision matrix (already normalized 0-1)
-  const matrix = alternatives.map((alt) => criteria.map((c) => alt[c]));
-
-  // Step 2: Apply weights
-  const weightedMatrix = matrix.map((row) =>
-    row.map((val, j) => val * weights[criteria[j]]),
-  );
-
-  // Step 3: Find ideal best and worst
-  const idealBest = criteria.map((_, j) =>
-    Math.max(...weightedMatrix.map((row) => row[j])),
-  );
-  const idealWorst = criteria.map((_, j) =>
-    Math.min(...weightedMatrix.map((row) => row[j])),
-  );
-
-  // Step 4: Calculate distances
-  const distanceToBest = weightedMatrix.map((row) =>
-    Math.sqrt(
-      row.reduce((sum, val, j) => sum + Math.pow(val - idealBest[j], 2), 0),
-    ),
-  );
-  const distanceToWorst = weightedMatrix.map((row) =>
-    Math.sqrt(
-      row.reduce((sum, val, j) => sum + Math.pow(val - idealWorst[j], 2), 0),
-    ),
-  );
-
-  // Step 5: Calculate closeness coefficient
-  const closeness = distanceToBest.map((dBest, i) => {
-    const dWorst = distanceToWorst[i];
-    const total = dBest + dWorst;
-    return total > 0 ? dWorst / total : 0.5;
-  });
-
-  return closeness;
-}
+import { MOCK_DELAY_MEDIUM } from "./constants";
+import { MCDA_PERSONAS } from "./data/personas";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Service Implementation
@@ -195,7 +57,7 @@ export class MockMCDAService implements IMCDAService {
     personaId: string,
   ): Promise<MCDARankingResult[]> {
     // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MEDIUM));
 
     const persona = this.getPersona(personaId);
     if (!persona) {

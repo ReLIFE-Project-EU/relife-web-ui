@@ -53,6 +53,7 @@ export function EnergyRenovationStep() {
         state.estimation,
         state.selectedFinancialScenario,
         state.renovation.costs,
+        state.building,
       );
 
       dispatch({

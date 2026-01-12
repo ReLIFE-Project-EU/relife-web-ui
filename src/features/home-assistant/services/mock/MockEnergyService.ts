@@ -2,93 +2,58 @@
  * Mock Energy Service
  * Provides EPC estimation and energy consumption calculations.
  *
- * NOTE: This is a simplified mock implementation. In production, this would
- * integrate with the forecasting service API:
- * - forecasting.createProject()
- * - forecasting.uploadBuilding()
- * - forecasting.getEPC()
+ * TBD INTEGRATION NOTES
+ * =====================
+ * When integrating with the real Forecasting API:
+ * - [ ] Implement project-based workflow:
+ *       1. POST /project - Create project, get project_id
+ *       2. PUT /project/{id}/building - Upload BuildingPayload
+ *       3. PUT /project/{id}/plant - Upload PlantPayload
+ *       4. POST /project/{id}/simulate - Run simulation (requires EPW weather file)
+ *       5. GET /project/{id}/epc - Get EPC result
+ * - [ ] Map BuildingInfo to BuildingPayload.data:
+ *       - area_m2, volume_m3, U_envelope_W_m2K, infiltration_ach,
+ *         internal_gains_W, thermal_capacity_kJ_K
+ * - [ ] Map system technologies to PlantPayload.data:
+ *       - heat_setpoint_C, cool_setpoint_C, heat_power_max_W,
+ *         cool_power_max_W, heat_efficiency, cool_efficiency
+ * - [ ] Handle EPW weather file (source TBD - user upload or API-provided based on location)
+ * - [ ] Extract annual_energy_savings from simulation results
+ *
+ * Reference: api-specs/20260108-125427/forecasting.json
  */
 
 import type {
   BuildingInfo,
-  EstimationResult,
   EnergyMix,
+  EstimationResult,
 } from "../../context/types";
 import type { IEnergyService } from "../types";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// EPC Estimation Factors
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Construction period impact on energy efficiency (lower = better)
-const PERIOD_FACTOR: Record<string, number> = {
-  "pre-1945": 1.8,
-  "1945-1970": 1.5,
-  "1971-1990": 1.3,
-  "1991-2000": 1.1,
-  "2001-2010": 0.9,
-  "post-2010": 0.7,
-};
-
-// Building type impact (apartments generally more efficient due to shared walls)
-const BUILDING_TYPE_FACTOR: Record<string, number> = {
-  apartment: 0.85,
-  terraced: 0.95,
-  "semi-detached": 1.0,
-  detached: 1.15,
-};
-
-// Heating technology efficiency (lower = better)
-const HEATING_EFFICIENCY: Record<string, number> = {
-  "heat-pump-ground": 0.5,
-  "heat-pump-air": 0.6,
-  "district-heating": 0.75,
-  "biomass-central": 0.85,
-  "gas-boiler": 1.0,
-  "oil-boiler": 1.2,
-  "electric-resistance": 1.4,
-};
-
-// Glazing technology efficiency (lower = better)
-const GLAZING_EFFICIENCY: Record<string, number> = {
-  "triple-pvc": 0.6,
-  "triple-wood": 0.65,
-  "double-pvc": 0.8,
-  "double-wood": 0.85,
-  "double-aluminium": 0.95,
-  "single-wood": 1.4,
-};
-
-// Climate zone impact on energy needs
-const CLIMATE_FACTOR: Record<string, { heating: number; cooling: number }> = {
-  A: { heating: 0.5, cooling: 1.5 }, // Mediterranean
-  B: { heating: 0.7, cooling: 1.2 }, // Warm temperate
-  C: { heating: 1.0, cooling: 0.8 }, // Temperate
-  D: { heating: 1.3, cooling: 0.4 }, // Cold
-  E: { heating: 1.6, cooling: 0.2 }, // Very cold
-};
-
-// EPC class thresholds (kWh/m²/year)
-const EPC_THRESHOLDS: { class: string; maxValue: number }[] = [
-  { class: "A+", maxValue: 30 },
-  { class: "A", maxValue: 50 },
-  { class: "B", maxValue: 90 },
-  { class: "C", maxValue: 150 },
-  { class: "D", maxValue: 230 },
-  { class: "E", maxValue: 330 },
-  { class: "F", maxValue: 450 },
-  { class: "G", maxValue: Infinity },
-];
-
-// Average energy price (EUR/kWh) - simplified
-const ENERGY_PRICE = 0.25;
+import {
+  MOCK_BASE_COMFORT_INDEX,
+  MOCK_BASE_ENERGY_INTENSITY,
+  MOCK_BASE_FLEXIBILITY_INDEX,
+  MOCK_BUILDING_TYPE_FACTOR,
+  MOCK_CLIMATE_FACTOR,
+  MOCK_COOLING_ENERGY_SPLIT,
+  MOCK_DEFAULT_FLOOR_AREA,
+  MOCK_DELAY_LONG,
+  MOCK_ENERGY_PRICE_EUR_PER_KWH,
+  MOCK_EPC_THRESHOLDS,
+  MOCK_GLAZING_EFFICIENCY,
+  MOCK_HEATING_EFFICIENCY,
+  MOCK_HEATING_ENERGY_SPLIT,
+  MOCK_MAX_OPENING_FACTOR,
+  MOCK_NON_HVAC_ENERGY_MULTIPLIER,
+  MOCK_PERIOD_FACTOR,
+} from "./constants";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper Functions
 // ─────────────────────────────────────────────────────────────────────────────
 
 function getEPCClass(energyIntensity: number): string {
-  for (const threshold of EPC_THRESHOLDS) {
+  for (const threshold of MOCK_EPC_THRESHOLDS) {
     if (energyIntensity <= threshold.maxValue) {
       return threshold.class;
     }
@@ -98,26 +63,29 @@ function getEPCClass(energyIntensity: number): string {
 
 function calculateBaseEnergyIntensity(building: BuildingInfo): number {
   // Base energy intensity (kWh/m²/year) for a "reference" building
-  const BASE_INTENSITY = 150;
+  const baseIntensity = MOCK_BASE_ENERGY_INTENSITY;
 
   // Apply factors
-  const periodFactor = PERIOD_FACTOR[building.constructionPeriod] || 1.0;
-  const buildingFactor = BUILDING_TYPE_FACTOR[building.buildingType] || 1.0;
-  const heatingFactor = HEATING_EFFICIENCY[building.heatingTechnology] || 1.0;
-  const glazingFactor = GLAZING_EFFICIENCY[building.glazingTechnology] || 1.0;
+  const periodFactor = MOCK_PERIOD_FACTOR[building.constructionPeriod] || 1.0;
+  const buildingFactor =
+    MOCK_BUILDING_TYPE_FACTOR[building.buildingType] || 1.0;
+  const heatingFactor =
+    MOCK_HEATING_EFFICIENCY[building.heatingTechnology] || 1.0;
+  const glazingFactor =
+    MOCK_GLAZING_EFFICIENCY[building.glazingTechnology] || 1.0;
 
   // Opening density impact (more windows = worse efficiency if poor glazing)
-  const floorArea = building.floorArea || 100;
+  const floorArea = building.floorArea || MOCK_DEFAULT_FLOOR_AREA;
   const openings = building.numberOfOpenings || 10;
   const openingDensity = openings / (floorArea / 10); // openings per 10m²
   const openingFactor = 0.8 + openingDensity * 0.1 * glazingFactor;
 
   return (
-    BASE_INTENSITY *
+    baseIntensity *
     periodFactor *
     buildingFactor *
     heatingFactor *
-    Math.min(openingFactor, 1.5)
+    Math.min(openingFactor, MOCK_MAX_OPENING_FACTOR)
   );
 }
 
@@ -161,7 +129,7 @@ function calculateEnergyMix(
 
 function calculateComfortIndex(building: BuildingInfo): number {
   // Simplified comfort index based on building characteristics
-  let comfort = 70; // Base comfort
+  let comfort = MOCK_BASE_COMFORT_INDEX; // Base comfort
 
   // Better glazing = better comfort
   const glazingBonus: Record<string, number> = {
@@ -195,7 +163,7 @@ function calculateComfortIndex(building: BuildingInfo): number {
 
 function calculateFlexibilityIndex(building: BuildingInfo): number {
   // Flexibility index represents energy flexibility potential
-  let flexibility = 50; // Base flexibility
+  let flexibility = MOCK_BASE_FLEXIBILITY_INDEX; // Base flexibility
 
   // Electric systems offer more flexibility for demand response
   if (
@@ -232,10 +200,10 @@ function calculateFlexibilityIndex(building: BuildingInfo): number {
 export class MockEnergyService implements IEnergyService {
   async estimateEPC(building: BuildingInfo): Promise<EstimationResult> {
     // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_LONG));
 
-    const floorArea = building.floorArea || 100;
-    const climateFactor = CLIMATE_FACTOR[building.climateZone] || {
+    const floorArea = building.floorArea || MOCK_DEFAULT_FLOOR_AREA;
+    const climateFactor = MOCK_CLIMATE_FACTOR[building.climateZone] || {
       heating: 1.0,
       cooling: 0.8,
     };
@@ -244,14 +212,17 @@ export class MockEnergyService implements IEnergyService {
     const baseIntensity = calculateBaseEnergyIntensity(building);
 
     // Split into heating and cooling
-    const heatingIntensity = baseIntensity * 0.7 * climateFactor.heating;
-    const coolingIntensity = baseIntensity * 0.3 * climateFactor.cooling;
+    const heatingIntensity =
+      baseIntensity * MOCK_HEATING_ENERGY_SPLIT * climateFactor.heating;
+    const coolingIntensity =
+      baseIntensity * MOCK_COOLING_ENERGY_SPLIT * climateFactor.cooling;
     const totalIntensity = heatingIntensity + coolingIntensity;
 
     // Convert to absolute values
     const heatingCoolingNeeds = totalIntensity * floorArea;
-    const annualEnergyNeeds = heatingCoolingNeeds * 1.2; // Add hot water, lighting, etc.
-    const annualEnergyCost = annualEnergyNeeds * ENERGY_PRICE;
+    const annualEnergyNeeds =
+      heatingCoolingNeeds * MOCK_NON_HVAC_ENERGY_MULTIPLIER; // Add hot water, lighting, etc.
+    const annualEnergyCost = annualEnergyNeeds * MOCK_ENERGY_PRICE_EUR_PER_KWH;
 
     // Determine EPC class
     const estimatedEPC = getEPCClass(totalIntensity);
@@ -288,6 +259,10 @@ export class MockEnergyService implements IEnergyService {
       },
       flexibilityIndex: Math.round(flexibilityIndex),
       comfortIndex: Math.round(comfortIndex),
+      // TBD: This value represents current state energy consumption.
+      // Annual energy savings are calculated when comparing before/after renovation.
+      // The Financial API /risk-assessment endpoint expects savings in kWh/year.
+      annualEnergySavings: Math.round(annualEnergyNeeds),
     };
   }
 }

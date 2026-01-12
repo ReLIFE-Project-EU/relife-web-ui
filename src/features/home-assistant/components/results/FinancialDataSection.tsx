@@ -1,6 +1,9 @@
 /**
  * FinancialDataSection Component
  * Displays financial metrics with scenario selection.
+ *
+ * Updated to display new RiskAssessmentPointForecasts structure
+ * with IRR, DPP, MonthlyAvgSavings, and SuccessRate indicators.
  */
 
 import {
@@ -8,6 +11,7 @@ import {
   Box,
   Card,
   Group,
+  Progress,
   ScrollArea,
   SegmentedControl,
   SimpleGrid,
@@ -15,7 +19,9 @@ import {
   Table,
   Text,
   Title,
+  Tooltip,
 } from "@mantine/core";
+import { IconInfoCircle } from "@tabler/icons-react";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import type {
   FinancialResults,
@@ -125,51 +131,103 @@ export function FinancialDataSection() {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {/* Capital Expenditure */}
+              {/* Capital Expenditure (CAPEX) */}
               <FinancialMetricRow
                 label="Capital Expenditure"
+                tooltip="Total upfront investment required"
                 scenarios={renovationScenarios}
                 financialResults={financialResults}
                 getValue={(fr) => fr.capitalExpenditure}
                 formatter={formatCurrency}
               />
 
-              {/* ROI */}
-              <FinancialMetricRow
-                label="Return on Investment"
-                scenarios={renovationScenarios}
-                financialResults={financialResults}
-                getValue={(fr) => fr.returnOnInvestment}
-                formatter={(v) => formatPercent(v)}
-              />
-
-              {/* Payback Time */}
-              <FinancialMetricRow
-                label="Payback Time"
-                scenarios={renovationScenarios}
-                financialResults={financialResults}
-                getValue={(fr) => fr.paybackTime}
-                formatter={formatYears}
-                getRange={(fr) => fr.paybackTimeRange}
-              />
-
-              {/* NPV */}
+              {/* Net Present Value (NPV) */}
               <FinancialMetricRow
                 label="Net Present Value"
+                tooltip="Present value of all future cash flows minus initial investment"
                 scenarios={renovationScenarios}
                 financialResults={financialResults}
-                getValue={(fr) => fr.netPresentValue}
+                getValue={(fr) =>
+                  fr.riskAssessment?.pointForecasts.NPV ?? fr.netPresentValue
+                }
                 formatter={formatCurrency}
                 getRange={(fr) => fr.npvRange}
               />
 
-              {/* ARV */}
+              {/* Internal Rate of Return (IRR) - NEW */}
               <FinancialMetricRow
-                label="After Renovation Value"
+                label="Internal Rate of Return"
+                tooltip="The discount rate that makes NPV equal to zero"
                 scenarios={renovationScenarios}
                 financialResults={financialResults}
-                getValue={(fr) => fr.afterRenovationValue}
+                getValue={(fr) =>
+                  (fr.riskAssessment?.pointForecasts.IRR ?? 0) * 100
+                }
+                formatter={(v) => formatPercent(v)}
+              />
+
+              {/* Return on Investment (ROI) */}
+              <FinancialMetricRow
+                label="Return on Investment"
+                tooltip="Total return relative to investment cost"
+                scenarios={renovationScenarios}
+                financialResults={financialResults}
+                getValue={(fr) =>
+                  (fr.riskAssessment?.pointForecasts.ROI ??
+                    fr.returnOnInvestment / 100) * 100
+                }
+                formatter={(v) => formatPercent(v)}
+              />
+
+              {/* Payback Period (PBP) */}
+              <FinancialMetricRow
+                label="Simple Payback Period"
+                tooltip="Years until investment is recovered from savings"
+                scenarios={renovationScenarios}
+                financialResults={financialResults}
+                getValue={(fr) =>
+                  fr.riskAssessment?.pointForecasts.PBP ?? fr.paybackTime
+                }
+                formatter={formatYears}
+                getRange={(fr) => fr.paybackTimeRange}
+              />
+
+              {/* Discounted Payback Period (DPP) - NEW */}
+              <FinancialMetricRow
+                label="Discounted Payback Period"
+                tooltip="Years until investment is recovered, accounting for time value of money"
+                scenarios={renovationScenarios}
+                financialResults={financialResults}
+                getValue={(fr) => fr.riskAssessment?.pointForecasts.DPP ?? 0}
+                formatter={formatYears}
+              />
+
+              {/* Monthly Average Savings - NEW */}
+              <FinancialMetricRow
+                label="Monthly Average Savings"
+                tooltip="Expected monthly savings after accounting for loan payments"
+                scenarios={renovationScenarios}
+                financialResults={financialResults}
+                getValue={(fr) =>
+                  fr.riskAssessment?.pointForecasts.MonthlyAvgSavings ?? 0
+                }
                 formatter={formatCurrency}
+              />
+
+              {/* After Renovation Value (ARV) */}
+              <FinancialMetricRow
+                label="After Renovation Value"
+                tooltip="Estimated property value after renovation"
+                scenarios={renovationScenarios}
+                financialResults={financialResults}
+                getValue={(fr) => fr.arv?.totalPrice ?? fr.afterRenovationValue}
+                formatter={formatCurrency}
+              />
+
+              {/* Success Rate - NEW (displayed as progress bar) */}
+              <SuccessRateRow
+                scenarios={renovationScenarios}
+                financialResults={financialResults}
               />
             </Table.Tbody>
           </Table>
@@ -181,6 +239,7 @@ export function FinancialDataSection() {
 
 interface FinancialMetricRowProps {
   label: string;
+  tooltip?: string;
   scenarios: { id: ScenarioId; label: string }[];
   financialResults: Record<ScenarioId, FinancialResults>;
   getValue: (fr: FinancialResults) => number;
@@ -190,6 +249,7 @@ interface FinancialMetricRowProps {
 
 function FinancialMetricRow({
   label,
+  tooltip,
   scenarios,
   financialResults,
   getValue,
@@ -198,7 +258,16 @@ function FinancialMetricRow({
 }: FinancialMetricRowProps) {
   return (
     <Table.Tr>
-      <Table.Td fw={500}>{label}</Table.Td>
+      <Table.Td fw={500}>
+        <Group gap={4}>
+          {label}
+          {tooltip && (
+            <Tooltip label={tooltip} withArrow multiline w={220}>
+              <IconInfoCircle size={14} style={{ opacity: 0.5 }} />
+            </Tooltip>
+          )}
+        </Group>
+      </Table.Td>
       {scenarios.map((scenario) => {
         const fr = financialResults[scenario.id];
         if (!fr) {
@@ -225,6 +294,60 @@ function FinancialMetricRow({
                   ({formatter(range.min)} - {formatter(range.max)})
                 </Text>
               )}
+            </Stack>
+          </Table.Td>
+        );
+      })}
+    </Table.Tr>
+  );
+}
+
+interface SuccessRateRowProps {
+  scenarios: { id: ScenarioId; label: string }[];
+  financialResults: Record<ScenarioId, FinancialResults>;
+}
+
+function SuccessRateRow({ scenarios, financialResults }: SuccessRateRowProps) {
+  return (
+    <Table.Tr>
+      <Table.Td fw={500}>
+        <Group gap={4}>
+          Success Probability
+          <Tooltip
+            label="Probability of achieving positive financial returns based on Monte Carlo simulation"
+            withArrow
+            multiline
+            w={220}
+          >
+            <IconInfoCircle size={14} style={{ opacity: 0.5 }} />
+          </Tooltip>
+        </Group>
+      </Table.Td>
+      {scenarios.map((scenario) => {
+        const fr = financialResults[scenario.id];
+        if (!fr) {
+          return (
+            <Table.Td key={scenario.id} style={{ textAlign: "center" }}>
+              <Text size="sm" c="dimmed">
+                N/A
+              </Text>
+            </Table.Td>
+          );
+        }
+
+        const successRate =
+          fr.riskAssessment?.pointForecasts.SuccessRate ?? 0.5;
+        const percentage = Math.round(successRate * 100);
+        const color =
+          percentage >= 80 ? "green" : percentage >= 60 ? "yellow" : "red";
+
+        return (
+          <Table.Td key={scenario.id} style={{ textAlign: "center" }}>
+            <Stack gap={4} align="center">
+              <Progress value={percentage} color={color} size="lg" w={80} />
+              <Text size="xs" c="dimmed">
+                {percentage}%
+              </Text>
             </Stack>
           </Table.Td>
         );
