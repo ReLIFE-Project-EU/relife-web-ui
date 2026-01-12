@@ -49,7 +49,6 @@ const navigationData: NavItem[] = [
     links: [
       { label: "Financial Calculator", link: "/financial" },
       { label: "Technical Analysis", link: "/technical" },
-      { label: "Forecasting", link: "/forecasting" },
     ],
   },
 ];
