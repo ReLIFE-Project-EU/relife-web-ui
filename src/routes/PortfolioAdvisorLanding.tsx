@@ -3,7 +3,6 @@ import {
   Box,
   Card,
   Container,
-  Divider,
   List,
   SimpleGrid,
   Stack,
@@ -11,13 +10,20 @@ import {
   ThemeIcon,
   Title,
 } from "@mantine/core";
-import { IconCalculator, IconChartBar, IconScale } from "@tabler/icons-react";
 import {
-  PortfolioManager,
-  PortfolioProvider,
-} from "../features/portfolio-manager";
+  IconCalculator,
+  IconChartBar,
+  IconListDetails,
+  IconScale,
+} from "@tabler/icons-react";
 
-const upcomingFeatures = [
+const plannedFeatures = [
+  {
+    icon: IconListDetails,
+    title: "Portfolio Manager",
+    description:
+      "Input and manage building portfolios with batch data upload and organization tools.",
+  },
   {
     icon: IconCalculator,
     title: "Financial Analysis",
@@ -70,22 +76,13 @@ export const PortfolioAdvisorLanding = () => {
           </List>
         </Card>
 
-        {/* Portfolio Manager Section */}
-        <Divider />
-
-        <PortfolioProvider>
-          <PortfolioManager />
-        </PortfolioProvider>
-
-        <Divider />
-
-        {/* Upcoming Features */}
+        {/* Planned Features */}
         <Box>
           <Title order={2} mb="lg">
-            Upcoming Features
+            Planned Features
           </Title>
-          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg">
-            {upcomingFeatures.map((feature) => (
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
+            {plannedFeatures.map((feature) => (
               <Card key={feature.title} withBorder radius="md" p="lg">
                 <ThemeIcon size={44} radius="md" variant="light" color="teal">
                   <feature.icon size={24} />

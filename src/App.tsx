@@ -6,6 +6,7 @@ import { Forecasting } from "./routes/Forecasting";
 import { Home } from "./routes/Home";
 import { HomeAssistantLanding } from "./routes/HomeAssistantLanding";
 import { HomeAssistantTool } from "./routes/HomeAssistantTool";
+import { MyPortfolios } from "./routes/MyPortfolios";
 import { PortfolioAdvisorLanding } from "./routes/PortfolioAdvisorLanding";
 import { StrategyExplorerLanding } from "./routes/StrategyExplorerLanding";
 import { TechnicalAnalysis } from "./routes/TechnicalAnalysis";
@@ -41,6 +42,16 @@ function App() {
           element={
             <ProtectedRoute>
               <Forecasting />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* User Data Management */}
+        <Route
+          path="/my-portfolios"
+          element={
+            <ProtectedRoute>
+              <MyPortfolios />
             </ProtectedRoute>
           }
         />

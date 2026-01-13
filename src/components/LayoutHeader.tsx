@@ -1,4 +1,5 @@
 import {
+  ActionIcon,
   AppShell,
   Avatar,
   Burger,
@@ -8,9 +9,9 @@ import {
   Loader,
   Menu,
   Text,
-  ActionIcon,
 } from "@mantine/core";
-import { IconLogin, IconLogout } from "@tabler/icons-react";
+import { IconFolder, IconLogin, IconLogout } from "@tabler/icons-react";
+import { Link } from "react-router-dom";
 import { getKeycloakLogoutUrl, signInWithKeycloak, supabase } from "../auth";
 import { useSupabaseSession, useWhoami } from "../hooks/useAuth";
 import { ServiceStatus } from "./ServiceStatus";
@@ -93,6 +94,14 @@ export const LayoutHeader = ({ opened, onToggle }: LayoutHeaderProps) => {
                   </Menu.Target>
 
                   <Menu.Dropdown>
+                    <Menu.Item
+                      leftSection={<IconFolder size={14} />}
+                      component={Link}
+                      to="/my-portfolios"
+                    >
+                      My Portfolios
+                    </Menu.Item>
+                    <Menu.Divider />
                     <Menu.Item
                       color="red"
                       leftSection={<IconLogout size={14} />}
