@@ -45,15 +45,65 @@ sequenceDiagram
 
 ## 1. User Inputs
 
-Each API team should specify which inputs they need from the user.
+### Overview of All User Inputs
 
-### Forecasting API
+The following inputs are collected from the user at the beginning of the HRA workflow and are categorized by type:
+
+#### Renovation Package Selection
+
+User selects one or more renovation actions to evaluate (multi-select):
+
+- **Wall insulation** 
+- **Roof insulation** 
+- **Floor insulation** 
+- **Windows** 
+- **Air-water heat pump** 
+- **Condensing boiler** 
+- **PV** 
+- **Solar thermal panels** 
+
+#### Technical Inputs
+
+Building and location characteristics:
+
+- Building type and construction details
+- Floor area (m²)
+- Construction year
+- Number of floors
+- Climate zone / Location (lat, lng)
+- Current heating/cooling/hot water systems
+- Current glazing type
+- [Additional inputs to be defined by Forecasting team]
+
+#### Financial Inputs
+
+Economic parameters for the renovation:
+
+- Project lifetime (years, typically 1-30)
+- CAPEX (Capital expenditure) - Optional, can be retrieved from database
+- Annual maintenance cost - Optional, can be retrieved from database
+- Financing type - User chooses: **Equity** or **Loan**
+  - If **Loan** is selected, the following become required:
+    - Loan amount
+    - Loan term (years)
+    - Interest rate
+
+
+
+---
+
+### API-Specific Input Requirements
+
+Each API team should specify which of the above inputs (and any additional ones) they need.
+
+#### Forecasting API
 
 **Forecasting Team:** Define your required and optional user inputs.
 
 **Required Inputs:**
 
-- [To be defined by Forecasting team]
+- Renovation package selection (from above)
+- [Additional inputs to be defined by Forecasting team]
 
 **Optional Inputs:**
 
@@ -65,7 +115,7 @@ Each API team should specify which inputs they need from the user.
 
 ---
 
-### Financial API
+#### Financial API
 
 **Required Inputs from User:**
 
@@ -95,7 +145,7 @@ Each API team should specify which inputs they need from the user.
 
 ---
 
-### Technical API
+#### Technical API
 
 **Technical Team:** Define your required and optional user inputs.
 
@@ -276,6 +326,8 @@ flowchart TD
 
     Forecasting[FORECASTING SERVICE<br/>---<br/>POST /endpoint-to-define<br/>---<br/>Outputs:<br/>- energy_savings<br/>- energy_class<br/>- CO2 emissions<br/>- etc.]
 
+    RenovationSelect[RENOVATION PACKAGE SELECTION<br/>---<br/>User selects renovation actions:<br/>- Wall insulation<br/>- Roof insulation<br/>- Floor insulation<br/>- Windows<br/>- Air-water heat pump<br/>- Condensing boiler<br/>- PV<br/>- Solar thermal panels<br/>---<br/>Multiple selections allowed]
+
     Financial[FINANCIAL SERVICE<br/>---<br/>POST /arv<br/>POST /risk-assessment<br/>---<br/>Outputs:<br/>- Property value<br/>- Percentiles P5-P95<br/>- NPV, IRR, ROI, PBP, DPP]
 
     Technical[TECHNICAL SERVICE<br/>---<br/>POST /endpoint-to-define<br/>---<br/>Outputs:<br/>- Optimal package<br/>- Technology rankings]
@@ -285,12 +337,16 @@ flowchart TD
     UserInput --> Forecasting
     DB --> Forecasting
 
+    Forecasting --> RenovationSelect
+    RenovationSelect --> Financial
+
     UserInput --> Financial
     DB --> Financial
     Forecasting --> Financial
 
     Forecasting --> Technical
     Financial --> Technical
+    RenovationSelect --> Technical
 
     Forecasting --> Frontend
     Financial --> Frontend
@@ -299,6 +355,7 @@ flowchart TD
     style UserInput fill:#f0f0f0
     style DB fill:#d4edda
     style Forecasting fill:#cfe2ff
+    style RenovationSelect fill:#d1ecf1
     style Financial fill:#fff3cd
     style Technical fill:#f8d7da
     style Frontend fill:#e2e3e5
