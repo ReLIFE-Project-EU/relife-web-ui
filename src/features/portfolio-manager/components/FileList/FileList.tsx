@@ -100,19 +100,17 @@ export function FileList() {
 
   return (
     <Paper withBorder radius="md">
-      <Table.ScrollContainer minWidth={500}>
-        <Table verticalSpacing="sm" highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>File</Table.Th>
-              <Table.Th>Size</Table.Th>
-              <Table.Th>Uploaded</Table.Th>
-              <Table.Th style={{ width: 60 }} />
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>{rows}</Table.Tbody>
-        </Table>
-      </Table.ScrollContainer>
+      <Table verticalSpacing="sm" highlightOnHover>
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th>File</Table.Th>
+            <Table.Th>Size</Table.Th>
+            <Table.Th>Uploaded</Table.Th>
+            <Table.Th style={{ width: 60 }} />
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>{rows}</Table.Tbody>
+      </Table>
     </Paper>
   );
 }

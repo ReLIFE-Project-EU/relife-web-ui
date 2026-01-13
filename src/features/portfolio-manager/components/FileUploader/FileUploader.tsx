@@ -100,7 +100,7 @@ export function FileUploader() {
               Drag files here or click to select
             </Text>
             <Text size="sm" c="dimmed" inline mt={7}>
-              Supported: CSV, Excel (.xlsx, .xls), JSON
+              Supported: CSV
             </Text>
             <Text size="xs" c="dimmed" inline mt={4}>
               Max {formatBytes(FILE_UPLOAD_CONFIG.MAX_FILE_SIZE)} per file

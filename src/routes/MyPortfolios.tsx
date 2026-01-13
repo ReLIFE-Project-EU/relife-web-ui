@@ -24,8 +24,8 @@ export const MyPortfolios = () => {
             My Portfolios
           </Title>
           <Text c="dimmed" size="lg" maw={700}>
-            Manage your building data portfolios. Upload CSV, Excel, or JSON
-            files and organize them into portfolios for analysis.
+            Manage your building data portfolios. Upload CSV files and organize
+            them into portfolios for analysis.
           </Text>
         </Stack>
 

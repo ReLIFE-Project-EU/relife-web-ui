@@ -39,8 +39,7 @@ function PortfolioManagerContent() {
           Portfolio Manager
         </Title>
         <Text size="sm" c="dimmed">
-          Organize your building data files into portfolios. Upload CSV, Excel,
-          or JSON files.
+          Organize your building data files into portfolios. Upload CSV files.
         </Text>
       </Stack>
 
