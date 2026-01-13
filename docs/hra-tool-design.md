@@ -94,7 +94,7 @@ Economic parameters for the renovation:
 
 ### API-Specific Input Requirements
 
-Each API team should specify which of the above inputs (and any additional ones) they need.
+Each API developer should specify which of the above inputs (and any additional ones) they need.
 
 #### Forecasting API
 
@@ -103,15 +103,15 @@ Each API team should specify which of the above inputs (and any additional ones)
 **Required Inputs:**
 
 - Renovation package selection (from above)
-- [Additional inputs to be defined by Forecasting team]
+- [Additional inputs to be defined by Daniele]
 
 **Optional Inputs:**
 
-- [To be defined by Forecasting team]
+- [To be defined by Daniele]
 
 **Data from ReLIFE Database:**
 
-- [To be defined by Forecasting team]
+- [To be defined by Daniele]
 
 ---
 
@@ -151,11 +151,11 @@ Each API team should specify which of the above inputs (and any additional ones)
 
 **Required Inputs:**
 
-- [To be defined by Technical team]
+- [To be defined by Eric/Fabio]
 
 **Optional Inputs:**
 
-- [To be defined by Technical team]
+- [To be defined by Eric/Fabio]
 
 ---
 
@@ -163,7 +163,7 @@ Each API team should specify which of the above inputs (and any additional ones)
 
 ### Forecasting API
 
-**Forecasting Team:** Document your endpoint(s).
+**Daniele:** Document your endpoint(s).
 
 **Endpoint:** `POST /[TO_BE_DEFINED]`
 
@@ -178,7 +178,7 @@ Each API team should specify which of the above inputs (and any additional ones)
 - `energy_class` (string, EPC label after renovation) - Required by Financial API
 - [Other outputs to be defined] - May be required by Technical API
 
-**Status:** To be documented
+
 
 ---
 
@@ -288,13 +288,12 @@ Each API team should specify which of the above inputs (and any additional ones)
 
 **Note:** Percentile distributions (P5-P95) are sent to Technical API for TOPSIS ranking.
 
-**Status:** Documented
 
 ---
 
 ### Technical API
 
-**Technical Team:** Document your endpoint(s).
+**Eric/Fabio:** Document your endpoint(s).
 
 **Endpoint:** `POST /[TO_BE_DEFINED]`
 
@@ -310,7 +309,7 @@ Each API team should specify which of the above inputs (and any additional ones)
 - Technology rankings
 - [Other outputs to be defined]
 
-**Status:** To be documented
+
 
 ---
 
