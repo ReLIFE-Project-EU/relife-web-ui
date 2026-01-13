@@ -7,24 +7,14 @@ import { Alert, Box, Divider, Stack, Text, Title } from "@mantine/core";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 import { ComfortDisplay, EnergyMixDisplay, EPCDisplay } from "../energy";
-import { FundingOptions, RenovationPackages } from "../renovation";
+import { FundingOptions } from "../renovation";
 import { ErrorAlert, StepNavigation } from "../shared";
 
 export function EnergyRenovationStep() {
   const { state, dispatch } = useHomeAssistant();
   const { financial, renovation } = useHomeAssistantServices();
 
-  // Check if at least one package is selected
-  const hasSelectedPackages = state.renovation.selectedPackages.length > 0;
-
-  // Check if selected packages have at least one intervention
-  const hasValidSelections = state.renovation.selectedPackages.every(
-    (pkgId) =>
-      state.renovation.interventions[pkgId] &&
-      state.renovation.interventions[pkgId].length > 0,
-  );
-
-  const canEvaluate = hasSelectedPackages && hasValidSelections;
+  const canEvaluate = true; // Always allow evaluation without package selection
 
   const handlePrevious = () => {
     dispatch({ type: "PREV_STEP" });
@@ -115,27 +105,8 @@ export function EnergyRenovationStep() {
 
       <Divider my="md" />
 
-      {/* Renovation Packages Selection */}
-      <RenovationPackages />
-
-      <Divider my="md" />
-
       {/* Funding Options */}
       <FundingOptions />
-
-      {/* Validation message */}
-      {!canEvaluate && hasSelectedPackages && (
-        <Alert color="yellow" title="Selection incomplete">
-          Please ensure each selected package has at least one measure selected.
-        </Alert>
-      )}
-
-      {!hasSelectedPackages && (
-        <Alert color="blue" title="Select a renovation package">
-          Choose at least one renovation package above to proceed with the
-          evaluation.
-        </Alert>
-      )}
 
       {/* Error display */}
       <ErrorAlert error={state.error} title="Evaluation Error" />

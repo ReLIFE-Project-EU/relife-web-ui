@@ -102,8 +102,7 @@ Each API developer should specify which of the above inputs (and any additional 
 
 **Required Inputs:**
 
-- Renovation package selection (from above)
-- [Additional inputs to be defined by Daniele]
+- [To be defined by Daniele]
 
 **Optional Inputs:**
 
@@ -325,19 +324,14 @@ flowchart TD
 
     Forecasting[FORECASTING SERVICE<br/>---<br/>POST /endpoint-to-define<br/>---<br/>Outputs:<br/>- energy_savings<br/>- energy_class<br/>- CO2 emissions<br/>- etc.]
 
-    RenovationSelect[RENOVATION PACKAGE SELECTION<br/>---<br/>User selects renovation actions:<br/>- Wall insulation<br/>- Roof insulation<br/>- Floor insulation<br/>- Windows<br/>- Air-water heat pump<br/>- Condensing boiler<br/>- PV<br/>- Solar thermal panels<br/>---<br/>Multiple selections allowed]
-
     Financial[FINANCIAL SERVICE<br/>---<br/>POST /arv<br/>POST /risk-assessment<br/>---<br/>Outputs:<br/>- Property value<br/>- Percentiles P5-P95<br/>- NPV, IRR, ROI, PBP, DPP]
 
     Technical[TECHNICAL SERVICE<br/>---<br/>POST /endpoint-to-define<br/>---<br/>Outputs:<br/>- Optimal package<br/>- Technology rankings]
 
-    Frontend[FRONTEND UI<br/>---<br/>Display complete<br/>renovation plan<br/>to user]
+    Frontend[RESULTS DISPLAY<br/>---<br/>Combined outputs<br/>from all services]
 
     UserInput --> Forecasting
     DB --> Forecasting
-
-    Forecasting --> RenovationSelect
-    RenovationSelect --> Financial
 
     UserInput --> Financial
     DB --> Financial
@@ -345,7 +339,6 @@ flowchart TD
 
     Forecasting --> Technical
     Financial --> Technical
-    RenovationSelect --> Technical
 
     Forecasting --> Frontend
     Financial --> Frontend
@@ -354,7 +347,6 @@ flowchart TD
     style UserInput fill:#f0f0f0
     style DB fill:#d4edda
     style Forecasting fill:#cfe2ff
-    style RenovationSelect fill:#d1ecf1
     style Financial fill:#fff3cd
     style Technical fill:#f8d7da
     style Frontend fill:#e2e3e5
