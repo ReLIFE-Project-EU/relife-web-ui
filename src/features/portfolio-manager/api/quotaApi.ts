@@ -5,16 +5,14 @@
 import { supabase } from "../../../auth";
 import { FILE_UPLOAD_CONFIG } from "../constants";
 import type { StorageQuota } from "../types";
+import { requireAuthenticatedUser } from "../utils";
 
 export const quotaApi = {
   /**
    * Get current storage quota for the user
    */
   async get(): Promise<StorageQuota> {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) throw new Error("Not authenticated");
+    const user = await requireAuthenticatedUser();
 
     const { data, error } = await supabase
       .from("user_storage_quotas")

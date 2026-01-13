@@ -5,6 +5,11 @@
 import { supabase } from "../../../auth";
 import { FILE_UPLOAD_CONFIG, STORAGE_BUCKET } from "../constants";
 import type { PortfolioFile, PortfolioFileRow } from "../types";
+import {
+  requireAuthenticatedUser,
+  buildStoragePath,
+  getISOTimestamp,
+} from "../utils";
 import { quotaApi } from "./quotaApi";
 
 /**
@@ -25,13 +30,17 @@ function toPortfolioFile(row: PortfolioFileRow): PortfolioFile {
 
 export const fileApi = {
   /**
-   * List all files in a portfolio
+   * List all files in a portfolio.
+   * Defense-in-depth: scopes by user_id to prevent unauthorized access.
    */
   async listByPortfolio(portfolioId: string): Promise<PortfolioFile[]> {
+    const user = await requireAuthenticatedUser();
+
     const { data, error } = await supabase
       .from("portfolio_files")
       .select("*")
       .eq("portfolio_id", portfolioId)
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
@@ -39,14 +48,11 @@ export const fileApi = {
   },
 
   /**
-   * Upload a file to a portfolio
+   * Upload a file to a portfolio.
+   * Uses sanitized filename to prevent path traversal attacks.
    */
   async upload(portfolioId: string, file: File): Promise<PortfolioFile> {
-    // Validate user
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) throw new Error("Not authenticated");
+    const user = await requireAuthenticatedUser();
 
     // Validate file type
     if (
@@ -68,9 +74,14 @@ export const fileApi = {
       throw new Error("Storage quota exceeded");
     }
 
-    // Generate unique storage path
+    // Generate unique storage path with sanitized filename
     const fileId = crypto.randomUUID();
-    const storagePath = `${user.id}/${portfolioId}/${fileId}_${file.name}`;
+    const storagePath = buildStoragePath(
+      user.id,
+      portfolioId,
+      fileId,
+      file.name,
+    );
 
     // Upload to storage
     const { error: uploadError } = await supabase.storage
@@ -118,9 +129,12 @@ export const fileApi = {
   },
 
   /**
-   * Delete a file
+   * Delete a file.
+   * Defense-in-depth: scopes by user_id to prevent unauthorized access.
    */
   async delete(file: PortfolioFile): Promise<void> {
+    const user = await requireAuthenticatedUser();
+
     // Delete from storage
     const { error: storageError } = await supabase.storage
       .from(STORAGE_BUCKET)
@@ -128,48 +142,51 @@ export const fileApi = {
 
     if (storageError) throw storageError;
 
-    // Delete database record
+    // Delete database record (scoped by user)
     const { error: dbError } = await supabase
       .from("portfolio_files")
       .delete()
-      .eq("id", file.id);
+      .eq("id", file.id)
+      .eq("user_id", user.id);
 
     if (dbError) throw dbError;
   },
 
   /**
-   * Rename a file (metadata only, storage path unchanged)
+   * Rename a file (metadata only, storage path unchanged).
+   * Defense-in-depth: scopes by user_id to prevent unauthorized access.
    */
   async rename(fileId: string, newFilename: string): Promise<void> {
+    const user = await requireAuthenticatedUser();
+
     const { error } = await supabase
       .from("portfolio_files")
       .update({
         original_filename: newFilename,
-        updated_at: new Date().toISOString(),
+        updated_at: getISOTimestamp(),
       })
-      .eq("id", fileId);
+      .eq("id", fileId)
+      .eq("user_id", user.id);
 
     if (error) throw error;
   },
 
   /**
-   * Move a file to another portfolio
+   * Move a file to another portfolio.
+   * Defense-in-depth: scopes by user_id to prevent unauthorized access.
    */
   async move(fileId: string, toPortfolioId: string): Promise<void> {
-    // Get current file info
+    const user = await requireAuthenticatedUser();
+
+    // Get current file info (scoped by user)
     const { data: file, error: fetchError } = await supabase
       .from("portfolio_files")
       .select("*")
       .eq("id", fileId)
+      .eq("user_id", user.id)
       .single();
 
     if (fetchError) throw fetchError;
-
-    // Get current user
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) throw new Error("Not authenticated");
 
     // Calculate new storage path
     const filename = file.storage_path.split("/").pop();
@@ -182,15 +199,16 @@ export const fileApi = {
 
     if (moveError) throw moveError;
 
-    // Update database record
+    // Update database record (scoped by user)
     const { error: updateError } = await supabase
       .from("portfolio_files")
       .update({
         portfolio_id: toPortfolioId,
         storage_path: newStoragePath,
-        updated_at: new Date().toISOString(),
+        updated_at: getISOTimestamp(),
       })
-      .eq("id", fileId);
+      .eq("id", fileId)
+      .eq("user_id", user.id);
 
     if (updateError) throw updateError;
   },

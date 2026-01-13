@@ -6,6 +6,7 @@ import { useCallback, useContext } from "react";
 import { fileApi, quotaApi } from "../api";
 import { PortfolioContext } from "../context/PortfolioContextDefinition";
 import type { PortfolioFile } from "../types";
+import { normalizeErrorMessage, getISOTimestamp } from "../utils";
 
 export function useFileUpload() {
   const context = useContext(PortfolioContext);
@@ -45,8 +46,7 @@ export function useFileUpload() {
 
         return uploadedFile;
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Failed to upload file";
+        const message = normalizeErrorMessage(err, "Failed to upload file");
         dispatch({ type: "FAIL_UPLOAD", fileId, error: message });
         return null;
       }
@@ -83,8 +83,7 @@ export function useFileUpload() {
         dispatch({ type: "DELETE_FILE", id: file.id });
         dispatch({ type: "UPDATE_QUOTA_USAGE", delta: -file.fileSize });
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Failed to delete file";
+        const message = normalizeErrorMessage(err, "Failed to delete file");
         dispatch({ type: "SET_ERROR", error: message });
         throw err;
       }
@@ -104,12 +103,11 @@ export function useFileUpload() {
           id: fileId,
           updates: {
             originalFilename: newFilename,
-            updatedAt: new Date().toISOString(),
+            updatedAt: getISOTimestamp(),
           },
         });
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Failed to rename file";
+        const message = normalizeErrorMessage(err, "Failed to rename file");
         dispatch({ type: "SET_ERROR", error: message });
         throw err;
       }
@@ -126,8 +124,7 @@ export function useFileUpload() {
         await fileApi.move(fileId, toPortfolioId);
         dispatch({ type: "MOVE_FILE", fileId, toPortfolioId });
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Failed to move file";
+        const message = normalizeErrorMessage(err, "Failed to move file");
         dispatch({ type: "SET_ERROR", error: message });
         throw err;
       }
@@ -151,8 +148,7 @@ export function useFileUpload() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Failed to download file";
+        const message = normalizeErrorMessage(err, "Failed to download file");
         dispatch({ type: "SET_ERROR", error: message });
         throw err;
       }

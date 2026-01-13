@@ -5,6 +5,7 @@
 import { supabase } from "../../../auth";
 import { STORAGE_BUCKET } from "../constants";
 import type { Portfolio, PortfolioRow } from "../types";
+import { requireAuthenticatedUser, getISOTimestamp } from "../utils";
 
 /**
  * Transform database row to Portfolio interface
@@ -22,9 +23,12 @@ function toPortfolio(row: PortfolioRow): Portfolio {
 
 export const portfolioApi = {
   /**
-   * List all portfolios for the current user
+   * List all portfolios for the current user.
+   * Defense-in-depth: filters by user_id even though RLS should handle this.
    */
   async list(): Promise<Portfolio[]> {
+    const user = await requireAuthenticatedUser();
+
     const { data, error } = await supabase
       .from("portfolios")
       .select(
@@ -37,6 +41,7 @@ export const portfolioApi = {
         portfolio_files(count)
       `,
       )
+      .eq("user_id", user.id)
       .order("name");
 
     if (error) throw error;
@@ -47,10 +52,7 @@ export const portfolioApi = {
    * Create a new portfolio
    */
   async create(name: string, description?: string): Promise<Portfolio> {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) throw new Error("Not authenticated");
+    const user = await requireAuthenticatedUser();
 
     const { data, error } = await supabase
       .from("portfolios")
@@ -75,41 +77,53 @@ export const portfolioApi = {
   },
 
   /**
-   * Rename a portfolio
+   * Rename a portfolio.
+   * Defense-in-depth: scopes by user_id to prevent unauthorized access.
    */
   async rename(id: string, name: string): Promise<void> {
+    const user = await requireAuthenticatedUser();
+
     const { error } = await supabase
       .from("portfolios")
-      .update({ name, updated_at: new Date().toISOString() })
-      .eq("id", id);
+      .update({ name, updated_at: getISOTimestamp() })
+      .eq("id", id)
+      .eq("user_id", user.id);
 
     if (error) throw error;
   },
 
   /**
-   * Update portfolio description
+   * Update portfolio description.
+   * Defense-in-depth: scopes by user_id to prevent unauthorized access.
    */
   async updateDescription(
     id: string,
     description: string | null,
   ): Promise<void> {
+    const user = await requireAuthenticatedUser();
+
     const { error } = await supabase
       .from("portfolios")
-      .update({ description, updated_at: new Date().toISOString() })
-      .eq("id", id);
+      .update({ description, updated_at: getISOTimestamp() })
+      .eq("id", id)
+      .eq("user_id", user.id);
 
     if (error) throw error;
   },
 
   /**
-   * Delete a portfolio and all its files
+   * Delete a portfolio and all its files.
+   * Defense-in-depth: scopes by user_id to prevent unauthorized access.
    */
   async delete(id: string): Promise<void> {
-    // First, get all files in the portfolio
+    const user = await requireAuthenticatedUser();
+
+    // First, get all files in the portfolio (scoped by user)
     const { data: files } = await supabase
       .from("portfolio_files")
       .select("storage_path")
-      .eq("portfolio_id", id);
+      .eq("portfolio_id", id)
+      .eq("user_id", user.id);
 
     // Delete files from storage if any exist
     if (files && files.length > 0) {
@@ -124,7 +138,11 @@ export const portfolioApi = {
     }
 
     // Delete the portfolio (cascade deletes file records)
-    const { error } = await supabase.from("portfolios").delete().eq("id", id);
+    const { error } = await supabase
+      .from("portfolios")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", user.id);
 
     if (error) throw error;
   },

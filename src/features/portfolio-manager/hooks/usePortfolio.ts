@@ -6,6 +6,7 @@ import { useCallback, useContext } from "react";
 import { portfolioApi } from "../api";
 import { PortfolioContext } from "../context/PortfolioContextDefinition";
 import type { PortfolioContextValue } from "../context/PortfolioContextDefinition";
+import { normalizeErrorMessage, getISOTimestamp } from "../utils";
 
 // Re-export context value type for convenience
 export type { PortfolioContextValue };
@@ -46,8 +47,10 @@ export function usePortfolio(): PortfolioContextValue & {
         dispatch({ type: "ADD_PORTFOLIO", portfolio });
         dispatch({ type: "SELECT_PORTFOLIO", id: portfolio.id });
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Failed to create portfolio";
+        const message = normalizeErrorMessage(
+          err,
+          "Failed to create portfolio",
+        );
         dispatch({ type: "SET_ERROR", error: message });
         throw err;
       }
@@ -62,11 +65,13 @@ export function usePortfolio(): PortfolioContextValue & {
         dispatch({
           type: "UPDATE_PORTFOLIO",
           id,
-          updates: { name, updatedAt: new Date().toISOString() },
+          updates: { name, updatedAt: getISOTimestamp() },
         });
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Failed to rename portfolio";
+        const message = normalizeErrorMessage(
+          err,
+          "Failed to rename portfolio",
+        );
         dispatch({ type: "SET_ERROR", error: message });
         throw err;
       }
@@ -80,8 +85,10 @@ export function usePortfolio(): PortfolioContextValue & {
         await portfolioApi.delete(id);
         dispatch({ type: "DELETE_PORTFOLIO", id });
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Failed to delete portfolio";
+        const message = normalizeErrorMessage(
+          err,
+          "Failed to delete portfolio",
+        );
         dispatch({ type: "SET_ERROR", error: message });
         throw err;
       }
@@ -102,8 +109,10 @@ export function usePortfolio(): PortfolioContextValue & {
       const portfolios = await portfolioApi.list();
       dispatch({ type: "SET_PORTFOLIOS", portfolios });
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to refresh portfolios";
+      const message = normalizeErrorMessage(
+        err,
+        "Failed to refresh portfolios",
+      );
       dispatch({ type: "SET_ERROR", error: message });
     }
   }, [dispatch]);
