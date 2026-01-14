@@ -1,0 +1,782 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Financial Service APIs",
+    "description": "FastAPI application for all financial indicators",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Read Root",
+        "operationId": "read_root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Health Check",
+        "description": "Basic health check endpoint that returns service status and current timestamp.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          }
+        }
+      }
+    },
+    "/whoami": {
+      "get": {
+        "tags": ["auth"],
+        "summary": "Whoami With Roles",
+        "description": "Return authenticated user's information including their Keycloak roles.",
+        "operationId": "whoami_with_roles_whoami_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthenticatedUser" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/storage": {
+      "get": {
+        "tags": ["examples"],
+        "summary": "List Files",
+        "description": "List all files uploaded by the authenticated user to the default Supabase Storage bucket.\n\nThis endpoint retrieves a comprehensive list of all files that the current user\nhas uploaded to their personal storage folder. Each file entry includes metadata\nsuch as size, creation date, and public access URL.",
+        "operationId": "list_files_storage_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": { "$ref": "#/components/schemas/StorageFileInfo" },
+                  "type": "array",
+                  "title": "Response List Files Storage Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      },
+      "post": {
+        "tags": ["examples"],
+        "summary": "Upload File",
+        "description": "Upload a file to Supabase Storage with user-specific organization.\n\nThis endpoint uploads files to a user-specific folder within the configured storage bucket.\nEach user's files are isolated in their own directory to prevent unauthorized access.",
+        "operationId": "upload_file_storage_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_file_storage_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FileUploadResponse" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/table/{table_name}": {
+      "get": {
+        "tags": ["examples"],
+        "summary": "Read Table",
+        "description": "Read data from a Supabase table. The table name is passed as a path parameter.\n\nThis endpoint respects Row Level Security (RLS) policies configured on the table.\nUsers will only see data they are authorized to access based on their permissions.",
+        "operationId": "read_table_table__table_name__get",
+        "security": [{ "HTTPBearer": [] }],
+        "parameters": [
+          {
+            "name": "table_name",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "title": "Table Name" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TableDataResponse" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user-profile": {
+      "get": {
+        "tags": ["examples"],
+        "summary": "Get User Profile",
+        "description": "Get comprehensive user profile information including Keycloak roles.\n\nThis endpoint demonstrates how to work with users authenticated via Keycloak\nwithout requiring them to be present in Supabase. It shows how to access\nuser information and roles from the Keycloak authentication context.\n\nThis works with both Supabase-synchronized and direct Keycloak users.",
+        "operationId": "get_user_profile_user_profile_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get User Profile User Profile Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/risk-assessment": {
+      "post": {
+        "tags": ["risk-assessment"],
+        "summary": "Assess Project Risk",
+        "description": "Perform comprehensive Monte Carlo risk assessment for energy retrofit project.\n\nThis endpoint runs a Monte Carlo simulation (10,000 scenarios) to assess the financial\nrisk and returns of an energy retrofit investment. The response complexity depends on\nthe requested output_level:\n\n- **private**: For individual homeowners - only median values and key metrics\n- **professional**: For energy consultants - includes percentiles and probabilities\n- **public**: For institutions - full statistical breakdown\n- **complete**: Everything including visualizations\n\n**Authentication**: Optional. If a valid JWT token is provided, user information\nwill be logged for audit purposes.\n\nParameters\n----------\nrequest : RiskAssessmentRequest\n    Project parameters including:\n    - capex: Total investment cost (€)\n    - annual_energy_savings: Energy production/savings (kWh/year)\n    - annual_maintenance_cost: Yearly maintenance cost (€)\n    - project_lifetime: Project duration (years)\n    - loan_amount: Financed amount (€)\n    - loan_term: Loan duration (years)\n    - output_level: Response complexity (private/professional/public/complete)\n    - indicators: List of KPIs to calculate (NPV, IRR, ROI, PBP, DPP)\n\nReturns\n-------\nRiskAssessmentResponse\n    Financial risk assessment results with fields populated based on output_level:\n    - point_forecasts: Median values (all levels)\n    - metadata: Simulation parameters (all levels)\n    - key_percentiles: P10/P50/P90 (professional+)\n    - probabilities: Success rates (professional+)\n    - percentiles: Full distribution (public+)\n    - visualizations: Charts as base64 (complete only, private gets cash flow)\n\nRaises\n------\nHTTPException 400\n    - Invalid input parameters (e.g., loan > capex)\n    - Missing required parameters\nHTTPException 500\n    - Simulation execution failed\n    - Unexpected processing error\n\nExample Request\n---------------\n```json\n{\n    \"capex\": 60000,\n    \"annual_energy_savings\": 27400,\n    \"annual_maintenance_cost\": 2000,\n    \"project_lifetime\": 20,\n    \"loan_amount\": 20000,\n    \"loan_term\": 15,\n    \"output_level\": \"private\",\n    \"indicators\": [\"NPV\", \"PBP\", \"ROI\", \"IRR\"]\n}\n```\n\nExample Response (private level)\n---------------------------------\n```json\n{\n    \"point_forecasts\": {\n        \"NPV\": 15511.19,\n        \"PBP\": 10.9,\n        \"ROI\": 1.423,\n        \"IRR\": 0.084,\n        \"MonthlyAvgSavings\": 231.30,\n        \"SuccessRate\": 0.982\n    },\n    \"metadata\": {\n        \"n_sims\": 10000,\n        \"project_lifetime\": 20,\n        \"capex\": 60000,\n        \"loan_amount\": 20000,\n        \"annual_loan_payment\": 1736.50,\n        \"loan_rate_percent\": 3.5,\n        \"output_level\": \"private\"\n    },\n    \"visualizations\": {\n        \"cash_flow_timeline\": \"data:image/png;base64,iVBORw0KG...\"\n    }\n}\n```\n\nNotes\n-----\n- Simulation uses 10,000 Monte Carlo scenarios with fixed seed for reproducibility\n- Market parameters (electricity prices, inflation, loan rates) are sampled from distributions\n- Execution time: typically 2-5 seconds depending on project_lifetime\n- Visualizations (when included) are base64-encoded PNGs ready for direct display",
+        "operationId": "assess_project_risk_risk_assessment_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RiskAssessmentRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiskAssessmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/arv": {
+      "post": {
+        "tags": ["arv"],
+        "summary": "Calculate Arv",
+        "description": "Calculate After Renovation Value (ARV) for a property.\n\nThis endpoint predicts the property value after energy renovation based on\nphysical characteristics, location, and energy performance class. The prediction\nuses a trained LightGBM model on Greek property market data.\n\n**Use Case**: Estimate property value increase due to energy efficiency improvements.\nThe energy_class input should be the AFTER renovation EPC label (obtained from\nthe energy analysis API).\n\n**Authentication**: Optional. If a valid JWT token is provided, user information\nwill be logged for audit purposes.\n\nParameters\n----------\nrequest : ARVRequest\n    Property characteristics including:\n    - **Location**: lat, lng (coordinates)\n    - **Physical**: floor_area (m²), construction_year, floor_number, \n      number_of_floors, property_type\n    - **Energy**: energy_class (EPC label after renovation), \n      renovated_last_5_years (typically True)\n\nReturns\n-------\nARVResponse\n    Predicted property value with:\n    - price_per_sqm: Predicted price per square meter (€/m²)\n    - total_price: Total property value (€)\n    - floor_area: Echo of input floor area (m²)\n    - energy_class: Echo of input energy class\n    - metadata: Additional prediction details (model version, timestamp, etc.)\n\nRaises\n------\nHTTPException 400\n    - Invalid input parameters (e.g., floor_number >= number_of_floors)\n    - Missing or invalid property characteristics\nHTTPException 500\n    - Model file not found\n    - Model loading failed\n    - Prediction execution failed\n\nExample Request\n---------------\n```json\n{\n    \"lat\": 37.981,\n    \"lng\": 23.728,\n    \"floor_area\": 85.0,\n    \"construction_year\": 1985,\n    \"floor_number\": 2,\n    \"number_of_floors\": 5,\n    \"property_type\": \"Apartment\",\n    \"energy_class\": \"Β+\",\n    \"renovated_last_5_years\": true\n}\n```\n\nExample Response\n----------------\n```json\n{\n    \"price_per_sqm\": 1235.50,\n    \"total_price\": 105017.50,\n    \"floor_area\": 85.0,\n    \"energy_class\": \"Β+\",\n    \"metadata\": {\n        \"model_file\": \"lgb_model.pkl\",\n        \"prediction_timestamp\": \"2026-01-08T14:30:00.123456\",\n        \"building_age\": 41,\n        \"property_type_mapped\": \"Διαμέρισμα\",\n        \"input_features\": {\n            \"lat\": 37.981,\n            \"lng\": 23.728,\n            \"floor_area\": 85.0,\n            \"building_age\": 41,\n            \"floor_number\": 2,\n            \"number_of_floors\": 5,\n            \"energy_class\": \"Β+\",\n            \"renovated_last_5_years\": true\n        }\n    }\n}\n```\n\nNotes\n-----\n- The model expects Greek EPC labels: Η, Ζ, Ε, Δ, Γ, Β, Β+, Α, Α+\n- Property types are mapped to Greek labels internally\n- The model is loaded once and cached for performance\n- Building age is calculated automatically from construction_year\n- For before/after comparison: call endpoint twice with different energy_class values",
+        "operationId": "calculate_arv_arv_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ARVRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ARVResponse" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ARVRequest": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat",
+            "description": "Latitude of the property location in decimal degrees.",
+            "examples": [37.981]
+          },
+          "lng": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lng",
+            "description": "Longitude of the property location in decimal degrees.",
+            "examples": [23.728]
+          },
+          "floor_area": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Floor Area",
+            "description": "Usable floor area in square meters (m²).",
+            "examples": [85.0]
+          },
+          "construction_year": {
+            "type": "integer",
+            "maximum": 2030.0,
+            "minimum": 1800.0,
+            "title": "Construction Year",
+            "description": "Year the building was originally constructed.",
+            "examples": [1985]
+          },
+          "floor_number": {
+            "anyOf": [{ "type": "integer" }, { "type": "null" }],
+            "title": "Floor Number",
+            "description": "Floor number where the property is located (0=ground floor, 1=first floor, etc.). Can be None for detached houses or when not applicable.",
+            "examples": [2]
+          },
+          "number_of_floors": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Number Of Floors",
+            "description": "Total number of floors in the building.",
+            "examples": [5]
+          },
+          "property_type": {
+            "$ref": "#/components/schemas/PropertyType",
+            "description": "Type of property.",
+            "examples": ["Apartment"]
+          },
+          "energy_class": {
+            "$ref": "#/components/schemas/EnergyClass",
+            "description": "Energy Performance Certificate (EPC) class. This should be the AFTER renovation energy class (obtained from energy analysis API).",
+            "examples": ["Β+"]
+          },
+          "renovated_last_5_years": {
+            "type": "boolean",
+            "title": "Renovated Last 5 Years",
+            "description": "Whether the property has been renovated within the last 5 years. Typically True when evaluating post-renovation value.",
+            "default": true,
+            "examples": [true]
+          }
+        },
+        "type": "object",
+        "required": [
+          "lat",
+          "lng",
+          "floor_area",
+          "construction_year",
+          "number_of_floors",
+          "property_type",
+          "energy_class"
+        ],
+        "title": "ARVRequest",
+        "description": "Request model for After Renovation Value (ARV) prediction.\n\nDefines all property characteristics needed for price prediction\nusing the trained LightGBM model.\n\nAttributes:\n    Location:\n        lat: Latitude coordinate (decimal degrees)\n        lng: Longitude coordinate (decimal degrees)\n    \n    Physical Characteristics:\n        floor_area: Usable floor area in square meters\n        construction_year: Year the building was constructed\n        floor_number: Floor level where property is located (can be None for houses)\n        number_of_floors: Total floors in the building\n        property_type: Type of property (Apartment, Villa, etc.)\n    \n    Energy Performance:\n        energy_class: Current/predicted EPC label after renovation\n        renovated_last_5_years: Whether property was recently renovated"
+      },
+      "ARVResponse": {
+        "properties": {
+          "price_per_sqm": {
+            "type": "number",
+            "title": "Price Per Sqm",
+            "description": "Predicted price per square meter in euros.",
+            "examples": [1235.5]
+          },
+          "total_price": {
+            "type": "number",
+            "title": "Total Price",
+            "description": "Total predicted property value in euros (price_per_sqm × floor_area).",
+            "examples": [105017.5]
+          },
+          "floor_area": {
+            "type": "number",
+            "title": "Floor Area",
+            "description": "Floor area used in calculation (m²).",
+            "examples": [85.0]
+          },
+          "energy_class": {
+            "type": "string",
+            "title": "Energy Class",
+            "description": "Energy class used in prediction.",
+            "examples": ["Β+"]
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata",
+            "description": "Additional metadata about the prediction (model version, timestamp, etc.).",
+            "examples": [
+              {
+                "building_age": 41,
+                "model_version": "lgb_model.pkl",
+                "prediction_timestamp": "2026-01-08T10:30:00Z"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "price_per_sqm",
+          "total_price",
+          "floor_area",
+          "energy_class"
+        ],
+        "title": "ARVResponse",
+        "description": "Response model for After Renovation Value prediction.\n\nContains the predicted property value after renovation based on\nthe provided characteristics and energy efficiency class.\n\nAttributes:\n    price_per_sqm: Predicted price per square meter (€/m²)\n    total_price: Total predicted property value (€)\n    floor_area: Echo of input floor area for reference (m²)\n    energy_class: Echo of input energy class for reference\n    metadata: Additional information about the prediction"
+      },
+      "AuthenticatedUser": {
+        "properties": {
+          "token": { "type": "string", "title": "Token" },
+          "user": { "$ref": "#/components/schemas/UniversalUser" },
+          "authentication_method": {
+            "$ref": "#/components/schemas/AuthenticationMethod"
+          },
+          "keycloak_roles": {
+            "anyOf": [
+              {
+                "items": { "$ref": "#/components/schemas/KeycloakRole" },
+                "type": "array"
+              },
+              { "type": "null" }
+            ],
+            "title": "Keycloak Roles"
+          }
+        },
+        "type": "object",
+        "required": ["token", "user", "authentication_method"],
+        "title": "AuthenticatedUser",
+        "description": "Authenticated user model supporting multiple authentication providers.\n\nThis model abstracts authentication information from various sources (Supabase, Keycloak)\nand provides a consistent interface for user data and permissions."
+      },
+      "AuthenticationMethod": {
+        "type": "string",
+        "enum": ["supabase", "keycloak"],
+        "title": "AuthenticationMethod",
+        "description": "Authentication method used to authenticate the user."
+      },
+      "Body_upload_file_storage_post": {
+        "properties": {
+          "file": { "type": "string", "format": "binary", "title": "File" }
+        },
+        "type": "object",
+        "required": ["file"],
+        "title": "Body_upload_file_storage_post"
+      },
+      "EnergyClass": {
+        "type": "string",
+        "enum": ["Η", "Ζ", "Ε", "Δ", "Γ", "Β", "Β+", "Α", "Α+"],
+        "title": "EnergyClass",
+        "description": "Energy Performance Certificate (EPC) classes.\n\nOrdered from worst (Η) to best (Α+) energy efficiency.\nGreek labels as used in the Greek property market."
+      },
+      "FileUploadResponse": {
+        "properties": {
+          "message": { "type": "string", "title": "Message" },
+          "path": { "type": "string", "title": "Path" },
+          "public_url": { "type": "string", "title": "Public Url" }
+        },
+        "type": "object",
+        "required": ["message", "path", "public_url"],
+        "title": "FileUploadResponse",
+        "description": "Response model for file upload endpoint."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": { "$ref": "#/components/schemas/ValidationError" },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "KeycloakRole": {
+        "properties": {
+          "id": { "type": "string", "title": "Id" },
+          "name": { "type": "string", "title": "Name" },
+          "description": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Description"
+          },
+          "composite": {
+            "anyOf": [{ "type": "boolean" }, { "type": "null" }],
+            "title": "Composite"
+          },
+          "clientRole": {
+            "anyOf": [{ "type": "boolean" }, { "type": "null" }],
+            "title": "Clientrole"
+          },
+          "containerId": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Containerid"
+          }
+        },
+        "type": "object",
+        "required": ["id", "name"],
+        "title": "KeycloakRole",
+        "description": "Representation of a Keycloak role with its attributes.\n\nThis model represents role information retrieved from Keycloak's identity provider."
+      },
+      "OutputLevel": {
+        "type": "string",
+        "enum": ["private", "professional", "public", "complete"],
+        "title": "OutputLevel",
+        "description": "Output detail level for risk assessment response.\n\nAutomatically determined by which frontend tool is being used:\n- private: Individual homeowners - basic metrics plus intuitive summaries/graphs (~2 KB)\n- professional: Energy consultants/professionals - detailed analysis (~5 KB)\n- public: Public institutions - comprehensive reports (~10 KB)\n- complete: Special cases requiring charts - includes visualizations (~500 KB - 2 MB)\n\nNote: This is set by the frontend based on the tool context, NOT selected by end-users."
+      },
+      "PropertyType": {
+        "type": "string",
+        "enum": [
+          "Loft",
+          "Studio / Bedsit",
+          "Villa",
+          "Apartment",
+          "Building",
+          "Other",
+          "Maisonette",
+          "Detached House",
+          "Apartment Complex"
+        ],
+        "title": "PropertyType",
+        "description": "Property type classifications.\n\nThese English labels are mapped internally to Greek labels\nused by the trained model."
+      },
+      "RiskAssessmentRequest": {
+        "properties": {
+          "capex": {
+            "anyOf": [
+              { "type": "number", "exclusiveMinimum": 0.0 },
+              { "type": "null" }
+            ],
+            "title": "Capex",
+            "description": "Capital expenditure (CAPEX) in euros. Must be positive if provided. If None, value will be retrieved from internal dataset.",
+            "examples": [60000]
+          },
+          "annual_maintenance_cost": {
+            "anyOf": [{ "type": "number", "minimum": 0.0 }, { "type": "null" }],
+            "title": "Annual Maintenance Cost",
+            "description": "Annual maintenance and operational cost (OPEX) in euros. If None, value will be retrieved from internal dataset.",
+            "examples": [2000]
+          },
+          "annual_energy_savings": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Annual Energy Savings",
+            "description": "Expected annual energy savings in kWh. Provided by external energy consumption API.",
+            "examples": [27400]
+          },
+          "project_lifetime": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Project Lifetime",
+            "description": "Project evaluation horizon in years. Maximum 30 years.",
+            "examples": [20]
+          },
+          "loan_amount": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Loan Amount",
+            "description": "Loan amount in euros (user input). Defaults to 0 for all-equity financing. If > 0, loan_term must also be provided.",
+            "default": 0.0,
+            "examples": [25000]
+          },
+          "loan_term": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Loan Term",
+            "description": "Loan repayment term in years (user input). Must be > 0 if loan_amount > 0.",
+            "default": 0,
+            "examples": [15]
+          },
+          "output_level": {
+            "$ref": "#/components/schemas/OutputLevel",
+            "description": "Output detail level. Automatically determined by which frontend tool is used: private (homeowners), professional (consultants), public (institutions), complete (with charts). NOT selected by end-users."
+          },
+          "indicators": {
+            "items": { "type": "string" },
+            "type": "array",
+            "title": "Indicators",
+            "description": "Which financial indicators to include in response.",
+            "default": ["IRR", "NPV", "PBP", "DPP", "ROI"],
+            "examples": [["IRR", "NPV", "PBP"]]
+          },
+          "include_visualizations": {
+            "anyOf": [{ "type": "boolean" }, { "type": "null" }],
+            "title": "Include Visualizations",
+            "description": "Override output_level to explicitly include/exclude visualizations. None means follow output_level default (only 'complete' includes viz)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "annual_energy_savings",
+          "project_lifetime",
+          "output_level"
+        ],
+        "title": "RiskAssessmentRequest",
+        "description": "Request model for Monte Carlo risk assessment.\n\nDefines all input parameters needed for comprehensive financial risk assessment\nof energy retrofit projects using Monte Carlo simulation.\n\nAttributes:\n    Project Parameters:\n        capex: Capital expenditure in euros (optional - falls back to dataset if None)\n        annual_maintenance_cost: Annual O&M cost in euros (optional - falls back to dataset if None)\n        annual_energy_savings: Annual energy saved in kWh (provided by another API)\n        project_lifetime: Project horizon in years (1-30, required)\n    \n    Financing Parameters:\n        loan_amount: Loan principal in euros (user input, default: 0 = all-equity)\n        loan_term: Loan repayment period in years (user input, default: 0)\n    \n    Output Control:\n        output_level: Detail level determined by frontend tool (private/professional/public/complete)\n        indicators: Which KPIs to include (default: all 5)\n        include_visualizations: Override to force include/exclude charts (default: None)",
+        "examples": [
+          {
+            "annual_energy_savings": 27400,
+            "indicators": ["IRR", "NPV", "PBP"],
+            "loan_amount": 25000,
+            "loan_term": 15,
+            "output_level": "private",
+            "project_lifetime": 20
+          },
+          {
+            "annual_energy_savings": 27400,
+            "annual_maintenance_cost": 2000,
+            "capex": 60000,
+            "loan_amount": 0,
+            "loan_term": 0,
+            "output_level": "professional",
+            "project_lifetime": 20
+          }
+        ]
+      },
+      "RiskAssessmentResponse": {
+        "properties": {
+          "point_forecasts": {
+            "additionalProperties": { "type": "number" },
+            "type": "object",
+            "title": "Point Forecasts",
+            "description": "Median (P50) value for each indicator. Always included.",
+            "examples": [{ "IRR": 0.057, "NPV": 5432.1, "PBP": 8.3 }]
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata",
+            "description": "Simulation metadata: n_sims, project_lifetime, loan info, etc.",
+            "examples": [
+              {
+                "disc_target_used": 0.06,
+                "loan_amount": 25000,
+                "loan_term": 15,
+                "n_sims": 10000,
+                "project_lifetime": 20
+              }
+            ]
+          },
+          "key_percentiles": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "additionalProperties": { "type": "number" },
+                  "type": "object"
+                },
+                "type": "object"
+              },
+              { "type": "null" }
+            ],
+            "title": "Key Percentiles",
+            "description": "P10, P50, P90 for each indicator. Included in 'professional' and above.",
+            "examples": [
+              {
+                "IRR": { "P10": 0.031, "P50": 0.057, "P90": 0.089 },
+                "NPV": { "P10": 2100.0, "P50": 5432.1, "P90": 9800.0 }
+              }
+            ]
+          },
+          "probabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": { "type": "number" },
+                "type": "object"
+              },
+              { "type": "null" }
+            ],
+            "title": "Probabilities",
+            "description": "Success probability metrics. Included in 'professional' and above.",
+            "examples": [
+              {
+                "Pr(DPP < 20y)": 0.756,
+                "Pr(NPV > 0)": 0.843,
+                "Pr(PBP < 20y)": 0.912
+              }
+            ]
+          },
+          "percentiles": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "additionalProperties": { "type": "number" },
+                  "type": "object"
+                },
+                "type": "object"
+              },
+              { "type": "null" }
+            ],
+            "title": "Percentiles",
+            "description": "Full percentile breakdown (P5, P10, P25, P50, P75, P90, P95). Included in 'public' and 'complete'.",
+            "examples": [
+              {
+                "IRR": {
+                  "P10": 0.031,
+                  "P25": 0.042,
+                  "P5": 0.023,
+                  "P50": 0.057,
+                  "P75": 0.073,
+                  "P90": 0.089,
+                  "P95": 0.098
+                }
+              }
+            ]
+          },
+          "visualizations": {
+            "anyOf": [
+              {
+                "additionalProperties": { "type": "string" },
+                "type": "object"
+              },
+              { "type": "null" }
+            ],
+            "title": "Visualizations",
+            "description": "Base64-encoded PNG images of charts. Keys: '<indicator>_chart' for individual charts, 'dashboard' for comprehensive view. Only included in 'complete' output_level or when explicitly requested.",
+            "examples": [
+              {
+                "IRR_chart": "data:image/png;base64,iVBORw0KGgo...",
+                "dashboard": "data:image/png;base64,iVBORw0KGgo..."
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": ["point_forecasts", "metadata"],
+        "title": "RiskAssessmentResponse",
+        "description": "Response model for risk assessment endpoint.\n\nStructure varies based on output_level set by frontend tool:\n\nprivate (homeowners):\n    - point_forecasts (P50 values)\n    - metadata\n\nprofessional (consultants):\n    - point_forecasts\n    - key_percentiles (P10/P50/P90)\n    - probabilities (success metrics)\n    - metadata\n\npublic (institutions):\n    - point_forecasts\n    - key_percentiles\n    - percentiles (full P5-P95 breakdown)\n    - probabilities\n    - metadata\n\ncomplete (special cases):\n    - All of the above\n    - visualizations (base64-encoded images)\n\nAttributes:\n    point_forecasts: Median (P50) value for each requested indicator\n    metadata: Simulation parameters and settings used\n    key_percentiles: P10/P50/P90 for each indicator (professional+)\n    percentiles: Full percentile breakdown P5-P95 (public+)\n    probabilities: Success probability metrics (professional+)\n    visualizations: Base64-encoded chart images (complete only)",
+        "examples": [
+          {
+            "key_percentiles": {
+              "IRR": { "P10": 0.031, "P50": 0.057, "P90": 0.089 },
+              "NPV": { "P10": 2100.0, "P50": 5432.1, "P90": 9800.0 }
+            },
+            "metadata": { "n_sims": 10000, "project_lifetime": 20 },
+            "point_forecasts": { "IRR": 0.057, "NPV": 5432.1, "PBP": 8.3 },
+            "probabilities": { "Pr(NPV > 0)": 0.843, "Pr(PBP < 20y)": 0.912 }
+          }
+        ]
+      },
+      "StorageFileInfo": {
+        "properties": {
+          "name": { "type": "string", "title": "Name" },
+          "size": { "type": "integer", "title": "Size" },
+          "created_at": { "type": "string", "title": "Created At" },
+          "public_url": { "type": "string", "title": "Public Url" }
+        },
+        "type": "object",
+        "required": ["name", "size", "created_at", "public_url"],
+        "title": "StorageFileInfo",
+        "description": "Model representing information about a stored file."
+      },
+      "TableDataResponse": {
+        "properties": {
+          "table_name": { "type": "string", "title": "Table Name" },
+          "data": {
+            "items": { "additionalProperties": true, "type": "object" },
+            "type": "array",
+            "title": "Data"
+          },
+          "count": { "type": "integer", "title": "Count" }
+        },
+        "type": "object",
+        "required": ["table_name", "data", "count"],
+        "title": "TableDataResponse",
+        "description": "Response model for table read endpoint."
+      },
+      "UniversalUser": {
+        "properties": {
+          "id": { "type": "string", "title": "Id" },
+          "email": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Email"
+          },
+          "user_metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "User Metadata",
+            "default": {}
+          },
+          "identities": {
+            "items": { "$ref": "#/components/schemas/UserIdentity" },
+            "type": "array",
+            "title": "Identities",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": ["id"],
+        "title": "UniversalUser",
+        "description": "Provider-agnostic user model that works with any authentication provider.\n\nThis model abstracts away the differences between Supabase GoTrue User objects\nand Keycloak JWT payloads, providing a consistent interface for user data\nregardless of the authentication provider."
+      },
+      "UserIdentity": {
+        "properties": {
+          "provider": { "type": "string", "title": "Provider" },
+          "id": { "type": "string", "title": "Id" }
+        },
+        "type": "object",
+        "required": ["provider", "id"],
+        "title": "UserIdentity",
+        "description": "Represents a user identity from an authentication provider."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": { "anyOf": [{ "type": "string" }, { "type": "integer" }] },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": { "type": "string", "title": "Message" },
+          "type": { "type": "string", "title": "Error Type" }
+        },
+        "type": "object",
+        "required": ["loc", "msg", "type"],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": { "HTTPBearer": { "type": "http", "scheme": "bearer" } }
+  }
+}
