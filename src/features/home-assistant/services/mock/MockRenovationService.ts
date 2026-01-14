@@ -1,99 +1,72 @@
 /**
  * Mock Renovation Service
- * Provides renovation packages, cost calculations, and scenario evaluation.
+ * Provides renovation measures and scenario evaluation.
  *
- * NOTE: In production, this would integrate with the technical service API
- * for retrieving packages and calculating improvements.
+ * NOTE: In production, scenario evaluation should call the Forecasting API
+ * to get actual energy_savings and energy_class values based on building simulation.
+ * This mock returns placeholder data for UI development purposes.
  */
 
 import type {
   BuildingInfo,
   EstimationResult,
-  PackageId,
+  RenovationMeasureId,
   RenovationScenario,
-  ScenarioId,
 } from "../../context/types";
-import type { IRenovationService, RenovationPackage } from "../types";
+import type {
+  IRenovationService,
+  MeasureCategory,
+  MeasureCategoryInfo,
+  RenovationMeasure,
+} from "../types";
+import { MOCK_DELAY_RENOVATION } from "./constants";
 import {
-  MOCK_COMFORT_IMPROVEMENT_FACTOR,
-  MOCK_DELAY_RENOVATION,
-  MOCK_FLEXIBILITY_IMPROVEMENT_FACTOR,
-  MOCK_MAX_COMFORT_IMPROVEMENT,
-  MOCK_MAX_FLEXIBILITY_IMPROVEMENT,
-} from "./constants";
-import { RENOVATION_PACKAGES } from "./data/renovationPackages";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// EPC Improvement Mapping
-// ─────────────────────────────────────────────────────────────────────────────
-
-const EPC_ORDER = ["G", "F", "E", "D", "C", "B", "A", "A+"];
-
-function improveEPC(currentEPC: string, improvement: number): string {
-  const currentIndex = EPC_ORDER.indexOf(currentEPC);
-  if (currentIndex === -1) return currentEPC;
-
-  // Each 1.0 improvement = 1 class improvement
-  const newIndex = Math.min(
-    currentIndex + Math.round(improvement),
-    EPC_ORDER.length - 1,
-  );
-  return EPC_ORDER[newIndex];
-}
+  MEASURE_CATEGORIES,
+  RENOVATION_MEASURES,
+} from "./data/renovationMeasures";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Service Implementation
 // ─────────────────────────────────────────────────────────────────────────────
 
 export class MockRenovationService implements IRenovationService {
-  getPackages(): RenovationPackage[] {
-    return RENOVATION_PACKAGES;
+  getMeasures(): RenovationMeasure[] {
+    return RENOVATION_MEASURES;
   }
 
-  getPackage(packageId: PackageId): RenovationPackage | undefined {
-    return RENOVATION_PACKAGES.find((p) => p.id === packageId);
+  getMeasure(measureId: RenovationMeasureId): RenovationMeasure | undefined {
+    return RENOVATION_MEASURES.find((m) => m.id === measureId);
   }
 
-  calculateCost(
-    packageId: PackageId,
-    selectedInterventionIds: string[],
-    floorArea: number,
-  ): number {
-    const pkg = this.getPackage(packageId);
-    if (!pkg) return 0;
-
-    const selectedInterventions = pkg.interventions.filter((i) =>
-      selectedInterventionIds.includes(i.id),
-    );
-
-    const costPerSqm = selectedInterventions.reduce(
-      (sum, i) => sum + i.costPerSqm,
-      0,
-    );
-    return costPerSqm * floorArea;
+  getMeasuresByCategory(category: MeasureCategory): RenovationMeasure[] {
+    return RENOVATION_MEASURES.filter((m) => m.category === category);
   }
 
-  getDefaultInterventions(packageId: PackageId): string[] {
-    const pkg = this.getPackage(packageId);
-    if (!pkg) return [];
-
-    return pkg.interventions.filter((i) => i.defaultSelected).map((i) => i.id);
+  getCategories(): MeasureCategoryInfo[] {
+    return MEASURE_CATEGORIES;
   }
 
+  /**
+   * Evaluate renovation scenarios based on selected measures.
+   *
+   * TODO: In production, this should call the Forecasting API:
+   * - POST /[endpoint] with building data + selected measures
+   * - Receive: annual_energy_savings, energy_class (EPC), etc.
+   *
+   * Currently returns placeholder data for UI development.
+   * The "renovated" scenario values are NOT real calculations.
+   */
   async evaluateScenarios(
-    _building: BuildingInfo, // Used for future integration with backend
+    _building: BuildingInfo,
     estimation: EstimationResult,
-    selectedPackages: PackageId[],
-    interventions: Record<PackageId, string[]>,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _costs: Record<PackageId, number>, // Used by financial service, not in this calculation
+    selectedMeasures: RenovationMeasureId[],
   ): Promise<RenovationScenario[]> {
     // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_RENOVATION));
 
     const scenarios: RenovationScenario[] = [];
 
-    // Current scenario (baseline)
+    // Current scenario (baseline) - this is real data from energy estimation
     const currentScenario: RenovationScenario = {
       id: "current",
       label: "Current Status",
@@ -107,81 +80,33 @@ export class MockRenovationService implements IRenovationService {
     };
     scenarios.push(currentScenario);
 
-    // Map package IDs to scenario IDs
-    const packageToScenario: Record<PackageId, ScenarioId> = {
-      soft: "mild",
-      regular: "regular",
-      deep: "deep",
-    };
+    // Only add renovated scenario if measures are selected
+    if (selectedMeasures.length > 0) {
+      const measures = selectedMeasures
+        .map((id) => this.getMeasure(id))
+        .filter((m): m is RenovationMeasure => m !== undefined);
 
-    // Generate scenarios for selected packages
-    for (const packageId of selectedPackages) {
-      const pkg = this.getPackage(packageId);
-      if (!pkg) continue;
-
-      const selectedInterventionIds = interventions[packageId] || [];
-      const selectedInterventions = pkg.interventions.filter((i) =>
-        selectedInterventionIds.includes(i.id),
-      );
-
-      // Calculate improvements
-      const totalEnergySavings = selectedInterventions.reduce(
-        (sum, i) => sum + i.energySavingsPercent,
-        0,
-      );
-      const totalEPCImprovement = selectedInterventions.reduce(
-        (sum, i) => sum + i.epcImpact,
-        0,
-      );
-
-      // Apply improvements
-      const savingsMultiplier = 1 - totalEnergySavings / 100;
-      const newEnergyNeeds = Math.round(
-        estimation.annualEnergyNeeds * savingsMultiplier,
-      );
-      const newEnergyCost = Math.round(
-        estimation.annualEnergyCost * savingsMultiplier,
-      );
-      const newHeatingCooling = Math.round(
-        estimation.heatingCoolingNeeds * savingsMultiplier,
-      );
-
-      // Comfort and flexibility improvements
-      const comfortImprovement = Math.min(
-        MOCK_MAX_COMFORT_IMPROVEMENT,
-        totalEnergySavings * MOCK_COMFORT_IMPROVEMENT_FACTOR,
-      );
-      const flexibilityImprovement = Math.min(
-        MOCK_MAX_FLEXIBILITY_IMPROVEMENT,
-        totalEnergySavings * MOCK_FLEXIBILITY_IMPROVEMENT_FACTOR,
-      );
-
-      const scenario: RenovationScenario = {
-        id: packageToScenario[packageId],
-        label: pkg.name.replace(" Package", ""),
-        epcClass: improveEPC(estimation.estimatedEPC, totalEPCImprovement),
-        annualEnergyNeeds: newEnergyNeeds,
-        annualEnergyCost: newEnergyCost,
-        heatingCoolingNeeds: newHeatingCooling,
-        flexibilityIndex: Math.min(
-          100,
-          estimation.flexibilityIndex + flexibilityImprovement,
-        ),
-        comfortIndex: Math.min(
-          100,
-          estimation.comfortIndex + comfortImprovement,
-        ),
-        measures: selectedInterventions.map((i) => i.name),
+      // PLACEHOLDER DATA - In production, these values come from Forecasting API
+      // The API performs actual building energy simulation to calculate:
+      // - annual_energy_savings (kWh/year)
+      // - energy_class (EPC label after renovation)
+      // - Other outputs as defined by the Forecasting team
+      const renovatedScenario: RenovationScenario = {
+        id: "renovated",
+        label: "After Renovation",
+        // Placeholder: Real EPC comes from Forecasting API
+        epcClass: "TBD",
+        // Placeholder: Real values come from Forecasting API simulation
+        annualEnergyNeeds: 0,
+        annualEnergyCost: 0,
+        heatingCoolingNeeds: 0,
+        flexibilityIndex: 0,
+        comfortIndex: 0,
+        measures: measures.map((m) => m.name),
       };
 
-      scenarios.push(scenario);
+      scenarios.push(renovatedScenario);
     }
-
-    // Sort scenarios by improvement level
-    const scenarioOrder: ScenarioId[] = ["current", "mild", "regular", "deep"];
-    scenarios.sort(
-      (a, b) => scenarioOrder.indexOf(a.id) - scenarioOrder.indexOf(b.id),
-    );
 
     return scenarios;
   }

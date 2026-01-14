@@ -21,8 +21,9 @@ export type {
   IMCDAService,
   IRenovationService,
   MCDAPersona,
-  RenovationIntervention,
-  RenovationPackage,
+  MeasureCategory,
+  MeasureCategoryInfo,
+  RenovationMeasure,
   SelectOption,
   IHomeAssistantServices,
 } from "./types";

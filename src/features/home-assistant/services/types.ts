@@ -20,7 +20,7 @@ import type {
   FinancialScenario,
   FundingOptions,
   MCDARankingResult,
-  PackageId,
+  RenovationMeasureId,
   RenovationScenario,
   RiskAssessmentMetadata,
   RiskAssessmentPointForecasts,
@@ -87,62 +87,72 @@ export interface IEnergyService {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Renovation Service Types
+// D3.2 defines individual renovation measures that users can multi-select
 // ─────────────────────────────────────────────────────────────────────────────
 
-export interface RenovationIntervention {
-  id: string;
-  name: string;
+/**
+ * Categories for grouping renovation measures in the UI
+ */
+export type MeasureCategory = "envelope" | "systems" | "renewable";
+
+/**
+ * Display metadata for measure categories
+ */
+export interface MeasureCategoryInfo {
+  id: MeasureCategory;
+  label: string;
   description: string;
-  costPerSqm: number;
-  energySavingsPercent: number;
-  epcImpact: number; // Improvement in EPC "steps" (e.g., 0.5 = half a class)
-  defaultSelected: boolean;
 }
 
-export interface RenovationPackage {
-  id: PackageId;
+/**
+ * Individual renovation measure definition
+ * Each measure can be independently selected by users
+ *
+ * NOTE: Cost and energy savings data are NOT included here.
+ * Per D3.2 design document:
+ * - CAPEX/costs: Retrieved from ReLIFE Database or Financial API
+ * - Energy savings: Calculated by Forecasting API through building simulation
+ */
+export interface RenovationMeasure {
+  id: RenovationMeasureId;
   name: string;
   description: string;
-  maxCostPerSqm: number;
-  defaultCostPerSqm: number;
-  interventions: RenovationIntervention[];
+  category: MeasureCategory;
 }
 
 export interface IRenovationService {
   /**
-   * Get all available renovation packages
+   * Get all available renovation measures
    */
-  getPackages(): RenovationPackage[];
+  getMeasures(): RenovationMeasure[];
 
   /**
-   * Get a specific package by ID
+   * Get a specific measure by ID
    */
-  getPackage(packageId: PackageId): RenovationPackage | undefined;
+  getMeasure(measureId: RenovationMeasureId): RenovationMeasure | undefined;
 
   /**
-   * Calculate the total cost for a package with selected interventions
+   * Get all measures in a specific category
    */
-  calculateCost(
-    packageId: PackageId,
-    selectedInterventionIds: string[],
-    floorArea: number,
-  ): number;
+  getMeasuresByCategory(category: MeasureCategory): RenovationMeasure[];
 
   /**
-   * Get the default interventions for a package (those with defaultSelected: true)
+   * Get all measure categories with display info
    */
-  getDefaultInterventions(packageId: PackageId): string[];
+  getCategories(): MeasureCategoryInfo[];
 
   /**
-   * Evaluate renovation scenarios based on current building and selections.
-   * Returns scenarios with projected improvements.
+   * Evaluate renovation scenarios based on selected measures.
+   * Returns "current" (baseline) and "renovated" (with selected measures) scenarios.
+   *
+   * TODO: In production, this should call the Forecasting API to get
+   * actual energy_savings and energy_class values based on building simulation.
+   * Currently returns mock/placeholder data.
    */
   evaluateScenarios(
     building: BuildingInfo,
     estimation: EstimationResult,
-    selectedPackages: PackageId[],
-    interventions: Record<PackageId, string[]>,
-    costs: Record<PackageId, number>,
+    selectedMeasures: RenovationMeasureId[],
   ): Promise<RenovationScenario[]>;
 }
 
@@ -210,6 +220,14 @@ export interface IFinancialService {
   /**
    * Calculate financial results for all scenarios
    * Uses calculateARV and assessRisk internally
+   * @param scenarios Array of renovation scenarios to evaluate
+   * @param fundingOptions Funding/loan configuration
+   * @param floorArea Building floor area in m²
+   * @param currentEstimation Current building energy estimation
+   * @param financialScenario Economic scenario (baseline/optimistic/pessimistic)
+   * @param totalCapex Total capital expenditure for renovation (EUR), or null to let API fetch from database
+   * @param annualMaintenanceCost Annual O&M cost (EUR/year), or null to let API fetch from database
+   * @param building Building information for ARV calculation
    */
   calculateForAllScenarios(
     scenarios: RenovationScenario[],
@@ -217,7 +235,8 @@ export interface IFinancialService {
     floorArea: number,
     currentEstimation: EstimationResult,
     financialScenario: FinancialScenario,
-    costs: Record<PackageId, number>,
+    totalCapex: number | null,
+    annualMaintenanceCost: number | null,
     building: BuildingInfo,
   ): Promise<Record<ScenarioId, FinancialResults>>;
 }

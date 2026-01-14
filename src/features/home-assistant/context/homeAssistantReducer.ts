@@ -43,17 +43,9 @@ const initialBuilding: BuildingInfo = {
 };
 
 const initialRenovation: RenovationSelections = {
-  selectedPackages: [],
-  interventions: {
-    soft: [],
-    regular: [],
-    deep: [],
-  },
-  costs: {
-    soft: 180,
-    regular: 320,
-    deep: 700,
-  },
+  selectedMeasures: [],
+  estimatedCapex: null,
+  estimatedMaintenanceCost: null,
 };
 
 const initialFunding: FundingOptions = {
@@ -187,79 +179,54 @@ export function homeAssistantReducer(
       };
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Renovation Selections
+    // Renovation Measure Selections
     // ─────────────────────────────────────────────────────────────────────────
-    case "TOGGLE_PACKAGE": {
-      const { packageId } = action;
-      const isSelected = state.renovation.selectedPackages.includes(packageId);
-      const newSelectedPackages = isSelected
-        ? state.renovation.selectedPackages.filter((id) => id !== packageId)
-        : [...state.renovation.selectedPackages, packageId];
+    case "TOGGLE_MEASURE": {
+      const { measureId } = action;
+      const isSelected = state.renovation.selectedMeasures.includes(measureId);
+      const newSelectedMeasures = isSelected
+        ? state.renovation.selectedMeasures.filter((id) => id !== measureId)
+        : [...state.renovation.selectedMeasures, measureId];
 
       return {
         ...state,
         renovation: {
           ...state.renovation,
-          selectedPackages: newSelectedPackages,
-          // Clear interventions if package is deselected
-          interventions: isSelected
-            ? {
-                ...state.renovation.interventions,
-                [packageId]: [],
-              }
-            : state.renovation.interventions,
+          selectedMeasures: newSelectedMeasures,
         },
         // Clear evaluation results when selections change
         ...clearedEvaluationResults,
       };
     }
 
-    case "TOGGLE_INTERVENTION": {
-      const { packageId, interventionId } = action;
-      const currentInterventions = state.renovation.interventions[packageId];
-      const isSelected = currentInterventions.includes(interventionId);
-      const newInterventions = isSelected
-        ? currentInterventions.filter((id) => id !== interventionId)
-        : [...currentInterventions, interventionId];
-
+    case "SET_MEASURES": {
       return {
         ...state,
         renovation: {
           ...state.renovation,
-          interventions: {
-            ...state.renovation.interventions,
-            [packageId]: newInterventions,
-          },
+          selectedMeasures: action.measures,
         },
         ...clearedEvaluationResults,
       };
     }
 
-    case "SET_PACKAGE_INTERVENTIONS": {
-      const { packageId, interventions } = action;
+    case "SET_ESTIMATED_CAPEX": {
       return {
         ...state,
         renovation: {
           ...state.renovation,
-          interventions: {
-            ...state.renovation.interventions,
-            [packageId]: interventions,
-          },
+          estimatedCapex: action.capex,
         },
         ...clearedEvaluationResults,
       };
     }
 
-    case "UPDATE_PACKAGE_COST": {
-      const { packageId, cost } = action;
+    case "SET_ESTIMATED_MAINTENANCE_COST": {
       return {
         ...state,
         renovation: {
           ...state.renovation,
-          costs: {
-            ...state.renovation.costs,
-            [packageId]: cost,
-          },
+          estimatedMaintenanceCost: action.cost,
         },
         ...clearedEvaluationResults,
       };

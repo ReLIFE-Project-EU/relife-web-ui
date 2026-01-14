@@ -75,14 +75,35 @@ export interface EstimationResult {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Renovation Selection Types (Screen 2)
+// D3.2 defines 8 individual renovation measures that users can multi-select
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Individual renovation measure IDs as defined in D3.2 requirements.
+ * Users can select multiple measures to include in their renovation plan.
+ */
+export type RenovationMeasureId =
+  | "wall-insulation"
+  | "roof-insulation"
+  | "floor-insulation"
+  | "windows"
+  | "air-water-heat-pump"
+  | "condensing-boiler"
+  | "pv"
+  | "solar-thermal";
+
+/**
+ * @deprecated Use RenovationMeasureId instead. Kept for backward compatibility during transition.
+ */
 export type PackageId = "soft" | "regular" | "deep";
 
 export interface RenovationSelections {
-  selectedPackages: PackageId[];
-  interventions: Record<PackageId, string[]>; // Selected intervention IDs per package
-  costs: Record<PackageId, number>; // EUR/m² per package
+  /** Selected renovation measure IDs */
+  selectedMeasures: RenovationMeasureId[];
+  /** Optional user-provided CAPEX override (EUR). If null, API fetches from database. */
+  estimatedCapex: number | null;
+  /** Optional user-provided annual maintenance cost (EUR/year). If null, API fetches from database. */
+  estimatedMaintenanceCost: number | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -112,7 +133,12 @@ export interface FundingOptions {
 // Results Types (Screen 3)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type ScenarioId = "current" | "mild" | "regular" | "deep";
+/**
+ * Scenario IDs for comparison.
+ * - "current": Baseline before renovation
+ * - "renovated": After applying selected measures
+ */
+export type ScenarioId = "current" | "renovated";
 
 export interface RenovationScenario {
   id: ScenarioId;
@@ -256,19 +282,11 @@ export type HomeAssistantAction =
   | { type: "SET_ESTIMATION"; result: EstimationResult }
   | { type: "ESTIMATION_ERROR"; error: string }
 
-  // Renovation selections
-  | { type: "TOGGLE_PACKAGE"; packageId: PackageId }
-  | {
-      type: "TOGGLE_INTERVENTION";
-      packageId: PackageId;
-      interventionId: string;
-    }
-  | { type: "UPDATE_PACKAGE_COST"; packageId: PackageId; cost: number }
-  | {
-      type: "SET_PACKAGE_INTERVENTIONS";
-      packageId: PackageId;
-      interventions: string[];
-    }
+  // Renovation measure selections
+  | { type: "TOGGLE_MEASURE"; measureId: RenovationMeasureId }
+  | { type: "SET_MEASURES"; measures: RenovationMeasureId[] }
+  | { type: "SET_ESTIMATED_CAPEX"; capex: number | null }
+  | { type: "SET_ESTIMATED_MAINTENANCE_COST"; cost: number | null }
 
   // Funding options
   | { type: "SET_FINANCING_TYPE"; financingType: FinancingType }

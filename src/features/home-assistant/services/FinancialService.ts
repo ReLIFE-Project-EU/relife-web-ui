@@ -13,7 +13,6 @@ import type {
   FinancialResults,
   FinancialScenario,
   FundingOptions,
-  PackageId,
   RenovationScenario,
   ScenarioId,
 } from "../context/types";
@@ -102,6 +101,14 @@ export class FinancialService implements IFinancialService {
 
   /**
    * Calculate financial results for all scenarios
+   * @param scenarios Array of renovation scenarios to evaluate
+   * @param fundingOptions Funding/loan configuration
+   * @param floorArea Building floor area in m²
+   * @param currentEstimation Current building energy estimation
+   * @param _financialScenario Economic scenario (baseline/optimistic/pessimistic)
+   * @param totalCapex Total capital expenditure for renovation (EUR), or null to let API fetch from database
+   * @param annualMaintenanceCost Annual O&M cost (EUR/year), or null to let API fetch from database
+   * @param building Building information for ARV calculation
    */
   async calculateForAllScenarios(
     scenarios: RenovationScenario[],
@@ -109,7 +116,8 @@ export class FinancialService implements IFinancialService {
     floorArea: number,
     currentEstimation: EstimationResult,
     _financialScenario: FinancialScenario,
-    costs: Record<PackageId, number>,
+    totalCapex: number | null,
+    annualMaintenanceCost: number | null,
     building: BuildingInfo,
   ): Promise<Record<ScenarioId, FinancialResults>> {
     const results: Record<string, FinancialResults> = {};
@@ -142,22 +150,15 @@ export class FinancialService implements IFinancialService {
         continue;
       }
 
-      // Map scenario ID to package ID for cost lookup
-      const packageMap: Record<string, PackageId> = {
-        mild: "soft",
-        regular: "regular",
-        deep: "deep",
-      };
+      // For renovated scenario, use the provided totalCapex if available
+      // If totalCapex is null or 0, let the API fetch from its internal dataset
+      const hasCapex = totalCapex !== null && totalCapex > 0;
+      const renovationCost = hasCapex ? totalCapex : 0;
 
-      const packageId = packageMap[scenario.id];
-      const costPerSqm = costs[packageId] || 0;
-      const renovationCost = costPerSqm * floorArea;
-
-      // Apply funding options
-      const { effectiveCost, loanAmount } = applyFundingReduction(
-        renovationCost,
-        fundingOptions,
-      );
+      // Apply funding options only if we have a CAPEX value
+      const { effectiveCost, loanAmount } = hasCapex
+        ? applyFundingReduction(renovationCost, fundingOptions)
+        : { effectiveCost: undefined, loanAmount: 0 };
 
       // Calculate loan term based on financing type
       const loanTerm =
@@ -179,13 +180,20 @@ export class FinancialService implements IFinancialService {
       };
 
       // Risk assessment request
+      // Note: capex and annual_maintenance_cost are optional
+      // If undefined, API retrieves from internal dataset
+      const hasMaintenanceCost =
+        annualMaintenanceCost !== null && annualMaintenanceCost > 0;
       const riskRequest: RiskAssessmentRequest = {
         annual_energy_savings:
           (currentEstimation.annualEnergyNeeds - scenario.annualEnergyNeeds) *
           1000, // Convert MWh to kWh
         project_lifetime: building.projectLifetime,
         output_level: HRA_OUTPUT_LEVEL,
-        capex: effectiveCost,
+        capex: effectiveCost, // undefined if no CAPEX provided, API will fetch from DB
+        annual_maintenance_cost: hasMaintenanceCost
+          ? annualMaintenanceCost
+          : undefined,
         loan_amount: loanAmount,
         loan_term: loanTerm,
       };
@@ -199,7 +207,7 @@ export class FinancialService implements IFinancialService {
       results[scenario.id] = {
         arv: arvResult,
         riskAssessment: riskResult,
-        capitalExpenditure: Math.round(renovationCost),
+        capitalExpenditure: Math.round(riskResult.metadata.capex), // Use CAPEX from API response
         returnOnInvestment: riskResult.pointForecasts.ROI,
         paybackTime: riskResult.pointForecasts.PBP,
         netPresentValue: riskResult.pointForecasts.NPV,

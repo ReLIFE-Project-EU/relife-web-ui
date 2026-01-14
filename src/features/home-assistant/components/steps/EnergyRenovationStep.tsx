@@ -7,14 +7,18 @@ import { Alert, Box, Divider, Stack, Text, Title } from "@mantine/core";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 import { ComfortDisplay, EnergyMixDisplay, EPCDisplay } from "../energy";
-import { FundingOptions } from "../renovation";
+import { FundingOptions, MeasureSelector } from "../renovation";
 import { ErrorAlert, StepNavigation } from "../shared";
 
 export function EnergyRenovationStep() {
   const { state, dispatch } = useHomeAssistant();
   const { financial, renovation } = useHomeAssistantServices();
 
-  const canEvaluate = true; // Always allow evaluation without package selection
+  const selectedMeasures = state.renovation.selectedMeasures;
+  const floorArea = state.building.floorArea || 100;
+
+  // Enable evaluation only when at least one measure is selected
+  const canEvaluate = selectedMeasures.length > 0;
 
   const handlePrevious = () => {
     dispatch({ type: "PREV_STEP" });
@@ -26,23 +30,28 @@ export function EnergyRenovationStep() {
     dispatch({ type: "START_EVALUATION" });
 
     try {
-      // Evaluate renovation scenarios
+      // Evaluate renovation scenarios based on selected measures
+      // TODO: In production, this calls the Forecasting API
       const scenarios = await renovation.evaluateScenarios(
         state.building,
         state.estimation,
-        state.renovation.selectedPackages,
-        state.renovation.interventions,
-        state.renovation.costs,
+        selectedMeasures,
       );
+
+      // CAPEX and maintenance cost: Use user-provided values if available, otherwise null
+      // When null, the Financial API retrieves values from its internal dataset
+      const totalCapex = state.renovation.estimatedCapex;
+      const annualMaintenanceCost = state.renovation.estimatedMaintenanceCost;
 
       // Calculate financial results for all scenarios
       const financialResults = await financial.calculateForAllScenarios(
         scenarios,
         state.funding,
-        state.building.floorArea || 100,
+        floorArea,
         state.estimation,
         state.selectedFinancialScenario,
-        state.renovation.costs,
+        totalCapex,
+        annualMaintenanceCost,
         state.building,
       );
 
@@ -102,6 +111,11 @@ export function EnergyRenovationStep() {
 
       {/* Comfort Indices */}
       <ComfortDisplay />
+
+      <Divider my="md" />
+
+      {/* Renovation Measures Selection */}
+      <MeasureSelector />
 
       <Divider my="md" />
 

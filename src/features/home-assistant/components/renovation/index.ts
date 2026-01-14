@@ -2,6 +2,6 @@
  * Renovation Components Index
  */
 
-export { PackageCard } from "./PackageCard";
-export { RenovationPackages } from "./RenovationPackages";
+export { MeasureCard } from "./MeasureCard";
+export { MeasureSelector } from "./MeasureSelector";
 export { FundingOptions } from "./FundingOptions";

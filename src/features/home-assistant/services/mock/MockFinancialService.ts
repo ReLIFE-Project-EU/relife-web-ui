@@ -20,7 +20,6 @@ import type {
   FinancialResults,
   FinancialScenario,
   FundingOptions,
-  PackageId,
   RenovationScenario,
   RiskAssessmentMetadata,
   RiskAssessmentPointForecasts,
@@ -338,6 +337,14 @@ export class MockFinancialService implements IFinancialService {
 
   /**
    * Calculate financial results for all scenarios
+   * @param scenarios Array of renovation scenarios to evaluate
+   * @param fundingOptions Funding/loan configuration
+   * @param floorArea Building floor area in m²
+   * @param currentEstimation Current building energy estimation
+   * @param financialScenario Economic scenario (baseline/optimistic/pessimistic)
+   * @param totalCapex Total capital expenditure for renovation (EUR), or null to use mock default
+   * @param _annualMaintenanceCost Annual O&M cost (EUR/year), or null to use mock default (ignored in mock)
+   * @param building Building information for ARV calculation
    */
   async calculateForAllScenarios(
     scenarios: RenovationScenario[],
@@ -345,7 +352,8 @@ export class MockFinancialService implements IFinancialService {
     floorArea: number,
     currentEstimation: EstimationResult,
     financialScenario: FinancialScenario,
-    costs: Record<PackageId, number>,
+    totalCapex: number | null,
+    _annualMaintenanceCost: number | null,
     building: BuildingInfo,
   ): Promise<Record<ScenarioId, FinancialResults>> {
     // Simulate API delay
@@ -381,29 +389,16 @@ export class MockFinancialService implements IFinancialService {
         continue;
       }
 
-      // Map scenario ID to package ID for cost lookup
-      const packageMap: Record<string, PackageId> = {
-        mild: "soft",
-        regular: "regular",
-        deep: "deep",
-      };
-
-      const packageId = packageMap[scenario.id];
-      const costPerSqm = costs[packageId] || 0;
-      const renovationCost = costPerSqm * floorArea;
+      // For renovated scenario, use provided CAPEX or mock default based on floor area
+      // In production, the real API would fetch this from its internal dataset
+      const renovationCost =
+        totalCapex !== null && totalCapex > 0 ? totalCapex : floorArea * 300; // Mock default: 300 EUR/m²
 
       // Calculate annual energy savings (EUR)
       const annualEnergySavings =
         currentEstimation.annualEnergyCost - scenario.annualEnergyCost;
 
-      // Use the logic from deprecated calculate() but avoid calling it directly if we want to be fully clean.
-      // However, for now, to ensure full backward compatibility and identical behavior as requested in step 4,
-      // I will keep using the calculate() method as a helper for this iteration, OR re-implement the logic inline
-      // to remove dependency on the deprecated method.
-      // The plan says "Remove the deprecated calculate method (it is unused outside the service)".
-      // But wait, the previous code used `this.calculate`. If I remove it, I must inline it here.
-
-      // Inline logic of `calculate` here to support `calculateForAllScenarios`
+      // Apply financial scenario multipliers and funding adjustments
       const scenarioMultiplier = MOCK_SCENARIO_MULTIPLIERS[financialScenario];
       const { effectiveCost, loanAmount } = applyFundingReduction(
         renovationCost,
