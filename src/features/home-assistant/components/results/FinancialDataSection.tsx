@@ -6,7 +6,9 @@
  * with IRR, DPP, MonthlyAvgSavings, and SuccessRate indicators.
  */
 
+import { useState } from "react";
 import {
+  Alert,
   Badge,
   Box,
   Card,
@@ -23,7 +25,9 @@ import {
 } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
+import { CashFlowChart } from "./CashFlowChart";
 import type {
+  CashFlowData,
   FinancialResults,
   FinancialScenario,
   ScenarioId,
@@ -40,6 +44,16 @@ export function FinancialDataSection() {
     state;
 
   const renovationScenarios = scenarios.filter((s) => s.id !== "current");
+  const [chartScenarioId, setChartScenarioId] = useState<ScenarioId | null>(
+    renovationScenarios[0]?.id ?? null,
+  );
+
+  const effectiveChartScenarioId =
+    (chartScenarioId &&
+      renovationScenarios.some((s) => s.id === chartScenarioId) &&
+      chartScenarioId) ||
+    renovationScenarios[0]?.id ||
+    null;
 
   // Funding option labels for display
   const enabledFunding: string[] = [];
@@ -48,6 +62,20 @@ export function FinancialDataSection() {
   } else {
     enabledFunding.push("Self-funded");
   }
+
+  const selectedCashFlowResult =
+    effectiveChartScenarioId && financialResults[effectiveChartScenarioId]
+      ? financialResults[effectiveChartScenarioId]
+      : undefined;
+
+  const cashFlowData: CashFlowData | undefined =
+    selectedCashFlowResult?.riskAssessment?.cashFlowData ??
+    (selectedCashFlowResult?.riskAssessment?.metadata.cash_flow_data as
+      | CashFlowData
+      | undefined);
+
+  const cashFlowVisualization =
+    selectedCashFlowResult?.riskAssessment?.cashFlowVisualization;
 
   const handleScenarioChange = (value: string) => {
     dispatch({
@@ -118,6 +146,91 @@ export function FinancialDataSection() {
             />
           </Box>
         </SimpleGrid>
+
+        {/* Cash Flow Chart */}
+        {selectedCashFlowResult ? (
+          <Stack gap="sm">
+            <Group justify="space-between" align="center">
+              <div>
+                <Text size="sm" fw={500}>
+                  Cash flow timeline
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Inflows, outflows, and net cash flow for the selected
+                  renovation package.
+                </Text>
+              </div>
+              {renovationScenarios.length > 1 ? (
+                <SegmentedControl
+                  value={effectiveChartScenarioId ?? undefined}
+                  onChange={(value) => setChartScenarioId(value as ScenarioId)}
+                  data={renovationScenarios.map((scenario) => ({
+                    label: scenario.label,
+                    value: scenario.id,
+                  }))}
+                />
+              ) : null}
+            </Group>
+
+            {cashFlowData ? (
+              <Stack gap="xs">
+                <CashFlowChart
+                  data={cashFlowData}
+                  projectLifetime={
+                    selectedCashFlowResult.riskAssessment?.metadata
+                      .project_lifetime
+                  }
+                />
+                <Alert
+                  variant="light"
+                  color="blue"
+                  icon={<IconInfoCircle size={16} />}
+                  radius="sm"
+                >
+                  Green bars are yearly savings; red bars are yearly costs (loan
+                  + upkeep). The dark line shows how far ahead or behind you are
+                  each year. Dashed markers point to loan payoff and, when it
+                  happens, the first year the project pays for itself.
+                </Alert>
+                {cashFlowData.breakeven_year === null ? (
+                  <Card withBorder radius="sm" p="sm" bg="red.0">
+                    <Text size="sm" fw={600} c="red.7">
+                      This scenario does not break even within the selected
+                      project horizon.
+                    </Text>
+                    <Text size="xs" c="red.7">
+                      Inflows and savings stay below costs over the chosen
+                      timeframe. Adjust project lifetime, capex, or measures to
+                      reach profitability.
+                    </Text>
+                  </Card>
+                ) : null}
+              </Stack>
+            ) : cashFlowVisualization ? (
+              <Card withBorder radius="md" p="md">
+                <Text size="sm" c="dimmed" mb="xs">
+                  Showing cash flow image from API (no structured data
+                  returned).
+                </Text>
+                <img
+                  src={cashFlowVisualization}
+                  alt="Cash flow timeline"
+                  style={{
+                    width: "100%",
+                    maxHeight: 360,
+                    objectFit: "contain",
+                  }}
+                />
+              </Card>
+            ) : (
+              <Card withBorder radius="md" p="md">
+                <Text size="sm" c="dimmed">
+                  Cash flow data is not available for this scenario yet.
+                </Text>
+              </Card>
+            )}
+          </Stack>
+        ) : null}
 
         {/* Financial Metrics Table */}
         <ScrollArea>

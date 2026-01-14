@@ -11,6 +11,7 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@mantine/charts": "^8.3.12",
     "@mantine/core": "^8.3.8",
     "@mantine/dropzone": "^8.3.12",
     "@mantine/form": "^8.3.12",

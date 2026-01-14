@@ -132,7 +132,12 @@ export function MeasureCard({
               </Text>
             </Stack>
           </Group>
-          <Tooltip label={measure.description} position="left" multiline w={260}>
+          <Tooltip
+            label={measure.description}
+            position="left"
+            multiline
+            w={260}
+          >
             <IconInfoCircle
               size={16}
               color="var(--mantine-color-gray-5)"
@@ -143,7 +148,10 @@ export function MeasureCard({
         </Group>
 
         <Group justify="space-between" align="center">
-          <Badge color={categoryColor} variant={isSelected ? "filled" : "light"}>
+          <Badge
+            color={categoryColor}
+            variant={isSelected ? "filled" : "light"}
+          >
             {categoryLabel}
           </Badge>
           <Checkbox

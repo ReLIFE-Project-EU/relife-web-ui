@@ -20,6 +20,7 @@ import type {
   FinancialScenario,
   FundingOptions,
   MCDARankingResult,
+  CashFlowData,
   RenovationMeasureId,
   RenovationScenario,
   RiskAssessmentMetadata,
@@ -202,6 +203,7 @@ export interface RiskAssessmentResponse {
   pointForecasts: RiskAssessmentPointForecasts;
   metadata: RiskAssessmentMetadata;
   cashFlowVisualization?: string; // base64 PNG
+  cashFlowData?: CashFlowData;
 }
 
 export interface IFinancialService {

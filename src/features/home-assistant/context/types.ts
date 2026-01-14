@@ -193,6 +193,19 @@ export interface RiskAssessmentMetadata {
   annual_loan_payment?: number;
   loan_rate_percent?: number;
   output_level: string;
+  cash_flow_data?: CashFlowData;
+  [key: string]: unknown;
+}
+
+export interface CashFlowData {
+  years: number[];
+  initial_investment?: number;
+  annual_inflows: number[];
+  annual_outflows: number[];
+  annual_net_cash_flow?: number[];
+  cumulative_cash_flow?: number[];
+  breakeven_year?: number | null;
+  loan_term?: number | null;
 }
 
 /**
@@ -207,6 +220,7 @@ export interface FinancialResults {
     pointForecasts: RiskAssessmentPointForecasts;
     metadata: RiskAssessmentMetadata;
     cashFlowVisualization?: string; // base64 PNG (included for private level)
+    cashFlowData?: CashFlowData;
   } | null;
 
   // Legacy fields for backward compatibility during transition

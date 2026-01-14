@@ -14,6 +14,7 @@ import type {
   FinancialScenario,
   FundingOptions,
   RenovationScenario,
+  CashFlowData,
   ScenarioId,
 } from "../context/types";
 import {
@@ -75,6 +76,11 @@ export class FinancialService implements IFinancialService {
       include_visualizations: request.include_visualizations,
     });
 
+    const rawMetadata = response.metadata ?? {};
+    const cashFlowData = normalizeCashFlowData(
+      (rawMetadata as Record<string, unknown>).cash_flow_data,
+    );
+
     return {
       pointForecasts: {
         NPV: response.point_forecasts.NPV ?? 0,
@@ -86,6 +92,7 @@ export class FinancialService implements IFinancialService {
         SuccessRate: response.point_forecasts.SuccessRate ?? 0,
       },
       metadata: {
+        ...rawMetadata,
         n_sims: (response.metadata.n_sims as number) ?? 10000,
         project_lifetime:
           (response.metadata.project_lifetime as number) ??
@@ -93,9 +100,17 @@ export class FinancialService implements IFinancialService {
         capex: (response.metadata.capex as number) ?? request.capex ?? 0,
         loan_amount:
           (response.metadata.loan_amount as number) ?? request.loan_amount ?? 0,
+        annual_loan_payment: response.metadata.annual_loan_payment as
+          | number
+          | undefined,
+        loan_rate_percent: response.metadata.loan_rate_percent as
+          | number
+          | undefined,
         output_level: HRA_OUTPUT_LEVEL,
+        ...(cashFlowData ? { cash_flow_data: cashFlowData } : {}),
       },
       cashFlowVisualization: response.visualizations?.cash_flow_timeline,
+      cashFlowData,
     };
   }
 
@@ -184,10 +199,13 @@ export class FinancialService implements IFinancialService {
       // If undefined, API retrieves from internal dataset
       const hasMaintenanceCost =
         annualMaintenanceCost !== null && annualMaintenanceCost > 0;
+      const annualEnergySavingsKWh = Math.max(
+        0,
+        currentEstimation.annualEnergyNeeds - (scenario.annualEnergyNeeds ?? 0),
+      ); // values are already in kWh/year
+
       const riskRequest: RiskAssessmentRequest = {
-        annual_energy_savings:
-          (currentEstimation.annualEnergyNeeds - scenario.annualEnergyNeeds) *
-          1000, // Convert MWh to kWh
+        annual_energy_savings: Math.round(annualEnergySavingsKWh),
         project_lifetime: building.projectLifetime,
         output_level: HRA_OUTPUT_LEVEL,
         capex: effectiveCost, // undefined if no CAPEX provided, API will fetch from DB
@@ -225,4 +243,54 @@ export class FinancialService implements IFinancialService {
 
     return results as Record<ScenarioId, FinancialResults>;
   }
+}
+
+function normalizeCashFlowData(raw: unknown): CashFlowData | undefined {
+  if (!raw || typeof raw !== "object") {
+    return undefined;
+  }
+
+  const data = raw as Record<string, unknown>;
+  if (!Array.isArray(data.years)) {
+    return undefined;
+  }
+
+  const years = (data.years as unknown[]).map((y) => Number(y));
+  const inflows = Array.isArray(data.annual_inflows)
+    ? (data.annual_inflows as unknown[]).map((v) => Number(v))
+    : [];
+  const outflows = Array.isArray(data.annual_outflows)
+    ? (data.annual_outflows as unknown[]).map((v) => Number(v))
+    : [];
+  const net = Array.isArray(data.annual_net_cash_flow)
+    ? (data.annual_net_cash_flow as unknown[]).map((v) => Number(v))
+    : years.map((_, idx) => (inflows[idx] ?? 0) - (outflows[idx] ?? 0));
+
+  const cumulative = Array.isArray(data.cumulative_cash_flow)
+    ? (data.cumulative_cash_flow as unknown[]).map((v) => Number(v))
+    : net.reduce<number[]>((acc, value, idx) => {
+        const prev = idx === 0 ? 0 : acc[idx - 1];
+        acc.push(prev + value);
+        return acc;
+      }, []);
+
+  return {
+    years,
+    initial_investment:
+      typeof data.initial_investment === "number"
+        ? data.initial_investment
+        : undefined,
+    annual_inflows: inflows,
+    annual_outflows: outflows,
+    annual_net_cash_flow: net,
+    cumulative_cash_flow: cumulative,
+    breakeven_year:
+      typeof data.breakeven_year === "number" || data.breakeven_year === null
+        ? (data.breakeven_year as number | null)
+        : undefined,
+    loan_term:
+      typeof data.loan_term === "number" || data.loan_term === null
+        ? (data.loan_term as number | null)
+        : undefined,
+  };
 }

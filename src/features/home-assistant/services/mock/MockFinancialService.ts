@@ -21,6 +21,7 @@ import type {
   FinancialScenario,
   FundingOptions,
   RenovationScenario,
+  CashFlowData,
   RiskAssessmentMetadata,
   RiskAssessmentPointForecasts,
   ScenarioId,
@@ -158,6 +159,8 @@ export class MockFinancialService implements IFinancialService {
     const capex =
       request.capex ?? annual_energy_savings * MOCK_CAPEX_SAVINGS_MULTIPLIER;
 
+    const annualMaintenanceCost = request.annual_maintenance_cost ?? 350;
+
     // Convert energy savings to EUR
     const annualSavingsEUR =
       annual_energy_savings * MOCK_ENERGY_PRICE_EUR_PER_KWH;
@@ -201,6 +204,42 @@ export class MockFinancialService implements IFinancialService {
         ? MOCK_SUCCESS_BASE_HIGH + Math.random() * MOCK_SUCCESS_RANDOM_HIGH
         : MOCK_SUCCESS_BASE_LOW + Math.random() * MOCK_SUCCESS_RANDOM_LOW;
 
+    // Build synthetic cash flow series to mirror Financial API contract
+    const years = Array.from({ length: project_lifetime + 1 }, (_, i) => i);
+    const initialInvestment = Math.max(capex - loan_amount, 0);
+    const inflows = years.map((year) =>
+      year === 0
+        ? 0
+        : Math.round(netAnnualSavings * Math.pow(1.02, year - 1) * 100) / 100,
+    );
+    const outflows = years.map((year) => {
+      if (year === 0) {
+        return Math.round(initialInvestment * 100) / 100;
+      }
+      const loanPayment =
+        loan_term > 0 && year <= loan_term ? annualLoanPayment : 0;
+      return Math.round((annualMaintenanceCost + loanPayment) * 100) / 100;
+    });
+    const netCashFlow = years.map(
+      (_, idx) => Math.round((inflows[idx] - outflows[idx]) * 100) / 100,
+    );
+    const cumulative = netCashFlow.reduce<number[]>((acc, value, idx) => {
+      const prev = idx === 0 ? 0 : acc[idx - 1];
+      acc.push(prev + value);
+      return acc;
+    }, []);
+    const breakevenIndex = cumulative.findIndex((value) => value >= 0);
+    const cashFlowData: CashFlowData = {
+      years,
+      initial_investment: initialInvestment,
+      annual_inflows: inflows,
+      annual_outflows: outflows,
+      annual_net_cash_flow: netCashFlow,
+      cumulative_cash_flow: cumulative,
+      breakeven_year: breakevenIndex === -1 ? null : breakevenIndex,
+      loan_term,
+    };
+
     const pointForecasts: RiskAssessmentPointForecasts = {
       NPV: Math.round(npv * 100) / 100,
       IRR: Math.round(irr * 1000) / 1000,
@@ -212,6 +251,7 @@ export class MockFinancialService implements IFinancialService {
     };
 
     const metadata: RiskAssessmentMetadata = {
+      cash_flow_data: cashFlowData,
       n_sims: MOCK_N_SIMS,
       project_lifetime,
       capex,
@@ -227,6 +267,7 @@ export class MockFinancialService implements IFinancialService {
       pointForecasts,
       metadata,
       cashFlowVisualization: undefined,
+      cashFlowData,
     };
   }
 
