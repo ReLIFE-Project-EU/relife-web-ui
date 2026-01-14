@@ -70,7 +70,7 @@ export function CashFlowChart({
       x: data.breakeven_year,
       color: "teal.6",
       label: `Breakeven (Year ${data.breakeven_year})`,
-      labelPosition: "insideTop",
+      labelPosition: "insideBottom",
       strokeDasharray: "5 5",
     });
   }

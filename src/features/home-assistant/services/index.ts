@@ -9,7 +9,6 @@
 export { mockBuildingService } from "./mock/MockBuildingService";
 export { mockEnergyService } from "./mock/MockEnergyService";
 export { mockRenovationService } from "./mock/MockRenovationService";
-export { mockFinancialService } from "./mock/MockFinancialService";
 export { mockMCDAService } from "./mock/MockMCDAService";
 
 // Re-export types

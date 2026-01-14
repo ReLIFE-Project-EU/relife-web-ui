@@ -1,6 +1,6 @@
 /**
  * FinancialDataSection Component
- * Displays financial metrics with scenario selection.
+ * Displays financial metrics for renovation scenarios.
  *
  * Updated to display new RiskAssessmentPointForecasts structure
  * with IRR, DPP, MonthlyAvgSavings, and SuccessRate indicators.
@@ -16,7 +16,6 @@ import {
   Progress,
   ScrollArea,
   SegmentedControl,
-  SimpleGrid,
   Stack,
   Table,
   Text,
@@ -29,7 +28,6 @@ import { CashFlowChart } from "./CashFlowChart";
 import type {
   CashFlowData,
   FinancialResults,
-  FinancialScenario,
   ScenarioId,
 } from "../../context/types";
 import {
@@ -37,11 +35,11 @@ import {
   formatPercent,
   formatYears,
 } from "../../utils/formatters";
+import { getScenarioColor } from "../../utils/colorUtils";
 
 export function FinancialDataSection() {
-  const { state, dispatch } = useHomeAssistant();
-  const { scenarios, financialResults, selectedFinancialScenario, funding } =
-    state;
+  const { state } = useHomeAssistant();
+  const { scenarios, financialResults, funding } = state;
 
   const renovationScenarios = scenarios.filter((s) => s.id !== "current");
   const [chartScenarioId, setChartScenarioId] = useState<ScenarioId | null>(
@@ -77,13 +75,6 @@ export function FinancialDataSection() {
   const cashFlowVisualization =
     selectedCashFlowResult?.riskAssessment?.cashFlowVisualization;
 
-  const handleScenarioChange = (value: string) => {
-    dispatch({
-      type: "SELECT_FINANCIAL_SCENARIO",
-      scenario: value as FinancialScenario,
-    });
-  };
-
   if (renovationScenarios.length === 0) {
     return null;
   }
@@ -107,45 +98,25 @@ export function FinancialDataSection() {
           </Title>
         </Box>
 
-        {/* Selectors */}
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-          {/* Funding Options Display */}
-          <Box>
-            <Text size="sm" fw={500} mb="xs">
-              Applied Funding Options
-            </Text>
-            <Group gap="xs">
-              {enabledFunding.length > 0 ? (
-                enabledFunding.map((option) => (
-                  <Badge key={option} variant="light" color="blue">
-                    {option}
-                  </Badge>
-                ))
-              ) : (
-                <Badge variant="light" color="gray">
-                  No funding applied
+        {/* Funding Options Display */}
+        <Box>
+          <Text size="sm" fw={500} mb="xs">
+            Applied Funding Options
+          </Text>
+          <Group gap="xs">
+            {enabledFunding.length > 0 ? (
+              enabledFunding.map((option) => (
+                <Badge key={option} variant="light" color="blue">
+                  {option}
                 </Badge>
-              )}
-            </Group>
-          </Box>
-
-          {/* Scenario Selector */}
-          <Box>
-            <Text size="sm" fw={500} mb="xs">
-              Financial Scenario
-            </Text>
-            <SegmentedControl
-              value={selectedFinancialScenario}
-              onChange={handleScenarioChange}
-              data={[
-                { label: "Baseline", value: "baseline" },
-                { label: "Optimistic", value: "optimistic" },
-                { label: "Pessimistic", value: "pessimistic" },
-              ]}
-              fullWidth
-            />
-          </Box>
-        </SimpleGrid>
+              ))
+            ) : (
+              <Badge variant="light" color="gray">
+                No funding applied
+              </Badge>
+            )}
+          </Group>
+        </Box>
 
         {/* Cash Flow Chart */}
         {selectedCashFlowResult ? (
@@ -234,13 +205,41 @@ export function FinancialDataSection() {
 
         {/* Financial Metrics Table */}
         <ScrollArea>
-          <Table highlightOnHover withTableBorder withColumnBorders>
+          <Table
+            highlightOnHover
+            striped
+            withTableBorder
+            withColumnBorders
+            verticalSpacing="sm"
+          >
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Financial Metric</Table.Th>
                 {renovationScenarios.map((scenario) => (
-                  <Table.Th key={scenario.id} style={{ textAlign: "center" }}>
-                    {scenario.label}
+                  <Table.Th
+                    key={scenario.id}
+                    style={{
+                      textAlign: "center",
+                      backgroundColor: `var(--mantine-color-${getScenarioColor(
+                        scenario.id,
+                      )}-0)`,
+                    }}
+                  >
+                    <Group gap={6} justify="center" align="center">
+                      <Box
+                        style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: "50%",
+                          backgroundColor: `var(--mantine-color-${getScenarioColor(
+                            scenario.id,
+                          )}-6)`,
+                        }}
+                      />
+                      <Text size="sm" fw={600}>
+                        {scenario.label}
+                      </Text>
+                    </Group>
                   </Table.Th>
                 ))}
               </Table.Tr>
@@ -327,6 +326,11 @@ export function FinancialDataSection() {
                   fr.riskAssessment?.pointForecasts.MonthlyAvgSavings ?? 0
                 }
                 formatter={formatCurrency}
+              />
+
+              <BreakEvenRow
+                scenarios={renovationScenarios}
+                financialResults={financialResults}
               />
 
               {/* After Renovation Value (ARV) */}
@@ -420,6 +424,78 @@ function FinancialMetricRow({
 interface SuccessRateRowProps {
   scenarios: { id: ScenarioId; label: string }[];
   financialResults: Record<ScenarioId, FinancialResults>;
+}
+
+interface BreakEvenRowProps {
+  scenarios: { id: ScenarioId; label: string }[];
+  financialResults: Record<ScenarioId, FinancialResults>;
+}
+
+function BreakEvenRow({ scenarios, financialResults }: BreakEvenRowProps) {
+  return (
+    <Table.Tr>
+      <Table.Td fw={500}>
+        <Group gap={4}>
+          Break-even Year
+          <Tooltip
+            label="First year when cumulative cash flow turns positive"
+            withArrow
+            multiline
+            w={220}
+          >
+            <IconInfoCircle size={14} style={{ opacity: 0.5 }} />
+          </Tooltip>
+        </Group>
+      </Table.Td>
+      {scenarios.map((scenario) => {
+        const fr = financialResults[scenario.id];
+        if (!fr) {
+          return (
+            <Table.Td key={scenario.id} style={{ textAlign: "center" }}>
+              <Text size="sm" c="dimmed">
+                N/A
+              </Text>
+            </Table.Td>
+          );
+        }
+
+        const cashFlowData =
+          fr.riskAssessment?.cashFlowData ??
+          (fr.riskAssessment?.metadata.cash_flow_data as
+            | CashFlowData
+            | undefined);
+        const breakevenYear = cashFlowData?.breakeven_year;
+
+        if (breakevenYear === undefined) {
+          return (
+            <Table.Td key={scenario.id} style={{ textAlign: "center" }}>
+              <Badge variant="light" color="gray">
+                Not available
+              </Badge>
+            </Table.Td>
+          );
+        }
+
+        if (breakevenYear === null) {
+          return (
+            <Table.Td key={scenario.id} style={{ textAlign: "center" }}>
+              <Badge variant="light" color="red">
+                No break-even
+              </Badge>
+            </Table.Td>
+          );
+        }
+
+        return (
+          <Table.Td key={scenario.id} style={{ textAlign: "center" }}>
+            <Badge variant="light" color="green">
+              Year {breakevenYear}
+            </Badge>
+          </Table.Td>
+        );
+      })}
+    </Table.Tr>
+  );
 }
 
 function SuccessRateRow({ scenarios, financialResults }: SuccessRateRowProps) {

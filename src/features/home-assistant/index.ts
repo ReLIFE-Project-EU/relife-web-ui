@@ -29,7 +29,6 @@ export type {
 export {
   mockBuildingService,
   mockEnergyService,
-  mockFinancialService,
   mockMCDAService,
   mockRenovationService,
 } from "./services";
