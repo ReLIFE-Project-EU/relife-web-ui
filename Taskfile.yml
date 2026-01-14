@@ -34,6 +34,11 @@ tasks:
       - task: pull
       - docker compose up -d --build --wait
 
+  up-local:
+    desc: "Start services using locally built API images from external-services"
+    cmds:
+      - docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build --wait
+
   down:
     desc: "Stop and remove all running containers and networks"
     cmds:
@@ -86,6 +91,13 @@ tasks:
       TARGET_DIR: "external-services"
       DEFAULT_TREEISH: '{{.TREEISH | default "main"}}'
     cmds:
+      - |
+        if [ -d "{{.TARGET_DIR}}/relife-financial-service" ] || \
+           [ -d "{{.TARGET_DIR}}/relife-forecasting-service" ] || \
+           [ -d "{{.TARGET_DIR}}/relife-technical-service" ]; then
+          echo "fetch-sources aborted: target directories already exist. Remove them to re-clone."
+          exit 1
+        fi
       - >
         ./scripts/fetch-sources.sh
         "{{.FINANCIAL_REPO}}" 
@@ -102,8 +114,24 @@ tasks:
         "{{.TECHNICAL_TREEISH | default .DEFAULT_TREEISH}}"
         "{{.TARGET_DIR}}/relife-technical-service"
 
+  clean-sources:
+    prompt: "Are you sure you want to delete the local service sources? This will remove those directories."
+    desc: "Remove local clones of ReLIFE service sources"
+    vars:
+      TARGET_DIR: "external-services"
+    cmds:
+      - rm -rf "{{.TARGET_DIR}}/relife-financial-service"
+      - rm -rf "{{.TARGET_DIR}}/relife-forecasting-service"
+      - rm -rf "{{.TARGET_DIR}}/relife-technical-service"
+
   dev:
     desc: "Start the frontend development server and all backend services using Docker"
     cmds:
       - task: up
+      - npm run dev
+
+  dev-local:
+    desc: "Start the frontend dev server with locally built API services"
+    cmds:
+      - task: up-local
       - npm run dev

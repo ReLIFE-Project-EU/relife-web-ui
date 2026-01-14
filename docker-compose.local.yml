@@ -1,0 +1,13 @@
+services:
+  financial:
+    build:
+      context: ./external-services/relife-financial-service
+    image: relife-financial-service:local
+  forecasting:
+    build:
+      context: ./external-services/relife-forecasting-service
+    image: relife-forecasting-service:local
+  technical:
+    build:
+      context: ./external-services/relife-technical-service
+    image: relife-technical-service:local
