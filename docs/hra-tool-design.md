@@ -53,14 +53,14 @@ The following inputs are collected from the user at the beginning of the HRA wor
 
 User selects one or more renovation actions to evaluate (multi-select):
 
-- **Wall insulation** 
-- **Roof insulation** 
-- **Floor insulation** 
-- **Windows** 
-- **Air-water heat pump** 
-- **Condensing boiler** 
-- **PV** 
-- **Solar thermal panels** 
+- **Wall insulation**
+- **Roof insulation**
+- **Floor insulation**
+- **Windows**
+- **Air-water heat pump**
+- **Condensing boiler**
+- **PV**
+- **Solar thermal panels**
 
 #### Technical Inputs
 
@@ -87,8 +87,6 @@ Economic parameters for the renovation:
     - Loan amount
     - Loan term (years)
     - Interest rate
-
-
 
 ---
 
@@ -177,8 +175,6 @@ Each API developer should specify which of the above inputs (and any additional 
 - `energy_class` (string, EPC label after renovation) - Required by Financial API
 - [Other outputs to be defined] - May be required by Technical API
 
-
-
 ---
 
 ### Financial API
@@ -241,7 +237,7 @@ Each API developer should specify which of the above inputs (and any additional 
     "ROI": 1.423,
     "PBP": 10.9,
     "DPP": 12.5,
-    "MonthlyAvgSavings": 231.30,
+    "MonthlyAvgSavings": 231.3,
     "SuccessRate": 0.982
   },
   "percentiles": {
@@ -260,7 +256,7 @@ Each API developer should specify which of the above inputs (and any additional 
       "P10": 0.031,
       "P20": 0.038,
       "P30": 0.044,
-      "P40": 0.050,
+      "P40": 0.05,
       "P50": 0.057,
       "P60": 0.064,
       "P70": 0.071,
@@ -268,7 +264,7 @@ Each API developer should specify which of the above inputs (and any additional 
       "P90": 0.089
     },
     "ROI": {
-      "P10": 0.10,
+      "P10": 0.1,
       "P20": 0.115,
       "P30": 0.125,
       "P40": 0.138,
@@ -309,17 +305,35 @@ Each API developer should specify which of the above inputs (and any additional 
     "annual_energy_savings": 27400,
     "loan_amount": 20000,
     "loan_term": 15,
-    "annual_loan_payment": 1737.50,
+    "annual_loan_payment": 1737.5,
     "loan_rate_percent": 3.5,
     "output_level": "private",
     "indicators_requested": ["NPV", "IRR", "ROI", "PBP", "DPP"],
     "cash_flow_data": {
-      "years": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+      "years": [
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
+      ],
       "initial_investment": 40000.0,
-      "annual_inflows": [0.0, 6740.40, 6959.60, 7180.80, 7404.10, 7629.60, 7857.40, 8087.60, 8320.30, 8555.50, 8793.30, 9033.80, 9277.10, 9523.30, 9772.50, 10024.80, 10280.30, 10539.10, 10801.30, 11067.00, 11336.30],
-      "annual_outflows": [40000.0, 1994.00, 2000.95, 2008.00, 2015.15, 2022.40, 2029.75, 2037.20, 2044.75, 2052.40, 2060.15, 350.00, 352.50, 355.05, 357.65, 360.30, 0.0, 0.0, 0.0, 0.0, 0.0],
-      "annual_net_cash_flow": [-40000.0, 4746.40, 4958.65, 5172.80, 5388.95, 5607.20, 5827.65, 6050.40, 6275.55, 6503.10, 6733.15, 8683.80, 8924.60, 9168.25, 9414.85, 9664.50, 10280.30, 10539.10, 10801.30, 11067.00, 11336.30],
-      "cumulative_cash_flow": [-40000.0, -35253.60, -30294.95, -25122.15, -19733.20, -14126.00, -8298.35, -2247.95, 4027.60, 10530.70, 17263.85, 25947.65, 34872.25, 44040.50, 53455.35, 63119.85, 73400.15, 83939.25, 94740.55, 105807.55, 117143.85],
+      "annual_inflows": [
+        0.0, 6740.4, 6959.6, 7180.8, 7404.1, 7629.6, 7857.4, 8087.6, 8320.3,
+        8555.5, 8793.3, 9033.8, 9277.1, 9523.3, 9772.5, 10024.8, 10280.3,
+        10539.1, 10801.3, 11067.0, 11336.3
+      ],
+      "annual_outflows": [
+        40000.0, 1994.0, 2000.95, 2008.0, 2015.15, 2022.4, 2029.75, 2037.2,
+        2044.75, 2052.4, 2060.15, 350.0, 352.5, 355.05, 357.65, 360.3, 0.0, 0.0,
+        0.0, 0.0, 0.0
+      ],
+      "annual_net_cash_flow": [
+        -40000.0, 4746.4, 4958.65, 5172.8, 5388.95, 5607.2, 5827.65, 6050.4,
+        6275.55, 6503.1, 6733.15, 8683.8, 8924.6, 9168.25, 9414.85, 9664.5,
+        10280.3, 10539.1, 10801.3, 11067.0, 11336.3
+      ],
+      "cumulative_cash_flow": [
+        -40000.0, -35253.6, -30294.95, -25122.15, -19733.2, -14126.0, -8298.35,
+        -2247.95, 4027.6, 10530.7, 17263.85, 25947.65, 34872.25, 44040.5,
+        53455.35, 63119.85, 73400.15, 83939.25, 94740.55, 105807.55, 117143.85
+      ],
       "breakeven_year": 8,
       "loan_term": 15
     }
@@ -327,7 +341,8 @@ Each API developer should specify which of the above inputs (and any additional 
 }
 ```
 
-**Notes:** 
+**Notes:**
+
 - **Point Forecasts:** Median (P50) values + additional metrics (MonthlyAvgSavings, SuccessRate)
 - **Percentiles:** Full distribution (P10-P90) for all financial KPIs, enabling uncertainty visualization
 - **Metadata:** Contains simulation parameters AND cash flow data for chart rendering
@@ -372,17 +387,17 @@ cumulative = np.array(cash_flow_data['cumulative_cash_flow'])
 net_cf = inflows - outflows
 
 # Plot inflows (green bars)
-bars_inflow = ax.bar(x_pos - bar_width/2, inflows, bar_width, 
-                      label='Annual Inflows (Energy Savings)', 
+bars_inflow = ax.bar(x_pos - bar_width/2, inflows, bar_width,
+                      label='Annual Inflows (Energy Savings)',
                       color='#27ae60', alpha=0.8, edgecolor='darkgreen')
 
 # Plot outflows (red bars - negate to show as negative)
 bars_outflow = ax.bar(x_pos + bar_width/2, -outflows, bar_width,
-                       label='Annual Outflows (Maintenance + Loan)', 
+                       label='Annual Outflows (Maintenance + Loan)',
                        color='#e74c3c', alpha=0.8, edgecolor='darkred')
 
 # Add net cash flow line
-ax.plot(x_pos, net_cf, color='#2c3e50', linewidth=3, marker='o', 
+ax.plot(x_pos, net_cf, color='#2c3e50', linewidth=3, marker='o',
          markersize=6, label='Net Annual Cash Flow', zorder=5)
 
 # Zero line
@@ -394,7 +409,7 @@ y_min, y_max = ax.get_ylim()
 # Add break-even marker
 if cash_flow_data['breakeven_year'] is not None:
     bey = cash_flow_data['breakeven_year']
-    ax.axvline(x=bey, color='green', linestyle='--', linewidth=2.5, 
+    ax.axvline(x=bey, color='green', linestyle='--', linewidth=2.5,
                alpha=0.7, label=f'Break-Even (Year {bey})')
     ax.text(bey, y_min + (y_max - y_min)*0.05, f'Break-Even\nYear {bey}',
            ha='center', va='bottom', fontsize=11, fontweight='bold', color='darkgreen',
@@ -403,7 +418,7 @@ if cash_flow_data['breakeven_year'] is not None:
 # Add loan payoff marker
 if cash_flow_data['loan_term'] is not None and cash_flow_data['loan_term'] > 0:
     lt = cash_flow_data['loan_term']
-    ax.axvline(x=lt, color='orange', linestyle='--', linewidth=2.5, 
+    ax.axvline(x=lt, color='orange', linestyle='--', linewidth=2.5,
                alpha=0.7, label=f'Loan Paid Off (Year {lt})')
     ax.text(lt, y_min + (y_max - y_min)*0.05, f'Loan Paid Off\nYear {lt}',
            ha='center', va='bottom', fontsize=11, fontweight='bold', color='darkorange',
@@ -426,7 +441,7 @@ for i in range(0, len(years), 5):
 # Formatting
 ax.set_xlabel('Year', fontsize=14, fontweight='bold')
 ax.set_ylabel('Cash Flow (€)', fontsize=14, fontweight='bold')
-ax.set_title('Cash Flow Timeline - Rendered from API Metadata', 
+ax.set_title('Cash Flow Timeline - Rendered from API Metadata',
              fontsize=16, fontweight='bold', pad=20)
 
 # Legend outside
@@ -463,7 +478,6 @@ plt.show()
 - Consider adding zoom/pan controls for longer project lifetimes
 - Mobile-responsive design should simplify the chart appropriately
 
-
 ---
 
 ### Technical API
@@ -483,8 +497,6 @@ plt.show()
 - Optimal renovation package
 - Technology rankings
 - [Other outputs to be defined]
-
-
 
 ---
 

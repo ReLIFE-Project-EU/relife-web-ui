@@ -254,12 +254,8 @@ export class MockFinancialService implements IFinancialService {
     const adjustedAnnualSavings =
       annualEnergySavings * scenarioMultiplier.energyPrice;
 
-    let netAnnualSavings = adjustedAnnualSavings;
-    if (fundingOptions.returnsOnBills.enabled) {
-      netAnnualSavings =
-        adjustedAnnualSavings *
-        (1 - fundingOptions.returnsOnBills.percentOfSavedEnergy / 100);
-    }
+    // Net annual savings after scenario adjustment
+    const netAnnualSavings = adjustedAnnualSavings;
 
     const projectLifetime = MOCK_DEFAULT_PROJECT_LIFETIME;
     const npv = calculateNPV(
@@ -417,12 +413,8 @@ export class MockFinancialService implements IFinancialService {
       const adjustedAnnualSavings =
         annualEnergySavings * scenarioMultiplier.energyPrice;
 
-      let netAnnualSavings = adjustedAnnualSavings;
-      if (fundingOptions.returnsOnBills.enabled) {
-        netAnnualSavings =
-          adjustedAnnualSavings *
-          (1 - fundingOptions.returnsOnBills.percentOfSavedEnergy / 100);
-      }
+      // Net annual savings after scenario adjustment
+      const netAnnualSavings = adjustedAnnualSavings;
 
       const projectLifetime = MOCK_DEFAULT_PROJECT_LIFETIME;
       const npv = calculateNPV(
@@ -459,7 +451,7 @@ export class MockFinancialService implements IFinancialService {
         floor_number: building.floorNumber,
         property_type: toAPIPropertyType(building.buildingType),
         energy_class: toAPIEnergyClass(scenario.epcClass),
-        renovated_last_5_years: true,
+        renovated_last_5_years: building.renovatedLast5Years,
       };
       const arvResult = await this.calculateARV(arvRequest);
 

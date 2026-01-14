@@ -43,9 +43,11 @@ export function FinancialDataSection() {
 
   // Funding option labels for display
   const enabledFunding: string[] = [];
-  if (funding.returnsOnBills.enabled) enabledFunding.push("Returns on Bills");
-  if (funding.loan.enabled) enabledFunding.push("Loan");
-  if (funding.subsidy.enabled) enabledFunding.push("Subsidy");
+  if (funding.financingType === "loan") {
+    enabledFunding.push("Loan");
+  } else {
+    enabledFunding.push("Self-funded");
+  }
 
   const handleScenarioChange = (value: string) => {
     dispatch({

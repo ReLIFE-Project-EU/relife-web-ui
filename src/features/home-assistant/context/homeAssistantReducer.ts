@@ -37,6 +37,9 @@ const initialBuilding: BuildingInfo = {
 
   // Fields for Financial API (/risk-assessment endpoint)
   projectLifetime: PROJECT_LIFETIME_DEFAULT, // Default: 20 years (1-30 range)
+
+  // Fields for Financial API (/arv endpoint)
+  renovatedLast5Years: true, // Default: true (API spec default)
 };
 
 const initialRenovation: RenovationSelections = {
@@ -54,20 +57,11 @@ const initialRenovation: RenovationSelections = {
 };
 
 const initialFunding: FundingOptions = {
-  returnsOnBills: {
-    enabled: false,
-    percentOfSavedEnergy: 50,
-  },
+  financingType: "self-funded", // Default: homeowner pays upfront
   loan: {
-    enabled: false,
-    amountLimit: 50000,
-    duration: 10,
-    rateType: "floating",
-  },
-  subsidy: {
-    enabled: false,
-    percentOfTotal: 30,
-    amountLimit: 20000,
+    percentage: 80, // 80% of renovation cost
+    duration: 10, // 10 years
+    interestRate: 0.05, // 5% annual rate
   },
 };
 
@@ -274,30 +268,25 @@ export function homeAssistantReducer(
     // ─────────────────────────────────────────────────────────────────────────
     // Funding Options
     // ─────────────────────────────────────────────────────────────────────────
-    case "TOGGLE_FUNDING": {
-      const { fundingType } = action;
+    case "SET_FINANCING_TYPE": {
       return {
         ...state,
         funding: {
           ...state.funding,
-          [fundingType]: {
-            ...state.funding[fundingType],
-            enabled: !state.funding[fundingType].enabled,
-          },
+          financingType: action.financingType,
         },
         ...clearedFinancialResults,
       };
     }
 
-    case "UPDATE_FUNDING": {
-      const { fundingType, field, value } = action;
+    case "UPDATE_LOAN": {
       return {
         ...state,
         funding: {
           ...state.funding,
-          [fundingType]: {
-            ...state.funding[fundingType],
-            [field]: value,
+          loan: {
+            ...state.funding.loan,
+            [action.field]: action.value,
           },
         },
         ...clearedFinancialResults,

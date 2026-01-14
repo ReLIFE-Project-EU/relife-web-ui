@@ -110,33 +110,32 @@ export function calculateROI(investment: number, totalSavings: number): number {
   return (totalSavings - investment) / investment;
 }
 
+/**
+ * Apply funding options to calculate effective cost and loan amount.
+ *
+ * Per design doc: Only two financing types - Self-funded or Loan.
+ * - Self-funded: Homeowner pays full cost upfront
+ * - Loan: Homeowner borrows a percentage of the cost
+ *
+ * @param totalCost - Total renovation cost in EUR
+ * @param fundingOptions - Selected financing options
+ * @returns Effective CAPEX and loan amount for risk assessment
+ */
 export function applyFundingReduction(
   totalCost: number,
   fundingOptions: FundingOptions,
 ): {
   effectiveCost: number;
   loanAmount: number;
-  subsidyAmount: number;
 } {
-  let subsidyAmount = 0;
-  let loanAmount = 0;
+  // CAPEX is always the total renovation cost
+  const effectiveCost = totalCost;
 
-  if (fundingOptions.subsidy.enabled) {
-    const maxSubsidy = Math.min(
-      totalCost * (fundingOptions.subsidy.percentOfTotal / 100),
-      fundingOptions.subsidy.amountLimit,
-    );
-    subsidyAmount = maxSubsidy;
-  }
+  // Loan amount depends on financing type
+  const loanAmount =
+    fundingOptions.financingType === "loan"
+      ? totalCost * (fundingOptions.loan.percentage / 100)
+      : 0;
 
-  if (fundingOptions.loan.enabled) {
-    const maxLoan = Math.min(
-      totalCost - subsidyAmount,
-      fundingOptions.loan.amountLimit,
-    );
-    loanAmount = maxLoan;
-  }
-
-  const effectiveCost = totalCost - subsidyAmount;
-  return { effectiveCost, loanAmount, subsidyAmount };
+  return { effectiveCost, loanAmount };
 }

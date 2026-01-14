@@ -10,17 +10,20 @@ import type { IHomeAssistantServices } from "../services/types";
 import {
   mockBuildingService,
   mockEnergyService,
-  mockFinancialService,
   mockMCDAService,
   mockRenovationService,
 } from "../services";
+import { FinancialService } from "../services/FinancialService";
 import { ServiceContext } from "./ServiceContextDefinition";
 
-// Default to mock services
+// Real Financial API service
+const financialService = new FinancialService();
+
+// Services: real Financial API, mocks for others (pending integration)
 const defaultServices: IHomeAssistantServices = {
   building: mockBuildingService,
   energy: mockEnergyService,
-  financial: mockFinancialService,
+  financial: financialService,
   mcda: mockMCDAService,
   renovation: mockRenovationService,
 };

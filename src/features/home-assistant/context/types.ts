@@ -38,6 +38,9 @@ export interface BuildingInfo {
   // Fields for Financial API (/risk-assessment endpoint)
   projectLifetime: number; // Required, 1-30 years, default: 20
 
+  // Fields for Financial API (/arv endpoint)
+  renovatedLast5Years: boolean; // Whether property was renovated in last 5 years, default: true
+
   // Note: EPC (Energy Performance Certificate) is NOT a user input.
   // It is calculated by the Forecasting API and used as input to the Financial API.
   // See: api-specs/20260108-125427/financial.json - energy_class comes from energy analysis API
@@ -84,30 +87,25 @@ export interface RenovationSelections {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Funding Options Types (Screen 2)
+// Per design doc: Only two financing types - Self-funded (Equity) or Loan
 // ─────────────────────────────────────────────────────────────────────────────
 
-export interface ReturnsOnBillsOption {
-  enabled: boolean;
-  percentOfSavedEnergy: number;
-}
+export type FinancingType = "self-funded" | "loan";
 
-export interface LoanOption {
-  enabled: boolean;
-  amountLimit: number;
+export interface LoanDetails {
+  /** Loan amount as percentage of renovation cost (0-100) */
+  percentage: number;
+  /** Loan duration in years */
   duration: number;
-  rateType: "floating" | "fixed";
-}
-
-export interface SubsidyOption {
-  enabled: boolean;
-  percentOfTotal: number;
-  amountLimit: number;
+  /** Annual interest rate as decimal (e.g., 0.05 = 5%) */
+  interestRate: number;
 }
 
 export interface FundingOptions {
-  returnsOnBills: ReturnsOnBillsOption;
-  loan: LoanOption;
-  subsidy: SubsidyOption;
+  /** The chosen financing type */
+  financingType: FinancingType;
+  /** Loan details (only relevant when financingType is "loan") */
+  loan: LoanDetails;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -273,13 +271,8 @@ export type HomeAssistantAction =
     }
 
   // Funding options
-  | {
-      type: "UPDATE_FUNDING";
-      fundingType: keyof FundingOptions;
-      field: string;
-      value: unknown;
-    }
-  | { type: "TOGGLE_FUNDING"; fundingType: keyof FundingOptions }
+  | { type: "SET_FINANCING_TYPE"; financingType: FinancingType }
+  | { type: "UPDATE_LOAN"; field: keyof LoanDetails; value: number }
 
   // Evaluation
   | { type: "START_EVALUATION" }

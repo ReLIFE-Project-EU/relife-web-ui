@@ -13,6 +13,7 @@ import {
   SimpleGrid,
   Slider,
   Stack,
+  Switch,
   Text,
 } from "@mantine/core";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
@@ -151,6 +152,19 @@ export function BuildingTypeInputs() {
           }
         />
       )}
+
+      <Switch
+        label="Renovated in last 5 years"
+        description="Has the property undergone renovation recently?"
+        checked={state.building.renovatedLast5Years}
+        onChange={(event) =>
+          dispatch({
+            type: "UPDATE_BUILDING",
+            field: "renovatedLast5Years",
+            value: event.currentTarget.checked,
+          })
+        }
+      />
 
       {/* Project Lifetime - full width */}
       <Stack gap="xs" style={{ gridColumn: "1 / -1" }}>
