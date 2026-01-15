@@ -98,7 +98,7 @@ Each API developer should specify which of the above inputs (and any additional 
 
 **Required Inputs:**
 
-### Building
+##### Building
 
 | Key                              | Type       | Description                                                              |
 | -------------------------------- | ---------- | ------------------------------------------------------------------------ |
@@ -112,11 +112,11 @@ Each API developer should specify which of the above inputs (and any additional 
 | `building_type_class`            | str        | Type of building (e.g., _Residential_apartment_, _Office_).              |
 | `net_floor_area`                 | float (m²) | Conditioned floor area.                                                  |
 
-### <h3 style="color:#df1b12; margin-bottom:0px; font-weight:bold"><strong>Envelope Elements: `"building_surface"`</strong></h3>
+##### Envelope Elements: `building_surface`
 
 Describes all external and internal surfaces forming the building envelope.
 
-### Common attributes
+###### Common attributes
 
 | Key                   | Description                                               |
 | --------------------- | --------------------------------------------------------- |
@@ -131,7 +131,7 @@ Describes all external and internal surfaces forming the building envelope.
 | `orientation.tilt`    | Tilt angle (0 = horizontal, 90 = vertical).               |
 | `name_adj_zone`       | Linked adjacent zone (if applicable).                     |
 
-### Transparent surfaces
+###### Transparent surfaces
 
 Include window-specific attributes:
 | Key | Description |
@@ -145,7 +145,7 @@ Include window-specific attributes:
 
 ---
 
-### <h3 style="color:#df1b12; margin-bottom:0px; font-weight:bold"><strong>Unit Definitions: `"units"`</strong></h3>
+##### Unit Definitions: `units`
 
 Defines unit conventions for each physical quantity.
 
@@ -161,9 +161,9 @@ Defines unit conventions for each physical quantity.
 
 ---
 
-### <h3 style="color:#df1b12; margin-bottom:0px; font-weight:bold"><strong>Thermal, System, and Operational Settings: `"building_parameters"`</strong></h3>
+##### Thermal, System, and Operational Settings: `building_parameters`
 
-#### Temperature Setpoints
+###### Temperature Setpoints
 
 | Key                                   | Description                            |
 | ------------------------------------- | -------------------------------------- |
@@ -171,21 +171,21 @@ Defines unit conventions for each physical quantity.
 | `cooling_setpoint`, `cooling_setback` | Cooling comfort and setback (°C).      |
 | `units`                               | `"°C"`.                                |
 
-#### System Capacities
+###### System Capacities
 
 | Key                                    | Description                    |
 | -------------------------------------- | ------------------------------ |
 | `heating_capacity`, `cooling_capacity` | Maximum system capacities (W). |
 | `units`                                | `"W"`.                         |
 
-#### Airflow Rates
+###### Airflow Rates
 
 | Key                 | Description                            |
 | ------------------- | -------------------------------------- |
 | `infiltration_rate` | Airflow in air changes per hour (ACH). |
 | `units`             | `"ACH"`.                               |
 
-#### Internal Gains
+###### Internal Gains
 
 Each internal source (occupants, appliances, lighting) defines:
 | Key | Description |
@@ -194,20 +194,20 @@ Each internal source (occupants, appliances, lighting) defines:
 | `full_load` | Peak power density (W/m²). |
 | `weekday`, `weekend` | 24-hour normalized (0–1) schedules. |
 
-#### Construction
+###### Construction
 
 | Key               | Description                                |
 | ----------------- | ------------------------------------------ |
 | `wall_thickness`  | Wall thickness (m).                        |
 | `thermal_bridges` | Linear thermal bridge coefficient (W/m·K). |
 
-#### Climate Parameters
+###### Climate Parameters
 
 | Key             | Description                                 |
 | --------------- | ------------------------------------------- |
 | `coldest_month` | Index of coldest month (1 = Jan, 12 = Dec). |
 
-#### HVAC and Ventilation Profiles
+###### HVAC and Ventilation Profiles
 
 Hourly normalized profiles for system operation:
 
@@ -219,9 +219,9 @@ Hourly normalized profiles for system operation:
 
 ---
 
-### System
+##### System
 
-#### Emitter block (room-side heat delivery)
+###### Emitter block (room-side heat delivery)
 
 | Field                       | Type               | Example                                   | Meaning                                                                                          |
 | --------------------------- | ------------------ | ----------------------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -234,7 +234,7 @@ Hourly normalized profiles for system operation:
 | `mixing_valve_delta`        | `float`            | `2`                                       | °C delta used when mixing valve is active (typical blending margin).                             |
 | `constant_flow_temp`        | `float` (optional) | `42`                                      | Overrides control curve with a constant emitter flow setpoint (°C). _Commented by default_.      |
 
-##### Optional custom emitter tables
+###### Optional custom emitter tables
 
 You can override internal presets using one or both of the following:
 
@@ -261,7 +261,7 @@ heat_emission_data = pd.DataFrame({
 
 ---
 
-#### Distribution block (piping network & auxiliaries)
+###### Distribution block (piping network & auxiliaries)
 
 | Field                         | Type    | Example | Meaning                                                                              |
 | ----------------------------- | ------- | ------- | ------------------------------------------------------------------------------------ |
@@ -275,7 +275,7 @@ heat_emission_data = pd.DataFrame({
 
 ---
 
-#### Generator block (plant production side)
+###### Generator block (plant production side)
 
 | Field                                   | Type    | Example         | Meaning                                                                      |
 | --------------------------------------- | ------- | --------------- | ---------------------------------------------------------------------------- |
@@ -286,7 +286,7 @@ heat_emission_data = pd.DataFrame({
 | `fraction_of_auxiliary_power_generator` | `float` | `40`            | % of generator auxiliaries credited as internal gains.                       |
 | `generator_circuit`                     | `str`   | `"independent"` | Hydraulic layout: `"direct"` or `"independent"` (primary/secondary with HX). |
 
-##### Generator flow-temperature control
+###### Generator flow-temperature control
 
 | Field                          | Type           | Example                                   | Meaning                                                    |
 | ------------------------------ | -------------- | ----------------------------------------- | ---------------------------------------------------------- |
@@ -313,9 +313,9 @@ The controller interpolates a target flow temperature between `(θext_min_gen, �
 
 ---
 
-#### Control strategies (cheat sheet)
+###### Control strategies (cheat sheet)
 
-##### Emitter `flow_temp_control_type`
+**Emitter `flow_temp_control_type`**
 
 Common patterns (implementation-dependent; typical meanings):
 
@@ -326,7 +326,7 @@ Common patterns (implementation-dependent; typical meanings):
 
 > **Note**: Your codebase may define the exact meanings of each "Type N". Ensure the UI/CLI lists allowed values.
 
-##### Generator `gen_flow_temp_control_type`
+**Generator `gen_flow_temp_control_type`**
 
 - **Type A – Based on outdoor temperature**: uses `gen_outdoor_temp_data` (reset curve).
 - **Type B – Constant**: use `θHW_gen_flw_set` and optionally `θHW_gen_ret_set`.
@@ -334,7 +334,7 @@ Common patterns (implementation-dependent; typical meanings):
 
 ---
 
-### Efficiency model
+##### Efficiency model
 
 | Field              | Allowed                               | Notes                                                                                                                                                |
 | ------------------ | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -344,7 +344,7 @@ Backends typically compute **delivered heat**, **electric/primary energy**, and 
 
 ---
 
-### Calculation options
+##### Calculation options
 
 | Field                        | Type   | Meaning                                                                                                                        |
 | ---------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------ |
@@ -353,7 +353,7 @@ Backends typically compute **delivered heat**, **electric/primary energy**, and 
 
 ---
 
-### Units & conventions
+##### Units & conventions
 
 - Temperatures in **°C**, ΔT in **K** (numerically the same scale).
 - Powers: `kW` for generator/emitter nominal; auxiliaries commonly in **W** (check your backend).
@@ -367,27 +367,27 @@ for more information refers to `Guidelines`: <https://eurac-eebgroup.github.io/p
 
 ---
 
-### <h3 style="color:#ff2c2c; margin-bottom:0px; font-weight:bold"><strong>Inputs for photovoltaic system and Heat pump will be available soon</strong></h3>
+##### Inputs for photovoltaic system and heat pump will be available soon
 
 ---
 
-#### Input if archetype is selected:
+##### Input if archetype is selected
 
 - `category` (str): Name of the building typology. "Sigle family house", "Multi family house", "office", etc..
 - `countries`: list of countries to include
 - `names`: list of archetype names to include
 
-#### Input for cobenefit:
+##### Input for cobenefit
 
 - `energy_source` (str): Name of the energy source. "grid_electricity", "natural_gas", "lpg", "diesel", "biomass", "district_heating", "solar_pv", "wind", "heat_pump_electric"
 - `country`: country to select the emission factors to be used (e.g. "IT", "DE", "FR", etc.)
 - `annual_energy_consumption` (float): annual Energy consumption (kWh) directly coming from simulation of if already available from own data
 
-## **Optional Inputs:**
+##### Optional Inputs
 
 - There are no optional parameters, only the possibility of preloading them by using building archetypes from Reliefe Database.
 
-## **Data from ReLIFE Database:**
+##### Data from ReLIFE Database
 
 - All inputs defined in point 1 from archetypes database.
 - `Emission factors`: values of emission factors for each system type and country. Example
