@@ -186,7 +186,7 @@ export interface RiskAssessmentPointForecasts {
  * Metadata from risk assessment simulation
  */
 export interface RiskAssessmentMetadata {
-  n_sims: number; // Number of Monte Carlo simulations (typically 10000)
+  n_sims?: number; // Number of Monte Carlo simulations (optional - only show if API returns it)
   project_lifetime: number;
   capex: number; // Used CAPEX value (may come from API dataset)
   loan_amount: number;
@@ -209,6 +209,34 @@ export interface CashFlowData {
 }
 
 /**
+ * Percentile data for a single financial metric
+ * P10 = pessimistic (10th percentile), P90 = optimistic (90th percentile)
+ */
+export interface PercentileData {
+  P10: number;
+  P20?: number;
+  P30?: number;
+  P40?: number;
+  P50: number;
+  P60?: number;
+  P70?: number;
+  P80?: number;
+  P90: number;
+}
+
+/**
+ * Percentiles for all financial indicators
+ * Available when output_level is higher than "private"
+ */
+export interface RiskAssessmentPercentiles {
+  NPV?: PercentileData;
+  PBP?: PercentileData;
+  ROI?: PercentileData;
+  IRR?: PercentileData;
+  DPP?: PercentileData;
+}
+
+/**
  * Complete financial results combining ARV and Risk Assessment
  */
 export interface FinancialResults {
@@ -219,19 +247,18 @@ export interface FinancialResults {
   riskAssessment: {
     pointForecasts: RiskAssessmentPointForecasts;
     metadata: RiskAssessmentMetadata;
+    percentiles?: RiskAssessmentPercentiles; // Available when output_level > "private"
     cashFlowVisualization?: string; // base64 PNG (included for private level)
     cashFlowData?: CashFlowData;
   } | null;
 
-  // Legacy fields for backward compatibility during transition
-  // TODO: Remove these once all components are updated
-  capitalExpenditure: number;
-  returnOnInvestment: number; // Percentage (derived from ROI)
-  paybackTime: number; // Years (derived from PBP)
-  netPresentValue: number; // EUR (derived from NPV)
-  afterRenovationValue: number; // EUR (derived from ARV totalPrice)
-  paybackTimeRange?: { min: number; max: number };
-  npvRange?: { min: number; max: number };
+  // Derived/cached values from API responses for convenience
+  capitalExpenditure: number; // From metadata.capex
+  returnOnInvestment: number; // From pointForecasts.ROI
+  paybackTime: number; // From pointForecasts.PBP
+  netPresentValue: number; // From pointForecasts.NPV
+  afterRenovationValue: number; // From arv.totalPrice
+  // NOTE: For ranges, use riskAssessment.percentiles (actual API data) instead of fake calculations
 }
 
 export type FinancialScenario = "baseline" | "optimistic" | "pessimistic";

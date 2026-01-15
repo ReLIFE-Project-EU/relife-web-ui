@@ -9,12 +9,14 @@ import { financial } from "../../../api";
 import type {
   ARVResult,
   BuildingInfo,
+  CashFlowData,
   EstimationResult,
   FinancialResults,
   FinancialScenario,
   FundingOptions,
+  PercentileData,
   RenovationScenario,
-  CashFlowData,
+  RiskAssessmentPercentiles,
   ScenarioId,
 } from "../context/types";
 import {
@@ -81,6 +83,11 @@ export class FinancialService implements IFinancialService {
       (rawMetadata as Record<string, unknown>).cash_flow_data,
     );
 
+    // Map percentiles if available (included in public+ output levels, or when API returns them)
+    const percentiles = response.percentiles
+      ? normalizePercentiles(response.percentiles)
+      : undefined;
+
     return {
       pointForecasts: {
         NPV: response.point_forecasts.NPV ?? 0,
@@ -93,7 +100,7 @@ export class FinancialService implements IFinancialService {
       },
       metadata: {
         ...rawMetadata,
-        n_sims: (response.metadata.n_sims as number) ?? 10000,
+        n_sims: response.metadata.n_sims as number | undefined,
         project_lifetime:
           (response.metadata.project_lifetime as number) ??
           request.project_lifetime,
@@ -109,6 +116,7 @@ export class FinancialService implements IFinancialService {
         output_level: HRA_OUTPUT_LEVEL,
         ...(cashFlowData ? { cash_flow_data: cashFlowData } : {}),
       },
+      percentiles,
       cashFlowVisualization: response.visualizations?.cash_flow_timeline,
       cashFlowData,
     };
@@ -230,14 +238,7 @@ export class FinancialService implements IFinancialService {
         paybackTime: riskResult.pointForecasts.PBP,
         netPresentValue: riskResult.pointForecasts.NPV,
         afterRenovationValue: arvResult.totalPrice,
-        npvRange: {
-          min: Math.round(riskResult.pointForecasts.NPV * 0.8),
-          max: Math.round(riskResult.pointForecasts.NPV * 1.2),
-        },
-        paybackTimeRange: {
-          min: Math.round(riskResult.pointForecasts.PBP * 0.8 * 10) / 10,
-          max: Math.round(riskResult.pointForecasts.PBP * 1.2 * 10) / 10,
-        },
+        // NOTE: npvRange and paybackTimeRange removed - use actual percentiles from API instead
       };
     }
 
@@ -293,4 +294,53 @@ function normalizeCashFlowData(raw: unknown): CashFlowData | undefined {
         ? (data.loan_term as number | null)
         : undefined,
   };
+}
+
+/**
+ * Normalize percentile data from API response to internal type.
+ * API returns: { NPV: { P10: x, P20: y, ... }, PBP: { ... }, ... }
+ */
+function normalizePercentiles(
+  raw: Record<string, Record<string, number>> | null | undefined,
+): RiskAssessmentPercentiles | undefined {
+  if (!raw || typeof raw !== "object") {
+    return undefined;
+  }
+
+  const normalizeIndicator = (
+    data: Record<string, number> | undefined,
+  ): PercentileData | undefined => {
+    if (!data || typeof data !== "object") return undefined;
+    // Ensure at minimum P10, P50, P90 are present
+    if (
+      data.P10 === undefined ||
+      data.P50 === undefined ||
+      data.P90 === undefined
+    ) {
+      return undefined;
+    }
+    return {
+      P10: data.P10,
+      P20: data.P20,
+      P30: data.P30,
+      P40: data.P40,
+      P50: data.P50,
+      P60: data.P60,
+      P70: data.P70,
+      P80: data.P80,
+      P90: data.P90,
+    };
+  };
+
+  const result: RiskAssessmentPercentiles = {};
+
+  if (raw.NPV) result.NPV = normalizeIndicator(raw.NPV);
+  if (raw.PBP) result.PBP = normalizeIndicator(raw.PBP);
+  if (raw.ROI) result.ROI = normalizeIndicator(raw.ROI);
+  if (raw.IRR) result.IRR = normalizeIndicator(raw.IRR);
+  if (raw.DPP) result.DPP = normalizeIndicator(raw.DPP);
+
+  // Return undefined if no valid percentile data was found
+  const hasAnyData = Object.values(result).some((v) => v !== undefined);
+  return hasAnyData ? result : undefined;
 }

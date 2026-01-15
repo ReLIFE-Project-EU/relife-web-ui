@@ -106,7 +106,7 @@ function HomeAssistantWizard() {
             loading={state.isEstimating}
             color={canAccessStep(0) ? "blue" : "gray"}
           >
-            <BuildingInfoStep />
+            {state.currentStep === 0 && <BuildingInfoStep />}
           </Stepper.Step>
 
           <Stepper.Step
@@ -116,7 +116,7 @@ function HomeAssistantWizard() {
             loading={state.isEvaluating}
             color={canAccessStep(1) ? "blue" : "gray"}
           >
-            <EnergyRenovationStep />
+            {state.currentStep === 1 && <EnergyRenovationStep />}
           </Stepper.Step>
 
           <Stepper.Step
@@ -126,7 +126,7 @@ function HomeAssistantWizard() {
             loading={state.isRanking}
             color={canAccessStep(2) ? "blue" : "gray"}
           >
-            <ResultsStep />
+            {state.currentStep === 2 && <ResultsStep />}
           </Stepper.Step>
         </Stepper>
       </Stack>

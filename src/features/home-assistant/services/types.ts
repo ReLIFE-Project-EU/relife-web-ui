@@ -15,15 +15,16 @@
 import type {
   ARVResult,
   BuildingInfo,
+  CashFlowData,
   EstimationResult,
   FinancialResults,
   FinancialScenario,
   FundingOptions,
   MCDARankingResult,
-  CashFlowData,
   RenovationMeasureId,
   RenovationScenario,
   RiskAssessmentMetadata,
+  RiskAssessmentPercentiles,
   RiskAssessmentPointForecasts,
   ScenarioId,
 } from "../context/types";
@@ -197,11 +198,17 @@ export interface RiskAssessmentRequest {
 }
 
 /**
- * Response from POST /risk-assessment for output_level: "private"
+ * Response from POST /risk-assessment
+ * Fields populated based on output_level (per API spec):
+ * - private: point_forecasts, metadata (+ cash_flow_timeline viz)
+ * - professional+: adds key_percentiles, probabilities
+ * - public+: adds full percentiles breakdown
+ * - complete: adds all visualizations
  */
 export interface RiskAssessmentResponse {
   pointForecasts: RiskAssessmentPointForecasts;
   metadata: RiskAssessmentMetadata;
+  percentiles?: RiskAssessmentPercentiles; // Full P10-P90 breakdown (public+ or when API returns it)
   cashFlowVisualization?: string; // base64 PNG
   cashFlowData?: CashFlowData;
 }
