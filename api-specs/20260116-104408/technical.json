@@ -1,0 +1,814 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Technical Service APIs",
+    "description": "FastAPI application for all technical indicators",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Health Check",
+        "description": "Basic health check endpoint that returns service status and current timestamp.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          }
+        }
+      }
+    },
+    "/whoami": {
+      "get": {
+        "tags": ["auth"],
+        "summary": "Whoami With Roles",
+        "description": "Return authenticated user's information including their Keycloak roles.",
+        "operationId": "whoami_with_roles_whoami_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthenticatedUser" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/storage": {
+      "get": {
+        "tags": ["examples"],
+        "summary": "List Files",
+        "description": "List all files uploaded by the authenticated user to the default Supabase Storage bucket.\n\nThis endpoint retrieves a comprehensive list of all files that the current user\nhas uploaded to their personal storage folder. Each file entry includes metadata\nsuch as size, creation date, and public access URL.",
+        "operationId": "list_files_storage_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": { "$ref": "#/components/schemas/StorageFileInfo" },
+                  "type": "array",
+                  "title": "Response List Files Storage Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      },
+      "post": {
+        "tags": ["examples"],
+        "summary": "Upload File",
+        "description": "Upload a file to Supabase Storage with user-specific organization.\n\nThis endpoint uploads files to a user-specific folder within the configured storage bucket.\nEach user's files are isolated in their own directory to prevent unauthorized access.",
+        "operationId": "upload_file_storage_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_file_storage_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FileUploadResponse" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/table/{table_name}": {
+      "get": {
+        "tags": ["examples"],
+        "summary": "Read Table",
+        "description": "Read data from a Supabase table. The table name is passed as a path parameter.\n\nThis endpoint respects Row Level Security (RLS) policies configured on the table.\nUsers will only see data they are authorized to access based on their permissions.",
+        "operationId": "read_table_table__table_name__get",
+        "security": [{ "HTTPBearer": [] }],
+        "parameters": [
+          {
+            "name": "table_name",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "title": "Table Name" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TableDataResponse" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user-profile": {
+      "get": {
+        "tags": ["examples"],
+        "summary": "Get User Profile",
+        "description": "Get comprehensive user profile information including Keycloak roles.\n\nThis endpoint demonstrates how to work with users authenticated via Keycloak\nwithout requiring them to be present in Supabase. It shows how to access\nuser information and roles from the Keycloak authentication context.\n\nThis works with both Supabase-synchronized and direct Keycloak users.",
+        "operationId": "get_user_profile_user_profile_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get User Profile User Profile Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/technical/ee": {
+      "post": {
+        "tags": ["technical"],
+        "summary": "Calculate EE weight",
+        "description": "Calculate the EE of Project.",
+        "operationId": "ee_endpoint_technical_ee_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/EERequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/EEResponse" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/financial/rei": {
+      "post": {
+        "tags": ["financial"],
+        "summary": "Calculate REI weight",
+        "description": "Calculate the REI of Project.",
+        "operationId": "rei_endpoint_financial_rei_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/REIRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/REIResponse" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/technical/sei": {
+      "post": {
+        "tags": ["technical"],
+        "summary": "Calculate SEI weight",
+        "description": "Calculate the SEI of Project.",
+        "operationId": "sei_endpoint_technical_sei_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SEIRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SEIResponse" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/technical/uc": {
+      "post": {
+        "tags": ["technical"],
+        "summary": "Calculate UC weight",
+        "description": "Calculate the UC of Project.",
+        "operationId": "uc_endpoint_technical_uc_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UCRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UCResponse" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/technical/fv": {
+      "post": {
+        "tags": ["technical"],
+        "summary": "Calculate FV weight",
+        "description": "Calculate the FV of Project.",
+        "operationId": "fv_endpoint_technical_fv_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FVRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FVResponse" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuthenticatedUser": {
+        "properties": {
+          "token": { "type": "string", "title": "Token" },
+          "user": { "$ref": "#/components/schemas/UniversalUser" },
+          "authentication_method": {
+            "$ref": "#/components/schemas/AuthenticationMethod"
+          },
+          "keycloak_roles": {
+            "anyOf": [
+              {
+                "items": { "$ref": "#/components/schemas/KeycloakRole" },
+                "type": "array"
+              },
+              { "type": "null" }
+            ],
+            "title": "Keycloak Roles"
+          }
+        },
+        "type": "object",
+        "required": ["token", "user", "authentication_method"],
+        "title": "AuthenticatedUser",
+        "description": "Authenticated user model supporting multiple authentication providers.\n\nThis model abstracts authentication information from various sources (Supabase, Keycloak)\nand provides a consistent interface for user data and permissions."
+      },
+      "AuthenticationMethod": {
+        "type": "string",
+        "enum": ["supabase", "keycloak"],
+        "title": "AuthenticationMethod",
+        "description": "Authentication method used to authenticate the user."
+      },
+      "Body_upload_file_storage_post": {
+        "properties": {
+          "file": { "type": "string", "format": "binary", "title": "File" }
+        },
+        "type": "object",
+        "required": ["file"],
+        "title": "Body_upload_file_storage_post"
+      },
+      "EERequest": {
+        "properties": {
+          "envelope_kpi": { "type": "number", "title": "Envelope Kpi" },
+          "envelope_min": { "type": "number", "title": "Envelope Min" },
+          "envelope_max": { "type": "number", "title": "Envelope Max" },
+          "window_kpi": { "type": "number", "title": "Window Kpi" },
+          "window_min": { "type": "number", "title": "Window Min" },
+          "window_max": { "type": "number", "title": "Window Max" },
+          "heating_system_kpi": {
+            "type": "number",
+            "title": "Heating System Kpi"
+          },
+          "heating_system_min": {
+            "type": "number",
+            "title": "Heating System Min"
+          },
+          "heating_system_max": {
+            "type": "number",
+            "title": "Heating System Max"
+          },
+          "cooling_system_kpi": {
+            "type": "number",
+            "title": "Cooling System Kpi"
+          },
+          "cooling_system_min": {
+            "type": "number",
+            "title": "Cooling System Min"
+          },
+          "cooling_system_max": {
+            "type": "number",
+            "title": "Cooling System Max"
+          },
+          "profile": { "type": "string", "title": "Profile" }
+        },
+        "type": "object",
+        "required": [
+          "envelope_kpi",
+          "envelope_min",
+          "envelope_max",
+          "window_kpi",
+          "window_min",
+          "window_max",
+          "heating_system_kpi",
+          "heating_system_min",
+          "heating_system_max",
+          "cooling_system_kpi",
+          "cooling_system_min",
+          "cooling_system_max",
+          "profile"
+        ],
+        "title": "EERequest"
+      },
+      "EEResponse": {
+        "properties": {
+          "ee_kpi_weight": { "type": "number", "title": "Ee Kpi Weight" },
+          "envelope_normalized": {
+            "type": "number",
+            "title": "Envelope Normalized"
+          },
+          "window_normalized": {
+            "type": "number",
+            "title": "Window Normalized"
+          },
+          "heating_system_normalized": {
+            "type": "number",
+            "title": "Heating System Normalized"
+          },
+          "cooling_system_normalized": {
+            "type": "number",
+            "title": "Cooling System Normalized"
+          },
+          "input": { "$ref": "#/components/schemas/EERequest" }
+        },
+        "type": "object",
+        "required": [
+          "ee_kpi_weight",
+          "envelope_normalized",
+          "window_normalized",
+          "heating_system_normalized",
+          "cooling_system_normalized",
+          "input"
+        ],
+        "title": "EEResponse"
+      },
+      "FVRequest": {
+        "properties": {
+          "ii_kpi": { "type": "number", "title": "Ii Kpi" },
+          "ii_min": { "type": "number", "title": "Ii Min" },
+          "ii_max": { "type": "number", "title": "Ii Max" },
+          "aoc_kpi": { "type": "number", "title": "Aoc Kpi" },
+          "aoc_min": { "type": "number", "title": "Aoc Min" },
+          "aoc_max": { "type": "number", "title": "Aoc Max" },
+          "irr_kpi": { "type": "number", "title": "Irr Kpi" },
+          "irr_min": { "type": "number", "title": "Irr Min" },
+          "irr_max": { "type": "number", "title": "Irr Max" },
+          "npv_kpi": { "type": "number", "title": "Npv Kpi" },
+          "npv_min": { "type": "number", "title": "Npv Min" },
+          "npv_max": { "type": "number", "title": "Npv Max" },
+          "profile": { "type": "string", "title": "Profile" }
+        },
+        "type": "object",
+        "required": [
+          "ii_kpi",
+          "ii_min",
+          "ii_max",
+          "aoc_kpi",
+          "aoc_min",
+          "aoc_max",
+          "irr_kpi",
+          "irr_min",
+          "irr_max",
+          "npv_kpi",
+          "npv_min",
+          "npv_max",
+          "profile"
+        ],
+        "title": "FVRequest"
+      },
+      "FVResponse": {
+        "properties": {
+          "fv_kpi_weight": { "type": "number", "title": "Fv Kpi Weight" },
+          "ii_normalized": { "type": "number", "title": "Ii Normalized" },
+          "aoc_normalized": { "type": "number", "title": "Aoc Normalized" },
+          "irr_normalized": { "type": "number", "title": "Irr Normalized" },
+          "npv_normalized": { "type": "number", "title": "Npv Normalized" },
+          "input": { "$ref": "#/components/schemas/FVRequest" }
+        },
+        "type": "object",
+        "required": [
+          "fv_kpi_weight",
+          "ii_normalized",
+          "aoc_normalized",
+          "irr_normalized",
+          "npv_normalized",
+          "input"
+        ],
+        "title": "FVResponse"
+      },
+      "FileUploadResponse": {
+        "properties": {
+          "message": { "type": "string", "title": "Message" },
+          "path": { "type": "string", "title": "Path" },
+          "public_url": { "type": "string", "title": "Public Url" }
+        },
+        "type": "object",
+        "required": ["message", "path", "public_url"],
+        "title": "FileUploadResponse",
+        "description": "Response model for file upload endpoint."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": { "$ref": "#/components/schemas/ValidationError" },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "KeycloakRole": {
+        "properties": {
+          "id": { "type": "string", "title": "Id" },
+          "name": { "type": "string", "title": "Name" },
+          "description": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Description"
+          },
+          "composite": {
+            "anyOf": [{ "type": "boolean" }, { "type": "null" }],
+            "title": "Composite"
+          },
+          "clientRole": {
+            "anyOf": [{ "type": "boolean" }, { "type": "null" }],
+            "title": "Clientrole"
+          },
+          "containerId": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Containerid"
+          }
+        },
+        "type": "object",
+        "required": ["id", "name"],
+        "title": "KeycloakRole",
+        "description": "Representation of a Keycloak role with its attributes.\n\nThis model represents role information retrieved from Keycloak's identity provider."
+      },
+      "REIRequest": {
+        "properties": {
+          "st_coverage_kpi": { "type": "number", "title": "St Coverage Kpi" },
+          "st_coverage_min": { "type": "number", "title": "St Coverage Min" },
+          "st_coverage_max": { "type": "number", "title": "St Coverage Max" },
+          "onsite_res_kpi": { "type": "number", "title": "Onsite Res Kpi" },
+          "onsite_res_min": { "type": "number", "title": "Onsite Res Min" },
+          "onsite_res_max": { "type": "number", "title": "Onsite Res Max" },
+          "net_energy_export_kpi": {
+            "type": "number",
+            "title": "Net Energy Export Kpi"
+          },
+          "net_energy_export_min": {
+            "type": "number",
+            "title": "Net Energy Export Min"
+          },
+          "net_energy_export_max": {
+            "type": "number",
+            "title": "Net Energy Export Max"
+          },
+          "profile": { "type": "string", "title": "Profile" }
+        },
+        "type": "object",
+        "required": [
+          "st_coverage_kpi",
+          "st_coverage_min",
+          "st_coverage_max",
+          "onsite_res_kpi",
+          "onsite_res_min",
+          "onsite_res_max",
+          "net_energy_export_kpi",
+          "net_energy_export_min",
+          "net_energy_export_max",
+          "profile"
+        ],
+        "title": "REIRequest"
+      },
+      "REIResponse": {
+        "properties": {
+          "rei_kpi_weight": { "type": "number", "title": "Rei Kpi Weight" },
+          "st_coverage_normalized": {
+            "type": "number",
+            "title": "St Coverage Normalized"
+          },
+          "onsite_res_normalized": {
+            "type": "number",
+            "title": "Onsite Res Normalized"
+          },
+          "net_energy_normalized": {
+            "type": "number",
+            "title": "Net Energy Normalized"
+          },
+          "input": { "$ref": "#/components/schemas/REIRequest" }
+        },
+        "type": "object",
+        "required": [
+          "rei_kpi_weight",
+          "st_coverage_normalized",
+          "onsite_res_normalized",
+          "net_energy_normalized",
+          "input"
+        ],
+        "title": "REIResponse"
+      },
+      "SEIRequest": {
+        "properties": {
+          "embodied_carbon_kpi": {
+            "type": "number",
+            "title": "Embodied Carbon Kpi"
+          },
+          "embodied_carbon_min": {
+            "type": "number",
+            "title": "Embodied Carbon Min"
+          },
+          "embodied_carbon_max": {
+            "type": "number",
+            "title": "Embodied Carbon Max"
+          },
+          "gwp_kpi": { "type": "number", "title": "Gwp Kpi" },
+          "gwp_min": { "type": "number", "title": "Gwp Min" },
+          "gwp_max": { "type": "number", "title": "Gwp Max" },
+          "profile": { "type": "string", "title": "Profile" }
+        },
+        "type": "object",
+        "required": [
+          "embodied_carbon_kpi",
+          "embodied_carbon_min",
+          "embodied_carbon_max",
+          "gwp_kpi",
+          "gwp_min",
+          "gwp_max",
+          "profile"
+        ],
+        "title": "SEIRequest"
+      },
+      "SEIResponse": {
+        "properties": {
+          "sei_kpi_weight": { "type": "number", "title": "Sei Kpi Weight" },
+          "embodied_carbon_normalized": {
+            "type": "number",
+            "title": "Embodied Carbon Normalized"
+          },
+          "gwp_normalized": { "type": "number", "title": "Gwp Normalized" },
+          "input": { "$ref": "#/components/schemas/SEIRequest" }
+        },
+        "type": "object",
+        "required": [
+          "sei_kpi_weight",
+          "embodied_carbon_normalized",
+          "gwp_normalized",
+          "input"
+        ],
+        "title": "SEIResponse"
+      },
+      "StorageFileInfo": {
+        "properties": {
+          "name": { "type": "string", "title": "Name" },
+          "size": { "type": "integer", "title": "Size" },
+          "created_at": { "type": "string", "title": "Created At" },
+          "public_url": { "type": "string", "title": "Public Url" }
+        },
+        "type": "object",
+        "required": ["name", "size", "created_at", "public_url"],
+        "title": "StorageFileInfo",
+        "description": "Model representing information about a stored file."
+      },
+      "TableDataResponse": {
+        "properties": {
+          "table_name": { "type": "string", "title": "Table Name" },
+          "data": {
+            "items": { "additionalProperties": true, "type": "object" },
+            "type": "array",
+            "title": "Data"
+          },
+          "count": { "type": "integer", "title": "Count" }
+        },
+        "type": "object",
+        "required": ["table_name", "data", "count"],
+        "title": "TableDataResponse",
+        "description": "Response model for table read endpoint."
+      },
+      "UCRequest": {
+        "properties": {
+          "thermal_comfort_air_temp_kpi": {
+            "type": "number",
+            "title": "Thermal Comfort Air Temp Kpi"
+          },
+          "thermal_comfort_air_temp_min": {
+            "type": "number",
+            "title": "Thermal Comfort Air Temp Min"
+          },
+          "thermal_comfort_air_temp_max": {
+            "type": "number",
+            "title": "Thermal Comfort Air Temp Max"
+          },
+          "thermal_comfort_humidity_kpi": {
+            "type": "number",
+            "title": "Thermal Comfort Humidity Kpi"
+          },
+          "thermal_comfort_humidity_min": {
+            "type": "number",
+            "title": "Thermal Comfort Humidity Min"
+          },
+          "thermal_comfort_humidity_max": {
+            "type": "number",
+            "title": "Thermal Comfort Humidity Max"
+          },
+          "profile": { "type": "string", "title": "Profile" }
+        },
+        "type": "object",
+        "required": [
+          "thermal_comfort_air_temp_kpi",
+          "thermal_comfort_air_temp_min",
+          "thermal_comfort_air_temp_max",
+          "thermal_comfort_humidity_kpi",
+          "thermal_comfort_humidity_min",
+          "thermal_comfort_humidity_max",
+          "profile"
+        ],
+        "title": "UCRequest"
+      },
+      "UCResponse": {
+        "properties": {
+          "uc_kpi_weight": { "type": "number", "title": "Uc Kpi Weight" },
+          "thermal_comfort_air_temp_normalized": {
+            "type": "number",
+            "title": "Thermal Comfort Air Temp Normalized"
+          },
+          "thermal_comfort_humidity_normalized": {
+            "type": "number",
+            "title": "Thermal Comfort Humidity Normalized"
+          },
+          "input": { "$ref": "#/components/schemas/UCRequest" }
+        },
+        "type": "object",
+        "required": [
+          "uc_kpi_weight",
+          "thermal_comfort_air_temp_normalized",
+          "thermal_comfort_humidity_normalized",
+          "input"
+        ],
+        "title": "UCResponse"
+      },
+      "UniversalUser": {
+        "properties": {
+          "id": { "type": "string", "title": "Id" },
+          "email": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Email"
+          },
+          "user_metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "User Metadata",
+            "default": {}
+          },
+          "identities": {
+            "items": { "$ref": "#/components/schemas/UserIdentity" },
+            "type": "array",
+            "title": "Identities",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": ["id"],
+        "title": "UniversalUser",
+        "description": "Provider-agnostic user model that works with any authentication provider.\n\nThis model abstracts away the differences between Supabase GoTrue User objects\nand Keycloak JWT payloads, providing a consistent interface for user data\nregardless of the authentication provider."
+      },
+      "UserIdentity": {
+        "properties": {
+          "provider": { "type": "string", "title": "Provider" },
+          "id": { "type": "string", "title": "Id" }
+        },
+        "type": "object",
+        "required": ["provider", "id"],
+        "title": "UserIdentity",
+        "description": "Represents a user identity from an authentication provider."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": { "anyOf": [{ "type": "string" }, { "type": "integer" }] },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": { "type": "string", "title": "Message" },
+          "type": { "type": "string", "title": "Error Type" }
+        },
+        "type": "object",
+        "required": ["loc", "msg", "type"],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": { "HTTPBearer": { "type": "http", "scheme": "bearer" } }
+  }
+}
