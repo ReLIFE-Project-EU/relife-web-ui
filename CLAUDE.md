@@ -47,7 +47,59 @@ D3.2 represents formal project requirements, but implementation realities may re
 
 ## API Specifications (OpenAPI)
 
-The OpenAPI specifications for the Financial, Forecasting, and Technical services are stored in `api-specs/`. This directory contains timestamped subdirectories that track the evolution of each service’s API (e.g., `api-specs/20260114-165540`) and are sortable alphabetically. Use these specs as the formal reference for API interfaces when implementing or reviewing integrations.
+The OpenAPI specifications for the Financial, Forecasting, and Technical services are stored in `api-specs/`. This directory contains timestamped subdirectories that track the evolution of each service's API (e.g., `api-specs/20260114-165540`) and are sortable alphabetically. Use these specs as the formal reference for API interfaces when implementing or reviewing integrations.
+
+## API Integration Architecture
+
+The codebase uses a **two-layer architecture** for backend service integration:
+
+### Layer 1: API Wrappers (`src/api/`)
+
+Low-level HTTP client wrappers that directly communicate with backend REST endpoints:
+
+- **`client.ts`**: Core request utilities with authentication handling (`request`, `uploadRequest`, `downloadRequest`)
+- **`financial.ts`**, **`forecasting.ts`**, **`technical.ts`**: Thin wrappers mapping directly to backend endpoints (e.g., `financial.assessRisk()`, `financial.calculateARV()`)
+- **`index.ts`**: Re-exports all service clients
+
+These wrappers:
+
+- Handle authentication tokens (via Supabase session)
+- Provide typed request/response interfaces aligned with OpenAPI specs
+- Throw `APIError` for error handling
+- Should NOT contain business logic—they are pure HTTP adapters
+
+### Layer 2: Feature Service Abstractions (`src/features/<tool>/services/`)
+
+Domain-specific service classes that **consume the API wrappers** and add business logic:
+
+- **Example**: `src/features/home-assistant/services/FinancialService.ts`
+  - Imports `financial` from `src/api`
+  - Implements `IFinancialService` interface
+  - Adds higher-level methods like `calculateForAllScenarios()` with business logic, data transformations, and orchestration of multiple API calls
+
+- **Interfaces** (in `services/types.ts`): Define contracts like `IFinancialService`, `IBuildingService`, `IEnergyService`, `IMCDAService`
+- **Mock implementations** (in `services/mock/`): For testing and development when backend services are unavailable
+- **Real implementations**: Use the `src/api/` wrappers and transform data for the UI
+
+### When to Modify Each Layer
+
+| Task                                                       | Modify                               |
+| ---------------------------------------------------------- | ------------------------------------ |
+| Backend endpoint changed (URL, request/response shape)     | `src/api/<service>.ts`               |
+| New backend endpoint added                                 | `src/api/<service>.ts`               |
+| Business logic for a feature (calculations, orchestration) | `src/features/<tool>/services/`      |
+| New feature-specific data transformations                  | `src/features/<tool>/services/`      |
+| Mock data for testing/development                          | `src/features/<tool>/services/mock/` |
+
+### Example Data Flow
+
+```mermaid
+flowchart TD
+    A[UI Component] --> B[Feature Hook<br/>e.g., useHomeAssistantServices]
+    B --> C[Service Class<br/>e.g., FinancialService.calculateForAllScenarios]
+    C --> D[API Wrapper<br/>e.g., financial.assessRisk, financial.calculateARV]
+    D --> E[Backend Service]
+```
 
 ## Tech Stack Versions
 
