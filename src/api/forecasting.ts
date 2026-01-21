@@ -1,5 +1,6 @@
 import { ServiceType } from "../types/common";
 import type {
+  ArchetypeInfo,
   BuildingPayload,
   BuildingUploadResponse,
   CreateProjectResponse,
@@ -7,6 +8,8 @@ import type {
   PlantPayload,
   PlantTemplateResponse,
   PlantUploadResponse,
+  SimulateDirectParams,
+  SimulateDirectResponse,
   SimulateResponse,
 } from "../types/forecasting";
 import {
@@ -18,6 +21,46 @@ import {
 
 export const forecasting = {
   ...createServiceApi(ServiceType.FORECASTING),
+
+  // ============================================================================
+  // Direct Simulation API (archetype mode with PVGIS)
+  // ============================================================================
+
+  /**
+   * List available archetypes (metadata only)
+   * GET /forecasting/building/available
+   */
+  listArchetypes: () =>
+    request<ArchetypeInfo[]>("/forecasting/building/available"),
+
+  /**
+   * Run simulation directly with archetype and PVGIS weather data
+   * POST /forecasting/simulate?archetype=true&weather_source=pvgis&...
+   *
+   * This is the simpler API path that doesn't require project creation
+   * or EPW file uploads.
+   */
+  simulateDirect: (params: SimulateDirectParams) => {
+    const searchParams = new URLSearchParams({
+      archetype: "true",
+      category: params.category,
+      country: params.country,
+      name: params.name,
+      weather_source: params.weatherSource || "pvgis",
+    });
+
+    // Use uploadRequest since the endpoint expects multipart/form-data
+    // Even though we're not uploading files, we need to send an empty FormData
+    const formData = new FormData();
+    return uploadRequest<SimulateDirectResponse>(
+      `/forecasting/simulate?${searchParams.toString()}`,
+      formData,
+    );
+  },
+
+  // ============================================================================
+  // Project-based Workflow (Legacy)
+  // ============================================================================
 
   createProject: () =>
     request<CreateProjectResponse>("/forecasting/project", {

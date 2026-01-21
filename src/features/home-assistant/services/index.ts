@@ -1,13 +1,20 @@
 /**
  * Home Assistant Services Index
  *
- * This module exports service types and mock implementations.
+ * This module exports service types, real implementations, and mock implementations.
  * Services should be accessed via the ServiceContext, not imported directly.
  */
 
+// Export real implementations
+export { EnergyService } from "./EnergyService";
+export {
+  ArchetypeNotAvailableError,
+  APIConnectionError,
+  APIResponseError,
+} from "./EnergyService";
+
 // Export mock implementations for use in the ServiceContext or tests
 export { mockBuildingService } from "./mock/MockBuildingService";
-export { mockEnergyService } from "./mock/MockEnergyService";
 export { mockRenovationService } from "./mock/MockRenovationService";
 export { mockMCDAService } from "./mock/MockMCDAService";
 

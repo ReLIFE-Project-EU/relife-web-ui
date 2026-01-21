@@ -9,20 +9,21 @@ import { useMemo, type ReactNode } from "react";
 import type { IHomeAssistantServices } from "../services/types";
 import {
   mockBuildingService,
-  mockEnergyService,
   mockMCDAService,
   mockRenovationService,
 } from "../services";
+import { EnergyService } from "../services/EnergyService";
 import { FinancialService } from "../services/FinancialService";
 import { ServiceContext } from "./ServiceContextDefinition";
 
-// Real Financial API service
+// Real API services
+const energyService = new EnergyService();
 const financialService = new FinancialService();
 
-// Services: real Financial API, mocks for others (pending integration)
+// Services: real Financial and Energy APIs, mocks for others (pending integration)
 const defaultServices: IHomeAssistantServices = {
   building: mockBuildingService,
-  energy: mockEnergyService,
+  energy: energyService,
   financial: financialService,
   mcda: mockMCDAService,
   renovation: mockRenovationService,

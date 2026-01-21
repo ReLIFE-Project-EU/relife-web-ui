@@ -1,7 +1,6 @@
 name: relife-platform
 
 x-api-service-defaults: &api-service-defaults
-  platform: linux/amd64
   environment:
     API_HOST: 0.0.0.0
     API_PORT: 9090
@@ -51,11 +50,13 @@ services:
       retries: 3
       start_period: 20s
   financial:
+    platform: linux/amd64
     image: ghcr.io/relife-project-eu/relife-financial-service:${IMAGE_TAG_FINANCIAL}
     <<: *api-service-defaults
   forecasting:
     image: ghcr.io/relife-project-eu/relife-forecasting-service:${IMAGE_TAG_FORECASTING}
     <<: *api-service-defaults
   technical:
+    platform: linux/amd64
     image: ghcr.io/relife-project-eu/relife-technical-service:${IMAGE_TAG_TECHNICAL}
     <<: *api-service-defaults

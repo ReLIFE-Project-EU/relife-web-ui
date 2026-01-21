@@ -27,8 +27,8 @@ export type {
 
 // Services (for potential testing or extension)
 export {
+  EnergyService,
   mockBuildingService,
-  mockEnergyService,
   mockMCDAService,
   mockRenovationService,
 } from "./services";
