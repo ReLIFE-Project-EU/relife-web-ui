@@ -4,6 +4,7 @@
  */
 
 import { Alert, Box, Divider, Stack, Text, Title } from "@mantine/core";
+import { IconInfoCircle } from "@tabler/icons-react";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 import { ComfortDisplay, EnergyMixDisplay, EPCDisplay } from "../energy";
@@ -17,8 +18,17 @@ export function EnergyRenovationStep() {
   const selectedMeasures = state.renovation.selectedMeasures;
   const floorArea = state.building.floorArea || 100;
 
+  // Identify unsupported measures that are selected (if any)
+  const unsupportedSelected = selectedMeasures.filter(
+    (m) => !renovation.getMeasure(m)?.isSupported,
+  );
+
   // Enable evaluation only when at least one measure is selected
-  const canEvaluate = selectedMeasures.length > 0;
+  // AND at least one supported measure is selected (to avoid empty API calls)
+  const hasSupportedMeasure = selectedMeasures.some(
+    (m) => renovation.getMeasure(m)?.isSupported,
+  );
+  const canEvaluate = selectedMeasures.length > 0 && hasSupportedMeasure;
 
   const handlePrevious = () => {
     dispatch({ type: "PREV_STEP" });
@@ -116,6 +126,24 @@ export function EnergyRenovationStep() {
 
       {/* Renovation Measures Selection */}
       <MeasureSelector />
+
+      {/* Warning for unsupported measures */}
+      {unsupportedSelected.length > 0 && (
+        <Alert
+          color="yellow"
+          icon={<IconInfoCircle size={16} />}
+          title="Limited Simulation Support"
+        >
+          The following measures are not yet supported for simulation:{" "}
+          <Text span fw={700}>
+            {unsupportedSelected
+              .map((m) => renovation.getMeasure(m)?.name)
+              .join(", ")}
+          </Text>
+          . Only envelope measures (wall, roof, windows) will be simulated at
+          this time.
+        </Alert>
+      )}
 
       <Divider my="md" />
 

@@ -46,6 +46,10 @@ export class MockRenovationService implements IRenovationService {
     return MEASURE_CATEGORIES;
   }
 
+  getSupportedMeasures(): RenovationMeasure[] {
+    return RENOVATION_MEASURES.filter((m) => m.isSupported);
+  }
+
   /**
    * Evaluate renovation scenarios based on selected measures.
    *

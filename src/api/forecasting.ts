@@ -4,6 +4,8 @@ import type {
   BuildingPayload,
   BuildingUploadResponse,
   CreateProjectResponse,
+  ECMApplicationParams,
+  ECMApplicationResponse,
   EPCResponse,
   PlantPayload,
   PlantTemplateResponse,
@@ -55,6 +57,60 @@ export const forecasting = {
     return uploadRequest<SimulateDirectResponse>(
       `/forecasting/simulate?${searchParams.toString()}`,
       formData,
+    );
+  },
+
+  // ============================================================================
+  // ECM Application (POST /ecm_application)
+  // ============================================================================
+
+  /**
+   * Simulate envelope renovation measures using ECM application endpoint.
+   *
+   * @param params - ECM simulation parameters
+   * @returns ECM application response with scenario results
+   *
+   * @example
+   * // Simulate wall and window renovation
+   * const response = await forecasting.simulateECM({
+   *   category: 'Single Family House',
+   *   country: 'Greece',
+   *   name: 'SFH_Greece_1946_1969',
+   *   scenario_elements: 'wall,window',
+   *   u_wall: 0.25,
+   *   u_window: 1.4,
+   *   // include_baseline omitted for single-scenario mode
+   * });
+   */
+  simulateECM: async (
+    params: ECMApplicationParams,
+  ): Promise<ECMApplicationResponse> => {
+    const searchParams = new URLSearchParams({
+      archetype: "true",
+      category: params.category,
+      country: params.country,
+      name: params.name,
+      weather_source: params.weatherSource || "pvgis",
+      scenario_elements: params.scenario_elements,
+    });
+
+    if (params.u_wall !== undefined) {
+      searchParams.set("u_wall", String(params.u_wall));
+    }
+    if (params.u_roof !== undefined) {
+      searchParams.set("u_roof", String(params.u_roof));
+    }
+    if (params.u_window !== undefined) {
+      searchParams.set("u_window", String(params.u_window));
+    }
+    if (params.include_baseline !== undefined) {
+      searchParams.set("include_baseline", String(params.include_baseline));
+    }
+
+    // Use uploadRequest since the endpoint expects multipart/form-data
+    return uploadRequest<ECMApplicationResponse>(
+      `/forecasting/ecm_application?${searchParams.toString()}`,
+      new FormData(),
     );
   },
 

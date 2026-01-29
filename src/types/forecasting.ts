@@ -133,10 +133,91 @@ export interface SimulateResponse {
   [key: string]: unknown;
 }
 
-// ============================================================================
-// Results & EPC
-// ============================================================================
-
 export interface EPCResponse {
   [key: string]: unknown;
+}
+
+// ============================================================================
+// ECM Application Types (POST /ecm_application)
+// ============================================================================
+
+/**
+ * Single scenario result from ECM simulation
+ */
+export interface ECMScenario {
+  /** Scenario identifier, e.g., "wall", "wall+window" */
+  scenario_id: string;
+  /** Human-readable description */
+  description: string;
+  /** Elements applied in this scenario */
+  elements: ("wall" | "roof" | "window")[];
+  /** U-values applied (null if element not included) */
+  u_values: {
+    roof: number | null;
+    wall: number | null;
+    window: number | null;
+  };
+  /** Simulation results */
+  results: {
+    /** Hourly energy data for the year */
+    hourly_building: HourlyBuildingRecord[];
+    /** Annual aggregated results */
+    annual_building: Record<string, unknown>[];
+  };
+}
+
+/**
+ * Response from POST /ecm_application endpoint
+ */
+export interface ECMApplicationResponse {
+  /** Source of building data: "archetype" or "custom" */
+  source: "archetype" | "custom";
+  /** Archetype name (if source is archetype) */
+  name: string | null;
+  /** Building category */
+  category: string | null;
+  /** Country */
+  country: string | null;
+  /** Weather data source */
+  weather_source: "pvgis" | "epw";
+  /** U-values requested in the API call */
+  u_values_requested: {
+    roof: number | null;
+    wall: number | null;
+    window: number | null;
+  };
+  /** Single-scenario mode parameters */
+  single_scenario_mode: {
+    baseline_only: boolean;
+    scenario_id: string | null;
+    scenario_elements: string | null;
+  };
+  /** Number of scenarios returned */
+  n_scenarios: number;
+  /** Array of scenario results */
+  scenarios: ECMScenario[];
+}
+
+/**
+ * Parameters for simulateECM API call
+ */
+export interface ECMApplicationParams {
+  /** Building category (required for archetype mode) */
+  category: string;
+  /** Country (required for archetype mode) */
+  country: string;
+  /** Archetype name (required for archetype mode) */
+  name: string;
+  /** Weather source, defaults to 'pvgis' */
+  weatherSource?: "pvgis" | "epw";
+  /** Elements to simulate, comma-separated (e.g., "wall,window") */
+  scenario_elements: string;
+  /** Wall U-value in W/m²K */
+  u_wall?: number;
+  /** Roof U-value in W/m²K */
+  u_roof?: number;
+  /** Window U-value in W/m²K */
+  u_window?: number;
+  /** Include baseline scenario in response (omit/false for single-scenario mode) */
+  include_baseline?: boolean;
 }

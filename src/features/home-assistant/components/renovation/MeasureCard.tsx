@@ -30,6 +30,7 @@ interface MeasureCardProps {
   measure: RenovationMeasure;
   isSelected: boolean;
   onToggle: (measureId: RenovationMeasureId) => void;
+  disabled?: boolean;
 }
 
 /**
@@ -93,6 +94,7 @@ export function MeasureCard({
   measure,
   isSelected,
   onToggle,
+  disabled,
 }: MeasureCardProps) {
   const categoryColor = getCategoryColor(measure.category);
   const categoryLabel = getCategoryLabel(measure.category);
@@ -103,29 +105,33 @@ export function MeasureCard({
       radius="lg"
       p="lg"
       shadow={isSelected ? "md" : "sm"}
-      bg={isSelected ? `${categoryColor}.0` : "white"}
+      bg={isSelected ? `${categoryColor}.0` : disabled ? "gray.0" : "white"}
       style={{
         borderColor: isSelected
           ? `var(--mantine-color-${categoryColor}-5)`
           : undefined,
         borderWidth: isSelected ? 2 : 1,
-        cursor: "pointer",
+        cursor: disabled ? "not-allowed" : "pointer",
         transition: "border-color 150ms ease, box-shadow 150ms ease",
+        opacity: disabled ? 0.7 : 1,
       }}
-      onClick={() => onToggle(measure.id)}
+      onClick={() => !disabled && onToggle(measure.id)}
       onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
+        if (!disabled && (event.key === "Enter" || event.key === " ")) {
           event.preventDefault();
           onToggle(measure.id);
         }
       }}
       role="button"
-      tabIndex={0}
+      tabIndex={disabled ? -1 : 0}
+      aria-disabled={disabled}
     >
       <Stack gap="md">
         <Group justify="space-between" align="flex-start" wrap="nowrap">
           <Group gap="sm" wrap="nowrap" align="flex-start">
-            <Text c={categoryColor}>{getMeasureIcon(measure.id)}</Text>
+            <Text c={disabled ? "gray" : categoryColor}>
+              {getMeasureIcon(measure.id)}
+            </Text>
             <Stack gap={4}>
               <Text fw={600} size="sm">
                 {measure.name}
@@ -147,28 +153,38 @@ export function MeasureCard({
           </Tooltip>
         </Group>
 
-        <Group justify="space-between" align="center">
-          <Badge
-            color={categoryColor}
-            variant={isSelected ? "filled" : "light"}
-          >
-            {categoryLabel}
-          </Badge>
-          <Checkbox
-            checked={isSelected}
-            onChange={() => onToggle(measure.id)}
-            label={
-              <Text fw={500} size="sm">
-                {isSelected ? "Selected" : "Select"}
-              </Text>
-            }
-            onClick={(event) => event.stopPropagation()}
-            styles={{
-              body: { alignItems: "center" },
-              label: { paddingLeft: 8 },
-            }}
-          />
-        </Group>
+        <Stack gap="xs">
+          <Group justify="space-between" align="center">
+            <Badge
+              color={disabled ? "gray" : categoryColor}
+              variant={isSelected ? "filled" : "light"}
+            >
+              {categoryLabel}
+            </Badge>
+            <Checkbox
+              checked={isSelected}
+              onChange={() => !disabled && onToggle(measure.id)}
+              label={
+                <Text fw={500} size="sm">
+                  {isSelected ? "Selected" : "Select"}
+                </Text>
+              }
+              onClick={(event) => event.stopPropagation()}
+              disabled={disabled}
+              styles={{
+                body: { alignItems: "center" },
+                label: { paddingLeft: 8 },
+                input: { cursor: disabled ? "not-allowed" : "pointer" },
+              }}
+            />
+          </Group>
+
+          {!measure.isSupported && (
+            <Badge color="yellow" size="sm" variant="light" fullWidth>
+              Coming Soon
+            </Badge>
+          )}
+        </Stack>
       </Stack>
     </Card>
   );

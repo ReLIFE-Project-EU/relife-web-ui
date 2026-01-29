@@ -52,6 +52,7 @@ const ENVELOPE_MEASURES: RenovationMeasure[] = [
     description:
       "External or internal wall insulation to reduce heat transfer through walls. Typically involves adding insulation material (EPS, mineral wool, or similar) to exterior or interior wall surfaces.",
     category: "envelope",
+    isSupported: true,
   },
   {
     id: "roof-insulation",
@@ -59,6 +60,7 @@ const ENVELOPE_MEASURES: RenovationMeasure[] = [
     description:
       "Insulation of roof or attic space to prevent heat loss through the roof. Can be applied above, below, or between rafters depending on roof type.",
     category: "envelope",
+    isSupported: true,
   },
   {
     id: "floor-insulation",
@@ -66,6 +68,7 @@ const ENVELOPE_MEASURES: RenovationMeasure[] = [
     description:
       "Insulation of ground floor or basement ceiling to reduce heat loss to the ground. Particularly effective in buildings with unheated basements or crawl spaces.",
     category: "envelope",
+    isSupported: false,
   },
   {
     id: "windows",
@@ -73,6 +76,7 @@ const ENVELOPE_MEASURES: RenovationMeasure[] = [
     description:
       "Replacement of existing windows with high-performance double or triple glazed units. Improves thermal insulation and reduces drafts while allowing natural light.",
     category: "envelope",
+    isSupported: true,
   },
 ];
 
@@ -87,6 +91,7 @@ const SYSTEM_MEASURES: RenovationMeasure[] = [
     description:
       "High-efficiency heat pump that extracts heat from outdoor air and transfers it to water for space heating and domestic hot water. Can also provide cooling in summer.",
     category: "systems",
+    isSupported: false,
   },
   {
     id: "condensing-boiler",
@@ -94,6 +99,7 @@ const SYSTEM_MEASURES: RenovationMeasure[] = [
     description:
       "Modern high-efficiency gas boiler that recovers heat from exhaust gases. Achieves efficiency ratings of 90-98%, significantly higher than traditional boilers.",
     category: "systems",
+    isSupported: false,
   },
 ];
 
@@ -108,6 +114,7 @@ const RENEWABLE_MEASURES: RenovationMeasure[] = [
     description:
       "Photovoltaic solar panels for electricity generation. Reduces reliance on grid electricity and can provide income through feed-in tariffs or self-consumption savings.",
     category: "renewable",
+    isSupported: false,
   },
   {
     id: "solar-thermal",
@@ -115,6 +122,7 @@ const RENEWABLE_MEASURES: RenovationMeasure[] = [
     description:
       "Solar collectors that heat water directly using sunlight. Primarily used for domestic hot water production, can cover 50-70% of annual hot water needs.",
     category: "renewable",
+    isSupported: false,
   },
 ];
 

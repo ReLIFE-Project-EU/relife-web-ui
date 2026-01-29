@@ -120,6 +120,18 @@ export interface RenovationMeasure {
   name: string;
   description: string;
   category: MeasureCategory;
+  /**
+   * Estimated energy savings range (percentage)
+   * Used for UI hints before simulation
+   */
+  estimatedSavings?: {
+    min: number;
+    max: number;
+  };
+  /**
+   * Whether this measure is currently supported by the API
+   */
+  isSupported: boolean;
 }
 
 export interface IRenovationService {
@@ -137,6 +149,11 @@ export interface IRenovationService {
    * Get all measures in a specific category
    */
   getMeasuresByCategory(category: MeasureCategory): RenovationMeasure[];
+
+  /**
+   * Get all measures that are currently supported by the backend
+   */
+  getSupportedMeasures(): RenovationMeasure[];
 
   /**
    * Get all measure categories with display info

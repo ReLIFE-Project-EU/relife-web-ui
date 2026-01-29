@@ -71,6 +71,17 @@ export interface EstimationResult {
   // TBD: Verify this matches Forecasting API output format
   // Used as input to Financial API /risk-assessment endpoint
   annualEnergySavings: number; // kWh/year - energy savings from renovation
+
+  /**
+   * Archetype used for the estimation.
+   * Persisted here so it can be reused for renovation simulations (Step 2),
+   * ensuring consistent baseline.
+   */
+  archetype?: {
+    category: string;
+    country: string;
+    name: string;
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

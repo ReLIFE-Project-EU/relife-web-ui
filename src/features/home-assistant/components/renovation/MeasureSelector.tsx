@@ -91,6 +91,7 @@ export function MeasureSelector() {
                     measure={measure}
                     isSelected={selectedMeasures.includes(measure.id)}
                     onToggle={handleToggleMeasure}
+                    disabled={!measure.isSupported}
                   />
                 ))}
               </SimpleGrid>

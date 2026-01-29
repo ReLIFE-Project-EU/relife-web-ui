@@ -521,6 +521,12 @@ export class EnergyService implements IEnergyService {
       // This value represents current state energy consumption.
       // Annual energy savings are calculated when comparing before/after renovation.
       annualEnergySavings: Math.round(annualEnergyNeeds),
+      // Store matched archetype for reuse in Step 2 (ECM simulation)
+      archetype: {
+        category: archetype.category,
+        country: archetype.country,
+        name: archetype.name,
+      },
     };
   }
 }
