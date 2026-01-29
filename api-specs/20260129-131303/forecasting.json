@@ -1,0 +1,1231 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ReLIFE Forecasting Service",
+    "description": "\nThis service evaluates the energy and thermal comfort performance of individual buildings and entire building stocks, \nproviding detailed projections for the years **2030** and **2050**.\n\n**Main objectives:**\n- Identify cost-effective renovation and retrofit strategies\n- Improve overall building performance and increase economic value\n- Significantly reduce energy demand and CO₂ emissions\n- Maximize the integration and use of renewable energy sources (RES)\n- Deliver environmental and health co-benefits, including:\n  - Reduction of greenhouse gas (GHG) emissions\n  - Decrease in heat- and cold-related illnesses and discomfort\n\nThe analysis is performed using advanced **dynamic energy simulation tools** (EnergyPlus-based) \nenhanced and calibrated within the ReLIFE project framework.\n",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Health Check",
+        "description": "Basic health check endpoint that returns service status and current timestamp.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          }
+        }
+      }
+    },
+    "/building": {
+      "post": {
+        "tags": ["Building and systems"],
+        "summary": "Get Building Config",
+        "description": "Return example BUI/System either from internal archetypes or from a custom payload.\n\n- If archetype=True: fetch BUI/system from BUILDING_ARCHETYPES by category/country/name.\n- If archetype=False: echo back the custom BUI/system passed in the request body.",
+        "operationId": "get_building_config_building_post",
+        "parameters": [
+          {
+            "name": "archetype",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "If True, use BUI/HVAC from internal archetypes; if False, use custom values from the request body.",
+              "default": true,
+              "title": "Archetype"
+            },
+            "description": "If True, use BUI/HVAC from internal archetypes; if False, use custom values from the request body."
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "description": "Building category (Single Family House, Multi family House, office). Required when archetype=True.",
+              "title": "Category"
+            },
+            "description": "Building category (Single Family House, Multi family House, office). Required when archetype=True."
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "description": "Country (Italy, Greece, etc.). Required when archetype=True.",
+              "title": "Country"
+            },
+            "description": "Country (Italy, Greece, etc.). Required when archetype=True."
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "description": "Specific archetype name. Required when archetype=True.",
+              "title": "Name"
+            },
+            "description": "Specific archetype name. Required when archetype=True."
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  { "type": "object", "additionalProperties": true },
+                  { "type": "null" }
+                ],
+                "description": "JSON body with 'bui' and 'system' when archetype=False.",
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/building/available": {
+      "get": {
+        "tags": ["Building and systems"],
+        "summary": "List Available Archetypes",
+        "description": "List available archetypes (metadata only, without full BUI/HVAC content).",
+        "operationId": "list_available_archetypes_building_available_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          }
+        }
+      }
+    },
+    "/validate": {
+      "post": {
+        "tags": ["Validation"],
+        "summary": "Validate Model",
+        "description": "Validate BUI and HVAC system for either:\n  - an archetype (when archetype=True), or\n  - a custom input model provided in the request body.",
+        "operationId": "validate_model_validate_post",
+        "parameters": [
+          {
+            "name": "archetype",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "If True, validate an archetype; if False, validate a custom model from the body.",
+              "default": true,
+              "title": "Archetype"
+            },
+            "description": "If True, validate an archetype; if False, validate a custom model from the body."
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "description": "Building category. Required when archetype=True.",
+              "title": "Category"
+            },
+            "description": "Building category. Required when archetype=True."
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "description": "Country. Required when archetype=True.",
+              "title": "Country"
+            },
+            "description": "Country. Required when archetype=True."
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "description": "Archetype name. Required when archetype=True.",
+              "title": "Name"
+            },
+            "description": "Archetype name. Required when archetype=True."
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  { "type": "object", "additionalProperties": true },
+                  { "type": "null" }
+                ],
+                "description": "JSON body with 'bui' and 'system' when archetype=False.",
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/simulate": {
+      "post": {
+        "tags": ["Simulation"],
+        "summary": "Simulate Building",
+        "description": "Simulate a single building (ISO 52016 + ISO 15316) using either:\n  - an archetype (archetype=True), or\n  - a custom BUI/system configuration (archetype=False).\n\nWeather:\n  - weather_source='pvgis' -> data retrieved from PVGIS\n  - weather_source='epw'   -> EPW is uploaded via epw_file",
+        "operationId": "simulate_building_simulate_post",
+        "parameters": [
+          {
+            "name": "archetype",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "If True, simulate an archetype; if False, use custom BUI/SYSTEM.",
+              "default": true,
+              "title": "Archetype"
+            },
+            "description": "If True, simulate an archetype; if False, use custom BUI/SYSTEM."
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "description": "Building category. Required when archetype=True.",
+              "title": "Category"
+            },
+            "description": "Building category. Required when archetype=True."
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "description": "Country. Required when archetype=True.",
+              "title": "Country"
+            },
+            "description": "Country. Required when archetype=True."
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "description": "Archetype name. Required when archetype=True.",
+              "title": "Name"
+            },
+            "description": "Archetype name. Required when archetype=True."
+          },
+          {
+            "name": "weather_source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Weather source: 'pvgis' or 'epw'.",
+              "default": "pvgis",
+              "title": "Weather Source"
+            },
+            "description": "Weather source: 'pvgis' or 'epw'."
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_simulate_building_simulate_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/simulate/batch": {
+      "post": {
+        "tags": ["Simulation"],
+        "summary": "Simulate Batch",
+        "description": "Batch-simulate multiple buildings in parallel (multiprocessing).\n\nModes:\n  - mode=\"archetype\": filter BUILDING_ARCHETYPES by category/countries/names\n  - mode=\"custom\": accept a list of {name, bui, system}",
+        "operationId": "simulate_batch_simulate_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Payload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/report": {
+      "post": {
+        "tags": ["Reports"],
+        "summary": "Generate Report",
+        "description": "Generate an HTML report with hourly/monthly/annual statistical analysis of energy needs.\n\nInput JSON must contain:\n  - hourly_sim: list of records representing the hourly DataFrame\n  - building_area: float (m²)",
+        "operationId": "generate_report_report_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Payload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "text/html": { "schema": { "type": "string" } } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bui/epc_update_u_values": {
+      "post": {
+        "tags": ["Greek EPC"],
+        "summary": "Update U Values",
+        "description": "Update envelope U-values in the BUI according to an energy class (A/B/C/D).\n\nBehavior:\n  - archetype=True: creates a NEW archetype and appends it to BUILDING_ARCHETYPES.\n  - archetype=False: modifies a provided BUI and returns it (no persistence).",
+        "operationId": "update_u_values_bui_epc_update_u_values_post",
+        "parameters": [
+          {
+            "name": "energy_class",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[ABCD]$",
+              "description": "Energy class (A, B, C, D) for greek buildings",
+              "title": "Energy Class"
+            },
+            "description": "Energy class (A, B, C, D) for greek buildings"
+          },
+          {
+            "name": "archetype",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "If True, load from archetype and create a NEW modified archetype. If False, modify a custom BUI (not stored).",
+              "default": true,
+              "title": "Archetype"
+            },
+            "description": "If True, load from archetype and create a NEW modified archetype. If False, modify a custom BUI (not stored)."
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "description": "Building category. Required when archetype=True.",
+              "title": "Category"
+            },
+            "description": "Building category. Required when archetype=True."
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "description": "Country. Required when archetype=True.",
+              "title": "Country"
+            },
+            "description": "Country. Required when archetype=True."
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "description": "Name of the source archetype. Required when archetype=True.",
+              "title": "Name"
+            },
+            "description": "Name of the source archetype. Required when archetype=True."
+          },
+          {
+            "name": "new_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "description": "Name of the NEW archetype to be created (optional).",
+              "title": "New Name"
+            },
+            "description": "Name of the NEW archetype to be created (optional)."
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  { "type": "object", "additionalProperties": true },
+                  { "type": "null" }
+                ],
+                "description": "JSON body with 'bui' (and optionally 'system') when archetype=False.",
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ecm_application": {
+      "post": {
+        "tags": ["Simulation"],
+        "summary": "Simulate Uvalues",
+        "description": "Build all non-empty combinations of the requested U-value interventions and simulate each scenario.\n\nSingle scenario mode:\n  - baseline_only=true -> baseline only\n  - scenario_id=<id> OR scenario_elements=wall,window -> only that scenario",
+        "operationId": "simulate_uvalues_ecm_application_post",
+        "parameters": [
+          {
+            "name": "archetype",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "If True, use an archetype; if False, use a custom BUI from JSON.",
+              "default": true,
+              "title": "Archetype"
+            },
+            "description": "If True, use an archetype; if False, use a custom BUI from JSON."
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "description": "Building category. Required when archetype=True.",
+              "title": "Category"
+            },
+            "description": "Building category. Required when archetype=True."
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "description": "Country. Required when archetype=True.",
+              "title": "Country"
+            },
+            "description": "Country. Required when archetype=True."
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "description": "Archetype name. Required when archetype=True.",
+              "title": "Name"
+            },
+            "description": "Archetype name. Required when archetype=True."
+          },
+          {
+            "name": "weather_source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Weather source: 'pvgis' or 'epw'.",
+              "default": "pvgis",
+              "title": "Weather Source"
+            },
+            "description": "Weather source: 'pvgis' or 'epw'."
+          },
+          {
+            "name": "u_wall",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "number" }, { "type": "null" }],
+              "description": "New wall U-value (opaque vertical surfaces).",
+              "title": "U Wall"
+            },
+            "description": "New wall U-value (opaque vertical surfaces)."
+          },
+          {
+            "name": "u_roof",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "number" }, { "type": "null" }],
+              "description": "New roof U-value (opaque horizontal surface).",
+              "title": "U Roof"
+            },
+            "description": "New roof U-value (opaque horizontal surface)."
+          },
+          {
+            "name": "u_window",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "number" }, { "type": "null" }],
+              "description": "New window U-value (transparent vertical surfaces).",
+              "title": "U Window"
+            },
+            "description": "New window U-value (transparent vertical surfaces)."
+          },
+          {
+            "name": "scenario_elements",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "description": "Single scenario mode: elements to apply, e.g. 'wall,window' or 'roof+wall'.",
+              "title": "Scenario Elements"
+            },
+            "description": "Single scenario mode: elements to apply, e.g. 'wall,window' or 'roof+wall'."
+          },
+          {
+            "name": "scenario_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "description": "Single scenario mode: pick a scenario by id returned by build_uvalue_scenarios().",
+              "title": "Scenario Id"
+            },
+            "description": "Single scenario mode: pick a scenario by id returned by build_uvalue_scenarios()."
+          },
+          {
+            "name": "baseline_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "If True, simulate only baseline (no envelope changes), ignoring scenario_elements/scenario_id.",
+              "default": false,
+              "title": "Baseline Only"
+            },
+            "description": "If True, simulate only baseline (no envelope changes), ignoring scenario_elements/scenario_id."
+          },
+          {
+            "name": "include_baseline",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "If True, also simulate baseline (no changes).",
+              "default": false,
+              "title": "Include Baseline"
+            },
+            "description": "If True, also simulate baseline (no changes)."
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_simulate_uvalues_ecm_application_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ecm_application/run_sequential_save": {
+      "post": {
+        "tags": ["Simulation"],
+        "summary": "Ecm Application Run Sequential Save",
+        "description": "Runs all combinations sequentially (NO multiprocessing) and saves:\n  - hourly CSV\n  - annual CSV\n  - optional BUI JSON per scenario\n\nThis endpoint does NOT return huge hourly payloads; it returns file paths + status.",
+        "operationId": "ecm_application_run_sequential_save_ecm_application_run_sequential_save_post",
+        "parameters": [
+          {
+            "name": "archetype",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "If True, use an archetype; if False, use a custom BUI from JSON.",
+              "default": true,
+              "title": "Archetype"
+            },
+            "description": "If True, use an archetype; if False, use a custom BUI from JSON."
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "description": "Building category. Required when archetype=True.",
+              "title": "Category"
+            },
+            "description": "Building category. Required when archetype=True."
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "description": "Country. Required when archetype=True.",
+              "title": "Country"
+            },
+            "description": "Country. Required when archetype=True."
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "description": "Archetype name. Required when archetype=True.",
+              "title": "Name"
+            },
+            "description": "Archetype name. Required when archetype=True."
+          },
+          {
+            "name": "weather_source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Weather source: 'pvgis' or 'epw'.",
+              "default": "pvgis",
+              "title": "Weather Source"
+            },
+            "description": "Weather source: 'pvgis' or 'epw'."
+          },
+          {
+            "name": "ecm_options",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "description": "Comma-separated list of elements to combine, e.g. 'wall,window,roof'. If omitted, it is inferred from which u_* are provided.",
+              "title": "Ecm Options"
+            },
+            "description": "Comma-separated list of elements to combine, e.g. 'wall,window,roof'. If omitted, it is inferred from which u_* are provided."
+          },
+          {
+            "name": "u_wall",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "number" }, { "type": "null" }],
+              "description": "New wall U-value.",
+              "title": "U Wall"
+            },
+            "description": "New wall U-value."
+          },
+          {
+            "name": "u_roof",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "number" }, { "type": "null" }],
+              "description": "New roof U-value.",
+              "title": "U Roof"
+            },
+            "description": "New roof U-value."
+          },
+          {
+            "name": "u_window",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "number" }, { "type": "null" }],
+              "description": "New window U-value.",
+              "title": "U Window"
+            },
+            "description": "New window U-value."
+          },
+          {
+            "name": "include_baseline",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "If True, also run baseline (no changes).",
+              "default": true,
+              "title": "Include Baseline"
+            },
+            "description": "If True, also run baseline (no changes)."
+          },
+          {
+            "name": "output_dir",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Folder where CSV results are saved.",
+              "default": "results/ecm_api",
+              "title": "Output Dir"
+            },
+            "description": "Folder where CSV results are saved."
+          },
+          {
+            "name": "save_bui",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "If True, save BUI JSON variants on disk.",
+              "default": true,
+              "title": "Save Bui"
+            },
+            "description": "If True, save BUI JSON variants on disk."
+          },
+          {
+            "name": "bui_dir",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Folder where BUI JSON variants are saved.",
+              "default": "building_examples_ecm_api",
+              "title": "Bui Dir"
+            },
+            "description": "Folder where BUI JSON variants are saved."
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_ecm_application_run_sequential_save_ecm_application_run_sequential_save_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Ecm Application Run Sequential Save Ecm Application Run Sequential Save Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/emission-factors": {
+      "get": {
+        "tags": ["Co2 Emissions"],
+        "summary": "Get Emission Factors",
+        "description": "Return emission factors (kgCO2eq/kWh) for a given country code.",
+        "operationId": "get_emission_factors_emission_factors_get",
+        "parameters": [
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "default": "IT", "title": "Country" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/calculate": {
+      "post": {
+        "tags": ["Co2 Emissions"],
+        "summary": "Calculate Single Scenario",
+        "description": "Compute CO2e emissions for a single scenario.",
+        "operationId": "calculate_single_scenario_calculate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ScenarioInput" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/EmissionResult" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/compare": {
+      "post": {
+        "tags": ["Co2 Emissions"],
+        "summary": "Compare Scenarios",
+        "description": "Compare scenarios by emissions. The first scenario is treated as the baseline.",
+        "operationId": "compare_scenarios_compare_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/MultiScenarioInput" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ComparisonResult" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/calculate-intervention": {
+      "post": {
+        "tags": ["Co2 Emissions"],
+        "summary": "Calculate Intervention Impact",
+        "description": "Compute the impact of a retrofit intervention in terms of CO2 equivalent.",
+        "operationId": "calculate_intervention_impact_calculate_intervention_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/InterventionInput" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Body_ecm_application_run_sequential_save_ecm_application_run_sequential_save_post": {
+        "properties": {
+          "epw_file": {
+            "anyOf": [
+              { "type": "string", "format": "binary" },
+              { "type": "null" }
+            ],
+            "title": "Epw File",
+            "description": "EPW weather file (required when weather_source='epw')."
+          }
+        },
+        "type": "object",
+        "title": "Body_ecm_application_run_sequential_save_ecm_application_run_sequential_save_post"
+      },
+      "Body_simulate_building_simulate_post": {
+        "properties": {
+          "epw_file": {
+            "anyOf": [
+              { "type": "string", "format": "binary" },
+              { "type": "null" }
+            ],
+            "title": "Epw File",
+            "description": "EPW weather file (required when weather_source='epw')."
+          },
+          "bui_json": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Bui Json",
+            "description": "JSON string with the BUI data (required when archetype=False)."
+          },
+          "system_json": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "System Json",
+            "description": "JSON string with the SYSTEM data (required when archetype=False)."
+          }
+        },
+        "type": "object",
+        "title": "Body_simulate_building_simulate_post"
+      },
+      "Body_simulate_uvalues_ecm_application_post": {
+        "properties": {
+          "epw_file": {
+            "anyOf": [
+              { "type": "string", "format": "binary" },
+              { "type": "null" }
+            ],
+            "title": "Epw File",
+            "description": "EPW weather file (required when weather_source='epw')."
+          },
+          "bui_json": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Bui Json",
+            "description": "JSON string with the BUI (required when archetype=False)."
+          }
+        },
+        "type": "object",
+        "title": "Body_simulate_uvalues_ecm_application_post"
+      },
+      "ComparisonResult": {
+        "properties": {
+          "baseline": { "$ref": "#/components/schemas/EmissionResult" },
+          "scenarios": {
+            "items": { "$ref": "#/components/schemas/EmissionResult" },
+            "type": "array",
+            "title": "Scenarios"
+          },
+          "best_scenario": { "type": "string", "title": "Best Scenario" },
+          "savings": {
+            "items": { "$ref": "#/components/schemas/SavingResult" },
+            "type": "array",
+            "title": "Savings"
+          }
+        },
+        "type": "object",
+        "required": ["baseline", "scenarios", "best_scenario", "savings"],
+        "title": "ComparisonResult",
+        "description": "Response model for a multi-scenario comparison."
+      },
+      "EmissionResult": {
+        "properties": {
+          "name": { "type": "string", "title": "Name" },
+          "energy_source": { "type": "string", "title": "Energy Source" },
+          "annual_consumption_kwh": {
+            "type": "number",
+            "title": "Annual Consumption Kwh"
+          },
+          "emission_factor_kg_per_kwh": {
+            "type": "number",
+            "title": "Emission Factor Kg Per Kwh"
+          },
+          "annual_emissions_kg_co2eq": {
+            "type": "number",
+            "title": "Annual Emissions Kg Co2Eq"
+          },
+          "annual_emissions_ton_co2eq": {
+            "type": "number",
+            "title": "Annual Emissions Ton Co2Eq"
+          },
+          "equivalent_trees": {
+            "type": "integer",
+            "title": "Equivalent Trees"
+          },
+          "equivalent_km_car": {
+            "type": "integer",
+            "title": "Equivalent Km Car"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "energy_source",
+          "annual_consumption_kwh",
+          "emission_factor_kg_per_kwh",
+          "annual_emissions_kg_co2eq",
+          "annual_emissions_ton_co2eq",
+          "equivalent_trees",
+          "equivalent_km_car"
+        ],
+        "title": "EmissionResult",
+        "description": "Response model for a single emissions calculation."
+      },
+      "EnergySource": {
+        "type": "string",
+        "enum": [
+          "grid_electricity",
+          "natural_gas",
+          "lpg",
+          "diesel",
+          "biomass",
+          "district_heating",
+          "solar_pv",
+          "wind",
+          "heat_pump_electric"
+        ],
+        "title": "EnergySource",
+        "description": "Supported energy sources for emissions accounting."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": { "$ref": "#/components/schemas/ValidationError" },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "InterventionInput": {
+        "properties": {
+          "current_consumption_kwh": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Current Consumption Kwh",
+            "description": "Current consumption [kWh/year]"
+          },
+          "current_source": {
+            "$ref": "#/components/schemas/EnergySource",
+            "description": "Current energy source"
+          },
+          "energy_reduction_percentage": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Energy Reduction Percentage",
+            "description": "Consumption reduction [%]",
+            "default": 0
+          },
+          "new_source": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/EnergySource" },
+              { "type": "null" }
+            ],
+            "description": "New energy source (optional)"
+          },
+          "new_consumption_kwh": {
+            "anyOf": [{ "type": "number" }, { "type": "null" }],
+            "title": "New Consumption Kwh",
+            "description": "New annual consumption (optional)"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country",
+            "description": "Country code for emission factors (IT, EU, DE)",
+            "default": "IT"
+          }
+        },
+        "type": "object",
+        "required": ["current_consumption_kwh", "current_source"],
+        "title": "InterventionInput",
+        "description": "Input payload to evaluate a retrofit intervention impact on emissions."
+      },
+      "MultiScenarioInput": {
+        "properties": {
+          "scenarios": {
+            "items": { "$ref": "#/components/schemas/ScenarioInput" },
+            "type": "array",
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Scenarios"
+          }
+        },
+        "type": "object",
+        "required": ["scenarios"],
+        "title": "MultiScenarioInput",
+        "description": "Input payload for comparing multiple scenarios (first scenario is baseline)."
+      },
+      "SavingResult": {
+        "properties": {
+          "scenario_name": { "type": "string", "title": "Scenario Name" },
+          "absolute_kg_co2eq": {
+            "type": "number",
+            "title": "Absolute Kg Co2Eq"
+          },
+          "absolute_ton_co2eq": {
+            "type": "number",
+            "title": "Absolute Ton Co2Eq"
+          },
+          "percentage": { "type": "number", "title": "Percentage" }
+        },
+        "type": "object",
+        "required": [
+          "scenario_name",
+          "absolute_kg_co2eq",
+          "absolute_ton_co2eq",
+          "percentage"
+        ],
+        "title": "SavingResult",
+        "description": "Response model for savings vs. baseline."
+      },
+      "ScenarioInput": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Scenario name"
+          },
+          "energy_source": {
+            "$ref": "#/components/schemas/EnergySource",
+            "description": "Energy source"
+          },
+          "annual_consumption_kwh": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Annual Consumption Kwh",
+            "description": "Annual consumption [kWh]"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country",
+            "description": "Country code (IT, EU, DE)",
+            "default": "IT"
+          }
+        },
+        "type": "object",
+        "required": ["name", "energy_source", "annual_consumption_kwh"],
+        "title": "ScenarioInput",
+        "description": "Input payload for a single scenario emissions calculation."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": { "anyOf": [{ "type": "string" }, { "type": "integer" }] },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": { "type": "string", "title": "Message" },
+          "type": { "type": "string", "title": "Error Type" }
+        },
+        "type": "object",
+        "required": ["loc", "msg", "type"],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

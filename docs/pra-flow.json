@@ -1,389 +1,306 @@
 {
-    "metadata": {
-        "name": "ReLIFE Portfolio Renovation Advisor Workflow",
-        "description": "Workflow for large-scale renovation investment analysis with financing scheme selection and advanced pricing",
-        "output": "Optimal renovation package with advanced financial results under price scenarios"
+  "metadata": {
+    "name": "ReLIFE Portfolio Renovation Advisor Workflow",
+    "description": "Workflow for large-scale renovation investment analysis with financing scheme selection and advanced pricing",
+    "output": "Optimal renovation package with advanced financial results under price scenarios"
+  },
+  "nodes": [
+    {
+      "id": "group2_input",
+      "type": "input",
+      "label": "Group 2 Input / Data Collection",
+      "fields": {
+        "stakeholder_type": ["financiers", "large_scale_owners", "escos"],
+        "financial_goals": ["yield_target", "risk_tolerance"],
+        "portfolio": ["multiple_buildings"],
+        "financing_schemes": ["debt", "equity", "EPC", "leasing", "PPA"],
+        "packages": ["envelope", "systems", "renewables"],
+        "preferences": ["price_scenarios", "investment_horizon"]
+      }
     },
-    "nodes": [
-        {
-            "id": "group2_input",
-            "type": "input",
-            "label": "Group 2 Input / Data Collection",
-            "fields": {
-                "stakeholder_type": [
-                    "financiers",
-                    "large_scale_owners",
-                    "escos"
-                ],
-                "financial_goals": [
-                    "yield_target",
-                    "risk_tolerance"
-                ],
-                "portfolio": [
-                    "multiple_buildings"
-                ],
-                "financing_schemes": [
-                    "debt",
-                    "equity",
-                    "EPC",
-                    "leasing",
-                    "PPA"
-                ],
-                "packages": [
-                    "envelope",
-                    "systems",
-                    "renewables"
-                ],
-                "preferences": [
-                    "price_scenarios",
-                    "investment_horizon"
-                ]
-            }
-        },
-        {
-            "id": "relife_db",
-            "type": "database",
-            "label": "Relife Database",
-            "fields": {
-                "reference_buildings": true,
-                "portfolio_templates": true,
-                "cost_library": true,
-                "system_library": true,
-                "climate_data": true,
-                "financial_defaults": true
-            }
-        },
-        {
-            "id": "forecasting_service",
-            "type": "service",
-            "label": "Forecasting Service",
-            "engine": "pyBuildingEnergy",
-            "inputs": [
-                "building_archetypes",
-                "system_data",
-                "climate_data"
-            ],
-            "outputs": [
-                "baseline_simulation",
-                "renovation_simulation"
-            ]
-        },
-        {
-            "id": "baseline_simulation",
-            "type": "process",
-            "label": "Baseline & Renovation Simulation",
-            "baseline_outputs": [
-                "Q_heat_base",
-                "Q_cool_base",
-                "EPC_base"
-            ],
-            "renovation_inputs": [
-                "u_values",
-                "eta",
-                "cop"
-            ],
-            "renovation_outputs": [
-                "Q_heat_reno",
-                "Q_cool_reno",
-                "EPC_reno"
-            ]
-        },
-        {
-            "id": "performance_outputs",
-            "type": "process",
-            "label": "Performance Outputs",
-            "fields": {
-                "total_energy_savings": "Q_base - Q_reno",
-                "savings_percent": "(Q_base - Q_reno)/Q_base",
-                "epc_transition": true,
-                "comfort": [
-                    "PMV",
-                    "PPD"
-                ],
-                "co2_reduction": "kg/year"
-            }
-        },
-        {
-            "id": "financial_service",
-            "type": "service",
-            "label": "Financial Service",
-            "description": "Advanced Investment & Financing Analysis"
-        },
-        {
-            "id": "cashflow",
-            "type": "process",
-            "label": "Cash Flow",
-            "formulas": {
-                "savings_t": "delta_kWh * price_scenario_t",
-                "opex_t": "maintenance + management",
-                "financing_costs_t": "debt_service or EPC_fee",
-                "cf_t": "savings_t - opex_t - financing_costs_t"
-            }
-        },
-        {
-            "id": "monte_carlo",
-            "type": "process",
-            "label": "Monte Carlo Simulation",
-            "iterations": 10000,
-            "random_inputs": [
-                "energy_prices",
-                "carbon_prices",
-                "inflation",
-                "interest"
-            ],
-            "outputs": [
-                "cf_distributions",
-                "kpi_distributions"
-            ]
-        },
-        {
-            "id": "kpi_calc",
-            "type": "process",
-            "label": "KPI Calculation",
-            "metrics": {
-                "npv": "-CAPEX + sum(CF_t/(1+r)^t)",
-                "irr": "NPV=0",
-                "dscr": "CF_t / debt_service_t",
-                "pbp": "sum CF_t = CAPEX",
-                "roi": "(Return-CAPEX)/CAPEX"
-            }
-        },
-        {
-            "id": "risk_assessment",
-            "type": "process",
-            "label": "Risk Assessment",
-            "outputs": {
-                "percentiles": [
-                    "P10",
-                    "P50",
-                    "P90"
-                ],
-                "probabilities": [
-                    "Pr(NPV>0)",
-                    "Pr(DSCR>1.2)",
-                    "Pr(PBP<horizon)"
-                ]
-            }
-        },
-        {
-            "id": "financing_scheme_selection",
-            "type": "process",
-            "label": "Selection of Financing Schemes",
-            "options": [
-                "debt",
-                "equity",
-                "EPC",
-                "leasing",
-                "PPA"
-            ],
-            "criteria": [
-                "cost_of_capital",
-                "risk",
-                "liquidity",
-                "control"
-            ]
-        },
-        {
-            "id": "technical_service",
-            "type": "service",
-            "label": "Technical Service (MCDA)",
-            "description": "Multi-Criteria Decision Analysis"
-        },
-        {
-            "id": "criteria_matrix",
-            "type": "process",
-            "label": "Criteria Matrix",
-            "dimensions": {
-                "alternatives": "m_packages",
-                "criteria": [
-                    "financial",
-                    "environmental",
-                    "comfort",
-                    "technical",
-                    "financing"
-                ]
-            }
-        },
-        {
-            "id": "topsis",
-            "type": "algorithm",
-            "label": "TOPSIS",
-            "steps": [
-                "normalize",
-                "weight",
-                "ideal_solutions",
-                "distances",
-                "closeness"
-            ]
-        },
-        {
-            "id": "ranking",
-            "type": "process",
-            "label": "Ranking",
-            "method": "Sort by closeness score descending"
-        },
-        {
-            "id": "optimal_package",
-            "type": "output",
-            "label": "Optimal Package",
-            "fields": [
-                "rank",
-                "closeness_score",
-                "measures",
-                "financing_scheme"
-            ]
-        },
-        {
-            "id": "financial_results",
-            "type": "report",
-            "label": "Advanced Financial Results",
-            "fields": [
-                "NPV",
-                "IRR",
-                "DSCR",
-                "PBP",
-                "ROI",
-                "risk_metrics"
-            ]
-        },
-        {
-            "id": "performance_results",
-            "type": "report",
-            "label": "Performance Results",
-            "fields": [
-                "energy_savings",
-                "EPC_change",
-                "comfort",
-                "CO2_reduction"
-            ]
-        },
-        {
-            "id": "final_results",
-            "type": "report",
-            "label": "Advanced Financial Results with Price Scenarios",
-            "description": "Final portfolio-scale results with optimal package, financing scheme and scenario-based KPIs"
-        }
-    ],
-    "edges": [
-        {
-            "from": "group2_input",
-            "to": "forecasting_service",
-            "type": "data"
-        },
-        {
-            "from": "relife_db",
-            "to": "forecasting_service",
-            "type": "reference"
-        },
-        {
-            "from": "forecasting_service",
-            "to": "baseline_simulation",
-            "type": "process"
-        },
-        {
-            "from": "baseline_simulation",
-            "to": "performance_outputs",
-            "type": "process"
-        },
-        {
-            "from": "performance_outputs",
-            "to": "financial_service",
-            "type": "input"
-        },
-        {
-            "from": "group2_input",
-            "to": "financial_service",
-            "type": "constraint"
-        },
-        {
-            "from": "relife_db",
-            "to": "financial_service",
-            "type": "reference"
-        },
-        {
-            "from": "financial_service",
-            "to": "cashflow",
-            "type": "process"
-        },
-        {
-            "from": "cashflow",
-            "to": "monte_carlo",
-            "type": "process"
-        },
-        {
-            "from": "monte_carlo",
-            "to": "kpi_calc",
-            "type": "process"
-        },
-        {
-            "from": "kpi_calc",
-            "to": "risk_assessment",
-            "type": "process"
-        },
-        {
-            "from": "risk_assessment",
-            "to": "financial_results",
-            "type": "report"
-        },
-        {
-            "from": "group2_input",
-            "to": "financing_scheme_selection",
-            "type": "constraint"
-        },
-        {
-            "from": "financing_scheme_selection",
-            "to": "financial_service",
-            "type": "configuration"
-        },
-        {
-            "from": "risk_assessment",
-            "to": "technical_service",
-            "type": "input"
-        },
-        {
-            "from": "performance_outputs",
-            "to": "technical_service",
-            "type": "input"
-        },
-        {
-            "from": "financing_scheme_selection",
-            "to": "technical_service",
-            "type": "input"
-        },
-        {
-            "from": "technical_service",
-            "to": "criteria_matrix",
-            "type": "process"
-        },
-        {
-            "from": "criteria_matrix",
-            "to": "topsis",
-            "type": "algorithm"
-        },
-        {
-            "from": "topsis",
-            "to": "ranking",
-            "type": "process"
-        },
-        {
-            "from": "ranking",
-            "to": "optimal_package",
-            "type": "output"
-        },
-        {
-            "from": "optimal_package",
-            "to": "final_results",
-            "type": "aggregation"
-        },
-        {
-            "from": "financial_results",
-            "to": "final_results",
-            "type": "aggregation"
-        },
-        {
-            "from": "performance_results",
-            "to": "final_results",
-            "type": "aggregation"
-        }
-    ]
+    {
+      "id": "relife_db",
+      "type": "database",
+      "label": "Relife Database",
+      "fields": {
+        "reference_buildings": true,
+        "portfolio_templates": true,
+        "cost_library": true,
+        "system_library": true,
+        "climate_data": true,
+        "financial_defaults": true
+      }
+    },
+    {
+      "id": "forecasting_service",
+      "type": "service",
+      "label": "Forecasting Service",
+      "engine": "pyBuildingEnergy",
+      "inputs": ["building_archetypes", "system_data", "climate_data"],
+      "outputs": ["baseline_simulation", "renovation_simulation"]
+    },
+    {
+      "id": "baseline_simulation",
+      "type": "process",
+      "label": "Baseline & Renovation Simulation",
+      "baseline_outputs": ["Q_heat_base", "Q_cool_base", "EPC_base"],
+      "renovation_inputs": ["u_values", "eta", "cop"],
+      "renovation_outputs": ["Q_heat_reno", "Q_cool_reno", "EPC_reno"]
+    },
+    {
+      "id": "performance_outputs",
+      "type": "process",
+      "label": "Performance Outputs",
+      "fields": {
+        "total_energy_savings": "Q_base - Q_reno",
+        "savings_percent": "(Q_base - Q_reno)/Q_base",
+        "epc_transition": true,
+        "comfort": ["PMV", "PPD"],
+        "co2_reduction": "kg/year"
+      }
+    },
+    {
+      "id": "financial_service",
+      "type": "service",
+      "label": "Financial Service",
+      "description": "Advanced Investment & Financing Analysis"
+    },
+    {
+      "id": "cashflow",
+      "type": "process",
+      "label": "Cash Flow",
+      "formulas": {
+        "savings_t": "delta_kWh * price_scenario_t",
+        "opex_t": "maintenance + management",
+        "financing_costs_t": "debt_service or EPC_fee",
+        "cf_t": "savings_t - opex_t - financing_costs_t"
+      }
+    },
+    {
+      "id": "monte_carlo",
+      "type": "process",
+      "label": "Monte Carlo Simulation",
+      "iterations": 10000,
+      "random_inputs": [
+        "energy_prices",
+        "carbon_prices",
+        "inflation",
+        "interest"
+      ],
+      "outputs": ["cf_distributions", "kpi_distributions"]
+    },
+    {
+      "id": "kpi_calc",
+      "type": "process",
+      "label": "KPI Calculation",
+      "metrics": {
+        "npv": "-CAPEX + sum(CF_t/(1+r)^t)",
+        "irr": "NPV=0",
+        "dscr": "CF_t / debt_service_t",
+        "pbp": "sum CF_t = CAPEX",
+        "roi": "(Return-CAPEX)/CAPEX"
+      }
+    },
+    {
+      "id": "risk_assessment",
+      "type": "process",
+      "label": "Risk Assessment",
+      "outputs": {
+        "percentiles": ["P10", "P50", "P90"],
+        "probabilities": ["Pr(NPV>0)", "Pr(DSCR>1.2)", "Pr(PBP<horizon)"]
+      }
+    },
+    {
+      "id": "financing_scheme_selection",
+      "type": "process",
+      "label": "Selection of Financing Schemes",
+      "options": ["debt", "equity", "EPC", "leasing", "PPA"],
+      "criteria": ["cost_of_capital", "risk", "liquidity", "control"]
+    },
+    {
+      "id": "technical_service",
+      "type": "service",
+      "label": "Technical Service (MCDA)",
+      "description": "Multi-Criteria Decision Analysis"
+    },
+    {
+      "id": "criteria_matrix",
+      "type": "process",
+      "label": "Criteria Matrix",
+      "dimensions": {
+        "alternatives": "m_packages",
+        "criteria": [
+          "financial",
+          "environmental",
+          "comfort",
+          "technical",
+          "financing"
+        ]
+      }
+    },
+    {
+      "id": "topsis",
+      "type": "algorithm",
+      "label": "TOPSIS",
+      "steps": [
+        "normalize",
+        "weight",
+        "ideal_solutions",
+        "distances",
+        "closeness"
+      ]
+    },
+    {
+      "id": "ranking",
+      "type": "process",
+      "label": "Ranking",
+      "method": "Sort by closeness score descending"
+    },
+    {
+      "id": "optimal_package",
+      "type": "output",
+      "label": "Optimal Package",
+      "fields": ["rank", "closeness_score", "measures", "financing_scheme"]
+    },
+    {
+      "id": "financial_results",
+      "type": "report",
+      "label": "Advanced Financial Results",
+      "fields": ["NPV", "IRR", "DSCR", "PBP", "ROI", "risk_metrics"]
+    },
+    {
+      "id": "performance_results",
+      "type": "report",
+      "label": "Performance Results",
+      "fields": ["energy_savings", "EPC_change", "comfort", "CO2_reduction"]
+    },
+    {
+      "id": "final_results",
+      "type": "report",
+      "label": "Advanced Financial Results with Price Scenarios",
+      "description": "Final portfolio-scale results with optimal package, financing scheme and scenario-based KPIs"
+    }
+  ],
+  "edges": [
+    {
+      "from": "group2_input",
+      "to": "forecasting_service",
+      "type": "data"
+    },
+    {
+      "from": "relife_db",
+      "to": "forecasting_service",
+      "type": "reference"
+    },
+    {
+      "from": "forecasting_service",
+      "to": "baseline_simulation",
+      "type": "process"
+    },
+    {
+      "from": "baseline_simulation",
+      "to": "performance_outputs",
+      "type": "process"
+    },
+    {
+      "from": "performance_outputs",
+      "to": "financial_service",
+      "type": "input"
+    },
+    {
+      "from": "group2_input",
+      "to": "financial_service",
+      "type": "constraint"
+    },
+    {
+      "from": "relife_db",
+      "to": "financial_service",
+      "type": "reference"
+    },
+    {
+      "from": "financial_service",
+      "to": "cashflow",
+      "type": "process"
+    },
+    {
+      "from": "cashflow",
+      "to": "monte_carlo",
+      "type": "process"
+    },
+    {
+      "from": "monte_carlo",
+      "to": "kpi_calc",
+      "type": "process"
+    },
+    {
+      "from": "kpi_calc",
+      "to": "risk_assessment",
+      "type": "process"
+    },
+    {
+      "from": "risk_assessment",
+      "to": "financial_results",
+      "type": "report"
+    },
+    {
+      "from": "group2_input",
+      "to": "financing_scheme_selection",
+      "type": "constraint"
+    },
+    {
+      "from": "financing_scheme_selection",
+      "to": "financial_service",
+      "type": "configuration"
+    },
+    {
+      "from": "risk_assessment",
+      "to": "technical_service",
+      "type": "input"
+    },
+    {
+      "from": "performance_outputs",
+      "to": "technical_service",
+      "type": "input"
+    },
+    {
+      "from": "financing_scheme_selection",
+      "to": "technical_service",
+      "type": "input"
+    },
+    {
+      "from": "technical_service",
+      "to": "criteria_matrix",
+      "type": "process"
+    },
+    {
+      "from": "criteria_matrix",
+      "to": "topsis",
+      "type": "algorithm"
+    },
+    {
+      "from": "topsis",
+      "to": "ranking",
+      "type": "process"
+    },
+    {
+      "from": "ranking",
+      "to": "optimal_package",
+      "type": "output"
+    },
+    {
+      "from": "optimal_package",
+      "to": "final_results",
+      "type": "aggregation"
+    },
+    {
+      "from": "financial_results",
+      "to": "final_results",
+      "type": "aggregation"
+    },
+    {
+      "from": "performance_results",
+      "to": "final_results",
+      "type": "aggregation"
+    }
+  ]
 }

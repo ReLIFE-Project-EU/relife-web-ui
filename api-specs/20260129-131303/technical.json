@@ -1,8 +1,8 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "ReLIFE Forecasting Service",
-    "description": "ReLIFE service for building energy forecasting",
+    "title": "Technical Service APIs",
+    "description": "FastAPI application for all technical indicators",
     "version": "0.1.0"
   },
   "paths": {
@@ -155,53 +155,30 @@
         "security": [{ "HTTPBearer": [] }]
       }
     },
-    "/project": {
+    "/technical/ee": {
       "post": {
-        "tags": ["forecasting"],
-        "summary": "Create Project",
-        "operationId": "create_project_project_post",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": { "type": "string" },
-                  "type": "object",
-                  "title": "Response Create Project Project Post"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/project/{project_id}/building": {
-      "put": {
-        "tags": ["forecasting"],
-        "summary": "Upload Building",
-        "operationId": "upload_building_project__project_id__building_put",
-        "parameters": [
-          {
-            "name": "project_id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string", "title": "Project Id" }
-          }
-        ],
+        "tags": ["technical"],
+        "summary": "Calculate EE weight",
+        "description": "Calculate the EE of Project.",
+        "operationId": "ee_endpoint_technical_ee_post",
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/BuildingPayload" }
+              "schema": { "$ref": "#/components/schemas/EERequest" }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
             "description": "Successful Response",
-            "content": { "application/json": { "schema": {} } }
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/EEResponse" }
+              }
+            }
           },
+          "401": { "description": "Unauthorized" },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -213,45 +190,30 @@
         }
       }
     },
-    "/plant/template": {
-      "get": {
-        "tags": ["forecasting"],
-        "summary": "Get Plant Template",
-        "operationId": "get_plant_template_plant_template_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": { "application/json": { "schema": {} } }
-          }
-        }
-      }
-    },
-    "/project/{project_id}/plant": {
-      "put": {
-        "tags": ["forecasting"],
-        "summary": "Upload Plant",
-        "operationId": "upload_plant_project__project_id__plant_put",
-        "parameters": [
-          {
-            "name": "project_id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string", "title": "Project Id" }
-          }
-        ],
+    "/financial/rei": {
+      "post": {
+        "tags": ["financial"],
+        "summary": "Calculate REI weight",
+        "description": "Calculate the REI of Project.",
+        "operationId": "rei_endpoint_financial_rei_post",
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/PlantPayload" }
+              "schema": { "$ref": "#/components/schemas/REIRequest" }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
             "description": "Successful Response",
-            "content": { "application/json": { "schema": {} } }
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/REIResponse" }
+              }
+            }
           },
+          "401": { "description": "Unauthorized" },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -263,34 +225,30 @@
         }
       }
     },
-    "/project/{project_id}/simulate": {
+    "/technical/sei": {
       "post": {
-        "tags": ["forecasting"],
-        "summary": "Simulate Project",
-        "operationId": "simulate_project_project__project_id__simulate_post",
-        "parameters": [
-          {
-            "name": "project_id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string", "title": "Project Id" }
-          }
-        ],
+        "tags": ["technical"],
+        "summary": "Calculate SEI weight",
+        "description": "Calculate the SEI of Project.",
+        "operationId": "sei_endpoint_technical_sei_post",
         "requestBody": {
-          "required": true,
           "content": {
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_simulate_project_project__project_id__simulate_post"
-              }
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SEIRequest" }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
             "description": "Successful Response",
-            "content": { "application/json": { "schema": {} } }
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SEIResponse" }
+              }
+            }
           },
+          "401": { "description": "Unauthorized" },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -302,24 +260,30 @@
         }
       }
     },
-    "/project/{project_id}/results.csv": {
-      "get": {
-        "tags": ["forecasting"],
-        "summary": "Download Results Csv",
-        "operationId": "download_results_csv_project__project_id__results_csv_get",
-        "parameters": [
-          {
-            "name": "project_id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string", "title": "Project Id" }
-          }
-        ],
+    "/technical/uc": {
+      "post": {
+        "tags": ["technical"],
+        "summary": "Calculate UC weight",
+        "description": "Calculate the UC of Project.",
+        "operationId": "uc_endpoint_technical_uc_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UCRequest" }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
-            "content": { "application/json": { "schema": {} } }
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UCResponse" }
+              }
+            }
           },
+          "401": { "description": "Unauthorized" },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -331,24 +295,30 @@
         }
       }
     },
-    "/project/{project_id}/epc": {
-      "get": {
-        "tags": ["forecasting"],
-        "summary": "Get Epc",
-        "operationId": "get_epc_project__project_id__epc_get",
-        "parameters": [
-          {
-            "name": "project_id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string", "title": "Project Id" }
-          }
-        ],
+    "/technical/fv": {
+      "post": {
+        "tags": ["technical"],
+        "summary": "Calculate FV weight",
+        "description": "Calculate the FV of Project.",
+        "operationId": "fv_endpoint_technical_fv_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FVRequest" }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
-            "content": { "application/json": { "schema": {} } }
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FVResponse" }
+              }
+            }
           },
+          "401": { "description": "Unauthorized" },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -392,14 +362,6 @@
         "title": "AuthenticationMethod",
         "description": "Authentication method used to authenticate the user."
       },
-      "Body_simulate_project_project__project_id__simulate_post": {
-        "properties": {
-          "epw": { "type": "string", "format": "binary", "title": "Epw" }
-        },
-        "type": "object",
-        "required": ["epw"],
-        "title": "Body_simulate_project_project__project_id__simulate_post"
-      },
       "Body_upload_file_storage_post": {
         "properties": {
           "file": { "type": "string", "format": "binary", "title": "File" }
@@ -408,28 +370,143 @@
         "required": ["file"],
         "title": "Body_upload_file_storage_post"
       },
-      "BuildingPayload": {
+      "EERequest": {
         "properties": {
-          "data": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Data",
-            "description": "Dizionario con parametri geometrici/termici. Esempio chiavi: \n- area_m2 (float)\n- volume_m3 (float)\n- U_envelope_W_m2K (float)\n- infiltration_ach (float/h)\n- internal_gains_W (float)\n- thermal_capacity_kJ_K (float)\n",
-            "examples": [
-              {
-                "U_envelope_W_m2K": 0.7,
-                "area_m2": 100.0,
-                "infiltration_ach": 0.5,
-                "internal_gains_W": 500.0,
-                "thermal_capacity_kJ_K": 80000.0,
-                "volume_m3": 250.0
-              }
-            ]
-          }
+          "envelope_kpi": { "type": "number", "title": "Envelope Kpi" },
+          "envelope_min": { "type": "number", "title": "Envelope Min" },
+          "envelope_max": { "type": "number", "title": "Envelope Max" },
+          "window_kpi": { "type": "number", "title": "Window Kpi" },
+          "window_min": { "type": "number", "title": "Window Min" },
+          "window_max": { "type": "number", "title": "Window Max" },
+          "heating_system_kpi": {
+            "type": "number",
+            "title": "Heating System Kpi"
+          },
+          "heating_system_min": {
+            "type": "number",
+            "title": "Heating System Min"
+          },
+          "heating_system_max": {
+            "type": "number",
+            "title": "Heating System Max"
+          },
+          "cooling_system_kpi": {
+            "type": "number",
+            "title": "Cooling System Kpi"
+          },
+          "cooling_system_min": {
+            "type": "number",
+            "title": "Cooling System Min"
+          },
+          "cooling_system_max": {
+            "type": "number",
+            "title": "Cooling System Max"
+          },
+          "profile": { "type": "string", "title": "Profile" }
         },
         "type": "object",
-        "required": ["data"],
-        "title": "BuildingPayload"
+        "required": [
+          "envelope_kpi",
+          "envelope_min",
+          "envelope_max",
+          "window_kpi",
+          "window_min",
+          "window_max",
+          "heating_system_kpi",
+          "heating_system_min",
+          "heating_system_max",
+          "cooling_system_kpi",
+          "cooling_system_min",
+          "cooling_system_max",
+          "profile"
+        ],
+        "title": "EERequest"
+      },
+      "EEResponse": {
+        "properties": {
+          "ee_kpi_weight": { "type": "number", "title": "Ee Kpi Weight" },
+          "envelope_normalized": {
+            "type": "number",
+            "title": "Envelope Normalized"
+          },
+          "window_normalized": {
+            "type": "number",
+            "title": "Window Normalized"
+          },
+          "heating_system_normalized": {
+            "type": "number",
+            "title": "Heating System Normalized"
+          },
+          "cooling_system_normalized": {
+            "type": "number",
+            "title": "Cooling System Normalized"
+          },
+          "input": { "$ref": "#/components/schemas/EERequest" }
+        },
+        "type": "object",
+        "required": [
+          "ee_kpi_weight",
+          "envelope_normalized",
+          "window_normalized",
+          "heating_system_normalized",
+          "cooling_system_normalized",
+          "input"
+        ],
+        "title": "EEResponse"
+      },
+      "FVRequest": {
+        "properties": {
+          "ii_kpi": { "type": "number", "title": "Ii Kpi" },
+          "ii_min": { "type": "number", "title": "Ii Min" },
+          "ii_max": { "type": "number", "title": "Ii Max" },
+          "aoc_kpi": { "type": "number", "title": "Aoc Kpi" },
+          "aoc_min": { "type": "number", "title": "Aoc Min" },
+          "aoc_max": { "type": "number", "title": "Aoc Max" },
+          "irr_kpi": { "type": "number", "title": "Irr Kpi" },
+          "irr_min": { "type": "number", "title": "Irr Min" },
+          "irr_max": { "type": "number", "title": "Irr Max" },
+          "npv_kpi": { "type": "number", "title": "Npv Kpi" },
+          "npv_min": { "type": "number", "title": "Npv Min" },
+          "npv_max": { "type": "number", "title": "Npv Max" },
+          "profile": { "type": "string", "title": "Profile" }
+        },
+        "type": "object",
+        "required": [
+          "ii_kpi",
+          "ii_min",
+          "ii_max",
+          "aoc_kpi",
+          "aoc_min",
+          "aoc_max",
+          "irr_kpi",
+          "irr_min",
+          "irr_max",
+          "npv_kpi",
+          "npv_min",
+          "npv_max",
+          "profile"
+        ],
+        "title": "FVRequest"
+      },
+      "FVResponse": {
+        "properties": {
+          "fv_kpi_weight": { "type": "number", "title": "Fv Kpi Weight" },
+          "ii_normalized": { "type": "number", "title": "Ii Normalized" },
+          "aoc_normalized": { "type": "number", "title": "Aoc Normalized" },
+          "irr_normalized": { "type": "number", "title": "Irr Normalized" },
+          "npv_normalized": { "type": "number", "title": "Npv Normalized" },
+          "input": { "$ref": "#/components/schemas/FVRequest" }
+        },
+        "type": "object",
+        "required": [
+          "fv_kpi_weight",
+          "ii_normalized",
+          "aoc_normalized",
+          "irr_normalized",
+          "npv_normalized",
+          "input"
+        ],
+        "title": "FVResponse"
       },
       "FileUploadResponse": {
         "properties": {
@@ -479,28 +556,119 @@
         "title": "KeycloakRole",
         "description": "Representation of a Keycloak role with its attributes.\n\nThis model represents role information retrieved from Keycloak's identity provider."
       },
-      "PlantPayload": {
+      "REIRequest": {
         "properties": {
-          "data": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Data",
-            "description": "Dizionario impianto. Esempio chiavi: \n- heat_setpoint_C (float)\n- cool_setpoint_C (float)\n- heat_power_max_W (float)\n- cool_power_max_W (float)\n- heat_efficiency (float, 0-1 o COP)\n- cool_efficiency (float, 0-1 o EER)\n",
-            "examples": [
-              {
-                "cool_efficiency": 3.0,
-                "cool_power_max_W": 6000.0,
-                "cool_setpoint_C": 26.0,
-                "heat_efficiency": 0.95,
-                "heat_power_max_W": 6000.0,
-                "heat_setpoint_C": 20.0
-              }
-            ]
-          }
+          "st_coverage_kpi": { "type": "number", "title": "St Coverage Kpi" },
+          "st_coverage_min": { "type": "number", "title": "St Coverage Min" },
+          "st_coverage_max": { "type": "number", "title": "St Coverage Max" },
+          "onsite_res_kpi": { "type": "number", "title": "Onsite Res Kpi" },
+          "onsite_res_min": { "type": "number", "title": "Onsite Res Min" },
+          "onsite_res_max": { "type": "number", "title": "Onsite Res Max" },
+          "net_energy_export_kpi": {
+            "type": "number",
+            "title": "Net Energy Export Kpi"
+          },
+          "net_energy_export_min": {
+            "type": "number",
+            "title": "Net Energy Export Min"
+          },
+          "net_energy_export_max": {
+            "type": "number",
+            "title": "Net Energy Export Max"
+          },
+          "profile": { "type": "string", "title": "Profile" }
         },
         "type": "object",
-        "required": ["data"],
-        "title": "PlantPayload"
+        "required": [
+          "st_coverage_kpi",
+          "st_coverage_min",
+          "st_coverage_max",
+          "onsite_res_kpi",
+          "onsite_res_min",
+          "onsite_res_max",
+          "net_energy_export_kpi",
+          "net_energy_export_min",
+          "net_energy_export_max",
+          "profile"
+        ],
+        "title": "REIRequest"
+      },
+      "REIResponse": {
+        "properties": {
+          "rei_kpi_weight": { "type": "number", "title": "Rei Kpi Weight" },
+          "st_coverage_normalized": {
+            "type": "number",
+            "title": "St Coverage Normalized"
+          },
+          "onsite_res_normalized": {
+            "type": "number",
+            "title": "Onsite Res Normalized"
+          },
+          "net_energy_normalized": {
+            "type": "number",
+            "title": "Net Energy Normalized"
+          },
+          "input": { "$ref": "#/components/schemas/REIRequest" }
+        },
+        "type": "object",
+        "required": [
+          "rei_kpi_weight",
+          "st_coverage_normalized",
+          "onsite_res_normalized",
+          "net_energy_normalized",
+          "input"
+        ],
+        "title": "REIResponse"
+      },
+      "SEIRequest": {
+        "properties": {
+          "embodied_carbon_kpi": {
+            "type": "number",
+            "title": "Embodied Carbon Kpi"
+          },
+          "embodied_carbon_min": {
+            "type": "number",
+            "title": "Embodied Carbon Min"
+          },
+          "embodied_carbon_max": {
+            "type": "number",
+            "title": "Embodied Carbon Max"
+          },
+          "gwp_kpi": { "type": "number", "title": "Gwp Kpi" },
+          "gwp_min": { "type": "number", "title": "Gwp Min" },
+          "gwp_max": { "type": "number", "title": "Gwp Max" },
+          "profile": { "type": "string", "title": "Profile" }
+        },
+        "type": "object",
+        "required": [
+          "embodied_carbon_kpi",
+          "embodied_carbon_min",
+          "embodied_carbon_max",
+          "gwp_kpi",
+          "gwp_min",
+          "gwp_max",
+          "profile"
+        ],
+        "title": "SEIRequest"
+      },
+      "SEIResponse": {
+        "properties": {
+          "sei_kpi_weight": { "type": "number", "title": "Sei Kpi Weight" },
+          "embodied_carbon_normalized": {
+            "type": "number",
+            "title": "Embodied Carbon Normalized"
+          },
+          "gwp_normalized": { "type": "number", "title": "Gwp Normalized" },
+          "input": { "$ref": "#/components/schemas/SEIRequest" }
+        },
+        "type": "object",
+        "required": [
+          "sei_kpi_weight",
+          "embodied_carbon_normalized",
+          "gwp_normalized",
+          "input"
+        ],
+        "title": "SEIResponse"
       },
       "StorageFileInfo": {
         "properties": {
@@ -529,6 +697,68 @@
         "title": "TableDataResponse",
         "description": "Response model for table read endpoint."
       },
+      "UCRequest": {
+        "properties": {
+          "thermal_comfort_air_temp_kpi": {
+            "type": "number",
+            "title": "Thermal Comfort Air Temp Kpi"
+          },
+          "thermal_comfort_air_temp_min": {
+            "type": "number",
+            "title": "Thermal Comfort Air Temp Min"
+          },
+          "thermal_comfort_air_temp_max": {
+            "type": "number",
+            "title": "Thermal Comfort Air Temp Max"
+          },
+          "thermal_comfort_humidity_kpi": {
+            "type": "number",
+            "title": "Thermal Comfort Humidity Kpi"
+          },
+          "thermal_comfort_humidity_min": {
+            "type": "number",
+            "title": "Thermal Comfort Humidity Min"
+          },
+          "thermal_comfort_humidity_max": {
+            "type": "number",
+            "title": "Thermal Comfort Humidity Max"
+          },
+          "profile": { "type": "string", "title": "Profile" }
+        },
+        "type": "object",
+        "required": [
+          "thermal_comfort_air_temp_kpi",
+          "thermal_comfort_air_temp_min",
+          "thermal_comfort_air_temp_max",
+          "thermal_comfort_humidity_kpi",
+          "thermal_comfort_humidity_min",
+          "thermal_comfort_humidity_max",
+          "profile"
+        ],
+        "title": "UCRequest"
+      },
+      "UCResponse": {
+        "properties": {
+          "uc_kpi_weight": { "type": "number", "title": "Uc Kpi Weight" },
+          "thermal_comfort_air_temp_normalized": {
+            "type": "number",
+            "title": "Thermal Comfort Air Temp Normalized"
+          },
+          "thermal_comfort_humidity_normalized": {
+            "type": "number",
+            "title": "Thermal Comfort Humidity Normalized"
+          },
+          "input": { "$ref": "#/components/schemas/UCRequest" }
+        },
+        "type": "object",
+        "required": [
+          "uc_kpi_weight",
+          "thermal_comfort_air_temp_normalized",
+          "thermal_comfort_humidity_normalized",
+          "input"
+        ],
+        "title": "UCResponse"
+      },
       "UniversalUser": {
         "properties": {
           "id": { "type": "string", "title": "Id" },
@@ -537,7 +767,7 @@
             "title": "Email"
           },
           "user_metadata": {
-            "additionalProperties": { "type": "string" },
+            "additionalProperties": true,
             "type": "object",
             "title": "User Metadata",
             "default": {}

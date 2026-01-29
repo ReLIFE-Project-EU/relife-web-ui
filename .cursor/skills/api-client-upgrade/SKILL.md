@@ -80,12 +80,14 @@ Structure the plan as:
 # API Client Upgrade Plan
 
 ## Latest Specifications
+
 - Directory: `api-specs/[timestamp]/`
 - Services: financial, forecasting, technical
 
 ## Type Definitions
 
 ### Financial Service
+
 - **File**: `src/types/financial.ts`
 - New types:
   - `NewRequestType`: { ... }
@@ -96,14 +98,15 @@ Structure the plan as:
 ## API Client Updates
 
 ### Financial Service (`src/api/financial.ts`)
+
 - **Add**: `newEndpoint(data: NewRequestType): Promise<NewResponseType>`
   - Method: POST
   - Path: `/financial/new-endpoint`
-  
 - **Update**: `existingEndpoint(data: UpdatedRequestType): Promise<UpdatedResponseType>`
   - Changes: Added optional parameter `newParam?: string`
 
 ## Implementation Notes
+
 - Maintain existing error handling patterns
 - Preserve authentication via `request` helper
 - Follow existing code style (named exports, TypeScript strict mode)
