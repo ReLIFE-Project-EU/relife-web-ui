@@ -12,9 +12,7 @@
  * The frontend only stores the measure definitions for display purposes.
  */
 
-import type { RenovationMeasureId } from "../../../context/types";
 import type {
-  MeasureCategory,
   MeasureCategoryInfo,
   RenovationMeasure,
 } from "../../types";
@@ -139,20 +137,3 @@ export const RENOVATION_MEASURES: RenovationMeasure[] = [
   ...RENEWABLE_MEASURES,
 ];
 
-/**
- * Get measures by category
- */
-export function getMeasuresByCategory(
-  category: MeasureCategory,
-): RenovationMeasure[] {
-  return RENOVATION_MEASURES.filter((m) => m.category === category);
-}
-
-/**
- * Get a single measure by ID
- */
-export function getMeasureById(
-  id: RenovationMeasureId,
-): RenovationMeasure | undefined {
-  return RENOVATION_MEASURES.find((m) => m.id === id);
-}
