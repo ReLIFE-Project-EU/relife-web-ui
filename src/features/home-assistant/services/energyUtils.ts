@@ -126,9 +126,7 @@ export function transformColumnarToRowFormat(
  * This function handles both cases by checking if Q_H/Q_C are available.
  * If not, it extracts heating/cooling from Q_HC using the sign convention.
  */
-export function calculateAnnualTotals(
-  hourlyData: HourlyBuildingRecord[],
-): {
+export function calculateAnnualTotals(hourlyData: HourlyBuildingRecord[]): {
   Q_H_total: number;
   Q_C_total: number;
   Q_HC_total: number;

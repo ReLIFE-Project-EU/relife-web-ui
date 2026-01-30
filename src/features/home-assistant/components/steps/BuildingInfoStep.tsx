@@ -5,40 +5,31 @@
 
 import { Alert, Box, Divider, Stack, Text, Title } from "@mantine/core";
 import {
+  IconBuildingCommunity,
   IconHome,
   IconInfoCircle,
   IconMapPin,
-  IconSettings,
-  IconWindow,
 } from "@tabler/icons-react";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 import { ErrorAlert, SectionHeader, StepNavigation } from "../shared";
 import {
+  ArchetypeSelector,
   BuildingTypeInputs,
   LocationInputs,
-  OpeningsInputs,
-  SystemInputs,
 } from "../building";
 
 export function BuildingInfoStep() {
   const { state, dispatch } = useHomeAssistant();
   const { energy } = useHomeAssistantServices();
 
-  // Validation
+  // Validation - only require archetype selection fields
   const isValid =
-    state.building.country &&
-    state.building.climateZone &&
+    state.building.lat !== null &&
+    state.building.lng !== null &&
     state.building.buildingType &&
-    state.building.floorArea !== null &&
-    state.building.floorArea > 0 &&
     state.building.constructionPeriod &&
-    state.building.heatingTechnology &&
-    state.building.coolingTechnology &&
-    state.building.hotWaterTechnology &&
-    state.building.numberOfOpenings !== null &&
-    state.building.numberOfOpenings > 0 &&
-    state.building.glazingTechnology;
+    state.building.selectedArchetype !== undefined;
 
   const handleEstimateEPC = async () => {
     if (!isValid) return;
@@ -71,11 +62,18 @@ export function BuildingInfoStep() {
         </Text>
       </Box>
 
-      {/* Info alert */}
+      {/* Workflow info alert */}
       <Alert variant="light" color="blue" icon={<IconInfoCircle size={16} />}>
-        Fill in the information below as accurately as possible. If you're
-        unsure about some values, select the option that best matches your
-        building.
+        <Text size="sm" fw={500} mb={4}>
+          How this works:
+        </Text>
+        <Text size="sm">
+          <strong>Step 1:</strong> Enter your building's location, type, and
+          construction period to find a matching archetype.
+          <br />
+          <strong>Step 2:</strong> Review and select the matched archetype, then
+          optionally modify parameters to better match your building.
+        </Text>
       </Alert>
 
       {/* Location Section */}
@@ -112,36 +110,19 @@ export function BuildingInfoStep() {
 
       <Divider />
 
-      {/* Systems Section */}
+      {/* Archetype Selection Section */}
       <Box>
         <SectionHeader
           icon={
-            <IconSettings
+            <IconBuildingCommunity
               size={18}
               stroke={1.5}
               color="var(--mantine-color-dimmed)"
             />
           }
-          label="Heating, Cooling & Hot Water Systems"
+          label="Building Archetype"
         />
-        <SystemInputs />
-      </Box>
-
-      <Divider />
-
-      {/* Openings Section */}
-      <Box>
-        <SectionHeader
-          icon={
-            <IconWindow
-              size={18}
-              stroke={1.5}
-              color="var(--mantine-color-dimmed)"
-            />
-          }
-          label="Windows & Openings"
-        />
-        <OpeningsInputs />
+        <ArchetypeSelector />
       </Box>
 
       {/* Error display */}

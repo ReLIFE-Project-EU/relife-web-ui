@@ -1,196 +1,229 @@
 /**
  * BuildingTypeInputs Component
- * Provides building type, floor area, construction period/year, floors, and project lifetime inputs.
- *
- * Note: EPC is NOT a user input. It is calculated by the Forecasting API based on
- * building characteristics and used as input to the Financial API (/arv endpoint).
- * See: api-specs/20260108-125427/financial.json and ReLIFE_HRA_flowchart.md
+ * Provides building type and construction period with dynamic filtering based on archetype availability.
  */
 
 import {
-  NumberInput,
+  Alert,
+  Badge,
+  Group,
+  Loader,
   Select,
   SimpleGrid,
-  Slider,
-  Stack,
-  Switch,
   Text,
 } from "@mantine/core";
+import { IconInfoCircle } from "@tabler/icons-react";
+import { useEffect, useState } from "react";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
-import { deriveConstructionYear } from "../../utils";
-import {
-  BUILDING_AREA_MAX,
-  BUILDING_AREA_MIN,
-  BUILDING_FLOORS_MAX,
-  BUILDING_FLOORS_MIN,
-  CONSTRUCTION_YEAR_MAX,
-  CONSTRUCTION_YEAR_MIN,
-  PROJECT_LIFETIME_MARKS,
-  PROJECT_LIFETIME_MAX,
-  PROJECT_LIFETIME_MIN,
-} from "../../constants";
 
 export function BuildingTypeInputs() {
   const { state, dispatch } = useHomeAssistant();
   const { building } = useHomeAssistantServices();
-  const options = building.getOptions();
 
-  const isApartment = state.building.buildingType === "apartment";
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  const [availablePeriods, setAvailablePeriods] = useState<string[]>([]);
+  const [archetypeCount, setArchetypeCount] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showInfoAlert, setShowInfoAlert] = useState(true);
 
-  // Handle construction period change - auto-derive year
-  const handleConstructionPeriodChange = (value: string | null) => {
-    if (value) {
-      dispatch({
-        type: "UPDATE_BUILDING",
-        field: "constructionPeriod",
-        value,
-      });
-      // Auto-populate construction year from period midpoint
-      const derivedYear = deriveConstructionYear(value);
-      dispatch({
-        type: "UPDATE_BUILDING",
-        field: "constructionYear",
-        value: derivedYear,
-      });
-    }
-  };
+  const hasCoordinates =
+    state.building.lat !== null && state.building.lng !== null;
+
+  // Load available categories when coordinates change
+  useEffect(() => {
+    const loadCategories = async () => {
+      setIsLoading(true);
+      try {
+        const coords = hasCoordinates
+          ? { lat: state.building.lat!, lng: state.building.lng! }
+          : null;
+        const categories = await building.getAvailableCategories(coords);
+        setAvailableCategories(categories);
+
+        // Clear building type if no longer available
+        if (
+          state.building.buildingType &&
+          !categories.includes(state.building.buildingType)
+        ) {
+          dispatch({
+            type: "UPDATE_BUILDING",
+            field: "buildingType",
+            value: "",
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load categories:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadCategories();
+  }, [state.building.lat, state.building.lng, hasCoordinates, building, dispatch, state.building.buildingType]);
+
+  // Load available periods when building type changes
+  useEffect(() => {
+    const loadPeriods = async () => {
+      if (!state.building.buildingType) {
+        setAvailablePeriods([]);
+        return;
+      }
+
+      try {
+        const periods = await building.getAvailablePeriods(
+          state.building.buildingType,
+        );
+        setAvailablePeriods(periods);
+
+        // Clear construction period if no longer available
+        if (
+          state.building.constructionPeriod &&
+          !periods.includes(state.building.constructionPeriod)
+        ) {
+          dispatch({
+            type: "UPDATE_BUILDING",
+            field: "constructionPeriod",
+            value: "",
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load periods:", error);
+      }
+    };
+
+    loadPeriods();
+  }, [state.building.buildingType, building, dispatch, state.building.constructionPeriod]);
+
+  // Count matching archetypes
+  useEffect(() => {
+    const countArchetypes = async () => {
+      try {
+        const count = await building.countMatchingArchetypes(
+          state.building.buildingType || undefined,
+          state.building.constructionPeriod || undefined,
+        );
+        setArchetypeCount(count);
+      } catch (error) {
+        console.error("Failed to count archetypes:", error);
+      }
+    };
+
+    countArchetypes();
+  }, [state.building.buildingType, state.building.constructionPeriod, building]);
 
   return (
-    <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
-      <Select
-        label="Select building type"
-        description="Choose the type of building you want to renovate."
-        placeholder="Choose building type"
-        data={options.buildingTypes}
-        value={state.building.buildingType}
-        onChange={(value) =>
-          value &&
-          dispatch({ type: "UPDATE_BUILDING", field: "buildingType", value })
-        }
-        required
-        allowDeselect={false}
-      />
-
-      <NumberInput
-        label="Insert floor area"
-        description="Enter the total usable floor area of your home."
-        placeholder="Floor area in m²"
-        suffix=" m²"
-        min={BUILDING_AREA_MIN}
-        max={BUILDING_AREA_MAX}
-        value={state.building.floorArea ?? ""}
-        onChange={(value) =>
-          dispatch({
-            type: "UPDATE_BUILDING",
-            field: "floorArea",
-            value: typeof value === "number" ? value : null,
-          })
-        }
-        required
-      />
-
-      <Select
-        label="Select construction period"
-        description="Select the period when the building was constructed."
-        placeholder="When was it built?"
-        data={options.constructionPeriods}
-        value={state.building.constructionPeriod}
-        onChange={handleConstructionPeriodChange}
-        required
-        allowDeselect={false}
-      />
-
-      <NumberInput
-        label="Construction year"
-        description="Exact year of construction (auto-filled from period)."
-        placeholder="e.g., 1985"
-        min={CONSTRUCTION_YEAR_MIN}
-        max={CONSTRUCTION_YEAR_MAX}
-        value={state.building.constructionYear ?? ""}
-        onChange={(value) =>
-          dispatch({
-            type: "UPDATE_BUILDING",
-            field: "constructionYear",
-            value: typeof value === "number" ? value : null,
-          })
-        }
-        required
-      />
-
-      <NumberInput
-        label="Number of floors"
-        description="Total floors in the building."
-        placeholder="e.g., 5"
-        min={BUILDING_FLOORS_MIN}
-        max={BUILDING_FLOORS_MAX}
-        value={state.building.numberOfFloors ?? ""}
-        onChange={(value) =>
-          dispatch({
-            type: "UPDATE_BUILDING",
-            field: "numberOfFloors",
-            value: typeof value === "number" ? value : null,
-          })
-        }
-        required
-      />
-
-      {isApartment && (
-        <NumberInput
-          label="Floor number"
-          description="Which floor is your apartment on? (0 = ground floor)"
-          placeholder="e.g., 2"
-          min={0}
-          max={(state.building.numberOfFloors ?? BUILDING_FLOORS_MAX) - 1}
-          value={state.building.floorNumber ?? ""}
-          onChange={(value) =>
-            dispatch({
-              type: "UPDATE_BUILDING",
-              field: "floorNumber",
-              value: typeof value === "number" ? value : null,
-            })
-          }
-        />
+    <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+      {/* Info alert */}
+      {showInfoAlert && (
+        <Alert
+          variant="light"
+          color="blue"
+          icon={<IconInfoCircle size={16} />}
+          withCloseButton
+          onClose={() => setShowInfoAlert(false)}
+          style={{ gridColumn: "1 / -1" }}
+        >
+          <Text size="sm" fw={500} mb={4}>
+            How Building Matching Works
+          </Text>
+          <Text size="sm">
+            Your building will be matched to reference archetypes from our
+            database. Options shown are filtered based on what's available near
+            your coordinates.
+          </Text>
+        </Alert>
       )}
 
-      <Switch
-        label="Renovated in last 5 years"
-        description="Has the property undergone renovation recently?"
-        checked={state.building.renovatedLast5Years}
-        onChange={(event) =>
-          dispatch({
-            type: "UPDATE_BUILDING",
-            field: "renovatedLast5Years",
-            value: event.currentTarget.checked,
-          })
-        }
-      />
+      {/* Loading state */}
+      {isLoading && (
+        <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "1rem" }}>
+          <Loader size="sm" />
+          <Text size="sm" c="dimmed" mt="xs">
+            Loading available options...
+          </Text>
+        </div>
+      )}
 
-      {/* Project Lifetime - full width */}
-      <Stack gap="xs" style={{ gridColumn: "1 / -1" }}>
-        <Text size="sm" fw={500}>
-          Project evaluation horizon
-        </Text>
-        <Text size="xs" c="dimmed">
-          How many years should be considered for financial projections? (
-          {state.building.projectLifetime} years)
-        </Text>
-        <Slider
-          min={PROJECT_LIFETIME_MIN}
-          max={PROJECT_LIFETIME_MAX}
-          step={1}
-          value={state.building.projectLifetime}
-          onChange={(value) =>
-            dispatch({
-              type: "UPDATE_BUILDING",
-              field: "projectLifetime",
-              value,
-            })
-          }
-          marks={PROJECT_LIFETIME_MARKS}
-          styles={{ markLabel: { fontSize: 10 } }}
-        />
-      </Stack>
+      {/* Building type */}
+      {!isLoading && (
+        <>
+          <div>
+            <Select
+              label="Building Type"
+              description={
+                hasCoordinates
+                  ? "Ordered by nearest archetypes to your location."
+                  : "Enter coordinates first for location-based filtering."
+              }
+              placeholder="Choose building type"
+              data={availableCategories.map((cat) => ({
+                value: cat,
+                label: cat,
+              }))}
+              value={state.building.buildingType}
+              onChange={(value) => {
+                if (value) {
+                  dispatch({
+                    type: "UPDATE_BUILDING",
+                    field: "buildingType",
+                    value,
+                  });
+                }
+              }}
+              required
+              allowDeselect={false}
+              disabled={!hasCoordinates}
+            />
+            {!hasCoordinates && (
+              <Text size="xs" c="orange" mt={4}>
+                Enter coordinates above to see available building types
+              </Text>
+            )}
+          </div>
+
+          {/* Construction period */}
+          <div>
+            <Group gap="xs" mb={4}>
+              <Text size="sm" fw={500}>
+                Construction Period
+              </Text>
+              {state.building.buildingType && archetypeCount > 0 && (
+                <Badge size="sm" variant="light" color="blue">
+                  {archetypeCount} archetype{archetypeCount !== 1 ? "s" : ""}{" "}
+                  available
+                </Badge>
+              )}
+            </Group>
+            <Select
+              description="When was your building constructed?"
+              placeholder="Choose construction period"
+              data={availablePeriods.map((period) => ({
+                value: period,
+                label: period,
+              }))}
+              value={state.building.constructionPeriod}
+              onChange={(value) => {
+                if (value) {
+                  dispatch({
+                    type: "UPDATE_BUILDING",
+                    field: "constructionPeriod",
+                    value,
+                  });
+                }
+              }}
+              required
+              allowDeselect={false}
+              disabled={!state.building.buildingType}
+            />
+            {state.building.buildingType && availablePeriods.length === 0 && (
+              <Text size="xs" c="red" mt={4}>
+                No construction periods available for this building type
+              </Text>
+            )}
+          </div>
+        </>
+      )}
     </SimpleGrid>
   );
 }

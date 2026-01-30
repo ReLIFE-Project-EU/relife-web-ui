@@ -16,23 +16,40 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface BuildingInfo {
-  // Existing fields (UI-focused)
+  // Location and basic identification
   country: string;
-  climateZone: string;
-  buildingType: string; // UI value, maps to API PropertyType via apiMappings
-  floorArea: number | null;
-  constructionPeriod: string; // UI dropdown value (e.g., "1971-1990")
-  heatingTechnology: string;
-  coolingTechnology: string;
-  hotWaterTechnology: string;
-  numberOfOpenings: number | null;
-  glazingTechnology: string;
+  lat: number | null; // Required for PVGIS weather and archetype matching, range: -90 to 90
+  lng: number | null; // Required for PVGIS weather and archetype matching, range: -180 to 180
+
+  // Building category (from archetype)
+  buildingType: string; // Maps to archetype category (e.g., "Single Family House")
+
+  // Construction period (from archetype)
+  constructionPeriod: string; // e.g., "1946-1969", extracted from archetype name
+
+  // Archetype selection tracking
+  selectedArchetype?: {
+    name: string;
+    category: string;
+    country: string;
+  };
+
+  // User-modifiable parameters (Optional - for modified archetype workflow)
+  isModified: boolean; // Whether user has modified archetype defaults
+  floorArea: number | null; // m² - can be modified by user
+  numberOfFloors: number | null; // 1-100 - can be modified by user
+
+  // Deprecated fields (kept for backward compatibility with Financial API)
+  // These are now derived from archetype or removed from user input
+  climateZone: string; // Deprecated - not user input
+  heatingTechnology: string; // Deprecated - fixed in archetype
+  coolingTechnology: string; // Deprecated - fixed in archetype
+  hotWaterTechnology: string; // Deprecated - fixed in archetype
+  numberOfOpenings: number | null; // Deprecated - derived from archetype
+  glazingTechnology: string; // Deprecated - fixed in archetype
 
   // Fields for Financial API (/arv endpoint)
-  lat: number | null; // Required for ARV, range: -90 to 90
-  lng: number | null; // Required for ARV, range: -180 to 180
-  constructionYear: number | null; // Integer 1800-2030, derived from constructionPeriod or user input
-  numberOfFloors: number | null; // Required for ARV, 1-100
+  constructionYear: number | null; // Integer 1800-2030, derived from constructionPeriod
   floorNumber: number | null; // Optional, for apartments (0 = ground floor)
 
   // Fields for Financial API (/risk-assessment endpoint)
@@ -43,7 +60,6 @@ export interface BuildingInfo {
 
   // Note: EPC (Energy Performance Certificate) is NOT a user input.
   // It is calculated by the Forecasting API and used as input to the Financial API.
-  // See: api-specs/20260108-125427/financial.json - energy_class comes from energy analysis API
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

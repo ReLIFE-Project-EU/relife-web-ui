@@ -1,16 +1,12 @@
 /**
  * LocationInputs Component
- * Provides country, climate zone, and coordinates selection.
- *
- * TBD: Consider adding a map picker or geocoding autocomplete for lat/lng
+ * Provides coordinates for archetype matching and weather data.
+ * Country is derived from the matched archetype, not user input.
  */
 
-import { NumberInput, Select, SimpleGrid, Text } from "@mantine/core";
+import { SimpleGrid, Text, TextInput } from "@mantine/core";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
-import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
-import { MOCK_COUNTRY_COORDINATES } from "../../services/mock/constants";
 import {
-  COORDINATE_DECIMAL_SCALE,
   LATITUDE_MAX,
   LATITUDE_MIN,
   LONGITUDE_MAX,
@@ -19,101 +15,64 @@ import {
 
 export function LocationInputs() {
   const { state, dispatch } = useHomeAssistant();
-  const { building } = useHomeAssistantServices();
-  const options = building.getOptions();
-
-  const handleCountryChange = (value: string | null) => {
-    if (value) {
-      // Update country
-      dispatch({ type: "UPDATE_BUILDING", field: "country", value });
-
-      // Apply country-specific defaults
-      const defaults = building.getDefaultsForCountry(value);
-      if (Object.keys(defaults).length > 0) {
-        dispatch({ type: "SET_BUILDING", building: defaults });
-      }
-
-      // Set default coordinates for the country if not already set
-      const coords = MOCK_COUNTRY_COORDINATES[value];
-      if (coords && state.building.lat === null) {
-        dispatch({ type: "UPDATE_BUILDING", field: "lat", value: coords.lat });
-        dispatch({ type: "UPDATE_BUILDING", field: "lng", value: coords.lng });
-      }
-    }
-  };
-
-  const handleClimateZoneChange = (value: string | null) => {
-    if (value) {
-      dispatch({ type: "UPDATE_BUILDING", field: "climateZone", value });
-    }
-  };
 
   return (
-    <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
-      <Select
-        label="Select country"
-        description="Select the country where your building is located."
-        placeholder="Choose a country"
-        data={options.countries}
-        value={state.building.country}
-        onChange={handleCountryChange}
-        searchable
-        required
-        allowDeselect={false}
-      />
-
-      <Select
-        label="Select climatic zone"
-        description="Choose the climatic zone that best describes your location."
-        placeholder="Choose climate zone"
-        data={options.climateZones}
-        value={state.building.climateZone}
-        onChange={handleClimateZoneChange}
-        required
-        allowDeselect={false}
-      />
-
-      {/* TBD: Consider replacing with map picker or geocoding autocomplete */}
-      <NumberInput
+    <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+      <TextInput
         label="Latitude"
-        description="Geographic latitude coordinate."
+        description="Geographic latitude coordinate (for weather data & archetype matching)."
         placeholder="e.g., 48.21"
-        min={LATITUDE_MIN}
-        max={LATITUDE_MAX}
-        decimalScale={COORDINATE_DECIMAL_SCALE}
-        value={state.building.lat ?? ""}
-        onChange={(value) =>
+        type="number"
+        step="any"
+        value={state.building.lat?.toString() ?? ""}
+        onChange={(e) => {
+          const value = e.currentTarget.value;
+          const num = parseFloat(value);
           dispatch({
             type: "UPDATE_BUILDING",
             field: "lat",
-            value: typeof value === "number" ? value : null,
-          })
-        }
+            value: value === "" || isNaN(num) ? null : num,
+          });
+        }}
         required
+        error={
+          state.building.lat !== null &&
+          (state.building.lat < LATITUDE_MIN ||
+            state.building.lat > LATITUDE_MAX)
+            ? `Must be between ${LATITUDE_MIN} and ${LATITUDE_MAX}`
+            : undefined
+        }
       />
 
-      <NumberInput
+      <TextInput
         label="Longitude"
-        description="Geographic longitude coordinate."
+        description="Geographic longitude coordinate (for weather data & archetype matching)."
         placeholder="e.g., 16.37"
-        min={LONGITUDE_MIN}
-        max={LONGITUDE_MAX}
-        decimalScale={COORDINATE_DECIMAL_SCALE}
-        value={state.building.lng ?? ""}
-        onChange={(value) =>
+        type="number"
+        step="any"
+        value={state.building.lng?.toString() ?? ""}
+        onChange={(e) => {
+          const value = e.currentTarget.value;
+          const num = parseFloat(value);
           dispatch({
             type: "UPDATE_BUILDING",
             field: "lng",
-            value: typeof value === "number" ? value : null,
-          })
-        }
+            value: value === "" || isNaN(num) ? null : num,
+          });
+        }}
         required
+        error={
+          state.building.lng !== null &&
+          (state.building.lng < LONGITUDE_MIN ||
+            state.building.lng > LONGITUDE_MAX)
+            ? `Must be between ${LONGITUDE_MIN} and ${LONGITUDE_MAX}`
+            : undefined
+        }
       />
 
       <Text size="xs" c="dimmed" style={{ gridColumn: "1 / -1" }}>
-        Coordinates are used to estimate property values. They are
-        auto-populated based on country selection but can be adjusted for more
-        accurate results.
+        Enter your building's coordinates. The system will automatically find the
+        nearest archetype based on location.
       </Text>
     </SimpleGrid>
   );

@@ -3,6 +3,8 @@
  * Provides dropdown options and default values for building inputs.
  */
 
+import type { ArchetypeInfo } from "../../../../types/forecasting";
+import type { ArchetypeDetails } from "../../../../types/archetype";
 import type { BuildingInfo } from "../../context/types";
 import type { BuildingOptions, IBuildingService } from "../types";
 import {
@@ -23,7 +25,7 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export class MockBuildingService implements IBuildingService {
-  getOptions(): BuildingOptions {
+  async getOptions(): Promise<BuildingOptions> {
     return {
       countries: COUNTRIES,
       climateZones: CLIMATE_ZONES,
@@ -34,6 +36,32 @@ export class MockBuildingService implements IBuildingService {
       hotWaterTechnologies: HOT_WATER_TECHNOLOGIES,
       glazingTechnologies: GLAZING_TECHNOLOGIES,
     };
+  }
+
+  async getArchetypes(): Promise<ArchetypeInfo[]> {
+    return [];
+  }
+
+  async findMatchingArchetype(): Promise<ArchetypeInfo | null> {
+    return null;
+  }
+
+  async getAvailableCategories(): Promise<string[]> {
+    const options = await this.getOptions();
+    return options.buildingTypes.map((opt) => opt.value);
+  }
+
+  async getAvailablePeriods(): Promise<string[]> {
+    const options = await this.getOptions();
+    return options.constructionPeriods.map((opt) => opt.value);
+  }
+
+  async countMatchingArchetypes(): Promise<number> {
+    return 0;
+  }
+
+  async getArchetypeDetails(): Promise<ArchetypeDetails> {
+    throw new Error("Mock service does not support archetype details");
   }
 
   /**

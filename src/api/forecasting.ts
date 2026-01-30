@@ -36,6 +36,72 @@ export const forecasting = {
     request<ArchetypeInfo[]>("/forecasting/building/available"),
 
   /**
+   * Get full archetype details (BUI + System)
+   * POST /forecasting/building?archetype=true&category=X&country=Y&name=Z
+   *
+   * Returns complete archetype payload for modification or direct use
+   */
+  getArchetypeDetails: (params: {
+    category: string;
+    country: string;
+    name: string;
+  }) => {
+    const searchParams = new URLSearchParams({
+      archetype: "true",
+      category: params.category,
+      country: params.country,
+      name: params.name,
+    });
+
+    return request<{ bui: unknown; system: unknown }>(
+      `/forecasting/building?${searchParams.toString()}`,
+      {
+        method: "POST",
+      },
+    );
+  },
+
+  /**
+   * Validate custom building configuration
+   * POST /forecasting/validate?archetype=false
+   *
+   * Use this to validate modified buildings before simulation
+   */
+  validateCustomBuilding: (payload: { bui: unknown; system: unknown }) =>
+    request<{ valid: boolean; issues?: string[] }>(
+      "/forecasting/validate?archetype=false",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    ),
+
+  /**
+   * Simulate with custom building configuration
+   * POST /forecasting/simulate?archetype=false&weather_source=pvgis
+   *
+   * Use this when user has modified archetype parameters
+   */
+  simulateCustomBuilding: (
+    payload: { bui: unknown; system: unknown },
+    weatherSource: "pvgis" | "epw" = "pvgis",
+  ) => {
+    const searchParams = new URLSearchParams({
+      archetype: "false",
+      weather_source: weatherSource,
+    });
+
+    const formData = new FormData();
+    formData.append("bui", JSON.stringify(payload.bui));
+    formData.append("system", JSON.stringify(payload.system));
+
+    return uploadRequest<SimulateDirectResponse>(
+      `/forecasting/simulate?${searchParams.toString()}`,
+      formData,
+    );
+  },
+
+  /**
    * Run simulation directly with archetype and PVGIS weather data
    * POST /forecasting/simulate?archetype=true&weather_source=pvgis&...
    *

@@ -12,10 +12,7 @@
  * The frontend only stores the measure definitions for display purposes.
  */
 
-import type {
-  MeasureCategoryInfo,
-  RenovationMeasure,
-} from "../../types";
+import type { MeasureCategoryInfo, RenovationMeasure } from "../../types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Measure Categories
@@ -136,4 +133,3 @@ export const RENOVATION_MEASURES: RenovationMeasure[] = [
   ...SYSTEM_MEASURES,
   ...RENEWABLE_MEASURES,
 ];
-

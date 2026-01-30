@@ -55,7 +55,7 @@ sequenceDiagram
     Note over RenovationSvc: Currently supports: wall, roof, windows<br/>Systems/renewables: TODO
     FCAST-->>RenovationSvc: Renovated scenario energy data
     RenovationSvc-->>HRA: RenovationScenario[] (current + renovated)
-    
+
     HRA->>FinancialSvc: calculateForAllScenarios(scenarios, funding, ...)
     loop For each scenario
         FinancialSvc->>FIN: POST /arv (property value calculation)
@@ -94,7 +94,7 @@ sequenceDiagram
     Note over UI,PRA: Tool not yet implemented
     UI->>PRA: Navigate to /portfolio-advisor
     PRA-->>UI: Display landing page with planned features
-    
+
     Note over PRA: Planned features:<br/>- Portfolio Manager<br/>- Financial Analysis<br/>- Technical Analysis (MCDA)<br/>- Comparative Analytics
 ```
 
@@ -118,7 +118,7 @@ sequenceDiagram
     Note over UI,RSE: Tool not yet implemented
     UI->>RSE: Navigate to /strategy-explorer
     RSE-->>UI: Display landing page with planned features
-    
+
     Note over RSE: Planned features:<br/>- Building Stock Analysis<br/>- Regional Projections<br/>- Geographic Insights<br/>- Policy Dashboard
 ```
 

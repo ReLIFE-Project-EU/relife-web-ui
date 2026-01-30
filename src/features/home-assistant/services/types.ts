@@ -41,25 +41,70 @@ export interface SelectOption {
 
 export interface BuildingOptions {
   countries: SelectOption[];
-  climateZones: SelectOption[];
   buildingTypes: SelectOption[];
   constructionPeriods: SelectOption[];
+  // Deprecated fields (kept for backward compatibility, return empty arrays)
+  climateZones: SelectOption[];
   heatingTechnologies: SelectOption[];
   coolingTechnologies: SelectOption[];
   hotWaterTechnologies: SelectOption[];
   glazingTechnologies: SelectOption[];
-  // Note: EPC classes are NOT included here as EPC is not a user input.
-  // EPC is calculated by the Forecasting API based on building characteristics.
 }
 
 export interface IBuildingService {
   /**
    * Get all dropdown options for building inputs
+   * Now async since options are derived from API archetypes
    */
-  getOptions(): BuildingOptions;
+  getOptions(): Promise<BuildingOptions>;
 
   /**
-   * Get default building values for a specific country
+   * Get available archetypes (optionally filtered)
+   */
+  getArchetypes(
+    country?: string,
+    category?: string,
+  ): Promise<import("../../../types/forecasting").ArchetypeInfo[]>;
+
+  /**
+   * Find best matching archetype based on user selections
+   * Uses distance-based matching across ALL countries
+   */
+  findMatchingArchetype(
+    category: string,
+    period?: string | null,
+    coords?: { lat: number; lng: number } | null,
+  ): Promise<import("../../../types/forecasting").ArchetypeInfo | null>;
+
+  /**
+   * Get available building categories based on coordinates
+   */
+  getAvailableCategories(
+    coords?: { lat: number; lng: number } | null,
+  ): Promise<string[]>;
+
+  /**
+   * Get available construction periods for a category
+   */
+  getAvailablePeriods(category: string): Promise<string[]>;
+
+  /**
+   * Count matching archetypes for given criteria
+   */
+  countMatchingArchetypes(
+    category?: string,
+    period?: string,
+  ): Promise<number>;
+
+  /**
+   * Get full archetype details including BUI and System payloads
+   */
+  getArchetypeDetails(
+    archetype: import("../../../types/forecasting").ArchetypeInfo,
+  ): Promise<import("../../../types/archetype").ArchetypeDetails>;
+
+  /**
+   * Get default building values for a specific country (deprecated)
    */
   getDefaultsForCountry(country: string): Partial<BuildingInfo>;
 }

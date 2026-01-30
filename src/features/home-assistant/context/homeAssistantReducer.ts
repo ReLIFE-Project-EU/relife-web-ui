@@ -16,30 +16,38 @@ import type {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const initialBuilding: BuildingInfo = {
-  // Existing fields (UI-focused)
-  country: "AT", // Austria as default (matches mock-up)
-  climateZone: "D",
-  buildingType: "apartment",
+  // Location and basic identification
+  country: "", // Will be populated from available archetypes
+  lat: null,
+  lng: null,
+
+  // Building category (from archetype)
+  buildingType: "", // Will be populated from archetype category
+
+  // Construction period (from archetype)
+  constructionPeriod: "", // Will be populated from archetype name
+
+  // Archetype selection
+  selectedArchetype: undefined,
+  isModified: false,
+
+  // User-modifiable fields
   floorArea: null,
-  constructionPeriod: "1991-2000",
-  heatingTechnology: "biomass-central",
-  coolingTechnology: "natural-airflow",
-  hotWaterTechnology: "electric-boiler",
+  numberOfFloors: null,
+
+  // Deprecated fields (kept for compatibility)
+  climateZone: "",
+  heatingTechnology: "",
+  coolingTechnology: "",
+  hotWaterTechnology: "",
   numberOfOpenings: null,
-  glazingTechnology: "double-aluminium",
+  glazingTechnology: "",
 
-  // Fields for Financial API (/arv endpoint)
-  lat: null, // Required for ARV, will be set via UI
-  lng: null, // Required for ARV, will be set via UI
-  constructionYear: null, // Derived from constructionPeriod or user input
-  numberOfFloors: null, // Required for ARV
-  floorNumber: null, // Optional, for apartments
-
-  // Fields for Financial API (/risk-assessment endpoint)
-  projectLifetime: PROJECT_LIFETIME_DEFAULT, // Default: 20 years (1-30 range)
-
-  // Fields for Financial API (/arv endpoint)
-  renovatedLast5Years: true, // Default: true (API spec default)
+  // Financial API fields
+  constructionYear: null,
+  floorNumber: null,
+  projectLifetime: PROJECT_LIFETIME_DEFAULT,
+  renovatedLast5Years: true,
 };
 
 const initialRenovation: RenovationSelections = {

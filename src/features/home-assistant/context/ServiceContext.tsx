@@ -7,7 +7,8 @@
 
 import { useMemo, type ReactNode } from "react";
 import type { IHomeAssistantServices } from "../services/types";
-import { mockBuildingService, mockMCDAService } from "../services";
+import { mockMCDAService } from "../services";
+import { buildingService } from "../services/BuildingService";
 import { EnergyService } from "../services/EnergyService";
 import { FinancialService } from "../services/FinancialService";
 import { RenovationService } from "../services/RenovationService";
@@ -18,9 +19,9 @@ const energyService = new EnergyService();
 const financialService = new FinancialService();
 const renovationService = new RenovationService();
 
-// Services: real Financial, Energy and Renovation APIs, mocks for others
+// Services: real Building, Financial, Energy and Renovation APIs, mock for MCDA
 const defaultServices: IHomeAssistantServices = {
-  building: mockBuildingService,
+  building: buildingService, // Now using real archetype-based service
   energy: energyService,
   financial: financialService,
   mcda: mockMCDAService,

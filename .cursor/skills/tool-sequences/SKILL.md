@@ -9,22 +9,26 @@ license: MIT
 ## Purpose
 
 This skill guides an end-to-end architecture review of the renovation toolchain in the current repository:
+
 - Home Renovation Assistant
 - Portfolio Renovation Advisor
 - Renovation Strategy Explorer
 
 It produces:
-1) Three separate GitHub-flavored Mermaid `sequenceDiagram`s (one per tool) showing interactions among the system's four primary building blocks:
+
+1. Three separate GitHub-flavored Mermaid `sequenceDiagram`s (one per tool) showing interactions among the system's four primary building blocks:
+
 - Web UI
 - Forecasting API
 - Financial API
 - Technical API
 
-2) A README update that embeds all three diagrams in separate subsections and documents which parts are mocked/stubbed/partial for each tool.
+2. A README update that embeds all three diagrams in separate subsections and documents which parts are mocked/stubbed/partial for each tool.
 
 ## When to use
 
 Use this skill when you need to:
+
 - Understand how the renovation tools are actually wired into the app.
 - Document current request/response flows across the four building blocks.
 - Identify mocks/stubs/feature flags that affect runtime behavior.
@@ -47,17 +51,20 @@ Use this skill when you need to:
 
 ## Required outputs
 
-1) Three separate Mermaid sequence diagrams (GitHub-compatible), one for each tool:
+1. Three separate Mermaid sequence diagrams (GitHub-compatible), one for each tool:
+
 - Home Renovation Assistant sequence diagram
 - Portfolio Renovation Advisor sequence diagram
 - Renovation Strategy Explorer sequence diagram
 
 Each diagram must:
+
 - Show request/response directionality.
 - Show responsibilities (who calls whom, and why at a high level).
 - Explicitly labels mocked, stubbed, or partially implemented components.
 
-2) An updated root `README.md` section containing:
+2. An updated root `README.md` section containing:
+
 - A higher-level subsection (e.g., "## Renovation tools architecture") that introduces all sequence diagrams.
 - Three separate subsections, one for each tool, each containing:
   - The tool's sequence diagram in a fenced ` ```mermaid ` block.
@@ -80,6 +87,7 @@ For each tool (Home Renovation Assistant, Portfolio Renovation Advisor, Renovati
   - How Web UI triggers it (page, component, fetch call, form action, etc.).
 
 Concrete actions:
+
 - Search by names and likely aliases (class/function/file names).
 - Grep for the tool name in UI, backend, and configuration.
 - Identify whether each tool runs client-side, server-side, or both.
@@ -95,6 +103,7 @@ For each tool, trace the real runtime path:
 - Tool → Web UI (response/render result)
 
 For each interaction, capture:
+
 - Caller → callee
 - What the request is for (short phrase)
 - What the response provides (short phrase)
@@ -103,17 +112,20 @@ For each interaction, capture:
 ### 3) Identify mocks, stubs, partial implementations
 
 Search for:
+
 - Mock handlers (e.g., `mock*`, `fixtures`, `__mocks__`, "fake" adapters).
 - Stub implementations (hardcoded returns, TODO branches).
 - Feature flags (guarded code paths, environment toggles).
 - Placeholder APIs (returns `501`, "not implemented", or static example payloads).
 
 Classify each impacted component as one of:
+
 - Mocked: deterministic fake behavior intended for development/testing.
 - Stubbed: minimal scaffolding, incomplete, often placeholders.
 - Partial: some scenarios implemented, others missing or gated.
 
 Record evidence:
+
 - File paths and symbols.
 - Conditions (e.g., env var, flag, build mode).
 - What's missing or simplified.
@@ -121,11 +133,13 @@ Record evidence:
 ### 4) Produce three separate Mermaid sequence diagrams (GitHub-compatible)
 
 **Important**: Create a separate sequence diagram for each tool:
+
 - Home Renovation Assistant
 - Portfolio Renovation Advisor
 - Renovation Strategy Explorer
 
 Rules for each diagram:
+
 - Use `sequenceDiagram`.
 - Use short participant labels with clear aliases.
 - Show request and response arrows for each significant call.
@@ -134,11 +148,13 @@ Rules for each diagram:
 - Use `Note over` or `Note right of` to call out mocked/stubbed/partial behavior.
 
 How to "explicitly indicate" mocked/stubbed/partial:
+
 - In participant alias: `participant F as Financial API (mock)`
 - And/or a note: `Note over F: Mock adapter returns fixture data`
 - For partial: include what is implemented vs missing (1 sentence).
 
 Diagram scope guidance:
+
 - Each tool should have its own dedicated diagram showing its specific interactions.
 - Keep each diagram readable; do not exceed ~60–90 lines if possible.
 - Focus each diagram on the unique flow for that specific tool.

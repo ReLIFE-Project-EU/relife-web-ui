@@ -6,6 +6,7 @@
  */
 
 // Export real implementations
+export { buildingService } from "./BuildingService";
 export { EnergyService } from "./EnergyService";
 export {
   ArchetypeNotAvailableError,
@@ -13,7 +14,7 @@ export {
   APIResponseError,
 } from "./EnergyService";
 
-// Export mock implementations for use in the ServiceContext or tests
+// Export mock implementations for use in tests
 export { mockBuildingService } from "./mock/MockBuildingService";
 export { mockRenovationService } from "./mock/MockRenovationService";
 export { mockMCDAService } from "./mock/MockMCDAService";
