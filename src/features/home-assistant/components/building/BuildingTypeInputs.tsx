@@ -60,7 +60,14 @@ export function BuildingTypeInputs() {
     };
 
     loadCategories();
-  }, [state.building.lat, state.building.lng, hasCoordinates, building, dispatch, state.building.buildingType]);
+  }, [
+    state.building.lat,
+    state.building.lng,
+    hasCoordinates,
+    building,
+    dispatch,
+    state.building.buildingType,
+  ]);
 
   // Load available periods when building type changes
   useEffect(() => {
@@ -93,7 +100,12 @@ export function BuildingTypeInputs() {
     };
 
     loadPeriods();
-  }, [state.building.buildingType, building, dispatch, state.building.constructionPeriod]);
+  }, [
+    state.building.buildingType,
+    building,
+    dispatch,
+    state.building.constructionPeriod,
+  ]);
 
   // Count matching archetypes
   useEffect(() => {
@@ -110,7 +122,11 @@ export function BuildingTypeInputs() {
     };
 
     countArchetypes();
-  }, [state.building.buildingType, state.building.constructionPeriod, building]);
+  }, [
+    state.building.buildingType,
+    state.building.constructionPeriod,
+    building,
+  ]);
 
   return (
     <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
@@ -137,7 +153,9 @@ export function BuildingTypeInputs() {
 
       {/* Loading state */}
       {isLoading && (
-        <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "1rem" }}>
+        <div
+          style={{ gridColumn: "1 / -1", textAlign: "center", padding: "1rem" }}
+        >
           <Loader size="sm" />
           <Text size="sm" c="dimmed" mt="xs">
             Loading available options...

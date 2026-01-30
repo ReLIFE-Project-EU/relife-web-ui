@@ -91,10 +91,7 @@ export interface IBuildingService {
   /**
    * Count matching archetypes for given criteria
    */
-  countMatchingArchetypes(
-    category?: string,
-    period?: string,
-  ): Promise<number>;
+  countMatchingArchetypes(category?: string, period?: string): Promise<number>;
 
   /**
    * Get full archetype details including BUI and System payloads

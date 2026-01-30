@@ -17,6 +17,53 @@ import {
 import type { BuildingInfo } from "../context/types";
 import type { BuildingOptions, IBuildingService } from "./types";
 
+/**
+ * Reference locations for each country's archetypes (capital cities).
+ * WORKAROUND: The Forecasting API BUI data has incorrect coordinates
+ * (all archetypes share Greece coords). This mapping provides correct
+ * reference locations for distance-based matching.
+ *
+ * Covers all 27 EU member states for future archetype additions.
+ *
+ * TODO: Remove this when backend fixes BUI coordinates or adds lat/lng
+ * to the /building/available response.
+ */
+const ARCHETYPE_REFERENCE_LOCATIONS: Record<
+  string,
+  { lat: number; lng: number }
+> = {
+  // Current archetypes
+  Greece: { lat: 37.98, lng: 23.73 }, // Athens
+  Italy: { lat: 41.9, lng: 12.5 }, // Rome
+
+  // Other EU member states (for future archetypes)
+  Austria: { lat: 48.21, lng: 16.37 }, // Vienna
+  Belgium: { lat: 50.85, lng: 4.35 }, // Brussels
+  Bulgaria: { lat: 42.7, lng: 23.32 }, // Sofia
+  Croatia: { lat: 45.81, lng: 15.98 }, // Zagreb
+  Cyprus: { lat: 35.17, lng: 33.36 }, // Nicosia
+  Czechia: { lat: 50.08, lng: 14.44 }, // Prague
+  Denmark: { lat: 55.68, lng: 12.57 }, // Copenhagen
+  Estonia: { lat: 59.44, lng: 24.75 }, // Tallinn
+  Finland: { lat: 60.17, lng: 24.94 }, // Helsinki
+  France: { lat: 48.86, lng: 2.35 }, // Paris
+  Germany: { lat: 52.52, lng: 13.41 }, // Berlin
+  Hungary: { lat: 47.5, lng: 19.04 }, // Budapest
+  Ireland: { lat: 53.33, lng: -6.26 }, // Dublin
+  Latvia: { lat: 56.95, lng: 24.11 }, // Riga
+  Lithuania: { lat: 54.69, lng: 25.28 }, // Vilnius
+  Luxembourg: { lat: 49.61, lng: 6.13 }, // Luxembourg City
+  Malta: { lat: 35.9, lng: 14.51 }, // Valletta
+  Netherlands: { lat: 52.37, lng: 4.89 }, // Amsterdam
+  Poland: { lat: 52.23, lng: 21.01 }, // Warsaw
+  Portugal: { lat: 38.72, lng: -9.14 }, // Lisbon
+  Romania: { lat: 44.43, lng: 26.1 }, // Bucharest
+  Slovakia: { lat: 48.15, lng: 17.11 }, // Bratislava
+  Slovenia: { lat: 46.06, lng: 14.51 }, // Ljubljana
+  Spain: { lat: 40.42, lng: -3.7 }, // Madrid
+  Sweden: { lat: 59.33, lng: 18.07 }, // Stockholm
+};
+
 export class BuildingService implements IBuildingService {
   private archetypesCache: ArchetypeInfo[] | null = null;
   private archetypeDetailsCache: Map<string, ArchetypeDetails> = new Map();
@@ -126,21 +173,23 @@ export class BuildingService implements IBuildingService {
       if (candidates.length === 0) candidates = archetypes;
     }
 
-    // If coordinates provided, find nearest archetype (GLOBALLY, not per country)
+    // If coordinates provided, find nearest archetype using reference locations
     if (coords && coords.lat !== null && coords.lng !== null) {
-      // Fetch details for each candidate to get their coordinates
-      const candidatesWithDistance = await Promise.all(
-        candidates.map(async (archetype) => {
-          const details = await this.getArchetypeDetails(archetype);
-          const distance = calculateDistance(
-            coords.lat!,
-            coords.lng!,
-            details.location.lat,
-            details.location.lng,
-          );
-          return { archetype, distance };
-        }),
-      );
+      const candidatesWithDistance = candidates.map((archetype) => {
+        // Use reference location for country (workaround for incorrect BUI coords)
+        const refLocation = ARCHETYPE_REFERENCE_LOCATIONS[archetype.country];
+        if (!refLocation) {
+          // Fallback: unknown country gets max distance
+          return { archetype, distance: Infinity };
+        }
+        const distance = calculateDistance(
+          coords.lat!,
+          coords.lng!,
+          refLocation.lat,
+          refLocation.lng,
+        );
+        return { archetype, distance };
+      });
 
       // Sort by distance and return closest (regardless of country)
       candidatesWithDistance.sort((a, b) => a.distance - b.distance);
@@ -224,29 +273,26 @@ export class BuildingService implements IBuildingService {
     }
 
     // With coordinates, return categories sorted by nearest archetype
-    const categoriesWithDistance = await Promise.all(
-      Array.from(new Set(allArchetypes.map((a) => a.category))).map(
-        async (category) => {
-          // Find nearest archetype in this category
-          const categoryArchetypes = allArchetypes.filter(
-            (a) => a.category === category,
-          );
-          const distances = await Promise.all(
-            categoryArchetypes.map(async (archetype) => {
-              const details = await this.getArchetypeDetails(archetype);
-              return calculateDistance(
-                coords.lat!,
-                coords.lng!,
-                details.location.lat,
-                details.location.lng,
-              );
-            }),
-          );
-          const minDistance = Math.min(...distances);
-          return { category, distance: minDistance };
-        },
-      ),
-    );
+    const categoriesWithDistance = Array.from(
+      new Set(allArchetypes.map((a) => a.category)),
+    ).map((category) => {
+      // Find nearest archetype in this category using reference locations
+      const categoryArchetypes = allArchetypes.filter(
+        (a) => a.category === category,
+      );
+      const distances = categoryArchetypes.map((archetype) => {
+        const refLocation = ARCHETYPE_REFERENCE_LOCATIONS[archetype.country];
+        if (!refLocation) return Infinity;
+        return calculateDistance(
+          coords.lat!,
+          coords.lng!,
+          refLocation.lat,
+          refLocation.lng,
+        );
+      });
+      const minDistance = Math.min(...distances);
+      return { category, distance: minDistance };
+    });
 
     // Sort by distance and return category names
     categoriesWithDistance.sort((a, b) => a.distance - b.distance);

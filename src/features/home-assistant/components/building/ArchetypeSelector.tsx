@@ -278,7 +278,16 @@ export function ArchetypeSelector() {
     };
 
     findArchetype();
-  }, [canSearch, lat, lng, buildingType, constructionPeriod, building, dispatch, state.building.selectedArchetype]);
+  }, [
+    canSearch,
+    lat,
+    lng,
+    buildingType,
+    constructionPeriod,
+    building,
+    dispatch,
+    state.building.selectedArchetype,
+  ]);
 
   const handleSelect = useCallback(() => {
     if (!matchedArchetype) return;
@@ -334,7 +343,8 @@ export function ArchetypeSelector() {
           <strong>Try:</strong>
           <br />• Adjusting your coordinates slightly
           <br />• Selecting a different building type or construction period
-          <br />• Contact support if you believe this location should be supported
+          <br />• Contact support if you believe this location should be
+          supported
         </Text>
       </Alert>
     );
