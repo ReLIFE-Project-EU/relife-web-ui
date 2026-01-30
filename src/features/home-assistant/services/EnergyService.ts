@@ -380,9 +380,14 @@ export class EnergyService implements IEnergyService {
 
     // Validate response - API returns hourly data under results.hourly_building
     const hourlyData = simulationResponse.results?.hourly_building;
-    if (!hourlyData || hourlyData.length === 0) {
+    if (!hourlyData || !Array.isArray(hourlyData)) {
       throw new APIResponseError(
-        "Simulation response missing hourly building data",
+        `Simulation response has invalid hourly_building data. Type: ${typeof hourlyData}, Value: ${JSON.stringify(hourlyData)}`,
+      );
+    }
+    if (hourlyData.length === 0) {
+      throw new APIResponseError(
+        "Simulation response has empty hourly building data array",
       );
     }
 

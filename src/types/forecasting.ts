@@ -142,6 +142,20 @@ export interface EPCResponse {
 // ============================================================================
 
 /**
+ * Hourly building data in columnar format (ECM API response structure)
+ * Keys are field names (Q_H, Q_C, Q_HC, T_op, T_ext, etc.)
+ * Values are arrays of hourly values for the full year (8760 entries)
+ */
+export interface HourlyBuildingColumnar {
+  Q_H?: number[]; // Heating load (Wh) for each hour
+  Q_C?: number[]; // Cooling load (Wh) for each hour
+  Q_HC?: number[]; // Total HVAC load (Wh) for each hour
+  T_op?: number[]; // Operative temperature (°C) for each hour
+  T_ext?: number[]; // External temperature (°C) for each hour
+  [key: string]: number[] | undefined; // Additional fields
+}
+
+/**
  * Single scenario result from ECM simulation
  */
 export interface ECMScenario {
@@ -159,8 +173,8 @@ export interface ECMScenario {
   };
   /** Simulation results */
   results: {
-    /** Hourly energy data for the year */
-    hourly_building: HourlyBuildingRecord[];
+    /** Hourly energy data in columnar format (object with arrays) */
+    hourly_building: HourlyBuildingColumnar;
     /** Annual aggregated results */
     annual_building: Record<string, unknown>[];
   };

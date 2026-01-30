@@ -31,6 +31,7 @@ import {
   NON_HVAC_ENERGY_MULTIPLIER,
   calculateAnnualTotals,
   getEPCClass,
+  transformColumnarToRowFormat,
 } from "./energyUtils";
 import {
   MEASURE_CATEGORIES,
@@ -173,10 +174,30 @@ export class RenovationService implements IRenovationService {
       throw new Error("ECM API did not return a renovated scenario");
     }
 
-    // Calculate renovated HVAC energy from hourly data
-    const renovatedTotals = calculateAnnualTotals(
+    // Validate response structure
+    if (!renovatedScenario.results) {
+      throw new Error(
+        "ECM API response missing 'results' field. Response: " +
+          JSON.stringify(renovatedScenario),
+      );
+    }
+
+    if (!renovatedScenario.results.hourly_building) {
+      throw new Error(
+        "ECM API response missing 'results.hourly_building' field. Response: " +
+          JSON.stringify(renovatedScenario.results),
+      );
+    }
+
+    // Transform columnar format (ECM API) to row format for processing
+    // ECM API returns: { Q_HC: [1,2,3], Q_H: [...] }
+    // We need: [ {Q_HC:1, Q_H:...}, {Q_HC:2, ...}, ... ]
+    const hourlyRecords = transformColumnarToRowFormat(
       renovatedScenario.results.hourly_building,
     );
+
+    // Calculate renovated HVAC energy from hourly data
+    const renovatedTotals = calculateAnnualTotals(hourlyRecords);
     const renovatedHvacEnergy = renovatedTotals.Q_HC_total;
 
     // Scale by floor area ratio (archetype vs user building)
