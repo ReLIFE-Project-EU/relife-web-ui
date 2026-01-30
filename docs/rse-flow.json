@@ -1,0 +1,378 @@
+{
+    "metadata": {
+        "name": "ReLIFE Renovation Strategy Explorer Workflow",
+        "description": "End-to-end workflow for exploring and evaluating renovation strategies combining multiple simulation techniques, financial analysis, and multi-criteria decision analysis",
+        "output": "Optimal renovation strategy package with financial and performance results"
+    },
+    "nodes": [
+        {
+            "id": "user_input",
+            "type": "input",
+            "label": "User Input / Data Collection",
+            "fields": {
+                "building": [
+                    "area",
+                    "year",
+                    "type"
+                ],
+                "thermal": [
+                    "u_values",
+                    "windows"
+                ],
+                "systems": [
+                    "heating",
+                    "cooling"
+                ],
+                "location": [
+                    "latitude",
+                    "longitude"
+                ],
+                "financial": [
+                    "loan",
+                    "budget"
+                ],
+                "preferences": [
+                    "persona"
+                ],
+                "packages": [
+                    "envelope",
+                    "systems",
+                    "others"
+                ]
+            }
+        },
+        {
+            "id": "relife_db",
+            "type": "database",
+            "label": "Relife Database",
+            "fields": {
+                "reference_buildings": true,
+                "cost_library": true,
+                "system_library": true,
+                "climate_data": true,
+                "default_assumptions": true
+            }
+        },
+        {
+            "id": "forecasting_service",
+            "type": "service",
+            "label": "Forecasting Service",
+            "engine": "Python Energy Engine",
+            "inputs": [
+                "building_data",
+                "system_data",
+                "climate_data"
+            ],
+            "outputs": [
+                "baseline_simulation",
+                "renovation_simulation"
+            ]
+        },
+        {
+            "id": "baseline_simulation",
+            "type": "process",
+            "label": "Baseline + Renovation Simulation",
+            "baseline_outputs": [
+                "Q_heat_base",
+                "Q_cool_base",
+                "EPC_base",
+                "peak_loads_base"
+            ],
+            "renovation_inputs": [
+                "u_values",
+                "eta",
+                "cop"
+            ],
+            "renovation_outputs": [
+                "Q_heat_reno",
+                "Q_cool_reno",
+                "EPC_reno",
+                "peak_loads_reno"
+            ]
+        },
+        {
+            "id": "performance_outputs",
+            "type": "process",
+            "label": "Performance Outputs",
+            "fields": {
+                "energy_savings_abs": "Q_base - Q_reno",
+                "energy_savings_pct": "(Q_base - Q_reno)/Q_base",
+                "epc_transition": true,
+                "comfort": [
+                    "PMV",
+                    "PPD",
+                    "comfort_hours"
+                ],
+                "co2_reduction": "kg_per_year"
+            }
+        },
+        {
+            "id": "financial_service",
+            "type": "service",
+            "label": "Financial Service",
+            "description": "Investment Analysis Engine"
+        },
+        {
+            "id": "cashflow",
+            "type": "process",
+            "label": "Cash Flow",
+            "formulas": {
+                "savings_t": "delta_kWh * price_t",
+                "opex_t": "maintenance",
+                "loan_t": "principal + interest",
+                "cf_t": "savings_t - opex_t - loan_t"
+            }
+        },
+        {
+            "id": "monte_carlo",
+            "type": "process",
+            "label": "Monte Carlo Simulation",
+            "iterations": 10000,
+            "random_inputs": [
+                "energy_prices",
+                "inflation",
+                "interest"
+            ],
+            "outputs": [
+                "cf_distributions",
+                "kpi_distributions"
+            ]
+        },
+        {
+            "id": "kpi_calc",
+            "type": "process",
+            "label": "KPI Calculation",
+            "metrics": {
+                "npv": "-CAPEX + sum(CF_t/(1+r)^t)",
+                "irr": "NPV=0",
+                "pbp": "sum CF_t = CAPEX",
+                "dpp": "sum discounted CF_t = CAPEX",
+                "roi": "(Return-CAPEX)/CAPEX"
+            }
+        },
+        {
+            "id": "risk_assessment",
+            "type": "process",
+            "label": "Risk Assessment",
+            "outputs": {
+                "percentiles": [
+                    "P10",
+                    "P50",
+                    "P90"
+                ],
+                "probabilities": [
+                    "Pr(NPV>0)",
+                    "Pr(PBP < loan_term)"
+                ]
+            }
+        },
+        {
+            "id": "arv_prediction",
+            "type": "process",
+            "label": "ARV Prediction",
+            "inputs": [
+                "area",
+                "EPC_new",
+                "location"
+            ],
+            "outputs": {
+                "price_per_m2": true,
+                "delta_arv": "ARV_after - ARV_before"
+            }
+        },
+        {
+            "id": "technical_service",
+            "type": "service",
+            "label": "Technical Service (MCDA)",
+            "description": "Multi-Criteria Decision Analysis"
+        },
+        {
+            "id": "criteria_matrix",
+            "type": "process",
+            "label": "Criteria Matrix",
+            "dimensions": {
+                "alternatives": "m",
+                "criteria": [
+                    "financial",
+                    "environmental",
+                    "comfort",
+                    "technical"
+                ]
+            }
+        },
+        {
+            "id": "topsis",
+            "type": "algorithm",
+            "label": "TOPSIS",
+            "steps": [
+                "normalize",
+                "weight",
+                "ideal_solutions",
+                "distances",
+                "closeness"
+            ]
+        },
+        {
+            "id": "ranking",
+            "type": "process",
+            "label": "Ranking",
+            "method": "Sort by closeness score descending"
+        },
+        {
+            "id": "optimal_package",
+            "type": "output",
+            "label": "Optimal Package",
+            "fields": [
+                "rank",
+                "closeness_score",
+                "measures"
+            ]
+        },
+        {
+            "id": "financial_results",
+            "type": "report",
+            "label": "Financial Results",
+            "fields": [
+                "NPV",
+                "IRR",
+                "PBP",
+                "ROI",
+                "Pr(NPV>0)"
+            ]
+        },
+        {
+            "id": "performance_results",
+            "type": "report",
+            "label": "Performance Results",
+            "fields": [
+                "energy_savings",
+                "EPC_change",
+                "comfort_gain",
+                "CO2_reduction"
+            ]
+        },
+        {
+            "id": "final_results",
+            "type": "report",
+            "label": "Results for Optimal Package",
+            "description": "Consolidated output for selected renovation package"
+        }
+    ],
+    "edges": [
+        {
+            "from": "user_input",
+            "to": "forecasting_service",
+            "type": "data"
+        },
+        {
+            "from": "relife_db",
+            "to": "forecasting_service",
+            "type": "reference"
+        },
+        {
+            "from": "forecasting_service",
+            "to": "baseline_simulation",
+            "type": "process"
+        },
+        {
+            "from": "baseline_simulation",
+            "to": "performance_outputs",
+            "type": "process"
+        },
+        {
+            "from": "performance_outputs",
+            "to": "financial_service",
+            "type": "input"
+        },
+        {
+            "from": "performance_outputs",
+            "to": "performance_results",
+            "type": "report"
+        },
+        {
+            "from": "user_input",
+            "to": "financial_service",
+            "type": "constraint"
+        },
+        {
+            "from": "relife_db",
+            "to": "financial_service",
+            "type": "reference"
+        },
+        {
+            "from": "financial_service",
+            "to": "cashflow",
+            "type": "process"
+        },
+        {
+            "from": "cashflow",
+            "to": "monte_carlo",
+            "type": "process"
+        },
+        {
+            "from": "monte_carlo",
+            "to": "kpi_calc",
+            "type": "process"
+        },
+        {
+            "from": "kpi_calc",
+            "to": "risk_assessment",
+            "type": "process"
+        },
+        {
+            "from": "risk_assessment",
+            "to": "financial_results",
+            "type": "report"
+        },
+        {
+            "from": "financial_service",
+            "to": "arv_prediction",
+            "type": "process"
+        },
+        {
+            "from": "risk_assessment",
+            "to": "technical_service",
+            "type": "input"
+        },
+        {
+            "from": "performance_outputs",
+            "to": "technical_service",
+            "type": "input"
+        },
+        {
+            "from": "technical_service",
+            "to": "criteria_matrix",
+            "type": "process"
+        },
+        {
+            "from": "criteria_matrix",
+            "to": "topsis",
+            "type": "algorithm"
+        },
+        {
+            "from": "topsis",
+            "to": "ranking",
+            "type": "process"
+        },
+        {
+            "from": "ranking",
+            "to": "optimal_package",
+            "type": "output"
+        },
+        {
+            "from": "optimal_package",
+            "to": "final_results",
+            "type": "aggregation"
+        },
+        {
+            "from": "financial_results",
+            "to": "final_results",
+            "type": "aggregation"
+        },
+        {
+            "from": "performance_results",
+            "to": "final_results",
+            "type": "aggregation"
+        }
+    ]
+}
