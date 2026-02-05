@@ -2,7 +2,7 @@
 
 **Portfolio Renovation Assistant (PRA)**
 
-**Purpose:** The Professional Risk Assessment (PRA) tool is an Energy Renovation Action Support Tool designed for professional consultants, energy auditors, and property managers. It provides comprehensive risk analysis and decision support for building renovation projects, delivering detailed statistical distributions, success probabilities, and multi-criteria analysis to enable informed investment decisions.
+**Purpose:** The Portfolio Renovation Assistant (PRA) tool is an Energy Renovation Action Support Tool designed for professional consultants, energy auditors, and property managers. It provides comprehensive risk analysis and decision support for building renovation projects, delivering detailed statistical distributions, success probabilities, and multi-criteria analysis to enable informed investment decisions.
 
 This document shows the sequence of API calls needed to implement the PRA tool.
 
