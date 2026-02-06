@@ -43,25 +43,25 @@ sequenceDiagram
     participant Financial as Financial API
     participant Technical as Technical API
     
-    User->>Frontend: Enter building details/financial info
-    Frontend->>DB: Retrieve additional data
-    DB-->>Frontend: CAPEX, maintenance costs, Building Archetypes, etc.
+    User->>Frontend: Technical + Financial inputs
+    Frontend->>DB: Retrieve data
+    DB-->>Frontend: CAPEX, archetypes, etc.
     
     Note over Frontend,Forecasting: Step 1: Energy Simulation
-    Frontend->>Forecasting: POST /[ENDPOINT_TO_DEFINE]<br/>(user inputs + DB data)
-    Forecasting-->>Frontend: energy_savings<br/>energy_class (EPC)<br/>[other outputs]
+    Frontend->>Forecasting: POST /[ENDPOINT_TO_DEFINE]
+    Forecasting-->>Frontend: energy_savings, energy_class_after, CO2
     
     Note over Frontend,Financial: Step 2: Financial Analysis
-    Frontend->>Financial: POST /arv<br/>(user inputs + energy_class)
+    Frontend->>Financial: POST /arv
     Financial-->>Frontend: Property value after renovation
-    Frontend->>Financial: POST /risk-assessment<br/>(user inputs + energy_savings)
-    Financial-->>Frontend: Percentiles (P10-P90)<br/>for NPV, IRR, ROI, PBP, DPP; Success Probabilities; Metadata for 5 graphs
+    Frontend->>Financial: POST /risk_assessment
+    Financial-->>Frontend: Percentiles, Probabilities, Chart metadata
     
-    Note over Frontend,Technical: Step 3: Technology Ranking
-    Frontend->>Technical: POST /[ENDPOINT_TO_DEFINE]<br/>(forecasting outputs + financial percentiles)
-    Technical-->>Frontend: Optimal renovation package
+    Note over Frontend,Technical: Step 3: Multi-Criteria Analysis
+    Frontend->>Technical: POST /mcda
+    Technical-->>Frontend: Optimal renovation packages
     
-    Frontend->>User: Display complete results
+    Frontend->>User: Technical, Financial, Ranking outputs
 ```
 
 ---
