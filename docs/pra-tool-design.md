@@ -53,9 +53,9 @@ sequenceDiagram
     
     Note over Frontend,Financial: Step 2: Financial Analysis
     Frontend->>Financial: POST /arv<br/>(user inputs + energy_class)
-    Financial-->>Frontend: Property value
+    Financial-->>Frontend: Property value after renovation
     Frontend->>Financial: POST /risk-assessment<br/>(user inputs + energy_savings)
-    Financial-->>Frontend: Percentiles (P10-P90)<br/>for NPV, IRR, ROI, PBP, DPP
+    Financial-->>Frontend: Percentiles (P10-P90)<br/>for NPV, IRR, ROI, PBP, DPP; Success Probabilities; Metadata for 5 graphs
     
     Note over Frontend,Technical: Step 3: Technology Ranking
     Frontend->>Technical: POST /[ENDPOINT_TO_DEFINE]<br/>(forecasting outputs + financial percentiles)
@@ -402,7 +402,7 @@ for more information refers to  `Guidelines`: <https://eurac-eebgroup.github.io/
 
 ### Technical API
 
-**Technical Team:** Define your required and optional user inputs
+
 
 **Required Inputs:**
 - [To be defined by Technical team]
@@ -416,7 +416,6 @@ for more information refers to  `Guidelines`: <https://eurac-eebgroup.github.io/
 
 ### Forecasting API
 
-**Forecasting Team:** Document your endpoint(s)
 
 **Endpoint:** `POST /[TO_BE_DEFINED]`
 
@@ -530,7 +529,7 @@ for more information refers to  `Guidelines`: <https://eurac-eebgroup.github.io/
 }
 ```
 
-**Note:** Professional output includes percentile distributions (P10-P90), 3 probabilities, and chart metadata for 5 distribution histograms. This data is sent to Technical API for multi-criteria decision analysis.
+**Note:** Professional output includes percentile distributions (P10-P90), 3 probabilities, and chart metadata for 5 distribution histograms. Percentiles are sent to Technical API for multi-criteria decision analysis.
 
 **Status:** Documented
 
@@ -538,7 +537,7 @@ for more information refers to  `Guidelines`: <https://eurac-eebgroup.github.io/
 
 ### Technical API
 
-**Technical Team:** Document your endpoint(s)
+
 
 **Endpoint:** `POST /[TO_BE_DEFINED]`
 
@@ -562,45 +561,37 @@ for more information refers to  `Guidelines`: <https://eurac-eebgroup.github.io/
 
 ```mermaid
 flowchart TD
-    ProfessionalInput[PROFESSIONAL INPUT<br/>---<br/>Building details:<br/>- Location lat, lng<br/>- Property details<br/>- Project lifetime]
+    ProfessionalInput[PROFESSIONAL INPUT<br/>---<br/>Technical Inputs:<br/>- Building geometry lat, lng, height, n_floors<br/>- Envelope U-values, thermal capacity<br/>- HVAC system type, efficiency<br/>- Window characteristics g-value, orientation<br/>---<br/>Financial Inputs:<br/>- Project lifetime 1-30 years<br/>- CAPEX optional<br/>- Annual maintenance cost optional<br/>- Loan amount, loan term optional]
     
     DB[(ReLIFE Database<br/>---<br/>CAPEX<br/>Maintenance costs<br/>Building Archetypes<br/>Historical data)]
     
-    Forecasting[FORECASTING SERVICE<br/>---<br/>Outputs:<br/>- energy_savings<br/>- energy_class_before<br/>- energy_class_after<br/>- CO2 emissions]
+    Forecasting[FORECASTING SERVICE<br/>---<br/>Outputs:<br/>- energy_savings<br/>- energy_class_after<br/>- CO2 emissions]
     
-    FinancialARV[FINANCIAL SERVICE - ARV<br/>---<br/>POST /arv twice<br/>---<br/>Calculates:<br/>- Property value before<br/>- Property value after<br/>- Net ARV gain]
+    Financial[FINANCIAL SERVICE<br/>---<br/>POST /arv<br/>POST /risk_assessment<br/>---<br/>ARV output:<br/>- Property value after renovation<br/>---<br/>Risk output:<br/>- Percentiles P10-P90 for NPV, IRR, ROI, PBP, DPP<br/>- 3 Probabilities NPV>0, PBP<lifetime, DPP<lifetime<br/>- 5 Chart metadata for distributions]
     
-    FinancialRisk[FINANCIAL SERVICE - RISK<br/>---<br/>POST /risk-assessment<br/>output_level: professional<br/>---<br/>Returns:<br/>- Percentiles P10-P90<br/>- 3 Probabilities<br/>- 5 Chart metadata]
+    Technical[TECHNICAL SERVICE<br/>---<br/>POST /mcda<br/>---<br/>Multi-Criteria Analysis:<br/>- Scenario comparison<br/>- Optimal packages]
     
-    TechnicalMCDA[TECHNICAL SERVICE - MCDA<br/>---<br/>POST /mcda<br/>---<br/>Multi-Criteria Analysis:<br/>- TOPSIS ranking<br/>- Scenario comparison<br/>- Optimal packages]
-    
-    ProfessionalUI[PROFESSIONAL UI<br/>---<br/>Display:<br/>- 5 Distribution charts<br/>- Risk probabilities<br/>- Scenario rankings<br/>- Cost-benefit tradeoffs]
+    ProfessionalUI[PROFESSIONAL UI<br/>---<br/>Technical Output:<br/>- Energy savings<br/>- CO2 emissions<br/>- Energy class improvements<br/>---<br/>Financial Output:<br/>- 5 Distribution charts<br/>- Risk probabilities<br/>- Property value after renovation<br/>---<br/>Ranking Output:<br/>- Scenario rankings<br/>- Cost-benefit tradeoffs<br/>- Optimal renovation packages]
     
     ProfessionalInput --> Forecasting
     DB --> Forecasting
     
-    ProfessionalInput --> FinancialARV
-    DB --> FinancialARV
-    Forecasting --> FinancialARV
+    ProfessionalInput --> Financial
+    DB --> Financial
+    Forecasting --> Financial
     
-    Forecasting --> FinancialRisk
-    FinancialARV --> FinancialRisk
-    
-    Forecasting --> TechnicalMCDA
-    FinancialARV --> TechnicalMCDA
-    FinancialRisk --> TechnicalMCDA
+    Forecasting --> Technical
+    Financial --> Technical
     
     Forecasting --> ProfessionalUI
-    FinancialARV --> ProfessionalUI
-    FinancialRisk --> ProfessionalUI
-    TechnicalMCDA --> ProfessionalUI
+    Financial --> ProfessionalUI
+    Technical --> ProfessionalUI
     
     style ProfessionalInput fill:#f0f0f0
     style DB fill:#d4edda
     style Forecasting fill:#cfe2ff
-    style FinancialARV fill:#fff3cd
-    style FinancialRisk fill:#fff3cd
-    style TechnicalMCDA fill:#f8d7da
+    style Financial fill:#fff3cd
+    style Technical fill:#f8d7da
     style ProfessionalUI fill:#d1ecf1
 ```
 
