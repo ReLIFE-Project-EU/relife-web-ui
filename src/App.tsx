@@ -8,6 +8,7 @@ import { HomeAssistantLanding } from "./routes/HomeAssistantLanding";
 import { HomeAssistantTool } from "./routes/HomeAssistantTool";
 import { MyPortfolios } from "./routes/MyPortfolios";
 import { PortfolioAdvisorLanding } from "./routes/PortfolioAdvisorLanding";
+import { PortfolioAdvisorTool } from "./routes/PortfolioAdvisorTool";
 import { StrategyExplorerLanding } from "./routes/StrategyExplorerLanding";
 import { TechnicalAnalysis } from "./routes/TechnicalAnalysis";
 
@@ -28,6 +29,10 @@ function App() {
         <Route
           path="/portfolio-advisor"
           element={<PortfolioAdvisorLanding />}
+        />
+        <Route
+          path="/portfolio-advisor/tool"
+          element={<PortfolioAdvisorTool />}
         />
 
         {/* Group 3: Home Assistant (Homeowners) */}

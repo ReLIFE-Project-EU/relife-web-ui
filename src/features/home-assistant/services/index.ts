@@ -1,11 +1,11 @@
 /**
  * Home Assistant Services Index
  *
- * This module exports service types, real implementations, and mock implementations.
+ * Re-exports from shared services plus HRA-specific types.
  * Services should be accessed via the ServiceContext, not imported directly.
  */
 
-// Export real implementations
+// Export real implementations (via shared)
 export { buildingService } from "./BuildingService";
 export { EnergyService } from "./EnergyService";
 export {
@@ -14,10 +14,10 @@ export {
   APIResponseError,
 } from "./EnergyService";
 
-// Export mock implementations for use in tests
-export { mockBuildingService } from "./mock/MockBuildingService";
-export { mockRenovationService } from "./mock/MockRenovationService";
-export { mockMCDAService } from "./mock/MockMCDAService";
+// Export mock implementations (via shared)
+export { mockBuildingService } from "../../../services/mock/MockBuildingService";
+export { mockRenovationService } from "../../../services/mock/MockRenovationService";
+export { mockMCDAService } from "../../../services/mock/MockMCDAService";
 
 // Re-export types
 export type {

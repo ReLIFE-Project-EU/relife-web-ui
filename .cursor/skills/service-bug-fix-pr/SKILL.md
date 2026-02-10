@@ -102,6 +102,7 @@ Derive the branch name from the bug description collected in Step 1.
 **Branch naming convention**: `fix/<short-slug>`
 
 Rules for the slug:
+
 - Lowercase only
 - Replace spaces and special characters with hyphens
 - Maximum 40 characters
@@ -182,6 +183,7 @@ Delegate the implementation to the appropriate agent:
 - **Complex change requiring architectural understanding**: `oh-my-claudecode:executor-high` (opus)
 
 Provide the agent with:
+
 - The `<service_path>` (so it writes to the correct directory)
 - The bug description and fix summary from Step 1
 - The additional context collected in Step 6a
@@ -233,6 +235,7 @@ cd <service_path> && make lint test
 Report the full output to the user.
 
 **If tests or linting fail**:
+
 1. Determine whether the failures are pre-existing by stashing the fix and re-running:
    ```bash
    git -C <service_path> stash
@@ -262,6 +265,7 @@ git -C <service_path> add <file1> <file2> ...
 ```
 
 Craft the commit message following the convention inferred in Step 5:
+
 - Follow the repository's commit style
 - Subject line references the bug concisely
 - Optional short body (1–3 sentences) explaining why the fix is correct

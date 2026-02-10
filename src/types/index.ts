@@ -4,4 +4,5 @@
 export * from "./common";
 export * from "./financial";
 export * from "./forecasting";
+export * from "./renovation";
 export * from "./technical";
