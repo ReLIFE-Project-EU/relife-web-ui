@@ -120,6 +120,8 @@ export function FinancingStep() {
             currentBuilding: current,
           });
         },
+        state.renovation.estimatedCapex,
+        state.renovation.estimatedMaintenanceCost,
       );
 
       // Set all building results

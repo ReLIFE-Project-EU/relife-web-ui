@@ -24,6 +24,8 @@ export interface IPortfolioAnalysisService {
     funding: FundingOptions,
     projectLifetime: number,
     onProgress: (completed: number, total: number, current: string) => void,
+    globalCapex?: number | null,
+    globalMaintenanceCost?: number | null,
   ): Promise<Record<string, BuildingAnalysisResult>>;
 }
 

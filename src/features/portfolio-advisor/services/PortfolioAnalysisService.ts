@@ -47,6 +47,8 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     funding: FundingOptions,
     projectLifetime: number,
     onProgress: (completed: number, total: number, current: string) => void,
+    globalCapex?: number | null,
+    globalMaintenanceCost?: number | null,
   ): Promise<Record<string, BuildingAnalysisResult>> {
     const results: Record<string, BuildingAnalysisResult> = {};
     let completed = 0;
@@ -57,7 +59,7 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       const batch = queue.splice(0, PRA_CONCURRENCY_LIMIT);
       const batchResults = await Promise.allSettled(
         batch.map((b) =>
-          this.analyzeBuilding(b, selectedMeasures, funding, projectLifetime),
+          this.analyzeBuilding(b, selectedMeasures, funding, projectLifetime, globalCapex, globalMaintenanceCost),
         ),
       );
 
@@ -98,6 +100,8 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     selectedMeasures: RenovationMeasureId[],
     funding: FundingOptions,
     projectLifetime: number,
+    globalCapex?: number | null,
+    globalMaintenanceCost?: number | null,
   ): Promise<BuildingAnalysisResult> {
     const buildingInfo = this.toBuildingInfo(building, projectLifetime);
 
@@ -112,8 +116,9 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     );
 
     // Step 3: Calculate financial results
-    const capex = building.estimatedCapex ?? null;
-    const maintenanceCost = building.annualMaintenanceCost ?? null;
+    // Per-building values take precedence; fall back to global overrides
+    const capex = building.estimatedCapex ?? globalCapex ?? null;
+    const maintenanceCost = building.annualMaintenanceCost ?? globalMaintenanceCost ?? null;
 
     const financialResults = await this.financial.calculateForAllScenarios(
       scenarios,
