@@ -1,7 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
-import { FinancialCalculator } from "./routes/FinancialCalculator";
 import { Forecasting } from "./routes/Forecasting";
 import { Home } from "./routes/Home";
 import { HomeAssistantLanding } from "./routes/HomeAssistantLanding";
@@ -10,7 +9,6 @@ import { MyPortfolios } from "./routes/MyPortfolios";
 import { PortfolioAdvisorLanding } from "./routes/PortfolioAdvisorLanding";
 import { PortfolioAdvisorTool } from "./routes/PortfolioAdvisorTool";
 import { StrategyExplorerLanding } from "./routes/StrategyExplorerLanding";
-import { TechnicalAnalysis } from "./routes/TechnicalAnalysis";
 
 function App() {
   return (
@@ -39,9 +37,6 @@ function App() {
         <Route path="/home-assistant" element={<HomeAssistantLanding />} />
         <Route path="/home-assistant/tool" element={<HomeAssistantTool />} />
 
-        {/* Expert Tools - Direct access to underlying calculators */}
-        <Route path="/financial" element={<FinancialCalculator />} />
-        <Route path="/technical" element={<TechnicalAnalysis />} />
         <Route
           path="/forecasting"
           element={
