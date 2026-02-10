@@ -1,9 +1,25 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { execSync } from "node:child_process";
+
+const getGitValue = (command: string, fallback: string): string => {
+  try {
+    return execSync(command, { encoding: "utf8" }).trim();
+  } catch {
+    return fallback;
+  }
+};
+
+const commitSha = getGitValue("git rev-parse HEAD", "unknown");
+const commitDate = getGitValue("git log -1 --format=%cI", "unknown");
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  define: {
+    __APP_COMMIT_SHA__: JSON.stringify(commitSha),
+    __APP_COMMIT_DATE__: JSON.stringify(commitDate),
+  },
   server: {
     proxy: {
       "/api": {
