@@ -10,19 +10,28 @@ import {
   Box,
   Button,
   Card,
+  Collapse,
   Grid,
   Group,
   NumberInput,
   Select,
+  SimpleGrid,
   Stack,
   Table,
   Text,
   TextInput,
+  ThemeIcon,
   Title,
 } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
 import {
   IconAlertCircle,
+  IconChevronDown,
+  IconChevronUp,
   IconFileSpreadsheet,
+  IconHome,
+  IconInfoCircle,
+  IconPencil,
   IconPlus,
   IconTrash,
   IconUpload,
@@ -39,6 +48,11 @@ import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
 import { usePortfolioAdvisorServices } from "../../hooks/usePortfolioAdvisorServices";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
 import type { PRABuilding } from "../../context/types";
+import type {
+  ArchetypeDetails,
+  BuildingModifications,
+} from "../../../../types/archetype";
+import { deriveConstructionPeriod } from "../../../../utils/apiMappings";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Property Type Options
@@ -201,15 +215,46 @@ function ManualAddPanel({ onAdd }: { onAdd: (building: PRABuilding) => void }) {
     { value: string; label: string }[]
   >([]);
 
+  // Section 1: Building identification
   const [name, setName] = useState("");
   const [country, setCountry] = useState<string | null>(null);
   const [category, setCategory] = useState<string | null>(null);
-  const [floorArea, setFloorArea] = useState<number | string>("");
   const [constructionYear, setConstructionYear] = useState<number | string>("");
-  const [numberOfFloors, setNumberOfFloors] = useState<number | string>(1);
   const [propertyType, setPropertyType] = useState<string | null>(null);
   const [lat, setLat] = useState<number | string>("");
   const [lng, setLng] = useState<number | string>("");
+
+  // Section 2: Archetype matching
+  const [matchedArchetype, setMatchedArchetype] =
+    useState<ArchetypeDetails | null>(null);
+  const [loadingArchetype, setLoadingArchetype] = useState(false);
+  const [availableArchetypes, setAvailableArchetypes] = useState<
+    ArchetypeDetails[]
+  >([]);
+  const [selectedArchetypeName, setSelectedArchetypeName] = useState<
+    string | null
+  >(null);
+
+  // Section 3: Modifications
+  const [modificationsOpened, { toggle: toggleModifications }] =
+    useDisclosure(false);
+  const [modFloorArea, setModFloorArea] = useState<number | string>("");
+  const [modNumberOfFloors, setModNumberOfFloors] = useState<number | string>(
+    "",
+  );
+  const [modBuildingHeight, setModBuildingHeight] = useState<number | string>(
+    "",
+  );
+  const [modWallUValue, setModWallUValue] = useState<number | string>("");
+  const [modRoofUValue, setModRoofUValue] = useState<number | string>("");
+  const [modWindowUValue, setModWindowUValue] = useState<number | string>("");
+  const [modHeatingSetpoint, setModHeatingSetpoint] = useState<number | string>(
+    "",
+  );
+  const [modCoolingSetpoint, setModCoolingSetpoint] = useState<number | string>(
+    "",
+  );
+  const [modOccupants, setModOccupants] = useState<number | string>("");
 
   // Load building options
   useEffect(() => {
@@ -223,23 +268,117 @@ function ManualAddPanel({ onAdd }: { onAdd: (building: PRABuilding) => void }) {
       .catch(() => {});
   }, [buildingService]);
 
+  // Auto-match archetype when country + category + year are set
+  useEffect(() => {
+    if (
+      !country ||
+      !category ||
+      !constructionYear ||
+      typeof constructionYear !== "number"
+    ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMatchedArchetype(null);
+      setAvailableArchetypes([]);
+      setSelectedArchetypeName(null);
+      return;
+    }
+
+    setLoadingArchetype(true);
+    const period = deriveConstructionPeriod(constructionYear);
+
+    buildingService
+      .findMatchingArchetype(
+        category,
+        period,
+        typeof lat === "number" && typeof lng === "number"
+          ? { lat, lng }
+          : null,
+      )
+      .then(async (matched) => {
+        if (!matched) {
+          setMatchedArchetype(null);
+          return;
+        }
+
+        // Fetch full archetype details
+        const details = await buildingService.getArchetypeDetails({
+          category: matched.category,
+          country: matched.country,
+          name: matched.name,
+        });
+        setMatchedArchetype(details);
+        setSelectedArchetypeName(details.name);
+
+        // Fetch all archetypes for this country + category for override dropdown
+        const allArchetypes = await buildingService.getArchetypes();
+        const filtered = allArchetypes.filter(
+          (a) => a.country === country && a.category === category,
+        );
+        const detailsList = await Promise.all(
+          filtered.map((a) =>
+            buildingService.getArchetypeDetails({
+              category: a.category,
+              country: a.country,
+              name: a.name,
+            }),
+          ),
+        );
+        setAvailableArchetypes(detailsList);
+      })
+      .catch(() => {
+        setMatchedArchetype(null);
+        setAvailableArchetypes([]);
+      })
+      .finally(() => setLoadingArchetype(false));
+  }, [buildingService, country, category, constructionYear, lat, lng]);
+
+  // When user changes archetype manually
+  useEffect(() => {
+    if (!selectedArchetypeName) return;
+    const selected = availableArchetypes.find(
+      (a) => a.name === selectedArchetypeName,
+    );
+    if (selected) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMatchedArchetype(selected);
+    }
+  }, [selectedArchetypeName, availableArchetypes]);
+
   const isValid =
     name.trim() &&
     country &&
     category &&
-    typeof floorArea === "number" &&
-    floorArea > 0 &&
     typeof constructionYear === "number" &&
     constructionYear >= 1800 &&
     constructionYear <= 2030 &&
-    typeof numberOfFloors === "number" &&
-    numberOfFloors >= 1 &&
     propertyType &&
     typeof lat === "number" &&
-    typeof lng === "number";
+    typeof lng === "number" &&
+    matchedArchetype;
 
   const handleAdd = () => {
-    if (!isValid) return;
+    if (!isValid || !matchedArchetype) return;
+
+    // Collect modifications (only non-empty fields)
+    const modifications: BuildingModifications = {};
+    if (typeof modFloorArea === "number")
+      modifications.floorArea = modFloorArea;
+    if (typeof modNumberOfFloors === "number")
+      modifications.numberOfFloors = modNumberOfFloors;
+    if (typeof modBuildingHeight === "number")
+      modifications.buildingHeight = modBuildingHeight;
+    if (typeof modWallUValue === "number")
+      modifications.wallUValue = modWallUValue;
+    if (typeof modRoofUValue === "number")
+      modifications.roofUValue = modRoofUValue;
+    if (typeof modWindowUValue === "number")
+      modifications.windowUValue = modWindowUValue;
+    if (typeof modHeatingSetpoint === "number")
+      modifications.heatingSetpoint = modHeatingSetpoint;
+    if (typeof modCoolingSetpoint === "number")
+      modifications.coolingSetpoint = modCoolingSetpoint;
+    if (typeof modOccupants === "number")
+      modifications.numberOfOccupants = modOccupants;
 
     const building: PRABuilding = {
       id: crypto.randomUUID(),
@@ -247,11 +386,20 @@ function ManualAddPanel({ onAdd }: { onAdd: (building: PRABuilding) => void }) {
       source: "manual",
       category: category!,
       country: country!,
+      archetypeName: matchedArchetype.name,
+      modifications:
+        Object.keys(modifications).length > 0 ? modifications : undefined,
       lat: lat as number,
       lng: lng as number,
-      floorArea: floorArea as number,
+      floorArea:
+        typeof modFloorArea === "number"
+          ? modFloorArea
+          : matchedArchetype.floorArea,
       constructionYear: constructionYear as number,
-      numberOfFloors: numberOfFloors as number,
+      numberOfFloors:
+        typeof modNumberOfFloors === "number"
+          ? modNumberOfFloors
+          : matchedArchetype.numberOfFloors,
       propertyType: propertyType!,
       validationStatus: "valid",
     };
@@ -260,11 +408,23 @@ function ManualAddPanel({ onAdd }: { onAdd: (building: PRABuilding) => void }) {
 
     // Reset form
     setName("");
-    setFloorArea("");
+    setCountry(null);
+    setCategory(null);
     setConstructionYear("");
-    setNumberOfFloors(1);
+    setPropertyType(null);
     setLat("");
     setLng("");
+    setMatchedArchetype(null);
+    setSelectedArchetypeName(null);
+    setModFloorArea("");
+    setModNumberOfFloors("");
+    setModBuildingHeight("");
+    setModWallUValue("");
+    setModRoofUValue("");
+    setModWindowUValue("");
+    setModHeatingSetpoint("");
+    setModCoolingSetpoint("");
+    setModOccupants("");
   };
 
   return (
@@ -274,7 +434,8 @@ function ManualAddPanel({ onAdd }: { onAdd: (building: PRABuilding) => void }) {
         <Title order={4}>Add Building Manually</Title>
       </Group>
 
-      <Stack gap="sm">
+      <Stack gap="md">
+        {/* Section 1: Building identification */}
         <TextInput
           label="Building Name"
           placeholder="e.g., Office Building A"
@@ -309,17 +470,7 @@ function ManualAddPanel({ onAdd }: { onAdd: (building: PRABuilding) => void }) {
         </Grid>
 
         <Grid>
-          <Grid.Col span={4}>
-            <NumberInput
-              label="Floor Area (m2)"
-              placeholder="e.g., 150"
-              value={floorArea}
-              onChange={setFloorArea}
-              min={1}
-              required
-            />
-          </Grid.Col>
-          <Grid.Col span={4}>
+          <Grid.Col span={6}>
             <NumberInput
               label="Construction Year"
               placeholder="e.g., 1985"
@@ -330,27 +481,17 @@ function ManualAddPanel({ onAdd }: { onAdd: (building: PRABuilding) => void }) {
               required
             />
           </Grid.Col>
-          <Grid.Col span={4}>
-            <NumberInput
-              label="Number of Floors"
-              placeholder="e.g., 3"
-              value={numberOfFloors}
-              onChange={setNumberOfFloors}
-              min={1}
-              max={100}
+          <Grid.Col span={6}>
+            <Select
+              label="Property Type"
+              placeholder="Select type"
+              data={PROPERTY_TYPE_OPTIONS}
+              value={propertyType}
+              onChange={setPropertyType}
               required
             />
           </Grid.Col>
         </Grid>
-
-        <Select
-          label="Property Type"
-          placeholder="Select type"
-          data={PROPERTY_TYPE_OPTIONS}
-          value={propertyType}
-          onChange={setPropertyType}
-          required
-        />
 
         <Grid>
           <Grid.Col span={6}>
@@ -378,6 +519,251 @@ function ManualAddPanel({ onAdd }: { onAdd: (building: PRABuilding) => void }) {
             />
           </Grid.Col>
         </Grid>
+
+        {/* Section 2: Archetype match */}
+        {matchedArchetype && (
+          <Stack gap="sm">
+            <Alert
+              icon={<IconInfoCircle size={16} />}
+              color="blue"
+              variant="light"
+            >
+              <Text size="sm">
+                An <strong>archetype</strong> is a reference building model that
+                defines thermal characteristics, HVAC systems, and construction
+                details used in energy simulation. Your building has been
+                matched to the closest available archetype based on country,
+                category, and construction period.
+              </Text>
+            </Alert>
+
+            <Card withBorder p="md" bg="gray.0">
+              <Group mb="xs">
+                <ThemeIcon size="lg" radius="md" variant="light" color="blue">
+                  <IconHome size={20} />
+                </ThemeIcon>
+                <Text size="sm" fw={500}>
+                  {matchedArchetype.name}
+                </Text>
+              </Group>
+
+              <SimpleGrid cols={2} spacing="xs">
+                <div>
+                  <Text size="xs" c="dimmed">
+                    Floor Area
+                  </Text>
+                  <Text size="sm" fw={500}>
+                    {matchedArchetype.floorArea} m²
+                  </Text>
+                </div>
+                <div>
+                  <Text size="xs" c="dimmed">
+                    Floors
+                  </Text>
+                  <Text size="sm" fw={500}>
+                    {matchedArchetype.numberOfFloors}
+                  </Text>
+                </div>
+                <div>
+                  <Text size="xs" c="dimmed">
+                    Wall U-value
+                  </Text>
+                  <Text size="sm" fw={500}>
+                    {matchedArchetype.thermalProperties.wallUValue.toFixed(2)}{" "}
+                    W/m²K
+                  </Text>
+                </div>
+                <div>
+                  <Text size="xs" c="dimmed">
+                    Roof U-value
+                  </Text>
+                  <Text size="sm" fw={500}>
+                    {matchedArchetype.thermalProperties.roofUValue.toFixed(2)}{" "}
+                    W/m²K
+                  </Text>
+                </div>
+                <div>
+                  <Text size="xs" c="dimmed">
+                    Window U-value
+                  </Text>
+                  <Text size="sm" fw={500}>
+                    {matchedArchetype.thermalProperties.windowUValue.toFixed(2)}{" "}
+                    W/m²K
+                  </Text>
+                </div>
+                <div>
+                  <Text size="xs" c="dimmed">
+                    Heating Setpoint
+                  </Text>
+                  <Text size="sm" fw={500}>
+                    {matchedArchetype.setpoints.heatingSetpoint}°C
+                  </Text>
+                </div>
+              </SimpleGrid>
+
+              {availableArchetypes.length > 1 && (
+                <Select
+                  label="Change archetype"
+                  placeholder="Select different archetype"
+                  data={availableArchetypes.map((a) => ({
+                    value: a.name,
+                    label: a.name,
+                  }))}
+                  value={selectedArchetypeName}
+                  onChange={setSelectedArchetypeName}
+                  mt="sm"
+                  size="xs"
+                />
+              )}
+            </Card>
+          </Stack>
+        )}
+
+        {loadingArchetype && (
+          <Text size="sm" c="dimmed">
+            Loading archetype details...
+          </Text>
+        )}
+
+        {/* Section 3: Customize simulation parameters */}
+        {matchedArchetype && (
+          <Box>
+            <Button
+              variant="subtle"
+              size="sm"
+              onClick={toggleModifications}
+              rightSection={
+                modificationsOpened ? (
+                  <IconChevronUp size={16} />
+                ) : (
+                  <IconChevronDown size={16} />
+                )
+              }
+              fullWidth
+            >
+              Customize simulation parameters (optional)
+            </Button>
+
+            <Collapse in={modificationsOpened}>
+              <Stack
+                gap="sm"
+                mt="md"
+                p="md"
+                bg="gray.0"
+                style={{ borderRadius: 8 }}
+              >
+                <Text size="xs" c="dimmed">
+                  Optionally adjust these parameters to better reflect your
+                  building's actual characteristics. Only modified values will
+                  override the archetype defaults.
+                </Text>
+
+                <SimpleGrid cols={3} spacing="xs">
+                  <NumberInput
+                    label="Floor Area (m²)"
+                    placeholder={`Default: ${matchedArchetype.floorArea}`}
+                    value={modFloorArea}
+                    onChange={setModFloorArea}
+                    min={10}
+                    max={1000}
+                    size="xs"
+                  />
+                  <NumberInput
+                    label="Number of Floors"
+                    placeholder={`Default: ${matchedArchetype.numberOfFloors}`}
+                    value={modNumberOfFloors}
+                    onChange={setModNumberOfFloors}
+                    min={1}
+                    max={20}
+                    size="xs"
+                  />
+                  <NumberInput
+                    label="Building Height (m)"
+                    placeholder={`Default: ${matchedArchetype.buildingHeight}`}
+                    value={modBuildingHeight}
+                    onChange={setModBuildingHeight}
+                    min={2}
+                    max={60}
+                    size="xs"
+                  />
+                </SimpleGrid>
+
+                <Text size="xs" fw={500} mt="xs">
+                  Thermal Envelope
+                </Text>
+                <SimpleGrid cols={3} spacing="xs">
+                  <NumberInput
+                    label="Wall U-value (W/m²K)"
+                    placeholder={`Default: ${matchedArchetype.thermalProperties.wallUValue.toFixed(2)}`}
+                    value={modWallUValue}
+                    onChange={setModWallUValue}
+                    min={0.1}
+                    max={5.0}
+                    step={0.1}
+                    decimalScale={2}
+                    size="xs"
+                  />
+                  <NumberInput
+                    label="Roof U-value (W/m²K)"
+                    placeholder={`Default: ${matchedArchetype.thermalProperties.roofUValue.toFixed(2)}`}
+                    value={modRoofUValue}
+                    onChange={setModRoofUValue}
+                    min={0.1}
+                    max={5.0}
+                    step={0.1}
+                    decimalScale={2}
+                    size="xs"
+                  />
+                  <NumberInput
+                    label="Window U-value (W/m²K)"
+                    placeholder={`Default: ${matchedArchetype.thermalProperties.windowUValue.toFixed(2)}`}
+                    value={modWindowUValue}
+                    onChange={setModWindowUValue}
+                    min={0.1}
+                    max={5.0}
+                    step={0.1}
+                    decimalScale={2}
+                    size="xs"
+                  />
+                </SimpleGrid>
+
+                <Text size="xs" fw={500} mt="xs">
+                  Temperature Setpoints
+                </Text>
+                <SimpleGrid cols={2} spacing="xs">
+                  <NumberInput
+                    label="Heating Setpoint (°C)"
+                    placeholder={`Default: ${matchedArchetype.setpoints.heatingSetpoint}`}
+                    value={modHeatingSetpoint}
+                    onChange={setModHeatingSetpoint}
+                    min={15}
+                    max={22}
+                    size="xs"
+                  />
+                  <NumberInput
+                    label="Cooling Setpoint (°C)"
+                    placeholder={`Default: ${matchedArchetype.setpoints.coolingSetpoint}`}
+                    value={modCoolingSetpoint}
+                    onChange={setModCoolingSetpoint}
+                    min={24}
+                    max={30}
+                    size="xs"
+                  />
+                </SimpleGrid>
+
+                <NumberInput
+                  label="Number of Occupants"
+                  placeholder="Default: archetype value"
+                  value={modOccupants}
+                  onChange={setModOccupants}
+                  min={1}
+                  max={50}
+                  size="xs"
+                />
+              </Stack>
+            </Collapse>
+          </Box>
+        )}
 
         <Button
           leftSection={<IconPlus size={16} />}
@@ -469,6 +855,7 @@ export function BuildingPortfolioStep() {
                 <Table.Th>Category</Table.Th>
                 <Table.Th>Country</Table.Th>
                 <Table.Th>Floor Area (m2)</Table.Th>
+                <Table.Th>Archetype</Table.Th>
                 <Table.Th>Source</Table.Th>
                 <Table.Th>Actions</Table.Th>
               </Table.Tr>
@@ -480,6 +867,30 @@ export function BuildingPortfolioStep() {
                   <Table.Td>{building.category}</Table.Td>
                   <Table.Td>{building.country}</Table.Td>
                   <Table.Td>{building.floorArea}</Table.Td>
+                  <Table.Td>
+                    {building.archetypeName ? (
+                      <Group gap="xs">
+                        <Text size="sm">
+                          {building.archetypeName.split("_").pop()}
+                        </Text>
+                        {building.modifications &&
+                          Object.keys(building.modifications).length > 0 && (
+                            <Badge
+                              size="xs"
+                              color="orange"
+                              variant="light"
+                              leftSection={<IconPencil size={10} />}
+                            >
+                              Customized
+                            </Badge>
+                          )}
+                      </Group>
+                    ) : (
+                      <Text size="sm" c="dimmed">
+                        —
+                      </Text>
+                    )}
+                  </Table.Td>
                   <Table.Td>
                     <Badge
                       size="sm"

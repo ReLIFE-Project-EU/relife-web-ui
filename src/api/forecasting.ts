@@ -92,8 +92,8 @@ export const forecasting = {
     });
 
     const formData = new FormData();
-    formData.append("bui", JSON.stringify(payload.bui));
-    formData.append("system", JSON.stringify(payload.system));
+    formData.append("bui_json", JSON.stringify(payload.bui));
+    formData.append("system_json", JSON.stringify(payload.system));
 
     return uploadRequest<SimulateDirectResponse>(
       `/forecasting/simulate?${searchParams.toString()}`,

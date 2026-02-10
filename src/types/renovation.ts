@@ -36,6 +36,7 @@ export interface BuildingInfo {
 
   // User-modifiable parameters (Optional - for modified archetype workflow)
   isModified: boolean; // Whether user has modified archetype defaults
+  modifications?: import("./archetype").BuildingModifications; // Modifications to apply to archetype
   floorArea: number | null; // m² - can be modified by user
   numberOfFloors: number | null; // 1-100 - can be modified by user
 

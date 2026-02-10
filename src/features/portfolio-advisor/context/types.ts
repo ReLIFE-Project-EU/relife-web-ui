@@ -13,6 +13,7 @@ import type {
   RenovationScenario,
   RenovationSelections,
 } from "../../../types/renovation";
+import type { BuildingModifications } from "../../../types/archetype";
 import type { FinancingScheme } from "../constants";
 
 export type { FinancingScheme };
@@ -28,6 +29,7 @@ export interface PRABuilding {
   category: string;
   country: string;
   archetypeName?: string;
+  modifications?: BuildingModifications;
   lat: number;
   lng: number;
   floorArea: number;

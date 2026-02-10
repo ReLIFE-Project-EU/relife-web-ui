@@ -32,7 +32,8 @@ import {
   calculateAnnualTotals,
   getEPCClass,
 } from "./energyUtils";
-import type { IEnergyService } from "./types";
+import type { IEnergyService, IBuildingService } from "./types";
+import { applyAllModifications } from "../utils/archetypeModifier";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Custom Error Types
@@ -251,6 +252,11 @@ function mapCountryCodeToName(countryCode: string): string {
 
 export class EnergyService implements IEnergyService {
   private archetypesCache: ArchetypeInfo[] | null = null;
+  private readonly buildingService: IBuildingService;
+
+  constructor(buildingService: IBuildingService) {
+    this.buildingService = buildingService;
+  }
 
   /**
    * Fetch and cache available archetypes
@@ -357,25 +363,60 @@ export class EnergyService implements IEnergyService {
     // Find matching archetype
     const archetype = await this.findMatchingArchetype(building);
 
-    // Run simulation
+    // Branch: modified or unmodified simulation
     let simulationResponse;
-    try {
-      simulationResponse = await forecasting.simulateDirect({
-        category: archetype.category,
-        country: archetype.country,
-        name: archetype.name,
-        weatherSource: "pvgis",
-      });
-    } catch (error) {
-      if (error instanceof TypeError && error.message.includes("fetch")) {
-        throw new APIConnectionError();
-      }
-      if (error instanceof APIError) {
-        throw new APIConnectionError(
-          `Energy simulation failed with error ${error.status}: ${error.statusText}`,
+
+    if (building.isModified && building.modifications) {
+      // Modified archetype path: fetch full details, apply modifications, simulate custom
+      try {
+        const archetypeDetails = await this.buildingService.getArchetypeDetails(
+          {
+            category: archetype.category,
+            country: archetype.country,
+            name: archetype.name,
+          },
         );
+
+        const { bui, system } = applyAllModifications(
+          archetypeDetails,
+          building.modifications,
+        );
+
+        simulationResponse = await forecasting.simulateCustomBuilding(
+          { bui, system },
+          "pvgis",
+        );
+      } catch (error) {
+        if (error instanceof TypeError && error.message.includes("fetch")) {
+          throw new APIConnectionError();
+        }
+        if (error instanceof APIError) {
+          throw new APIConnectionError(
+            `Energy simulation failed with error ${error.status}: ${error.statusText}`,
+          );
+        }
+        throw error;
       }
-      throw error;
+    } else {
+      // Unmodified archetype path: direct simulation
+      try {
+        simulationResponse = await forecasting.simulateDirect({
+          category: archetype.category,
+          country: archetype.country,
+          name: archetype.name,
+          weatherSource: "pvgis",
+        });
+      } catch (error) {
+        if (error instanceof TypeError && error.message.includes("fetch")) {
+          throw new APIConnectionError();
+        }
+        if (error instanceof APIError) {
+          throw new APIConnectionError(
+            `Energy simulation failed with error ${error.status}: ${error.statusText}`,
+          );
+        }
+        throw error;
+      }
     }
 
     // Validate response - API returns hourly data under results.hourly_building

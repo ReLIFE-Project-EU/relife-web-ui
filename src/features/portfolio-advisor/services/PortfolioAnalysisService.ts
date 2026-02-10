@@ -164,6 +164,9 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     b: PRABuilding,
     projectLifetime: number,
   ): BuildingInfo {
+    const hasModifications =
+      b.modifications && Object.keys(b.modifications).length > 0;
+
     return {
       country: b.country,
       lat: b.lat,
@@ -173,7 +176,8 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       selectedArchetype: b.archetypeName
         ? { name: b.archetypeName, category: b.category, country: b.country }
         : undefined,
-      isModified: false,
+      isModified: hasModifications ? true : false,
+      modifications: hasModifications ? b.modifications : undefined,
       floorArea: b.floorArea,
       numberOfFloors: b.numberOfFloors,
       climateZone: "",

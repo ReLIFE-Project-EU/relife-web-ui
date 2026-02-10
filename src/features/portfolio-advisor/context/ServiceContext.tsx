@@ -16,7 +16,7 @@ import { PRA_OUTPUT_LEVEL } from "../constants";
 import type { IPortfolioAdvisorServices } from "../services/types";
 import { PortfolioAdvisorServiceContext } from "./ServiceContextDefinition";
 
-const energyService = new EnergyService();
+const energyService = new EnergyService(buildingService);
 const financialService = new FinancialService(PRA_OUTPUT_LEVEL);
 const renovationService = new RenovationService();
 const portfolioAnalysisService = new PortfolioAnalysisService(
