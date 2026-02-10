@@ -106,7 +106,7 @@ sequenceDiagram
     UI->>PM: Create new portfolio
     PM->>SB: portfolioApi.create(name, description)
     SB-->>PM: Portfolio created
-    
+
     UI->>PM: Upload CSV building data
     PM->>SB: fileApi.upload(file, portfolioId)
     Note over PM,SB: Validates: file type, size (50MB max), quota
