@@ -59,11 +59,20 @@ export const PortfolioAdvisorLanding = () => {
           <Title order={1} mb="sm">
             Portfolio Renovation Advisor
           </Title>
-          <Text c="dimmed" size="lg" maw={700}>
+          <Text c="dimmed" size="lg" maw={700} mb="lg">
             Professional-grade tools for portfolio-level renovation assessment.
             Evaluate multiple buildings, assess financial viability, and make
             data-driven investment decisions.
           </Text>
+          <Button
+            component={Link}
+            to="/portfolio-advisor/tool"
+            size="lg"
+            color="teal"
+            rightSection={<IconArrowRight size={18} />}
+          >
+            Start Portfolio Analysis
+          </Button>
         </Box>
 
         {/* Target Users */}
@@ -78,17 +87,6 @@ export const PortfolioAdvisorLanding = () => {
             <List.Item>Real estate investment funds</List.Item>
           </List>
         </Card>
-
-        {/* Start Analysis CTA */}
-        <Button
-          component={Link}
-          to="/portfolio-advisor/tool"
-          size="lg"
-          color="teal"
-          rightSection={<IconArrowRight size={20} />}
-        >
-          Start Portfolio Analysis
-        </Button>
 
         {/* Features */}
         <Box>
