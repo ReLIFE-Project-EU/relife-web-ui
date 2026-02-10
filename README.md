@@ -30,24 +30,24 @@ sequenceDiagram
     participant HRA as Home Renovation Assistant
     participant FCAST as Forecasting API
     participant FIN as Financial API
-    participant TECH as Technical API (stubbed for this tool)
+    participant TECH as Technical API - stubbed for this tool
 
     UI->>HRA: Open /home-assistant/tool and submit building data
     HRA->>FCAST: listArchetypes/getArchetypeDetails
     FCAST-->>HRA: Archetype candidates + selected archetype metadata
-    HRA->>FCAST: simulateDirect/simulateCustomBuilding (baseline EPC)
+    HRA->>FCAST: simulateDirect or simulateCustomBuilding for baseline EPC
     FCAST-->>HRA: Baseline energy simulation
 
     UI->>HRA: Evaluate selected renovation measures
-    HRA->>FCAST: simulateECM (supported envelope measures only)
+    HRA->>FCAST: simulateECM for supported envelope measures only
     FCAST-->>HRA: Renovated scenario simulation
 
     HRA->>FIN: calculateARV + assessRisk per scenario
-    FIN-->>HRA: ARV + risk indicators (NPV/IRR/ROI/PBP/DPP)
+    FIN-->>HRA: ARV + risk indicators NPV IRR ROI PBP DPP
     HRA-->>UI: Render scenarios and financial results
 
     UI->>HRA: Run MCDA ranking
-    Note over HRA,TECH: Technical API is not called; ranking uses local mock MCDA (TOPSIS)
+    Note over HRA,TECH: Technical API is not called and ranking uses local mock MCDA TOPSIS
     HRA-->>UI: Render ranked recommendations
 
     Note over FCAST: Partial for this tool: ECM currently applies wall/roof/windows only
@@ -63,16 +63,16 @@ sequenceDiagram
     participant PRA as Portfolio Renovation Advisor
     participant FCAST as Forecasting API
     participant FIN as Financial API
-    participant TECH as Technical API (stubbed for this tool)
+    participant TECH as Technical API - stubbed for this tool
 
     UI->>PRA: Open /portfolio-advisor/tool and configure buildings/measures
     UI->>PRA: Click "Analyze Portfolio"
-    PRA->>PRA: analyzePortfolio (batched per PRA_CONCURRENCY_LIMIT)
+    PRA->>PRA: analyzePortfolio batched by PRA_CONCURRENCY_LIMIT
 
     loop For each building
-      PRA->>FCAST: estimateEPC (simulateDirect/simulateCustomBuilding)
+      PRA->>FCAST: estimateEPC via simulateDirect or simulateCustomBuilding
       FCAST-->>PRA: Baseline estimation
-      PRA->>FCAST: evaluateScenarios (simulateECM)
+      PRA->>FCAST: evaluateScenarios via simulateECM
       FCAST-->>PRA: Renovated scenarios
       PRA->>FIN: calculateARV + assessRisk
       FIN-->>PRA: Financial results per scenario
@@ -82,7 +82,7 @@ sequenceDiagram
     Note over PRA,TECH: Technical API is not called in the current portfolio flow
     PRA-->>UI: Final portfolio results table and summary
 
-    Note over FCAST: Partial for this tool: renovation simulation depends on supported ECM measures
+    Note over FCAST: Partial for this tool because renovation simulation depends on supported ECM measures
 ```
 
 Implementation status: Portfolio Advisor analysis is implemented with real Forecasting + Financial integrations orchestrated by `src/features/portfolio-advisor/services/PortfolioAnalysisService.ts` and triggered in `src/features/portfolio-advisor/components/steps/FinancingStep.tsx`. The service context at `src/features/portfolio-advisor/context/ServiceContext.tsx` wires real `EnergyService`, `RenovationService`, and `FinancialService`, then processes buildings in batches with progress callbacks. The Technical API remains stubbed for this tool path because no call is made to `src/api/technical.ts`; MCDA state/actions exist but ranking is not executed in the current workflow.
@@ -93,9 +93,9 @@ Implementation status: Portfolio Advisor analysis is implemented with real Forec
 sequenceDiagram
     participant UI as Web UI
     participant RSE as Renovation Strategy Explorer
-    participant FCAST as Forecasting API (not invoked)
-    participant FIN as Financial API (not invoked)
-    participant TECH as Technical API (not invoked)
+    participant FCAST as Forecasting API - not invoked
+    participant FIN as Financial API - not invoked
+    participant TECH as Technical API - not invoked
 
     UI->>RSE: Navigate to /strategy-explorer
     RSE-->>UI: Render landing page content and disabled "Coming Soon" CTA
