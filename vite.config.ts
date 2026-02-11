@@ -10,8 +10,9 @@ const getGitValue = (command: string, fallback: string): string => {
   }
 };
 
-const commitSha = getGitValue("git rev-parse HEAD", "unknown");
-const commitDate = getGitValue("git log -1 --format=%cI", "unknown");
+// Prefer environment variables (for Docker builds), fall back to git commands
+const commitSha = process.env.APP_COMMIT_SHA || getGitValue("git rev-parse HEAD", "unknown");
+const commitDate = process.env.APP_COMMIT_DATE || getGitValue("git log -1 --format=%cI", "unknown");
 
 // https://vite.dev/config/
 export default defineConfig({
