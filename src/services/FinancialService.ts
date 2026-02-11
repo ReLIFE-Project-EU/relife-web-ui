@@ -234,19 +234,25 @@ export class FinancialService implements IFinancialService {
         loan_term: loanTerm,
       };
 
-      // Call APIs in parallel
+      // The risk-assessment endpoint requires annual_energy_savings > 0.
+      // If the renovation produces no measurable savings, skip that call.
+      const hasSavings = riskRequest.annual_energy_savings > 0;
+
+      // Call APIs in parallel (risk assessment only when savings > 0)
       const [arvResult, riskResult] = await Promise.all([
         this.calculateARV(arvRequest),
-        this.assessRisk(riskRequest),
+        hasSavings ? this.assessRisk(riskRequest) : Promise.resolve(null),
       ]);
 
       results[scenario.id] = {
         arv: arvResult,
         riskAssessment: riskResult,
-        capitalExpenditure: Math.round(riskResult.metadata.capex), // Use CAPEX from API response
-        returnOnInvestment: riskResult.pointForecasts.ROI,
-        paybackTime: riskResult.pointForecasts.PBP,
-        netPresentValue: riskResult.pointForecasts.NPV,
+        capitalExpenditure: riskResult
+          ? Math.round(riskResult.metadata.capex)
+          : 0,
+        returnOnInvestment: riskResult?.pointForecasts.ROI ?? 0,
+        paybackTime: riskResult?.pointForecasts.PBP ?? 0,
+        netPresentValue: riskResult?.pointForecasts.NPV ?? 0,
         afterRenovationValue: arvResult.totalPrice,
         // NOTE: npvRange and paybackTimeRange removed - use actual percentiles from API instead
       };
