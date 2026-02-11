@@ -148,9 +148,10 @@ export const MOCK_RANGE_PAYBACK_MIN = 0.85;
 export const MOCK_RANGE_PAYBACK_MAX = 1.15;
 
 /**
- * Normalization factor for ROI in MCDA (assumes max ROI is 200%)
+ * Normalization factor for ROI in MCDA.
+ * ROI is a dimensionless fraction (e.g., 1.423 = 142.3%). Value of 2.0 = max 200% return.
  */
-export const MOCK_MCDA_MAX_ROI_NORMALIZATION = 200;
+export const MOCK_MCDA_MAX_ROI_NORMALIZATION = 2.0;
 
 /**
  * Normalization factor for NPV in MCDA

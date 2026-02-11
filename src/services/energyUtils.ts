@@ -31,7 +31,11 @@ export const EPC_THRESHOLDS: { class: string; maxValue: number }[] = [
 ];
 
 /**
- * Average energy price in EUR/kWh for cost calculations.
+ * Flat energy price in EUR/kWh used for the EPC estimation step display.
+ * This is a simplified constant — country-agnostic and fuel-type-agnostic.
+ * Note: the Financial Service's risk assessment uses a dynamic Monte Carlo-sampled
+ * electricity price distribution, so energy cost figures shown in the EPC step
+ * will differ from those in the financial analysis step.
  */
 export const ENERGY_PRICE_EUR_PER_KWH = 0.25;
 

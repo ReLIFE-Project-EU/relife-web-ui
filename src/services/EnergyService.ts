@@ -496,7 +496,8 @@ export class EnergyService implements IEnergyService {
       comfortIndex: Math.round(comfortIndex),
       // This value represents current state energy consumption.
       // Annual energy savings are calculated when comparing before/after renovation.
-      annualEnergySavings: Math.round(annualEnergyNeeds),
+      annualEnergyConsumption: Math.round(annualEnergyNeeds),
+      archetypeFloorArea: archetypeArea,
       // Store matched archetype for reuse in Step 2 (ECM simulation)
       archetype: {
         category: archetype.category,

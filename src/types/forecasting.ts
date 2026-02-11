@@ -35,9 +35,9 @@ export interface HourlyBuildingRecord {
   timestamp: string; // ISO timestamp e.g. "2009-12-01 00:00:00"
   T_op?: number; // Operative temperature (°C)
   T_ext?: number; // Exterior temperature (°C)
-  Q_H?: number; // Heating load (kWh)
-  Q_C?: number; // Cooling load (kWh)
-  Q_HC?: number; // Total heating/cooling load (kWh)
+  Q_H?: number; // Heating load (Wh) — converted to kWh/year by calculateAnnualTotals()
+  Q_C?: number; // Cooling load (Wh) — converted to kWh/year by calculateAnnualTotals()
+  Q_HC?: number; // Total heating/cooling load (Wh) — converted to kWh/year by calculateAnnualTotals()
   [key: string]: unknown; // Additional fields
 }
 

@@ -200,10 +200,10 @@ export class RenovationService implements IRenovationService {
     const renovatedTotals = calculateAnnualTotals(hourlyRecords);
     const renovatedHvacEnergy = renovatedTotals.Q_HC_total;
 
-    // Scale by floor area ratio (archetype vs user building)
-    // TODO: Store archetype area in EstimationResult to avoid assuming DEFAULT_FLOOR_AREA
+    // Scale by floor area ratio (archetype vs user building).
+    // Use the archetype area stored during baseline estimation to ensure consistent scaling.
     const userArea = building.floorArea || DEFAULT_FLOOR_AREA;
-    const archetypeArea = DEFAULT_FLOOR_AREA;
+    const archetypeArea = estimation.archetypeFloorArea ?? DEFAULT_FLOOR_AREA;
     const areaScaleFactor = userArea / archetypeArea;
 
     const scaledRenovatedHvac = renovatedHvacEnergy * areaScaleFactor;

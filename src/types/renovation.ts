@@ -69,6 +69,11 @@ export interface BuildingInfo {
 
 export interface EnergyMix {
   electricity: number; // kWh/year
+  /**
+   * Annual consumption of the primary non-electric fuel (kWh/year).
+   * Named "heatingOil" for historical reasons but covers any primary fuel type
+   * (heating oil, natural gas, etc.) depending on the building's heating technology.
+   */
   heatingOil: number; // kWh/year
 }
 
@@ -85,9 +90,18 @@ export interface EstimationResult {
   flexibilityIndex: number; // 0-100
   comfortIndex: number; // 0-100
 
-  // TBD: Verify this matches Forecasting API output format
-  // Used as input to Financial API /risk-assessment endpoint
-  annualEnergySavings: number; // kWh/year - energy savings from renovation
+  // Total annual energy consumption of the building in its current (pre-renovation) state.
+  // Named "Consumption" to distinguish it from savings, which are computed in FinancialService
+  // by subtracting the renovated scenario's annualEnergyNeeds from this value.
+  annualEnergyConsumption: number; // kWh/year
+
+  /**
+   * Floor area of the matched archetype (m²).
+   * Stored here so RenovationService can use the same denominator as EnergyService
+   * when scaling simulated energy values to the user's building area.
+   * Falls back to DEFAULT_FLOOR_AREA (100 m²) when the API does not return building_area.
+   */
+  archetypeFloorArea: number;
 
   /**
    * Archetype used for the estimation.
@@ -142,11 +156,17 @@ export interface RenovationSelections {
 export type FinancingType = "self-funded" | "loan";
 
 export interface LoanDetails {
-  /** Loan amount as percentage of renovation cost (0-100) */
+  /**
+   * Loan amount as a percentage of renovation cost (0–100 scale, e.g., 70 means 70%).
+   * Note: uses 0-100 convention — divided by 100 in financialCalculations.applyFundingReduction().
+   */
   percentage: number;
   /** Loan duration in years */
   duration: number;
-  /** Annual interest rate as decimal (e.g., 0.05 = 5%) */
+  /**
+   * Annual interest rate as a decimal fraction (e.g., 0.05 = 5%).
+   * Note: uses 0–1 convention — unlike `percentage` above which uses 0–100.
+   */
   interestRate: number;
 }
 
@@ -226,14 +246,14 @@ export interface RiskAssessmentMetadata {
 }
 
 export interface CashFlowData {
-  years: number[];
-  initial_investment?: number;
-  annual_inflows: number[];
-  annual_outflows: number[];
-  annual_net_cash_flow?: number[];
-  cumulative_cash_flow?: number[];
-  breakeven_year?: number | null;
-  loan_term?: number | null;
+  years: number[]; // Year indices [0, 1, 2, ..., n]
+  initial_investment?: number; // EUR — out-of-pocket investment at Year 0
+  annual_inflows: number[]; // EUR — energy savings revenue per year
+  annual_outflows: number[]; // EUR — maintenance + loan payments per year
+  annual_net_cash_flow?: number[]; // EUR — inflows minus outflows per year
+  cumulative_cash_flow?: number[]; // EUR — running cumulative net cash flow
+  breakeven_year?: number | null; // Year index when cumulative turns positive
+  loan_term?: number | null; // Years — loan repayment duration
 }
 
 /**

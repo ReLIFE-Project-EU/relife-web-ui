@@ -5,10 +5,12 @@ import type { FinancialResults, RenovationScenario } from "../types/renovation";
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Normalization factor for ROI in MCDA (assumes max ROI is 200%)
- * Duplicated here to keep utility pure and avoid circular dependencies
+ * Normalization factor for ROI in MCDA.
+ * The Financial API returns ROI as a dimensionless fraction (e.g., 1.423 = 142.3% return).
+ * A value of 2.0 caps the score at 1.0 when ROI reaches 200% (fraction = 2.0).
+ * Duplicated here to keep utility pure and avoid circular dependencies.
  */
-const MCDA_MAX_ROI_NORMALIZATION = 200;
+const MCDA_MAX_ROI_NORMALIZATION = 2.0;
 
 /**
  * Normalization factor for NPV in MCDA

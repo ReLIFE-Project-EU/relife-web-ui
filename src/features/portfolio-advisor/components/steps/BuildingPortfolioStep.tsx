@@ -838,7 +838,7 @@ export function BuildingPortfolioStep() {
                 <Table.Th>Name</Table.Th>
                 <Table.Th>Category</Table.Th>
                 <Table.Th>Country</Table.Th>
-                <Table.Th>Floor Area (m2)</Table.Th>
+                <Table.Th>Floor Area (m²)</Table.Th>
                 <Table.Th>Archetype</Table.Th>
                 <Table.Th>Source</Table.Th>
                 <Table.Th>Actions</Table.Th>

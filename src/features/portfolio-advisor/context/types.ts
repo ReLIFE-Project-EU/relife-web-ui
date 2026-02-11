@@ -37,8 +37,8 @@ export interface PRABuilding {
   numberOfFloors: number;
   propertyType: string;
   floorNumber?: number;
-  estimatedCapex?: number;
-  annualMaintenanceCost?: number;
+  estimatedCapex?: number; // EUR — total capital expenditure for renovation
+  annualMaintenanceCost?: number; // EUR/year — annual O&M cost post-renovation
   validationStatus: "valid" | "invalid" | "pending";
   validationErrors?: string[];
 }

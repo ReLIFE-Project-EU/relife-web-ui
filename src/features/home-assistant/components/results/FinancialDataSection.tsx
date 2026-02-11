@@ -397,7 +397,7 @@ function SecondaryMetricsTable({
       metricType: "ROI" as const,
       value:
         (result.riskAssessment?.pointForecasts.ROI ??
-          result.returnOnInvestment / 100) * 100,
+          result.returnOnInvestment) * 100,
       formatter: formatPercent,
       percentile: percentiles?.ROI
         ? {

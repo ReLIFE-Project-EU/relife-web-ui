@@ -120,7 +120,7 @@ export function ScenarioComparison() {
 
               {/* Flexibility Index Row */}
               <MetricRow
-                label="Flexibility Index"
+                label="Flexibility Index (0–100)"
                 baseValue={
                   currentScenario?.flexibilityIndex ||
                   estimation.flexibilityIndex
@@ -133,7 +133,7 @@ export function ScenarioComparison() {
 
               {/* Comfort Index Row */}
               <MetricRow
-                label="Comfort Index"
+                label="Comfort Index (0–100)"
                 baseValue={
                   currentScenario?.comfortIndex || estimation.comfortIndex
                 }
