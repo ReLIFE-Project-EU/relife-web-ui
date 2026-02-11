@@ -211,13 +211,9 @@ function CSVImportPanel({
 function ManualAddPanel({ onAdd }: { onAdd: (building: PRABuilding) => void }) {
   const { building: buildingService } = usePortfolioAdvisorServices();
   const [categories, setCategories] = useState<string[]>([]);
-  const [countries, setCountries] = useState<
-    { value: string; label: string }[]
-  >([]);
 
   // Section 1: Building identification
   const [name, setName] = useState("");
-  const [country, setCountry] = useState<string | null>(null);
   const [category, setCategory] = useState<string | null>(null);
   const [constructionYear, setConstructionYear] = useState<number | string>("");
   const [propertyType, setPropertyType] = useState<string | null>(null);
@@ -259,22 +255,19 @@ function ManualAddPanel({ onAdd }: { onAdd: (building: PRABuilding) => void }) {
   // Load building options
   useEffect(() => {
     buildingService
-      .getOptions()
-      .then((opts) => setCountries(opts.countries))
-      .catch(() => {});
-    buildingService
       .getAvailableCategories()
       .then(setCategories)
       .catch(() => {});
   }, [buildingService]);
 
-  // Auto-match archetype when country + category + year are set
+  // Auto-match archetype when category + year + coordinates are set
   useEffect(() => {
     if (
-      !country ||
       !category ||
       !constructionYear ||
-      typeof constructionYear !== "number"
+      typeof constructionYear !== "number" ||
+      typeof lat !== "number" ||
+      typeof lng !== "number"
     ) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setMatchedArchetype(null);
@@ -287,13 +280,7 @@ function ManualAddPanel({ onAdd }: { onAdd: (building: PRABuilding) => void }) {
     const period = deriveConstructionPeriod(constructionYear);
 
     buildingService
-      .findMatchingArchetype(
-        category,
-        period,
-        typeof lat === "number" && typeof lng === "number"
-          ? { lat, lng }
-          : null,
-      )
+      .findMatchingArchetype(category, period, { lat, lng })
       .then(async (matched) => {
         if (!matched) {
           setMatchedArchetype(null);
@@ -309,10 +296,10 @@ function ManualAddPanel({ onAdd }: { onAdd: (building: PRABuilding) => void }) {
         setMatchedArchetype(details);
         setSelectedArchetypeName(details.name);
 
-        // Fetch all archetypes for this country + category for override dropdown
+        // Fetch all archetypes for the matched country + category for override dropdown
         const allArchetypes = await buildingService.getArchetypes();
         const filtered = allArchetypes.filter(
-          (a) => a.country === country && a.category === category,
+          (a) => a.country === matched.country && a.category === category,
         );
         const detailsList = await Promise.all(
           filtered.map((a) =>
@@ -330,7 +317,7 @@ function ManualAddPanel({ onAdd }: { onAdd: (building: PRABuilding) => void }) {
         setAvailableArchetypes([]);
       })
       .finally(() => setLoadingArchetype(false));
-  }, [buildingService, country, category, constructionYear, lat, lng]);
+  }, [buildingService, category, constructionYear, lat, lng]);
 
   // When user changes archetype manually
   useEffect(() => {
@@ -346,7 +333,6 @@ function ManualAddPanel({ onAdd }: { onAdd: (building: PRABuilding) => void }) {
 
   const isValid =
     name.trim() &&
-    country &&
     category &&
     typeof constructionYear === "number" &&
     constructionYear >= 1800 &&
@@ -385,7 +371,7 @@ function ManualAddPanel({ onAdd }: { onAdd: (building: PRABuilding) => void }) {
       name: name.trim(),
       source: "manual",
       category: category!,
-      country: country!,
+      country: matchedArchetype.country,
       archetypeName: matchedArchetype.name,
       modifications:
         Object.keys(modifications).length > 0 ? modifications : undefined,
@@ -408,7 +394,6 @@ function ManualAddPanel({ onAdd }: { onAdd: (building: PRABuilding) => void }) {
 
     // Reset form
     setName("");
-    setCountry(null);
     setCategory(null);
     setConstructionYear("");
     setPropertyType(null);
@@ -446,14 +431,12 @@ function ManualAddPanel({ onAdd }: { onAdd: (building: PRABuilding) => void }) {
 
         <Grid>
           <Grid.Col span={6}>
-            <Select
+            <TextInput
               label="Country"
-              placeholder="Select country"
-              data={countries}
-              value={country}
-              onChange={setCountry}
-              searchable
-              required
+              placeholder="Auto-detected from coordinates"
+              value={matchedArchetype?.country ?? ""}
+              readOnly
+              variant="filled"
             />
           </Grid.Col>
           <Grid.Col span={6}>
@@ -532,8 +515,9 @@ function ManualAddPanel({ onAdd }: { onAdd: (building: PRABuilding) => void }) {
                 An <strong>archetype</strong> is a reference building model that
                 defines thermal characteristics, HVAC systems, and construction
                 details used in energy simulation. Your building has been
-                matched to the closest available archetype based on country,
-                category, and construction period.
+                matched to the closest available archetype based on
+                coordinates, category, and construction period. The country is
+                automatically detected from the matched archetype.
               </Text>
             </Alert>
 
