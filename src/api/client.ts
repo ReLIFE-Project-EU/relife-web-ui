@@ -1,4 +1,6 @@
 import { supabase } from "../auth";
+import { startHttpRequestTracking } from "../contexts/global-loading/httpLoadingStore";
+import { isLongRunningRequest } from "../contexts/global-loading/longRunningRequestConfig";
 import type {
   AuthenticatedUser,
   FileUploadResponse,
@@ -9,6 +11,13 @@ import type {
 import { APIError, ServiceType } from "../types/common";
 
 const API_BASE = "/api";
+
+function startTrackedHttpRequest(method: string, path: string): () => void {
+  if (!isLongRunningRequest(method, path)) {
+    return () => {};
+  }
+  return startHttpRequestTracking({ method, path });
+}
 
 // ============================================================================
 // Core Request Functions
@@ -30,6 +39,8 @@ export async function request<T>(
   path: string,
   options?: RequestInit,
 ): Promise<T> {
+  const method = options?.method || "GET";
+  const stopTracking = startTrackedHttpRequest(method, path);
   const token = await getAuthToken();
   const headers: HeadersInit = {
     "Content-Type": "application/json",
@@ -42,33 +53,46 @@ export async function request<T>(
     console.warn("No auth token available for request to", path);
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers,
+    });
 
-  if (!response.ok) {
-    let validationErrors;
-    try {
-      const contentType = response.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        validationErrors = await response.json();
+    if (!response.ok) {
+      let validationErrors;
+      try {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          validationErrors = await response.json();
+        }
+      } catch {
+        // No JSON body or parsing failed
       }
-    } catch {
-      // No JSON body or parsing failed
+
+      console.error(
+        `API Error ${response.status} for ${path}`,
+        validationErrors,
+      );
+      throw new APIError(
+        response.status,
+        response.statusText,
+        validationErrors,
+      );
     }
 
-    console.error(`API Error ${response.status} for ${path}`, validationErrors);
-    throw new APIError(response.status, response.statusText, validationErrors);
+    return response.json();
+  } finally {
+    stopTracking();
   }
-
-  return response.json();
 }
 
 export async function uploadRequest<T>(
   path: string,
   formData: FormData,
 ): Promise<T> {
+  const method = "POST";
+  const stopTracking = startTrackedHttpRequest(method, path);
   const token = await getAuthToken();
   const headers: HeadersInit = {};
 
@@ -76,30 +100,40 @@ export async function uploadRequest<T>(
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
-    body: formData,
-    headers,
-  });
+  try {
+    const response = await fetch(`${API_BASE}${path}`, {
+      method: "POST",
+      body: formData,
+      headers,
+    });
 
-  if (!response.ok) {
-    let validationErrors;
-    try {
-      const contentType = response.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        validationErrors = await response.json();
+    if (!response.ok) {
+      let validationErrors;
+      try {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          validationErrors = await response.json();
+        }
+      } catch {
+        // No JSON body or parsing failed
       }
-    } catch {
-      // No JSON body or parsing failed
+
+      throw new APIError(
+        response.status,
+        response.statusText,
+        validationErrors,
+      );
     }
 
-    throw new APIError(response.status, response.statusText, validationErrors);
+    return response.json();
+  } finally {
+    stopTracking();
   }
-
-  return response.json();
 }
 
 export async function downloadRequest(path: string): Promise<Blob> {
+  const method = "GET";
+  const stopTracking = startTrackedHttpRequest(method, path);
   const token = await getAuthToken();
   const headers: HeadersInit = {};
 
@@ -107,13 +141,17 @@ export async function downloadRequest(path: string): Promise<Blob> {
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE}${path}`, { headers });
+  try {
+    const response = await fetch(`${API_BASE}${path}`, { headers });
 
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status} ${response.statusText}`);
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    }
+
+    return response.blob();
+  } finally {
+    stopTracking();
   }
-
-  return response.blob();
 }
 
 // ============================================================================

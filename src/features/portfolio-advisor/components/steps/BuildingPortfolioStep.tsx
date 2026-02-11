@@ -515,9 +515,9 @@ function ManualAddPanel({ onAdd }: { onAdd: (building: PRABuilding) => void }) {
                 An <strong>archetype</strong> is a reference building model that
                 defines thermal characteristics, HVAC systems, and construction
                 details used in energy simulation. Your building has been
-                matched to the closest available archetype based on
-                coordinates, category, and construction period. The country is
-                automatically detected from the matched archetype.
+                matched to the closest available archetype based on coordinates,
+                category, and construction period. The country is automatically
+                detected from the matched archetype.
               </Text>
             </Alert>
 

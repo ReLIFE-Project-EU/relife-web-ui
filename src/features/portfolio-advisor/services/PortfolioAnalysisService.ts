@@ -59,7 +59,14 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       const batch = queue.splice(0, PRA_CONCURRENCY_LIMIT);
       const batchResults = await Promise.allSettled(
         batch.map((b) =>
-          this.analyzeBuilding(b, selectedMeasures, funding, projectLifetime, globalCapex, globalMaintenanceCost),
+          this.analyzeBuilding(
+            b,
+            selectedMeasures,
+            funding,
+            projectLifetime,
+            globalCapex,
+            globalMaintenanceCost,
+          ),
         ),
       );
 
@@ -118,7 +125,8 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     // Step 3: Calculate financial results
     // Per-building values take precedence; fall back to global overrides
     const capex = building.estimatedCapex ?? globalCapex ?? null;
-    const maintenanceCost = building.annualMaintenanceCost ?? globalMaintenanceCost ?? null;
+    const maintenanceCost =
+      building.annualMaintenanceCost ?? globalMaintenanceCost ?? null;
 
     const financialResults = await this.financial.calculateForAllScenarios(
       scenarios,
