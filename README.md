@@ -30,30 +30,37 @@ sequenceDiagram
     participant HRA as Home Renovation Assistant
     participant FCAST as Forecasting API
     participant FIN as Financial API
-    participant TECH as Technical API - stubbed for this tool
+    participant TECH as Technical API (stubbed in HRA flow)
 
-    UI->>HRA: Open /home-assistant/tool and submit building data
-    HRA->>FCAST: listArchetypes/getArchetypeDetails
-    FCAST-->>HRA: Archetype candidates + selected archetype metadata
-    HRA->>FCAST: simulateDirect or simulateCustomBuilding for baseline EPC
-    FCAST-->>HRA: Baseline energy simulation
+    UI->>HRA: Submit building inputs and start EPC estimation
+    HRA->>FCAST: listArchetypes / getArchetypeDetails
+    FCAST-->>HRA: Archetype metadata for matching
+    alt Modified archetype
+      HRA->>FCAST: simulateCustomBuilding(archetype=false)
+      FCAST-->>HRA: Baseline simulation results
+    else Default archetype
+      HRA->>FCAST: simulateDirect(archetype=true)
+      FCAST-->>HRA: Baseline simulation results
+    end
 
     UI->>HRA: Evaluate selected renovation measures
-    HRA->>FCAST: simulateECM for supported envelope measures only
-    FCAST-->>HRA: Renovated scenario simulation
-
+    HRA->>FCAST: simulateECM(supported envelope measures)
+    FCAST-->>HRA: Current + renovated scenarios
     HRA->>FIN: calculateARV + assessRisk per scenario
-    FIN-->>HRA: ARV + risk indicators NPV IRR ROI PBP DPP
-    HRA-->>UI: Render scenarios and financial results
+    FIN-->>HRA: ARV and risk indicators (NPV/IRR/ROI/PBP/DPP)
+    HRA-->>UI: Render scenarios and financial outputs
 
-    UI->>HRA: Run MCDA ranking
-    Note over HRA,TECH: Technical API is not called and ranking uses local mock MCDA TOPSIS
+    UI->>HRA: Run persona-based ranking
+    Note over HRA,TECH: MCDA uses local mock TOPSIS service; Technical API is not called
     HRA-->>UI: Render ranked recommendations
-
-    Note over FCAST: Partial for this tool: ECM currently applies wall/roof/windows only
+    Note over FCAST: Partial: ECM path currently supports wall/roof/windows only
 ```
 
-Implementation status: Home Assistant is implemented end-to-end with real Forecasting + Financial API calls via `src/services/BuildingService.ts`, `src/services/EnergyService.ts`, `src/services/RenovationService.ts`, and `src/services/FinancialService.ts`. The Technical API is currently stubbed for this tool path: `mcda.rank(...)` is provided by `src/services/mock/MockMCDAService.ts` rather than `src/api/technical.ts`. Renovation simulation is partial because `simulateECM` currently applies supported envelope measures (wall, roof, windows), while other selected measures are not simulated in the API path.
+**Implementation status**
+- Real Forecasting + Financial integrations are wired through `src/services/BuildingService.ts`, `src/services/EnergyService.ts`, `src/services/RenovationService.ts`, and `src/services/FinancialService.ts`.
+- Technical API behavior is mocked/stubbed for this tool path: ranking runs via `src/services/mock/MockMCDAService.ts` and no tool flow calls `src/api/technical.ts`.
+- Renovation simulation is partial: `src/services/RenovationService.ts` filters to supported envelope measures before `forecasting.simulateECM(...)`, while unsupported measures remain selectable but unsimulated.
+- For users and contributors, this means energy/financial outputs are API-backed, but MCDA ranking and non-envelope renovation effects are not yet backend-validated.
 
 ### Portfolio Renovation Advisor
 
@@ -63,45 +70,49 @@ sequenceDiagram
     participant PRA as Portfolio Renovation Advisor
     participant FCAST as Forecasting API
     participant FIN as Financial API
-    participant TECH as Technical API - stubbed for this tool
+    participant TECH as Technical API (stubbed in PRA flow)
 
-    UI->>PRA: Open /portfolio-advisor/tool and configure buildings/measures
-    UI->>PRA: Click "Analyze Portfolio"
-    PRA->>PRA: analyzePortfolio batched by PRA_CONCURRENCY_LIMIT
-
-    loop For each building
-      PRA->>FCAST: estimateEPC via simulateDirect or simulateCustomBuilding
+    UI->>PRA: Configure portfolio and click Analyze Portfolio
+    PRA->>PRA: analyzePortfolio() with batched concurrency
+    loop Each building in batch
+      PRA->>FCAST: estimateEPC (simulateDirect/simulateCustomBuilding)
       FCAST-->>PRA: Baseline estimation
-      PRA->>FCAST: evaluateScenarios via simulateECM
-      FCAST-->>PRA: Renovated scenarios
+      PRA->>FCAST: evaluateScenarios (simulateECM)
+      FCAST-->>PRA: Scenario simulation results
       PRA->>FIN: calculateARV + assessRisk
-      FIN-->>PRA: Financial results per scenario
-      PRA-->>UI: Progress update + per-building result
+      FIN-->>PRA: Financial outputs per scenario
+      PRA-->>UI: Progress callback and per-building result
     end
-
-    Note over PRA,TECH: Technical API is not called in the current portfolio flow
-    PRA-->>UI: Final portfolio results table and summary
-
-    Note over FCAST: Partial for this tool because renovation simulation depends on supported ECM measures
+    PRA-->>UI: Portfolio summary and results step
+    Note over PRA,TECH: Technical API is not invoked in current PRA analysis flow
+    Note over FCAST: Partial: same ECM support constraints as HRA (envelope-focused)
 ```
 
-Implementation status: Portfolio Advisor analysis is implemented with real Forecasting + Financial integrations orchestrated by `src/features/portfolio-advisor/services/PortfolioAnalysisService.ts` and triggered in `src/features/portfolio-advisor/components/steps/FinancingStep.tsx`. The service context at `src/features/portfolio-advisor/context/ServiceContext.tsx` wires real `EnergyService`, `RenovationService`, and `FinancialService`, then processes buildings in batches with progress callbacks. The Technical API remains stubbed for this tool path because no call is made to `src/api/technical.ts`; MCDA state/actions exist but ranking is not executed in the current workflow.
+**Implementation status**
+- Real Forecasting + Financial calls are orchestrated by `src/features/portfolio-advisor/services/PortfolioAnalysisService.ts`, triggered from `src/features/portfolio-advisor/components/steps/FinancingStep.tsx`.
+- The runtime service wiring in `src/features/portfolio-advisor/context/ServiceContext.tsx` uses real `EnergyService`, `RenovationService`, and `FinancialService`, and processes buildings in concurrency-limited batches.
+- Technical API usage is currently stubbed/absent in the analysis path: no portfolio-analysis call targets `src/api/technical.ts`, and MCDA is not executed as part of the visible PRA workflow.
+- For users and contributors, this means portfolio energy/financial outputs are API-backed, while Technical-service MCDA/pillar scoring is not yet part of production flow.
 
 ### Renovation Strategy Explorer
 
 ```mermaid
 sequenceDiagram
     participant UI as Web UI
-    participant RSE as Renovation Strategy Explorer
-    participant FCAST as Forecasting API - not invoked
-    participant FIN as Financial API - not invoked
-    participant TECH as Technical API - not invoked
+    participant RSE as Renovation Strategy Explorer (landing stub)
+    participant FCAST as Forecasting API (not invoked)
+    participant FIN as Financial API (not invoked)
+    participant TECH as Technical API (not invoked)
 
     UI->>RSE: Navigate to /strategy-explorer
-    RSE-->>UI: Render landing page content and disabled "Coming Soon" CTA
-    Note over RSE,FCAST: No runtime request path from this tool to Forecasting API
-    Note over RSE,FIN: No runtime request path from this tool to Financial API
-    Note over RSE,TECH: No runtime request path from this tool to Technical API
+    RSE-->>UI: Render static landing content + disabled "Coming Soon" CTA
+    Note over RSE,FCAST: No runtime request path to Forecasting API
+    Note over RSE,FIN: No runtime request path to Financial API
+    Note over RSE,TECH: No runtime request path to Technical API
 ```
 
-Implementation status: Strategy Explorer is currently a landing-page stub only, implemented in `src/routes/StrategyExplorerLanding.tsx` and routed in `src/App.tsx`. The Web UI renders static planned features and a disabled CTA, with no service orchestration layer and no tool-specific feature module yet. Forecasting, Financial, and Technical APIs are all uninvoked in the current runtime path for this tool.
+**Implementation status**
+- The current implementation is a UI stub in `src/routes/StrategyExplorerLanding.tsx`, exposed by the route registration in `src/App.tsx`.
+- The page renders planned feature content only, with a disabled action button and no tool orchestration/service layer.
+- Forecasting, Financial, and Technical APIs are all uninvoked in this tool path at runtime.
+- For users and contributors, this means Strategy Explorer is discoverable in navigation but not yet functionally integrated with backend services.

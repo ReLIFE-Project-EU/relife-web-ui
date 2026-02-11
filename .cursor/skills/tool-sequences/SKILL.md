@@ -173,10 +173,12 @@ Diagram scope guidance:
 
 - For each tool subsection:
   - Insert that tool's sequence diagram in a fenced Mermaid block.
-  - Add a short "Implementation status" paragraph directly after the diagram that states:
-    - Which API(s) are mocked/stubbed/partial for this specific tool.
-    - What that implies for users and contributors (e.g., "financial results are placeholder").
-  - Prefer linking to code evidence (paths) rather than making vague claims.
+  - Add an "Implementation status" section directly after the diagram using proper Markdown bullet points:
+    - Start with a brief introductory sentence (optional)
+    - Use bullet points (`-`) to list:
+      - Which API(s) are mocked/stubbed/partial for this specific tool
+      - What that implies for users and contributors (e.g., "financial results are placeholder")
+      - Links to code evidence (paths) rather than making vague claims
 
 ### 6) Validate documentation correctness
 
