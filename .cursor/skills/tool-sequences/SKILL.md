@@ -161,12 +161,12 @@ Rules for each diagram:
 - Show request and response arrows for each significant call.
 - Prefer coarse-grained messages (avoid dumping schemas).
 - Use `alt` / `opt` blocks for conditional paths (e.g., feature flag, mock mode).
-- Use `Note over` or `Note right of` to call out mocked/stubbed/partial behavior.
+- Prefer message lines over `Note` blocks for compatibility (e.g., `HRA->>HRA: Technical API not called in this flow`).
 
 How to "explicitly indicate" mocked/stubbed/partial:
 
-- In participant alias: `participant F as Financial API (mock)`
-- And/or a note: `Note over F: Mock adapter returns fixture data`
+- In a message line (preferred): `HRA->>HRA: Financial service uses mock adapter`
+- Optionally in participant alias, but avoid punctuation-heavy labels.
 - For partial: include what is implemented vs missing (1 sentence).
 
 Diagram scope guidance:
@@ -185,7 +185,7 @@ Reference the flow diagrams at the bottom of:
 
 Rules for each flow diagram:
 
-- Use `flowchart TD` (top-down layout).
+- Use `flowchart LR` (left-to-right layout).
 - Include ALL components present in the design diagrams:
   - User/Professional Input box (with inline details about input fields)
   - ReLIFE Database cylinder shape
@@ -197,6 +197,8 @@ Rules for each flow diagram:
   - Component name (bold, ALL CAPS for main sections)
   - Separator line `---`
   - Key details (inputs, outputs, endpoints, etc.)
+- Wrap flowchart labels in quotes for parser safety, e.g. `Node["LINE1<br/>LINE2"]`.
+- For database shape, use quoted cylinder labels, e.g. `DB[("ReLIFE Database<br/>...")]`.
 - Use styling to distinguish implementation status:
   - `style ComponentName fill:#COLOR` at the end of the diagram
   - Suggested colors:
@@ -207,7 +209,7 @@ Rules for each flow diagram:
     - Technical: `#f8d7da` (light red)
     - UI/Output: `#d1ecf1` (light cyan) or `#e2e3e5` (light gray)
 - Add visual indicators for mocked/stubbed components:
-  - Append "(MOCK)" or "(STUB)" to the component name in the box
+- Prefer `MOCK` / `STUB` / `PARTIAL` without parentheses in labels
   - Use a distinct border color or fill shade (e.g., lighter or with dashed border)
   - In the inline details, explicitly note what's missing or simplified
 - Show directional arrows for data flow:
@@ -220,21 +222,38 @@ Rules for each flow diagram:
   - If input fields differ from design, the differences should be visible in the box content
   - If outputs differ, they should be visible in the output box
 
+### Mermaid Compatibility Profile (GitHub-safe)
+
+Use this strict profile when writing Mermaid for README:
+
+- **Flowcharts**
+  - Use `flowchart LR`.
+  - Always quote node labels: `A["..."]`.
+  - Use quoted cylinder labels for DB nodes: `DB[("...")]`.
+  - Avoid parentheses-heavy status tokens inside labels; prefer `STUB - NOT CALLED`.
+- **Sequence diagrams**
+  - Keep participant names simple (letters, numbers, spaces).
+  - Avoid relying on `Note over` / `Note right of`; encode status via explicit self-messages instead.
+  - Keep one interaction per line with standard arrows (`->>`, `-->>`).
+- **General**
+  - Avoid punctuation patterns that may confuse older Mermaid parsers.
+  - If a diagram fails to render, simplify labels first (remove parentheses, then remove extra punctuation), then retry.
+
 Example structure (adapt to actual implementation):
 
 ```mermaid
-flowchart TD
-    Input[USER INPUT<br/>---<br/>Required:<br/>- Field1<br/>- Field2<br/>---<br/>Optional:<br/>- Field3]
+flowchart LR
+    Input["USER INPUT<br/>---<br/>Required:<br/>- Field1<br/>- Field2<br/>---<br/>Optional:<br/>- Field3"]
     
-    DB[(Database<br/>---<br/>Data1<br/>Data2)]
+    DB[("Database<br/>---<br/>Data1<br/>Data2")]
     
-    Forecasting[FORECASTING SERVICE MOCK<br/>---<br/>POST /endpoint<br/>---<br/>Returns:<br/>- output1<br/>- output2<br/>NOTE: Mock fixture data]
+    Forecasting["FORECASTING SERVICE MOCK<br/>---<br/>POST /endpoint<br/>---<br/>Returns:<br/>- output1<br/>- output2<br/>NOTE: Mock fixture data"]
     
-    Financial[FINANCIAL SERVICE<br/>---<br/>POST /arv<br/>POST /risk_assessment<br/>---<br/>Outputs:<br/>- indicator1<br/>- indicator2]
+    Financial["FINANCIAL SERVICE<br/>---<br/>POST /arv<br/>POST /risk_assessment<br/>---<br/>Outputs:<br/>- indicator1<br/>- indicator2"]
     
-    Technical[TECHNICAL SERVICE STUB<br/>---<br/>POST /endpoint<br/>---<br/>NOT IMPLEMENTED<br/>Returns placeholder]
+    Technical["TECHNICAL SERVICE STUB - NOT IMPLEMENTED<br/>---<br/>POST /endpoint<br/>---<br/>Returns placeholder"]
     
-    Output[RESULTS DISPLAY<br/>---<br/>Shows:<br/>- result1<br/>- result2]
+    Output["RESULTS DISPLAY<br/>---<br/>Shows:<br/>- result1<br/>- result2"]
     
     Input --> Forecasting
     DB --> Forecasting
@@ -293,7 +312,7 @@ Comparison strategy:
   - Flow diagram components and data flows match actual implementation.
 - Ensure Mermaid renders on GitHub:
   - Valid syntax, correct code fence, no unsupported extensions.
-  - Test both `sequenceDiagram` and `flowchart TD` syntax.
+  - Test both `sequenceDiagram` and `flowchart LR` syntax.
 - Compare flow diagrams with design documentation:
   - Visually review side-by-side to identify deviations.
   - Ensure styling differences make mock/stub status obvious.
@@ -333,9 +352,9 @@ sequenceDiagram
 
   HRA-->>UI: Render recommendation / response payload
 
-  %% Add notes to explicitly mark mocks/stubs/partial components
-  %% Note over FIN: (mock) Currently returns fixture data from <path>
-  %% Note over TECH: (partial) Implements X; Y is TODO/flagged
+  %% Prefer explicit self-messages instead of Note blocks for compatibility
+  %% HRA->>HRA: Financial service uses mock adapter from <path>
+  %% HRA->>HRA: Technical integration is partial (X implemented, Y TODO)
 ```
 
 #### Portfolio Renovation Advisor
@@ -381,18 +400,18 @@ These should match the style from `docs/pra-tool-design.md` and `docs/hra-tool-d
 #### Home Renovation Assistant
 
 ```mermaid
-flowchart TD
-    UserInput[USER INPUT<br/>---<br/>Required:<br/>- Building details<br/>- Location lat, lng<br/>- Project lifetime<br/>---<br/>Optional:<br/>- CAPEX<br/>- Maintenance cost<br/>- Loan amount/term]
+flowchart LR
+    UserInput["USER INPUT<br/>---<br/>Required:<br/>- Building details<br/>- Location lat, lng<br/>- Project lifetime<br/>---<br/>Optional:<br/>- CAPEX<br/>- Maintenance cost<br/>- Loan amount/term"]
 
-    DB[(ReLIFE Database<br/>---<br/>CAPEX<br/>Maintenance costs<br/>Building Archetypes<br/>Historical data)]
+    DB[("ReLIFE Database<br/>---<br/>CAPEX<br/>Maintenance costs<br/>Building Archetypes<br/>Historical data")]
 
-    Forecasting[FORECASTING SERVICE<br/>---<br/>POST /endpoint<br/>---<br/>Outputs:<br/>- energy_savings<br/>- energy_class<br/>- CO2 emissions]
+    Forecasting["FORECASTING SERVICE<br/>---<br/>POST /endpoint<br/>---<br/>Outputs:<br/>- energy_savings<br/>- energy_class<br/>- CO2 emissions"]
 
-    Financial[FINANCIAL SERVICE<br/>---<br/>POST /arv<br/>POST /risk_assessment<br/>---<br/>Outputs:<br/>- Property value<br/>- Percentiles P10-P90<br/>- NPV, IRR, ROI, PBP, DPP]
+    Financial["FINANCIAL SERVICE<br/>---<br/>POST /arv<br/>POST /risk_assessment<br/>---<br/>Outputs:<br/>- Property value<br/>- Percentiles P10-P90<br/>- NPV, IRR, ROI, PBP, DPP"]
 
-    Technical[TECHNICAL SERVICE<br/>---<br/>POST /endpoint<br/>---<br/>Outputs:<br/>- Optimal package<br/>- Technology rankings]
+    Technical["TECHNICAL SERVICE<br/>---<br/>POST /endpoint<br/>---<br/>Outputs:<br/>- Optimal package<br/>- Technology rankings"]
 
-    Output[RESULTS DISPLAY<br/>---<br/>Technical Output:<br/>- Energy savings<br/>- CO2 emissions<br/>---<br/>Financial Output:<br/>- Charts, indicators<br/>- Property value<br/>---<br/>Ranking Output:<br/>- Optimal packages]
+    Output["RESULTS DISPLAY<br/>---<br/>Technical Output:<br/>- Energy savings<br/>- CO2 emissions<br/>---<br/>Financial Output:<br/>- Charts, indicators<br/>- Property value<br/>---<br/>Ranking Output:<br/>- Optimal packages"]
 
     UserInput --> Forecasting
     DB --> Forecasting
@@ -418,7 +437,7 @@ flowchart TD
 
 **Notes for flow diagram generation:**
 - Replace component details with actual implementation specifics
-- Add "(MOCK)", "(STUB)", or "(PARTIAL)" labels where applicable
+- Add `MOCK`, `STUB`, or `PARTIAL` labels (without parentheses) where applicable
 - Use dashed borders (`stroke-dasharray: 5 5`) for mocked/stubbed components
 - Include inline annotations about what differs from design (e.g., "Design specified X fields, implemented Y")
 - Ensure data flow arrows accurately reflect actual API call sequences
@@ -426,18 +445,18 @@ flowchart TD
 #### Portfolio Renovation Advisor
 
 ```mermaid
-flowchart TD
-    ProfInput[PROFESSIONAL INPUT<br/>---<br/>Technical Inputs:<br/>- Building geometry<br/>- Envelope properties<br/>- HVAC systems<br/>---<br/>Financial Inputs:<br/>- Project lifetime<br/>- CAPEX<br/>- Loan details]
+flowchart LR
+    ProfInput["PROFESSIONAL INPUT<br/>---<br/>Technical Inputs:<br/>- Building geometry<br/>- Envelope properties<br/>- HVAC systems<br/>---<br/>Financial Inputs:<br/>- Project lifetime<br/>- CAPEX<br/>- Loan details"]
 
-    DB[(ReLIFE Database<br/>---<br/>CAPEX<br/>Maintenance costs<br/>Building Archetypes)]
+    DB[("ReLIFE Database<br/>---<br/>CAPEX<br/>Maintenance costs<br/>Building Archetypes")]
 
-    Forecasting[FORECASTING SERVICE<br/>---<br/>Outputs:<br/>- energy_savings<br/>- energy_class_after<br/>- CO2 emissions]
+    Forecasting["FORECASTING SERVICE<br/>---<br/>Outputs:<br/>- energy_savings<br/>- energy_class_after<br/>- CO2 emissions"]
 
-    Financial[FINANCIAL SERVICE<br/>---<br/>POST /arv<br/>POST /risk_assessment<br/>---<br/>ARV output:<br/>- Property value<br/>---<br/>Risk output:<br/>- Percentiles P10-P90<br/>- 3 Probabilities<br/>- 5 Chart metadata]
+    Financial["FINANCIAL SERVICE<br/>---<br/>POST /arv<br/>POST /risk_assessment<br/>---<br/>ARV output:<br/>- Property value<br/>---<br/>Risk output:<br/>- Percentiles P10-P90<br/>- 3 Probabilities<br/>- 5 Chart metadata"]
 
-    Technical[TECHNICAL SERVICE<br/>---<br/>POST /mcda<br/>---<br/>Multi-Criteria Analysis:<br/>- Scenario comparison<br/>- Optimal packages]
+    Technical["TECHNICAL SERVICE<br/>---<br/>POST /mcda<br/>---<br/>Multi-Criteria Analysis:<br/>- Scenario comparison<br/>- Optimal packages"]
 
-    ProfOutput[PROFESSIONAL UI<br/>---<br/>Technical Output:<br/>- Energy savings<br/>- Energy class improvements<br/>---<br/>Financial Output:<br/>- 5 Distribution charts<br/>- Risk probabilities<br/>- Property value<br/>---<br/>Ranking Output:<br/>- Scenario rankings<br/>- Optimal packages]
+    ProfOutput["PROFESSIONAL UI<br/>---<br/>Technical Output:<br/>- Energy savings<br/>- Energy class improvements<br/>---<br/>Financial Output:<br/>- 5 Distribution charts<br/>- Risk probabilities<br/>- Property value<br/>---<br/>Ranking Output:<br/>- Scenario rankings<br/>- Optimal packages"]
 
     ProfInput --> Forecasting
     DB --> Forecasting
@@ -464,7 +483,7 @@ flowchart TD
 #### Renovation Strategy Explorer
 
 ```mermaid
-flowchart TD
+flowchart LR
     %% To be filled based on actual implementation
     %% Follow same pattern as HRA and PRA
     %% Include all service boxes even if mocked/stubbed
