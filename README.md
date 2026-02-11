@@ -51,7 +51,7 @@ sequenceDiagram
     HRA-->>UI: Render scenarios and financial outputs
 
     UI->>HRA: Run persona-based ranking
-    Note over HRA,TECH: MCDA uses local mock TOPSIS service; Technical API is not called
+    Note over HRA,TECH: MCDA uses local mock TOPSIS service, and Technical API is not called
     HRA-->>UI: Render ranked recommendations
     Note over FCAST: Partial: ECM path currently supports wall/roof/windows only
 ```
