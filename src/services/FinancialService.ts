@@ -249,7 +249,9 @@ export class FinancialService implements IFinancialService {
         riskAssessment: riskResult,
         capitalExpenditure: riskResult
           ? Math.round(riskResult.metadata.capex)
-          : 0,
+          : hasCapex
+            ? Math.round(effectiveCost ?? renovationCost)
+            : 0,
         returnOnInvestment: riskResult?.pointForecasts.ROI ?? 0,
         paybackTime: riskResult?.pointForecasts.PBP ?? 0,
         netPresentValue: riskResult?.pointForecasts.NPV ?? 0,
