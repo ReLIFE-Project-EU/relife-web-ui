@@ -1,0 +1,5 @@
+building_name,lat,lng,category,country,floor_area,construction_year,number_of_floors,property_type,archetype_name,floor_number,capex,annual_maintenance_cost
+Athens Riverside Apartments,37.9838,23.7275,Multi Family House,Greece,4200,1982,8,apartment,,4,680000,18500
+Rome Historic Townhouse,41.9028,12.4964,Single Family House,Italy,260,1938,3,semi-detached,,1,92000,3400
+Milan Central Office Block,45.4642,9.19,office,Italy,9800,1975,12,terraced,,6,1450000,52000
+Thessaloniki Seafront Residences,40.6401,22.9444,Multi Family House,Greece,3150,1991,7,apartment,,3,510000,16000
