@@ -147,6 +147,7 @@ tasks:
   dev-local:
     desc: "Start the frontend dev server with locally built API services"
     cmds:
+      - task: local-services-git-context
       - task: up-local
       - npm run dev
 
