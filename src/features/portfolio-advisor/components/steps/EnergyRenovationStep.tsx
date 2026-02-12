@@ -8,6 +8,7 @@ import {
   Badge,
   Box,
   Card,
+  Checkbox,
   Grid,
   Group,
   NumberInput,
@@ -15,89 +16,172 @@ import {
   Slider,
   Stack,
   Text,
+  Tooltip,
   Title,
   UnstyledButton,
 } from "@mantine/core";
 import {
+  IconBuildingEstate,
   IconBolt,
+  IconFlame,
+  IconHome,
   IconInfoCircle,
-  IconLeaf,
   IconSolarPanel,
+  IconSun,
+  IconWall,
+  IconWindow,
 } from "@tabler/icons-react";
-import { memo, useCallback, useMemo, type ReactNode } from "react";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
 import type { RenovationMeasureId } from "../../../../types/renovation";
-import type {
-  MeasureCategory,
-  RenovationMeasure,
-} from "../../../../services/types";
+import type { RenovationMeasure } from "../../../../services/types";
 import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
 import { usePortfolioAdvisorServices } from "../../hooks/usePortfolioAdvisorServices";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Category Icons
-// ─────────────────────────────────────────────────────────────────────────────
-
-const CATEGORY_ICONS: Record<MeasureCategory, ReactNode> = {
-  envelope: <IconBolt size={20} />,
-  systems: <IconSolarPanel size={20} />,
-  renewable: <IconLeaf size={20} />,
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Measure Card
 // ─────────────────────────────────────────────────────────────────────────────
 
-const MeasureCard = memo(function MeasureCard({
+function getMeasureIcon(measureId: RenovationMeasureId) {
+  const iconProps = { size: 24, stroke: 1.5 };
+
+  switch (measureId) {
+    case "wall-insulation":
+      return <IconWall {...iconProps} />;
+    case "roof-insulation":
+      return <IconHome {...iconProps} />;
+    case "floor-insulation":
+      return <IconBuildingEstate {...iconProps} />;
+    case "windows":
+      return <IconWindow {...iconProps} />;
+    case "air-water-heat-pump":
+      return <IconBolt {...iconProps} />;
+    case "condensing-boiler":
+      return <IconFlame {...iconProps} />;
+    case "pv":
+      return <IconSolarPanel {...iconProps} />;
+    case "solar-thermal":
+      return <IconSun {...iconProps} />;
+    default:
+      return <IconBolt {...iconProps} />;
+  }
+}
+
+function getCategoryColor(category: string): string {
+  switch (category) {
+    case "envelope":
+      return "blue";
+    case "systems":
+      return "orange";
+    case "renewable":
+      return "green";
+    default:
+      return "gray";
+  }
+}
+
+function getCategoryLabel(category: string): string {
+  switch (category) {
+    case "envelope":
+      return "Envelope";
+    case "systems":
+      return "Systems";
+    case "renewable":
+      return "Renewables";
+    default:
+      return "Other";
+  }
+}
+
+function MeasureCard({
   measure,
-  measureId,
   selected,
   onToggle,
+  disabled,
 }: {
   measure: RenovationMeasure;
-  measureId: RenovationMeasureId;
   selected: boolean;
   onToggle: (measureId: RenovationMeasureId) => void;
+  disabled?: boolean;
 }) {
-  const handleClick = useCallback(
-    () => onToggle(measureId),
-    [onToggle, measureId],
-  );
+  const handleClick = () => !disabled && onToggle(measure.id);
+  const categoryColor = getCategoryColor(measure.category);
+  const categoryLabel = getCategoryLabel(measure.category);
 
   return (
     <UnstyledButton onClick={handleClick} w="100%">
       <Card
         withBorder
-        radius="md"
-        p="md"
+        radius="lg"
+        p="lg"
+        shadow={selected ? "md" : "sm"}
+        bg={selected ? `${categoryColor}.0` : disabled ? "gray.0" : "white"}
         style={{
-          borderColor: selected ? "var(--mantine-color-teal-6)" : undefined,
-          backgroundColor: selected ? "var(--mantine-color-teal-0)" : undefined,
-          cursor: "pointer",
+          borderColor: selected
+            ? `var(--mantine-color-${categoryColor}-5)`
+            : undefined,
+          borderWidth: selected ? 2 : 1,
+          cursor: disabled ? "not-allowed" : "pointer",
+          transition: "border-color 150ms ease, box-shadow 150ms ease",
+          opacity: disabled ? 0.7 : 1,
         }}
       >
-        <Group justify="space-between" mb="xs">
-          <Text fw={500} size="sm">
-            {measure.name}
-          </Text>
+        <Stack gap="md">
+          <Group justify="space-between" align="flex-start" wrap="nowrap">
+            <Group gap="sm" wrap="nowrap" align="flex-start">
+              <Text c={categoryColor}>{getMeasureIcon(measure.id)}</Text>
+              <Stack gap={4}>
+                <Text fw={600} size="sm">
+                  {measure.name}
+                </Text>
+              </Stack>
+            </Group>
+            <Tooltip
+              label={measure.description}
+              position="left"
+              multiline
+              w={260}
+            >
+              <IconInfoCircle
+                size={16}
+                color="var(--mantine-color-gray-5)"
+                style={{ cursor: "help", flexShrink: 0 }}
+                onClick={(event) => event.stopPropagation()}
+              />
+            </Tooltip>
+          </Group>
+
+          <Group justify="space-between" align="center">
+            <Badge color={categoryColor} variant={selected ? "filled" : "light"}>
+              {categoryLabel}
+            </Badge>
+            <Checkbox
+              checked={selected}
+              onChange={handleClick}
+              label={
+                <Text fw={500} size="sm">
+                  {selected ? "Selected" : "Select"}
+                </Text>
+              }
+              onClick={(event) => event.stopPropagation()}
+              disabled={disabled}
+              styles={{
+                body: { alignItems: "center" },
+                label: { paddingLeft: 8 },
+                input: { cursor: disabled ? "not-allowed" : "pointer" },
+              }}
+            />
+          </Group>
+
           {!measure.isSupported && (
-            <Badge size="xs" color="gray" variant="light">
+            <Badge color="yellow" size="sm" variant="light" fullWidth>
               Coming Soon
             </Badge>
           )}
-          {selected && (
-            <Badge size="xs" color="teal" variant="filled">
-              Selected
-            </Badge>
-          )}
-        </Group>
-        <Text size="xs" c="dimmed">
-          {measure.description}
-        </Text>
+        </Stack>
       </Card>
     </UnstyledButton>
   );
-});
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Project Lifetime Marks
@@ -128,21 +212,14 @@ export function EnergyRenovationStep() {
     (m) => renovation.getMeasure(m)?.isSupported,
   );
 
-  const categorizedMeasures = useMemo(
-    () =>
-      renovation.getCategories().map((cat) => ({
-        cat,
-        measures: renovation.getMeasuresByCategory(cat.id),
-      })),
-    [renovation],
-  );
+  const categorizedMeasures = renovation.getCategories().map((cat) => ({
+    cat,
+    measures: renovation.getMeasuresByCategory(cat.id),
+  }));
 
-  const handleToggle = useCallback(
-    (measureId: RenovationMeasureId) => {
-      dispatch({ type: "TOGGLE_MEASURE", measureId });
-    },
-    [dispatch],
-  );
+  const handleToggle = (measureId: RenovationMeasureId) => {
+    dispatch({ type: "TOGGLE_MEASURE", measureId });
+  };
 
   const handlePrevious = () => {
     dispatch({ type: "SET_STEP", step: 0 });
@@ -179,20 +256,20 @@ export function EnergyRenovationStep() {
 
         {categorizedMeasures.map(({ cat, measures }) => (
           <Box key={cat.id} mb="lg">
-            <Group gap="xs" mb="sm">
-              {CATEGORY_ICONS[cat.id]}
-              <Text fw={600} size="sm">
-                {cat.label}
-              </Text>
-            </Group>
-            <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="sm">
+            <Title order={5} tt="uppercase" c="dimmed" size="sm" mb="xs">
+              {cat.label}
+            </Title>
+            <Text size="xs" c="dimmed" mb="sm">
+              {cat.description}
+            </Text>
+            <SimpleGrid cols={{ base: 1, xs: 2, md: 4 }} spacing="sm">
               {measures.map((measure) => (
                 <MeasureCard
                   key={measure.id}
                   measure={measure}
-                  measureId={measure.id}
                   selected={selectedMeasures.includes(measure.id)}
                   onToggle={handleToggle}
+                  disabled={!measure.isSupported}
                 />
               ))}
             </SimpleGrid>
