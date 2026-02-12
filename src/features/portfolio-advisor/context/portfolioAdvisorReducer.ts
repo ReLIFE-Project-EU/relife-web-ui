@@ -85,6 +85,13 @@ export function portfolioAdvisorReducer(
         ...clearedAnalysisResults,
       };
 
+    case "APPEND_BUILDINGS":
+      return {
+        ...state,
+        buildings: [...state.buildings, ...action.buildings],
+        ...clearedAnalysisResults,
+      };
+
     // ─────────────────────────────────────────────────────────────────────────
     // Renovation Measure Selections
     // ─────────────────────────────────────────────────────────────────────────
@@ -213,6 +220,15 @@ export function portfolioAdvisorReducer(
         buildingResults: {
           ...state.buildingResults,
           [action.buildingId]: action.result,
+        },
+      };
+
+    case "BATCH_SET_BUILDING_RESULTS":
+      return {
+        ...state,
+        buildingResults: {
+          ...state.buildingResults,
+          ...action.results,
         },
       };
 

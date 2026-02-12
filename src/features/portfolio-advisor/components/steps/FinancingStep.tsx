@@ -19,6 +19,7 @@ import {
   Button,
 } from "@mantine/core";
 import { IconCash, IconChartBar } from "@tabler/icons-react";
+import { memo, useCallback } from "react";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
 import { ErrorAlert } from "../../../../components/shared/ErrorAlert";
 import { FINANCING_SCHEMES, type FinancingScheme } from "../../constants";
@@ -29,20 +30,26 @@ import { usePortfolioAdvisorServices } from "../../hooks/usePortfolioAdvisorServ
 // Scheme Card
 // ─────────────────────────────────────────────────────────────────────────────
 
-function SchemeCard({
+const SchemeCard = memo(function SchemeCard({
   scheme,
+  schemeId,
   selected,
   onSelect,
 }: {
   scheme: (typeof FINANCING_SCHEMES)[number];
+  schemeId: FinancingScheme;
   selected: boolean;
-  onSelect: () => void;
+  onSelect: (schemeId: FinancingScheme) => void;
 }) {
   const isDisabled = !scheme.supported;
+  const handleClick = useCallback(
+    () => onSelect(schemeId),
+    [onSelect, schemeId],
+  );
 
   return (
     <UnstyledButton
-      onClick={isDisabled ? undefined : onSelect}
+      onClick={isDisabled ? undefined : handleClick}
       w="100%"
       style={{ cursor: isDisabled ? "not-allowed" : "pointer" }}
     >
@@ -84,7 +91,7 @@ function SchemeCard({
       </Card>
     </UnstyledButton>
   );
-}
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Component
@@ -94,9 +101,12 @@ export function FinancingStep() {
   const { state, dispatch } = usePortfolioAdvisor();
   const services = usePortfolioAdvisorServices();
 
-  const handleSelectScheme = (scheme: FinancingScheme) => {
-    dispatch({ type: "SET_FINANCING_SCHEME", scheme });
-  };
+  const handleSelectScheme = useCallback(
+    (scheme: FinancingScheme) => {
+      dispatch({ type: "SET_FINANCING_SCHEME", scheme });
+    },
+    [dispatch],
+  );
 
   const handlePrevious = () => {
     dispatch({ type: "SET_STEP", step: 1 });
@@ -124,10 +134,8 @@ export function FinancingStep() {
         state.renovation.estimatedMaintenanceCost,
       );
 
-      // Set all building results
-      for (const [id, result] of Object.entries(results)) {
-        dispatch({ type: "SET_BUILDING_RESULT", buildingId: id, result });
-      }
+      // Set all building results in a single dispatch
+      dispatch({ type: "BATCH_SET_BUILDING_RESULTS", results });
 
       dispatch({ type: "ANALYSIS_COMPLETE" });
       dispatch({ type: "SET_STEP", step: 3 });
@@ -167,8 +175,9 @@ export function FinancingStep() {
             <SchemeCard
               key={scheme.id}
               scheme={scheme}
+              schemeId={scheme.id}
               selected={state.financingScheme === scheme.id}
-              onSelect={() => handleSelectScheme(scheme.id)}
+              onSelect={handleSelectScheme}
             />
           ))}
         </SimpleGrid>

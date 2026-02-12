@@ -18,7 +18,7 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import { IconBolt, IconLeaf, IconSolarPanel } from "@tabler/icons-react";
-import type { ReactNode } from "react";
+import { memo, useCallback, useMemo, type ReactNode } from "react";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
 import type { RenovationMeasureId } from "../../../../types/renovation";
 import type {
@@ -42,17 +42,24 @@ const CATEGORY_ICONS: Record<MeasureCategory, ReactNode> = {
 // Measure Card
 // ─────────────────────────────────────────────────────────────────────────────
 
-function MeasureCard({
+const MeasureCard = memo(function MeasureCard({
   measure,
+  measureId,
   selected,
   onToggle,
 }: {
   measure: RenovationMeasure;
+  measureId: RenovationMeasureId;
   selected: boolean;
-  onToggle: () => void;
+  onToggle: (measureId: RenovationMeasureId) => void;
 }) {
+  const handleClick = useCallback(
+    () => onToggle(measureId),
+    [onToggle, measureId],
+  );
+
   return (
-    <UnstyledButton onClick={onToggle} w="100%">
+    <UnstyledButton onClick={handleClick} w="100%">
       <Card
         withBorder
         radius="md"
@@ -84,7 +91,7 @@ function MeasureCard({
       </Card>
     </UnstyledButton>
   );
-}
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Project Lifetime Marks
@@ -107,12 +114,23 @@ export function EnergyRenovationStep() {
   const { state, dispatch } = usePortfolioAdvisor();
   const { renovation } = usePortfolioAdvisorServices();
 
-  const categories = renovation.getCategories();
   const selectedMeasures = state.renovation.selectedMeasures;
 
-  const handleToggle = (measureId: RenovationMeasureId) => {
-    dispatch({ type: "TOGGLE_MEASURE", measureId });
-  };
+  const categorizedMeasures = useMemo(
+    () =>
+      renovation.getCategories().map((cat) => ({
+        cat,
+        measures: renovation.getMeasuresByCategory(cat.id),
+      })),
+    [renovation],
+  );
+
+  const handleToggle = useCallback(
+    (measureId: RenovationMeasureId) => {
+      dispatch({ type: "TOGGLE_MEASURE", measureId });
+    },
+    [dispatch],
+  );
 
   const handlePrevious = () => {
     dispatch({ type: "SET_STEP", step: 0 });
@@ -147,29 +165,27 @@ export function EnergyRenovationStep() {
           be evaluated with these measures.
         </Text>
 
-        {categories.map((cat) => {
-          const measures = renovation.getMeasuresByCategory(cat.id);
-          return (
-            <Box key={cat.id} mb="lg">
-              <Group gap="xs" mb="sm">
-                {CATEGORY_ICONS[cat.id]}
-                <Text fw={600} size="sm">
-                  {cat.label}
-                </Text>
-              </Group>
-              <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="sm">
-                {measures.map((measure) => (
-                  <MeasureCard
-                    key={measure.id}
-                    measure={measure}
-                    selected={selectedMeasures.includes(measure.id)}
-                    onToggle={() => handleToggle(measure.id)}
-                  />
-                ))}
-              </SimpleGrid>
-            </Box>
-          );
-        })}
+        {categorizedMeasures.map(({ cat, measures }) => (
+          <Box key={cat.id} mb="lg">
+            <Group gap="xs" mb="sm">
+              {CATEGORY_ICONS[cat.id]}
+              <Text fw={600} size="sm">
+                {cat.label}
+              </Text>
+            </Group>
+            <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="sm">
+              {measures.map((measure) => (
+                <MeasureCard
+                  key={measure.id}
+                  measure={measure}
+                  measureId={measure.id}
+                  selected={selectedMeasures.includes(measure.id)}
+                  onToggle={handleToggle}
+                />
+              ))}
+            </SimpleGrid>
+          </Box>
+        ))}
       </Card>
 
       {/* Optional Cost Overrides */}

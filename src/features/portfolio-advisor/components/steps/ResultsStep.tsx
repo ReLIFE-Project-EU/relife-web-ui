@@ -14,7 +14,7 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { EPCBadge } from "../../../../components/shared/EPCBadge";
 import { ErrorAlert } from "../../../../components/shared/ErrorAlert";
 import { MetricCard } from "../../../../components/shared/MetricCard";
@@ -27,7 +27,7 @@ import type { BuildingAnalysisResult } from "../../context/types";
 // Portfolio Summary
 // ─────────────────────────────────────────────────────────────────────────────
 
-function PortfolioSummary({
+const PortfolioSummary = memo(function PortfolioSummary({
   results,
   totalBuildings,
 }: {
@@ -118,13 +118,13 @@ function PortfolioSummary({
       </SimpleGrid>
     </Card>
   );
-}
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Building Results Table
 // ─────────────────────────────────────────────────────────────────────────────
 
-function BuildingResultsTable({
+const BuildingResultsTable = memo(function BuildingResultsTable({
   buildings,
   results,
 }: {
@@ -215,7 +215,7 @@ function BuildingResultsTable({
       </Table>
     </Card>
   );
-}
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Component

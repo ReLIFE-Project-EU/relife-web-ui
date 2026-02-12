@@ -189,7 +189,7 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       selectedArchetype: b.archetypeName
         ? { name: b.archetypeName, category: b.category, country: b.country }
         : undefined,
-      isModified: hasModifications ? true : false,
+      isModified: !!hasModifications,
       modifications: hasModifications ? b.modifications : undefined,
       floorArea: b.floorArea,
       numberOfFloors: b.numberOfFloors,

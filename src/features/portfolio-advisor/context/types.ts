@@ -122,6 +122,7 @@ export type PortfolioAdvisorAction =
   | { type: "ADD_BUILDING"; building: PRABuilding }
   | { type: "REMOVE_BUILDING"; buildingId: string }
   | { type: "SET_BUILDINGS"; buildings: PRABuilding[] }
+  | { type: "APPEND_BUILDINGS"; buildings: PRABuilding[] }
   | { type: "TOGGLE_MEASURE"; measureId: RenovationMeasureId }
   | { type: "SET_MEASURES"; measures: RenovationMeasureId[] }
   | { type: "SET_ESTIMATED_CAPEX"; capex: number | null }
@@ -141,6 +142,10 @@ export type PortfolioAdvisorAction =
       type: "SET_BUILDING_RESULT";
       buildingId: string;
       result: BuildingAnalysisResult;
+    }
+  | {
+      type: "BATCH_SET_BUILDING_RESULTS";
+      results: Record<string, BuildingAnalysisResult>;
     }
   | { type: "ANALYSIS_COMPLETE" }
   | { type: "ANALYSIS_ERROR"; error: string }
