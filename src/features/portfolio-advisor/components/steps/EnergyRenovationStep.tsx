@@ -4,6 +4,7 @@
  */
 
 import {
+  Alert,
   Badge,
   Box,
   Card,
@@ -17,7 +18,12 @@ import {
   Title,
   UnstyledButton,
 } from "@mantine/core";
-import { IconBolt, IconLeaf, IconSolarPanel } from "@tabler/icons-react";
+import {
+  IconBolt,
+  IconInfoCircle,
+  IconLeaf,
+  IconSolarPanel,
+} from "@tabler/icons-react";
 import { memo, useCallback, useMemo, type ReactNode } from "react";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
 import type { RenovationMeasureId } from "../../../../types/renovation";
@@ -115,6 +121,12 @@ export function EnergyRenovationStep() {
   const { renovation } = usePortfolioAdvisorServices();
 
   const selectedMeasures = state.renovation.selectedMeasures;
+  const unsupportedSelected = selectedMeasures.filter(
+    (m) => !renovation.getMeasure(m)?.isSupported,
+  );
+  const hasSupportedMeasure = selectedMeasures.some(
+    (m) => renovation.getMeasure(m)?.isSupported,
+  );
 
   const categorizedMeasures = useMemo(
     () =>
@@ -137,7 +149,7 @@ export function EnergyRenovationStep() {
   };
 
   const handleNext = () => {
-    if (selectedMeasures.length > 0) {
+    if (selectedMeasures.length > 0 && hasSupportedMeasure) {
       dispatch({ type: "SET_STEP", step: 2 });
     }
   };
@@ -187,6 +199,23 @@ export function EnergyRenovationStep() {
           </Box>
         ))}
       </Card>
+
+      {unsupportedSelected.length > 0 && (
+        <Alert
+          color="yellow"
+          icon={<IconInfoCircle size={16} />}
+          title="Limited Simulation Support"
+        >
+          The following measures are not yet supported for simulation:{" "}
+          <Text span fw={700}>
+            {unsupportedSelected
+              .map((m) => renovation.getMeasure(m)?.name)
+              .join(", ")}
+          </Text>
+          . Only envelope measures (wall, roof, windows) will be simulated at
+          this time.
+        </Alert>
+      )}
 
       {/* Optional Cost Overrides */}
       <Card withBorder radius="md" p="lg">
@@ -258,7 +287,7 @@ export function EnergyRenovationStep() {
         totalSteps={4}
         onPrevious={handlePrevious}
         onNext={handleNext}
-        primaryDisabled={selectedMeasures.length === 0}
+        primaryDisabled={!hasSupportedMeasure}
       />
     </Stack>
   );
