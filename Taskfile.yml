@@ -30,20 +30,28 @@ tasks:
 
   up:
     desc: "Start all services in detached mode, rebuild images, and wait for health checks"
+    env:
+      APP_COMMIT_SHA:
+        sh: git rev-parse HEAD 2>/dev/null || echo "unknown"
+      APP_COMMIT_DATE:
+        sh: git log -1 --format=%cI 2>/dev/null || echo "unknown"
     cmds:
       - task: pull
-      - |
-        export APP_COMMIT_SHA=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
-        export APP_COMMIT_DATE=$(git log -1 --format=%cI 2>/dev/null || echo "unknown")
-        docker compose up -d --build --wait
+      - docker compose up -d --build --wait
 
   up-local:
     desc: "Start services using locally built API images from external-services"
+    env:
+      APP_COMMIT_SHA:
+        sh: git rev-parse HEAD 2>/dev/null || echo "unknown"
+      APP_COMMIT_DATE:
+        sh: git log -1 --format=%cI 2>/dev/null || echo "unknown"
     cmds:
-      - |
-        export APP_COMMIT_SHA=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
-        export APP_COMMIT_DATE=$(git log -1 --format=%cI 2>/dev/null || echo "unknown")
-        docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build --wait
+      - docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build --wait
+    preconditions:
+      - test -d external-services/relife-financial-service
+      - test -d external-services/relife-forecasting-service
+      - test -d external-services/relife-technical-service
 
   down:
     desc: "Stop and remove all running containers and networks"
@@ -141,3 +149,49 @@ tasks:
     cmds:
       - task: up-local
       - npm run dev
+
+  local-service-git-info:
+    internal: true
+    silent: true
+    cmds:
+      - >
+        test -d "{{.SERVICE_DIR}}/.git" ||
+        { echo "- {{.SERVICE_NAME}}: not a git repository at {{.SERVICE_DIR}}"; exit 0; }
+      - >
+        echo "- {{.SERVICE_NAME}}: branch=$(git -C {{.SERVICE_DIR}} rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)
+        commit=$(git -C {{.SERVICE_DIR}} rev-parse --short HEAD 2>/dev/null || echo unknown)
+        date=$(git -C {{.SERVICE_DIR}} log -1 --format=%cI 2>/dev/null || echo unknown)"
+      - 'echo "  message: $(git -C {{.SERVICE_DIR}} log -1 --format=%s 2>/dev/null || echo unknown)"'
+      - >
+        if [ -n "$(git -C {{.SERVICE_DIR}} status --porcelain 2>/dev/null)" ]; then
+          echo "  status: dirty"
+        else
+          echo "  status: clean"
+        fi
+
+  local-services-git-context:
+    internal: true
+    cmds:
+      - 'echo "External service source revisions:"'
+      - task: local-service-git-info
+        vars:
+          SERVICE_NAME: relife-financial-service
+          SERVICE_DIR: external-services/relife-financial-service
+      - task: local-service-git-info
+        vars:
+          SERVICE_NAME: relife-forecasting-service
+          SERVICE_DIR: external-services/relife-forecasting-service
+      - task: local-service-git-info
+        vars:
+          SERVICE_NAME: relife-technical-service
+          SERVICE_DIR: external-services/relife-technical-service
+
+  test-integration:
+    desc: "Run integration tests against the Docker Compose services"
+    vars:
+      LOG_SINCE: 5m
+    cmds:
+      - defer: docker compose logs --since {{.LOG_SINCE}}
+      - task: local-services-git-context
+      - task: up-local
+      - npm run test:integration
