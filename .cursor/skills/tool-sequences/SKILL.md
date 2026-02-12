@@ -180,6 +180,7 @@ Diagram scope guidance:
 **Important**: Create a separate flow diagram for each tool that matches the design documentation style.
 
 Reference the flow diagrams at the bottom of:
+
 - `docs/pra-tool-design.md` (Professional input → Services → Professional UI)
 - `docs/hra-tool-design.md` (User input → Services → Results display)
 
@@ -244,17 +245,17 @@ Example structure (adapt to actual implementation):
 ```mermaid
 flowchart LR
     Input["USER INPUT<br/>---<br/>Required:<br/>- Field1<br/>- Field2<br/>---<br/>Optional:<br/>- Field3"]
-    
+
     DB[("Database<br/>---<br/>Data1<br/>Data2")]
-    
+
     Forecasting["FORECASTING SERVICE MOCK<br/>---<br/>POST /endpoint<br/>---<br/>Returns:<br/>- output1<br/>- output2<br/>NOTE: Mock fixture data"]
-    
+
     Financial["FINANCIAL SERVICE<br/>---<br/>POST /arv<br/>POST /risk_assessment<br/>---<br/>Outputs:<br/>- indicator1<br/>- indicator2"]
-    
+
     Technical["TECHNICAL SERVICE STUB - NOT IMPLEMENTED<br/>---<br/>POST /endpoint<br/>---<br/>Returns placeholder"]
-    
+
     Output["RESULTS DISPLAY<br/>---<br/>Shows:<br/>- result1<br/>- result2"]
-    
+
     Input --> Forecasting
     DB --> Forecasting
     Input --> Financial
@@ -265,7 +266,7 @@ flowchart LR
     Forecasting --> Output
     Financial --> Output
     Technical --> Output
-    
+
     style Input fill:#f0f0f0
     style DB fill:#d4edda
     style Forecasting fill:#cfe2ff,stroke:#666,stroke-dasharray: 5 5
@@ -436,6 +437,7 @@ flowchart LR
 ```
 
 **Notes for flow diagram generation:**
+
 - Replace component details with actual implementation specifics
 - Add `MOCK`, `STUB`, or `PARTIAL` labels (without parentheses) where applicable
 - Use dashed borders (`stroke-dasharray: 5 5`) for mocked/stubbed components

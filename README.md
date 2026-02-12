@@ -94,6 +94,7 @@ flowchart LR
 ```
 
 **Implementation status**
+
 - Real Forecasting + Financial integrations are wired through `src/services/BuildingService.ts`, `src/services/EnergyService.ts`, `src/services/RenovationService.ts`, and `src/services/FinancialService.ts`.
 - Technical API is not invoked in the HRA runtime path; ranking uses `src/services/mock/MockMCDAService.ts` (local TOPSIS) instead of `src/api/technical.ts`.
 - Renovation simulation is partial: `src/services/RenovationService.ts` filters to wall/roof/windows before `forecasting.simulateECM(...)`; other selected measures are currently unsimulated.
@@ -164,6 +165,7 @@ flowchart LR
 ```
 
 **Implementation status**
+
 - Real Forecasting + Financial calls are orchestrated in `src/features/portfolio-advisor/services/PortfolioAnalysisService.ts`, triggered from `src/features/portfolio-advisor/components/steps/FinancingStep.tsx`.
 - Service wiring in `src/features/portfolio-advisor/context/ServiceContext.tsx` uses real `EnergyService`, `RenovationService`, and `FinancialService` with concurrency-limited batches.
 - Technical API is not called in the PRA analysis path; `src/api/technical.ts` endpoints are currently outside this runtime workflow.
@@ -226,6 +228,7 @@ flowchart LR
 ```
 
 **Implementation status**
+
 - The current implementation is a UI stub in `src/routes/StrategyExplorerLanding.tsx`, mounted via `src/App.tsx`.
 - The page shows static planned-feature content with a disabled CTA and no orchestration/service layer.
 - Forecasting, Financial, and Technical APIs are all uninvoked in this tool path at runtime.
