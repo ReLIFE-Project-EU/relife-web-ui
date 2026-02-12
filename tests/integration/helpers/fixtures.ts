@@ -63,6 +63,26 @@ export const ECM_PARAMS = {
 };
 
 /**
+ * ECM parameters (floor insulation only)
+ */
+export const ECM_PARAMS_FLOOR = {
+  scenario_elements: "slab",
+  u_slab: 0.25,
+};
+
+/**
+ * ECM parameters (envelope: wall + floor combined with heat pump)
+ * Envelope improvement guarantees Q_HC reduction, making the assertion safe.
+ */
+export const ECM_PARAMS_ENVELOPE_HEAT_PUMP = {
+  scenario_elements: "wall,slab",
+  u_wall: 0.25,
+  u_slab: 0.25,
+  use_heat_pump: "true",
+  heat_pump_cop: "3.2",
+};
+
+/**
  * Weather source (consistent with app code)
  */
 export const WEATHER_SOURCE = "pvgis";

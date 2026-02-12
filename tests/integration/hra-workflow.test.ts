@@ -24,6 +24,8 @@ import {
   ARV_REQUEST,
   RISK_ASSESSMENT_BASE_PRIVATE,
   ECM_PARAMS,
+  ECM_PARAMS_FLOOR,
+  ECM_PARAMS_ENVELOPE_HEAT_PUMP,
   WEATHER_SOURCE,
 } from "./helpers/fixtures";
 import {
@@ -34,6 +36,7 @@ import {
   validateNumber,
   assertHttpStatus,
 } from "./helpers/context-reporter";
+import { validateECMScenarioResponse } from "./helpers/ecm-validation";
 
 describe.sequential("HRA Workflow", () => {
   // Shared state across steps
@@ -295,90 +298,13 @@ describe.sequential("HRA Workflow", () => {
     assertHttpStatus(response, 200, ctx, requestPayload);
     expect(response.status).toBe(200);
 
-    // Validate response shape
-    const shapeErrors = validateResponseShape(response.body, ["scenarios"]);
+    const result = validateECMScenarioResponse(
+      response.body,
+      baselineHvacTotal,
+    );
 
-    if (shapeErrors.length > 0) {
-      console.error(
-        formatStepFailure({
-          ...ctx,
-          request: { archetype: testArchetype, ecm_params: ECM_PARAMS },
-          response: { status: response.status, body: response.body },
-          validationErrors: shapeErrors,
-        }),
-      );
-      expect(shapeErrors).toEqual([]);
-    }
-
-    const body = response.body as {
-      scenarios: Array<{
-        results: { hourly_building: Record<string, unknown[]> };
-      }>;
-    };
-
-    // Validate scenarios array
-    const arrayErrors = validateArray(body.scenarios, "scenarios", {
-      minLength: 1,
-    });
-
-    if (arrayErrors.length > 0) {
-      console.error(
-        formatStepFailure({
-          ...ctx,
-          request: { archetype: testArchetype, ecm_params: ECM_PARAMS },
-          response: { status: response.status, body: response.body },
-          validationErrors: arrayErrors,
-        }),
-      );
-    }
-
-    expect(arrayErrors).toEqual([]);
-
-    // First scenario is renovated
-    const renovatedScenario = body.scenarios[0];
-    const hourlyColumnar = renovatedScenario.results.hourly_building;
-
-    // Validate columnar format
-    const columnarErrors: string[] = [];
-    if (typeof hourlyColumnar !== "object" || hourlyColumnar === null) {
-      columnarErrors.push(
-        "hourly_building is not an object (columnar format expected)",
-      );
-    } else {
-      const hasQHC = Array.isArray(hourlyColumnar.Q_HC);
-      const hasQH = Array.isArray(hourlyColumnar.Q_H);
-      const hasQC = Array.isArray(hourlyColumnar.Q_C);
-
-      if (!hasQHC && !(hasQH && hasQC)) {
-        columnarErrors.push("missing Q_HC or (Q_H + Q_C) columnar arrays");
-      }
-
-      if (hasQHC && (hourlyColumnar.Q_HC as unknown[]).length < 8000) {
-        columnarErrors.push(
-          `Q_HC array too short: ${(hourlyColumnar.Q_HC as unknown[]).length} < 8000`,
-        );
-      }
-    }
-
-    if (columnarErrors.length > 0) {
-      console.error(
-        formatStepFailure({
-          ...ctx,
-          request: { archetype: testArchetype, ecm_params: ECM_PARAMS },
-          response: { status: response.status, body: response.body },
-          validationErrors: columnarErrors,
-        }),
-      );
-    }
-
-    expect(columnarErrors).toEqual([]);
-
-    // Calculate renovated HVAC total
-    const qhcArray = hourlyColumnar.Q_HC as number[];
-    renovatedHvacTotal =
-      qhcArray.reduce((sum, val) => sum + Math.abs(val), 0) / 1000;
-
-    energySavingsKwh = baselineHvacTotal - renovatedHvacTotal;
+    renovatedHvacTotal = result.renovatedHvacTotal;
+    energySavingsKwh = result.energySavingsKwh;
 
     // Renovated should be less than baseline
     expect(renovatedHvacTotal).toBeLessThan(baselineHvacTotal);
@@ -386,6 +312,119 @@ describe.sequential("HRA Workflow", () => {
 
     console.log(`Renovated HVAC total: ${renovatedHvacTotal.toFixed(2)} kWh`);
     console.log(`Energy savings: ${energySavingsKwh.toFixed(2)} kWh`);
+  });
+
+  test("Step 4b: ECM with floor insulation", async () => {
+    const ctx = createStepContext(
+      "HRA",
+      4,
+      "ECM with floor insulation",
+      "POST /forecasting/ecm_application?archetype=true&...",
+      "ECMApplicationResponse",
+      {
+        typeDefinition: "src/types/forecasting.ts",
+        apiWrapper: "src/api/forecasting.ts",
+        serviceConsumer: "src/services/RenovationService.ts",
+        openApiSpec: "api-specs/latest/forecasting.json",
+      },
+    );
+
+    const searchParams = new URLSearchParams({
+      archetype: "true",
+      category: testArchetype.category,
+      country: testArchetype.country,
+      name: testArchetype.name,
+      weather_source: WEATHER_SOURCE,
+      scenario_elements: ECM_PARAMS_FLOOR.scenario_elements,
+      u_slab: ECM_PARAMS_FLOOR.u_slab.toString(),
+    });
+
+    const formData = new FormData();
+    const response = await api.postForm(
+      `/forecasting/ecm_application?${searchParams.toString()}`,
+      formData,
+    );
+
+    const requestPayload = {
+      archetype: testArchetype,
+      ecm_params: ECM_PARAMS_FLOOR,
+      endpoint: `/forecasting/ecm_application?${searchParams.toString()}`,
+    };
+    assertHttpStatus(response, 200, ctx, requestPayload);
+    expect(response.status).toBe(200);
+
+    const {
+      renovatedHvacTotal: floorRenovated,
+      energySavingsKwh: floorSavings,
+    } = validateECMScenarioResponse(response.body, baselineHvacTotal);
+
+    // Floor-only insulation may slightly increase or decrease Q_HC depending on
+    // archetype and climate (e.g. ground-cooling effect in Mediterranean climates).
+    // Assert only that the simulation produced a valid positive result.
+    expect(floorRenovated).toBeGreaterThan(0);
+
+    console.log(
+      `Floor insulation renovated HVAC total: ${floorRenovated.toFixed(2)} kWh`,
+    );
+    console.log(
+      `Floor insulation delta vs baseline: ${floorSavings >= 0 ? "-" : "+"}${Math.abs(floorSavings).toFixed(2)} kWh`,
+    );
+  });
+
+  test("Step 4c: ECM with envelope + heat pump", async () => {
+    const ctx = createStepContext(
+      "HRA",
+      4,
+      "ECM with envelope + heat pump",
+      "POST /forecasting/ecm_application?archetype=true&...",
+      "ECMApplicationResponse",
+      {
+        typeDefinition: "src/types/forecasting.ts",
+        apiWrapper: "src/api/forecasting.ts",
+        serviceConsumer: "src/services/RenovationService.ts",
+        openApiSpec: "api-specs/latest/forecasting.json",
+      },
+    );
+
+    const searchParams = new URLSearchParams({
+      archetype: "true",
+      category: testArchetype.category,
+      country: testArchetype.country,
+      name: testArchetype.name,
+      weather_source: WEATHER_SOURCE,
+      scenario_elements: ECM_PARAMS_ENVELOPE_HEAT_PUMP.scenario_elements,
+      u_wall: ECM_PARAMS_ENVELOPE_HEAT_PUMP.u_wall.toString(),
+      u_slab: ECM_PARAMS_ENVELOPE_HEAT_PUMP.u_slab.toString(),
+      use_heat_pump: ECM_PARAMS_ENVELOPE_HEAT_PUMP.use_heat_pump,
+      heat_pump_cop: ECM_PARAMS_ENVELOPE_HEAT_PUMP.heat_pump_cop,
+    });
+
+    const formData = new FormData();
+    const response = await api.postForm(
+      `/forecasting/ecm_application?${searchParams.toString()}`,
+      formData,
+    );
+
+    const requestPayload = {
+      archetype: testArchetype,
+      ecm_params: ECM_PARAMS_ENVELOPE_HEAT_PUMP,
+      endpoint: `/forecasting/ecm_application?${searchParams.toString()}`,
+    };
+    assertHttpStatus(response, 200, ctx, requestPayload);
+    expect(response.status).toBe(200);
+
+    const { renovatedHvacTotal: ehpRenovated, energySavingsKwh: ehpSavings } =
+      validateECMScenarioResponse(response.body, baselineHvacTotal);
+
+    expect(ehpRenovated).toBeLessThan(baselineHvacTotal);
+    expect(ehpSavings).toBeGreaterThan(0);
+
+    console.log(
+      `Envelope+heat-pump renovated HVAC total: ${ehpRenovated.toFixed(2)} kWh`,
+    );
+    console.log(
+      `Envelope+heat-pump energy savings: ${ehpSavings.toFixed(2)} kWh`,
+    );
   });
 
   test("Step 5: Calculate ARV", async () => {
