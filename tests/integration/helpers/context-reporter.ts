@@ -217,7 +217,9 @@ export function assertHttpStatus(
       if (bodyStr.length < 500) {
         errorDetails.push(`Error body: ${bodyStr}`);
       } else {
-        errorDetails.push(`Error body (truncated): ${bodyStr.substring(0, 500)}...`);
+        errorDetails.push(
+          `Error body (truncated): ${bodyStr.substring(0, 500)}...`,
+        );
       }
     }
 

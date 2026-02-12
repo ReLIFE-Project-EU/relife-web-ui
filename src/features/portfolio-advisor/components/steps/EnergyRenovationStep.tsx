@@ -151,7 +151,10 @@ function MeasureCard({
           </Group>
 
           <Group justify="space-between" align="center">
-            <Badge color={categoryColor} variant={selected ? "filled" : "light"}>
+            <Badge
+              color={categoryColor}
+              variant={selected ? "filled" : "light"}
+            >
               {categoryLabel}
             </Badge>
             <Checkbox
