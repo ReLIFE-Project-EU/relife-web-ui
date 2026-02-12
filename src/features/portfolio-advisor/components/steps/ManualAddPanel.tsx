@@ -89,6 +89,7 @@ export function ManualAddPanel({
       typeof lng !== "number"
     ) {
       dispatch({ type: "CLEAR_ARCHETYPE" });
+      dispatch({ type: "SET_LOADING_ARCHETYPE", loading: false });
       return;
     }
 
