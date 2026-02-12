@@ -7,13 +7,13 @@
  * Currently Supported Measures:
  * - Wall insulation (via u_wall parameter)
  * - Roof insulation (via u_roof parameter)
+ * - Floor insulation (via u_slab parameter)
  * - Window replacement (via u_window parameter)
+ * - Air-water heat pump (via use_heat_pump + heat_pump_cop parameters)
  *
  * Not Yet Supported (API pending):
- * - Floor insulation (excluded - not feasible per Forecasting team)
- * - Heat pump (generator parameter coming)
  * - Condensing boiler (generator parameter coming)
- * - PV panels (pv-system parameter coming)
+ * - PV panels (separate /run/iso52016-uni11300-pv endpoint, out of scope)
  * - Solar thermal (pv-system parameter coming)
  */
 
@@ -52,6 +52,7 @@ import type { IRenovationService, RenovationMeasure } from "./types";
 const U_VALUE_TARGETS: Partial<Record<RenovationMeasureId, number>> = {
   "wall-insulation": 0.25,
   "roof-insulation": 0.2,
+  "floor-insulation": 0.25,
   windows: 1.4,
 };
 
@@ -61,6 +62,7 @@ const U_VALUE_TARGETS: Partial<Record<RenovationMeasureId, number>> = {
 const MEASURE_TO_ELEMENT: Partial<Record<RenovationMeasureId, string>> = {
   "wall-insulation": "wall",
   "roof-insulation": "roof",
+  "floor-insulation": "slab",
   windows: "window",
 };
 
@@ -70,8 +72,14 @@ const MEASURE_TO_ELEMENT: Partial<Record<RenovationMeasureId, string>> = {
 const SUPPORTED_ENVELOPE_MEASURES: RenovationMeasureId[] = [
   "wall-insulation",
   "roof-insulation",
+  "floor-insulation",
   "windows",
 ];
+
+/**
+ * Default heat pump COP (coefficient of performance).
+ */
+const DEFAULT_HEAT_PUMP_COP = 3.2;
 
 // =============================================================================
 // Service Implementation
@@ -118,7 +126,9 @@ export class RenovationService implements IRenovationService {
       SUPPORTED_ENVELOPE_MEASURES.includes(m),
     );
 
-    if (envelopeMeasures.length === 0) {
+    const useHeatPump = selectedMeasures.includes("air-water-heat-pump");
+
+    if (envelopeMeasures.length === 0 && !useHeatPump) {
       // No supported measures selected - return baseline only
       return [this.buildBaselineScenario(estimation)];
     }
@@ -130,7 +140,7 @@ export class RenovationService implements IRenovationService {
 
     const archetype = estimation.archetype;
 
-    // Map measures to API elements
+    // Map envelope measures to API elements (heat pump is handled separately)
     const elements = envelopeMeasures
       .map((m) => MEASURE_TO_ELEMENT[m])
       .filter((e): e is string => e !== undefined)
@@ -141,26 +151,39 @@ export class RenovationService implements IRenovationService {
       category: string;
       country: string;
       name: string;
-      scenario_elements: string;
+      scenario_elements?: string;
       u_wall?: number;
       u_roof?: number;
       u_window?: number;
+      u_slab?: number;
+      use_heat_pump?: boolean;
+      heat_pump_cop?: number;
     } = {
       category: archetype.category,
       country: archetype.country,
       name: archetype.name,
-      scenario_elements: elements,
+      // Omit scenario_elements when empty (e.g. heat-pump-only selection)
+      ...(elements && { scenario_elements: elements }),
     };
 
-    // Add U-values for selected measures
+    // Add U-values for selected envelope measures
     if (envelopeMeasures.includes("wall-insulation")) {
       params.u_wall = U_VALUE_TARGETS["wall-insulation"];
     }
     if (envelopeMeasures.includes("roof-insulation")) {
       params.u_roof = U_VALUE_TARGETS["roof-insulation"];
     }
+    if (envelopeMeasures.includes("floor-insulation")) {
+      params.u_slab = U_VALUE_TARGETS["floor-insulation"];
+    }
     if (envelopeMeasures.includes("windows")) {
       params.u_window = U_VALUE_TARGETS["windows"];
+    }
+
+    // Add heat pump parameters if selected
+    if (useHeatPump) {
+      params.use_heat_pump = true;
+      params.heat_pump_cop = DEFAULT_HEAT_PUMP_COP;
     }
 
     // Call ECM API (single-scenario mode)
@@ -225,7 +248,11 @@ export class RenovationService implements IRenovationService {
       heatingCoolingNeeds: Math.round(scaledRenovatedHvac),
       comfortIndex: Math.min(100, estimation.comfortIndex + 5),
       flexibilityIndex: estimation.flexibilityIndex,
-      measures: envelopeMeasures.map((m) => this.getMeasure(m)?.name || m),
+      measures: selectedMeasures
+        .filter(
+          (m) => envelopeMeasures.includes(m) || m === "air-water-heat-pump",
+        )
+        .map((m) => this.getMeasure(m)?.name || m),
     };
 
     return [currentScenario, renovatedScenarioResult];

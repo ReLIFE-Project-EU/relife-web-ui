@@ -164,12 +164,13 @@ export interface ECMScenario {
   /** Human-readable description */
   description: string;
   /** Elements applied in this scenario */
-  elements: ("wall" | "roof" | "window")[];
+  elements: ("wall" | "roof" | "window" | "slab")[];
   /** U-values applied (null if element not included) */
   u_values: {
     roof: number | null;
     wall: number | null;
     window: number | null;
+    slab: number | null;
   };
   /** Simulation results */
   results: {
@@ -199,6 +200,7 @@ export interface ECMApplicationResponse {
     roof: number | null;
     wall: number | null;
     window: number | null;
+    slab: number | null;
   };
   /** Single-scenario mode parameters */
   single_scenario_mode: {
@@ -224,14 +226,20 @@ export interface ECMApplicationParams {
   name: string;
   /** Weather source, defaults to 'pvgis' */
   weatherSource?: "pvgis" | "epw";
-  /** Elements to simulate, comma-separated (e.g., "wall,window") */
-  scenario_elements: string;
+  /** Elements to simulate, comma-separated (e.g., "wall,window"). Omit for system-only measures (e.g. heat pump only). */
+  scenario_elements?: string;
   /** Wall U-value in W/m²K */
   u_wall?: number;
   /** Roof U-value in W/m²K */
   u_roof?: number;
   /** Window U-value in W/m²K */
   u_window?: number;
+  /** Floor/slab U-value in W/m²K */
+  u_slab?: number;
+  /** Enable heat pump system */
+  use_heat_pump?: boolean;
+  /** Heat pump COP (coefficient of performance), default 3.2 */
+  heat_pump_cop?: number;
   /** Include baseline scenario in response (omit/false for single-scenario mode) */
   include_baseline?: boolean;
 }

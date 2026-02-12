@@ -63,7 +63,7 @@ const ENVELOPE_MEASURES: RenovationMeasure[] = [
     description:
       "Insulation of ground floor or basement ceiling to reduce heat loss to the ground. Particularly effective in buildings with unheated basements or crawl spaces.",
     category: "envelope",
-    isSupported: false,
+    isSupported: true,
   },
   {
     id: "windows",
@@ -86,7 +86,7 @@ const SYSTEM_MEASURES: RenovationMeasure[] = [
     description:
       "High-efficiency heat pump that extracts heat from outdoor air and transfers it to water for space heating and domestic hot water. Can also provide cooling in summer.",
     category: "systems",
-    isSupported: false,
+    isSupported: true,
   },
   {
     id: "condensing-boiler",

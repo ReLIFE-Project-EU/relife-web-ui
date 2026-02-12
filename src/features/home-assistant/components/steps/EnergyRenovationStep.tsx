@@ -140,8 +140,8 @@ export function EnergyRenovationStep() {
               .map((m) => renovation.getMeasure(m)?.name)
               .join(", ")}
           </Text>
-          . Only envelope measures (wall, roof, windows) will be simulated at
-          this time.
+          . Only envelope measures (wall, roof, floor, windows) and heat pump
+          will be simulated at this time.
         </Alert>
       )}
 
