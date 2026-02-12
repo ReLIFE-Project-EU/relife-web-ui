@@ -55,7 +55,7 @@ sequenceDiagram
     UI->>HRA: Run persona ranking with local MockMCDAService
     HRA->>HRA: Technical API is not called in this flow
     HRA-->>UI: Render ranked recommendations and scenario comparison
-    HRA->>HRA: ECM path currently supports wall, roof, and windows
+    HRA->>HRA: ECM supports wall, roof, floor, windows, air-water heat pump
 ```
 
 #### Flow Diagram
@@ -64,9 +64,9 @@ sequenceDiagram
 flowchart LR
     UserInput["USER INPUT<br/>---<br/>Required:<br/>- Country and location lat/lng<br/>- Building type and period<br/>- Floor area, project lifetime<br/>---<br/>Optional:<br/>- Archetype modifications<br/>- CAPEX and maintenance<br/>- Loan amount and term"]
 
-    DB[("RELIFE DATA SOURCES<br/>---<br/>Forecasting archetypes<br/>Financial CAPEX/OPEX defaults<br/>Risk model parameters")]
+    DB[("ReLIFE Database<br/>---<br/>Forecasting archetypes<br/>Financial CAPEX/OPEX defaults<br/>Risk model parameters")]
 
-    Forecasting["FORECASTING API PARTIAL<br/>---<br/>GET /forecasting/building/available<br/>POST /forecasting/building archetype=true<br/>POST /forecasting/simulate<br/>POST /forecasting/ecm_application<br/>---<br/>Returns baseline and renovated energy outputs<br/>NOTE: Renovation simulation limited to envelope measures"]
+    Forecasting["FORECASTING API PARTIAL<br/>---<br/>GET /forecasting/building/available<br/>POST /forecasting/building archetype=true<br/>POST /forecasting/simulate<br/>POST /forecasting/ecm_application<br/>---<br/>Returns baseline and renovated energy outputs<br/>NOTE: ECM supports envelope and heat pump only"]
 
     Financial["FINANCIAL API REAL<br/>---<br/>POST /financial/arv<br/>POST /financial/risk-assessment<br/>---<br/>Returns ARV + risk metrics<br/>NPV, IRR, ROI, PBP, DPP"]
 
@@ -97,9 +97,9 @@ flowchart LR
 
 - Real Forecasting + Financial integrations are wired through `src/services/BuildingService.ts`, `src/services/EnergyService.ts`, `src/services/RenovationService.ts`, and `src/services/FinancialService.ts`.
 - Technical API is not invoked in the HRA runtime path; ranking uses `src/services/mock/MockMCDAService.ts` (local TOPSIS) instead of `src/api/technical.ts`.
-- Renovation simulation is partial: `src/services/RenovationService.ts` filters to wall/roof/windows before `forecasting.simulateECM(...)`; other selected measures are currently unsimulated.
+- Renovation simulation is partial: `src/services/RenovationService.ts` sends envelope measures (wall, roof, floor, windows) and air-water heat pump to `forecasting.simulateECM(...)`; condensing boiler, PV, and solar thermal are not yet supported by the API path.
 - This means energy and financial outputs are backend-backed, while ranking and non-envelope technical effects are local/mock behavior.
-- Compare with the design flow in `docs/hra-tool-design.md#sequential-flow`.
+- The flow diagram above shows the current implementation; compare with the [design flow](docs/hra-tool-design.md#sequential-flow) to identify deviations.
 
 ### Portfolio Renovation Advisor
 
@@ -125,7 +125,7 @@ sequenceDiagram
       PRA-->>UI: Progress callback and per-building result
     end
     PRA->>PRA: No Technical API call in portfolio analysis flow
-    PRA->>PRA: Same ECM support constraints as HRA
+    PRA->>PRA: Same ECM support as HRA - envelope and heat pump
     PRA-->>UI: Portfolio summary in results step
 ```
 
@@ -135,9 +135,9 @@ sequenceDiagram
 flowchart LR
     ProfessionalInput["PROFESSIONAL INPUT<br/>---<br/>Portfolio buildings via CSV/manual<br/>Archetype and modification fields<br/>Selected renovation measures<br/>Project lifetime and financing settings"]
 
-    DB[("RELIFE DATA SOURCES<br/>---<br/>Forecasting archetypes<br/>Financial CAPEX/OPEX defaults<br/>Risk model parameters")]
+    DB[("ReLIFE Database<br/>---<br/>Forecasting archetypes<br/>Financial CAPEX/OPEX defaults<br/>Risk model parameters")]
 
-    Forecasting["FORECASTING API PARTIAL<br/>---<br/>simulateDirect and simulateCustomBuilding<br/>simulateECM for selected measures<br/>---<br/>Used per building in batched analysis<br/>NOTE: ECM support remains envelope-focused"]
+    Forecasting["FORECASTING API PARTIAL<br/>---<br/>simulateDirect and simulateCustomBuilding<br/>simulateECM for selected measures<br/>---<br/>Used per building in batched analysis<br/>NOTE: ECM supports envelope and heat pump only"]
 
     Financial["FINANCIAL API REAL<br/>---<br/>POST /financial/arv<br/>POST /financial/risk-assessment<br/>---<br/>Professional output level<br/>Provides metrics and probability metadata"]
 
@@ -170,7 +170,7 @@ flowchart LR
 - Service wiring in `src/features/portfolio-advisor/context/ServiceContext.tsx` uses real `EnergyService`, `RenovationService`, and `FinancialService` with concurrency-limited batches.
 - Technical API is not called in the PRA analysis path; `src/api/technical.ts` endpoints are currently outside this runtime workflow.
 - This means portfolio energy and finance outputs are backend-backed, while technical/MCDA backend scoring remains unimplemented in the production path.
-- Compare with the design flow in `docs/pra-tool-design.md#sequential-flow`.
+- The flow diagram above shows the current implementation; compare with the [design flow](docs/pra-tool-design.md#sequential-flow) to identify deviations.
 
 ### Renovation Strategy Explorer
 
@@ -198,7 +198,7 @@ sequenceDiagram
 flowchart LR
     PolicyInput["POLICYMAKER INPUT PLACEHOLDER<br/>---<br/>User navigates to strategy page<br/>No data-capture form implemented"]
 
-    DB[("RELIFE DATABASE NOT USED IN FLOW<br/>---<br/>No Strategy Explorer reads or writes yet")]
+    DB[("ReLIFE Database<br/>---<br/>Not used in this flow - no RSE reads or writes yet")]
 
     Forecasting["FORECASTING API STUB - NOT CALLED<br/>---<br/>No route or service invocation<br/>No request payloads implemented"]
 
