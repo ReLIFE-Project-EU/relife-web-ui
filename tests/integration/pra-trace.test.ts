@@ -815,11 +815,7 @@ function buildSequenceDiagram(history: HttpExchange[]): string {
 
   lines.push("```");
 
-  return [
-    `## HTTP Sequence Overview`,
-    ``,
-    ...lines,
-  ].join("\n");
+  return [`## HTTP Sequence Overview`, ``, ...lines].join("\n");
 }
 
 function buildHttpAppendix(history: HttpExchange[]): string {

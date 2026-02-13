@@ -295,6 +295,7 @@ export interface FinancialResults {
   riskAssessment: {
     pointForecasts: RiskAssessmentPointForecasts;
     metadata: RiskAssessmentMetadata;
+    probabilities?: Record<string, number>; // Pr(*) success metrics (professional+ output levels)
     percentiles?: RiskAssessmentPercentiles; // Available when output_level > "private"
     cashFlowVisualization?: string; // base64 PNG (included for private level)
     cashFlowData?: CashFlowData;
