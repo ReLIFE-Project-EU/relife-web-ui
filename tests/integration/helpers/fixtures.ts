@@ -78,6 +78,7 @@ export const ECM_PARAMS_ENVELOPE_HEAT_PUMP = {
   scenario_elements: "wall,slab",
   u_wall: 0.25,
   u_slab: 0.25,
+  // String values because they're passed directly as URL query params via URLSearchParams (not via typed API wrapper)
   use_heat_pump: "true",
   heat_pump_cop: "3.2",
 };

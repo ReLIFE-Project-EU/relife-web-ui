@@ -84,13 +84,11 @@ export interface RiskAssessmentResponse {
   /** Simulation metadata: n_sims, project_lifetime, loan info, etc. */
   metadata: Record<string, unknown>;
 
-  /** P10, P50, P90 for each indicator. Included in 'professional' and above. */
-  key_percentiles?: Record<string, Record<string, number>>;
-
   /** Success probability metrics. Included in 'professional' and above. */
   probabilities?: Record<string, number>;
 
-  /** Full percentile breakdown (P5-P95). Included in 'public' and 'complete'. */
+  /** Percentile breakdown for each indicator. Included in 'professional' and above
+   *  (P10-P90 for professional; P5-P95 for public/complete). */
   percentiles?: Record<string, Record<string, number>>;
 
   /** Base64-encoded PNG chart images. Only in 'complete' output_level. */

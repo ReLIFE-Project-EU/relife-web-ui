@@ -3,7 +3,7 @@
  *
  * Used by both EnergyService (baseline estimation) and RenovationService
  * (post-renovation simulation) to ensure consistent EPC classification,
- * energy pricing, and non-HVAC multipliers.
+ * HVAC energy aggregation, and energy pricing assumptions.
  */
 
 import type {
@@ -40,11 +40,6 @@ export const EPC_THRESHOLDS: { class: string; maxValue: number }[] = [
 export const ENERGY_PRICE_EUR_PER_KWH = 0.25;
 
 /**
- * Multiplier for total energy needs to account for hot water, lighting, etc.
- */
-export const NON_HVAC_ENERGY_MULTIPLIER = 1.2;
-
-/**
  * Default floor area if not provided (m²).
  */
 export const DEFAULT_FLOOR_AREA = 100;
@@ -63,6 +58,21 @@ export function getEPCClass(energyIntensity: number): string {
     }
   }
   return "G";
+}
+
+/**
+ * Estimate annual HVAC energy cost in EUR from annual HVAC demand in kWh.
+ *
+ * Intentionally frontend-defined:
+ * - Uses a flat tariff for transparent UI estimates
+ * - Does not attempt country/fuel/time-of-use modeling
+ * - Keeps pricing assumptions isolated in one place
+ */
+export function estimateAnnualHvacEnergyCost(
+  annualHvacEnergyKwh: number,
+  pricePerKwh: number = ENERGY_PRICE_EUR_PER_KWH,
+): number {
+  return annualHvacEnergyKwh * pricePerKwh;
 }
 
 /**

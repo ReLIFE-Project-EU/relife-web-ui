@@ -264,13 +264,14 @@ export interface RiskAssessmentRequest {
  * Response from POST /risk-assessment
  * Fields populated based on output_level (per API spec):
  * - private: point_forecasts, metadata (+ cash_flow_timeline viz)
- * - professional+: adds key_percentiles, probabilities
- * - public+: adds full percentiles breakdown
+ * - professional+: adds probabilities, percentiles (P10-P90)
+ * - public+: adds broader percentiles (P5-P95)
  * - complete: adds all visualizations
  */
 export interface RiskAssessmentResponse {
   pointForecasts: RiskAssessmentPointForecasts;
   metadata: RiskAssessmentMetadata;
+  probabilities?: Record<string, number>; // Pr(*) success metrics (professional+ output levels)
   percentiles?: RiskAssessmentPercentiles; // Full P10-P90 breakdown (public+ or when API returns it)
   cashFlowVisualization?: string; // base64 PNG
   cashFlowData?: CashFlowData;

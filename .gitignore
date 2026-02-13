@@ -10,6 +10,7 @@
 .claude
 
 TEMP-*.md
+*-trace-*.md
 
 # External services source code
 external-services/

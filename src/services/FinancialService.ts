@@ -126,6 +126,7 @@ export class FinancialService implements IFinancialService {
         output_level: this.outputLevel,
         ...(cashFlowData ? { cash_flow_data: cashFlowData } : {}),
       },
+      probabilities: response.probabilities ?? undefined,
       percentiles,
       cashFlowVisualization: response.visualizations?.cash_flow_timeline,
       cashFlowData,

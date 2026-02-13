@@ -71,11 +71,6 @@ export const MOCK_BASE_ENERGY_INTENSITY = 150;
 export const MOCK_DEFAULT_FLOOR_AREA = 100;
 
 /**
- * Multiplier for total energy needs to account for hot water, lighting, etc.
- */
-export const MOCK_NON_HVAC_ENERGY_MULTIPLIER = 1.2;
-
-/**
  * Percentage of energy needs typically allocated to heating vs cooling
  */
 export const MOCK_HEATING_ENERGY_SPLIT = 0.7;

@@ -79,9 +79,9 @@ export interface EnergyMix {
 
 export interface EstimationResult {
   estimatedEPC: string; // UI label (A+ to G), maps to Greek for API
-  annualEnergyNeeds: number; // kWh/year
-  annualEnergyCost: number; // EUR/year
-  heatingCoolingNeeds: number; // kWh/year
+  annualEnergyNeeds: number; // kWh/year (HVAC demand, API-derived)
+  annualEnergyCost: number; // EUR/year (derived from annualEnergyNeeds using ENERGY_PRICE_EUR_PER_KWH)
+  heatingCoolingNeeds: number; // kWh/year (HVAC demand, API-derived)
   energyMix: {
     cooling: EnergyMix;
     heating: EnergyMix;
@@ -90,7 +90,7 @@ export interface EstimationResult {
   flexibilityIndex: number; // 0-100
   comfortIndex: number; // 0-100
 
-  // Total annual energy consumption of the building in its current (pre-renovation) state.
+  // Total annual HVAC energy consumption of the building in its current (pre-renovation) state.
   // Named "Consumption" to distinguish it from savings, which are computed in FinancialService
   // by subtracting the renovated scenario's annualEnergyNeeds from this value.
   annualEnergyConsumption: number; // kWh/year
@@ -192,9 +192,9 @@ export interface RenovationScenario {
   id: ScenarioId;
   label: string;
   epcClass: string;
-  annualEnergyNeeds: number;
-  annualEnergyCost: number;
-  heatingCoolingNeeds: number;
+  annualEnergyNeeds: number; // kWh/year (HVAC demand, API-derived)
+  annualEnergyCost: number; // EUR/year (derived from annualEnergyNeeds using ENERGY_PRICE_EUR_PER_KWH)
+  heatingCoolingNeeds: number; // kWh/year (HVAC demand, API-derived)
   flexibilityIndex: number;
   comfortIndex: number;
   measures: string[];

@@ -9,12 +9,13 @@ export default defineConfig({
     testTimeout: 120_000,
     hookTimeout: 30_000,
 
-    // Only include integration tests
+    // Only include integration tests (trace utility has its own config)
     include: ["tests/integration/**/*.test.ts"],
+    exclude: ["tests/integration/pra-trace.test.ts"],
 
-    // Sequential execution (no parallel tests)
+    // Sequential execution (no parallel tests; single worker)
     pool: "forks",
-    singleFork: true,
+    fileParallelism: false,
 
     // Stop on first failure (fail-fast for dependent test steps)
     bail: 1,

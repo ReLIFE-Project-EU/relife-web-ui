@@ -27,9 +27,8 @@ import type {
 } from "../types/renovation";
 import {
   DEFAULT_FLOOR_AREA,
-  ENERGY_PRICE_EUR_PER_KWH,
-  NON_HVAC_ENERGY_MULTIPLIER,
   calculateAnnualTotals,
+  estimateAnnualHvacEnergyCost,
   getEPCClass,
   transformColumnarToRowFormat,
 } from "./energyUtils";
@@ -230,9 +229,7 @@ export class RenovationService implements IRenovationService {
     const areaScaleFactor = userArea / archetypeArea;
 
     const scaledRenovatedHvac = renovatedHvacEnergy * areaScaleFactor;
-    const renovatedTotalEnergy =
-      scaledRenovatedHvac * NON_HVAC_ENERGY_MULTIPLIER;
-    const renovatedIntensity = renovatedTotalEnergy / userArea;
+    const renovatedIntensity = scaledRenovatedHvac / userArea;
 
     // Build response scenarios
     const currentScenario = this.buildBaselineScenario(estimation);
@@ -241,9 +238,9 @@ export class RenovationService implements IRenovationService {
       id: "renovated" as ScenarioId,
       label: "After Renovation",
       epcClass: getEPCClass(renovatedIntensity),
-      annualEnergyNeeds: Math.round(renovatedTotalEnergy),
+      annualEnergyNeeds: Math.round(scaledRenovatedHvac),
       annualEnergyCost: Math.round(
-        renovatedTotalEnergy * ENERGY_PRICE_EUR_PER_KWH,
+        estimateAnnualHvacEnergyCost(scaledRenovatedHvac),
       ),
       heatingCoolingNeeds: Math.round(scaledRenovatedHvac),
       comfortIndex: Math.min(100, estimation.comfortIndex + 5),

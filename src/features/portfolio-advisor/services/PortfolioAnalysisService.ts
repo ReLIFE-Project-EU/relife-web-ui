@@ -146,17 +146,26 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     if (renovatedResults) {
       praFinancialResults = { ...renovatedResults };
 
-      // Extract probabilities from risk assessment metadata if present
-      const metadata = renovatedResults.riskAssessment?.metadata;
-      if (metadata) {
-        const probabilities: Record<string, number> = {};
-        for (const [key, value] of Object.entries(metadata)) {
-          if (key.startsWith("Pr(") && typeof value === "number") {
-            probabilities[key] = value;
+      // Prefer the dedicated probabilities field mapped by FinancialService
+      const riskAssessment = renovatedResults.riskAssessment;
+      if (
+        riskAssessment?.probabilities &&
+        Object.keys(riskAssessment.probabilities).length > 0
+      ) {
+        praFinancialResults.probabilities = riskAssessment.probabilities;
+      } else {
+        // Fallback: mine Pr(*) keys from metadata for backward compatibility
+        const metadata = riskAssessment?.metadata;
+        if (metadata) {
+          const probabilities: Record<string, number> = {};
+          for (const [key, value] of Object.entries(metadata)) {
+            if (key.startsWith("Pr(") && typeof value === "number") {
+              probabilities[key] = value;
+            }
           }
-        }
-        if (Object.keys(probabilities).length > 0) {
-          praFinancialResults.probabilities = probabilities;
+          if (Object.keys(probabilities).length > 0) {
+            praFinancialResults.probabilities = probabilities;
+          }
         }
       }
     }

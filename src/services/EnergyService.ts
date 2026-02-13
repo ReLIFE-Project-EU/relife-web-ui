@@ -27,9 +27,8 @@ import type {
 } from "../types/renovation";
 import {
   DEFAULT_FLOOR_AREA,
-  ENERGY_PRICE_EUR_PER_KWH,
-  NON_HVAC_ENERGY_MULTIPLIER,
   calculateAnnualTotals,
+  estimateAnnualHvacEnergyCost,
   getEPCClass,
 } from "./energyUtils";
 import type { IEnergyService, IBuildingService } from "./types";
@@ -458,9 +457,8 @@ export class EnergyService implements IEnergyService {
     const energyIntensity = scaledHvacTotal / userArea;
     const estimatedEPC = getEPCClass(energyIntensity);
 
-    // Calculate total energy needs (add non-HVAC loads)
-    const annualEnergyNeeds = scaledHvacTotal * NON_HVAC_ENERGY_MULTIPLIER;
-    const annualEnergyCost = annualEnergyNeeds * ENERGY_PRICE_EUR_PER_KWH;
+    const annualEnergyNeeds = scaledHvacTotal;
+    const annualEnergyCost = estimateAnnualHvacEnergyCost(annualEnergyNeeds);
 
     // Calculate energy mix
     const energyMix = calculateEnergyMix(

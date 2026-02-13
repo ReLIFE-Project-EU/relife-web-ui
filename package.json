@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "format": "prettier --write .",
-    "test:integration": "vitest run --config vitest.integration.config.ts"
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "trace:pra": "vitest run --config vitest.pra-trace.config.ts"
   },
   "dependencies": {
     "@mantine/charts": "^8.3.12",

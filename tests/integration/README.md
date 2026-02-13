@@ -22,3 +22,12 @@ Contract-level workflow tests for backend APIs, run with Vitest in Node.
 - `INTEGRATION_AUTH_TOKEN` (optional bearer token)
 
 Vitest integration config is in `vitest.integration.config.ts` (sequential single-fork, fail-fast, 120s test timeout).
+
+---
+
+## PRA Trace
+
+`pra-trace.test.ts` is a documentation/debugging tool (not a CI gate). It runs the PRA workflow and writes request/response details to `pra-trace-<timestamp>.md` in the project root.
+
+- Run: `task up` then `npm run trace:pra`
+- Config: `vitest.pra-trace.config.ts` (separate from integration config; trace is not part of `npm run test:integration`)
