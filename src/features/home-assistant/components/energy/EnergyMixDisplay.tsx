@@ -15,7 +15,7 @@ import {
 import { IconBolt, IconFlame } from "@tabler/icons-react";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import type { EnergyMix } from "../../context/types";
-import { formatEnergy } from "../../utils/formatters";
+import { formatEnergyPerYear } from "../../utils/formatters";
 
 export function EnergyMixDisplay() {
   const { state } = useHomeAssistant();
@@ -84,7 +84,7 @@ function EnergyMixSection({ title, mix }: EnergyMixSectionProps) {
           </Text>
         </Group>
         <Text size="md" fw={500} ml={24}>
-          {formatEnergy(mix.electricity)}
+          {formatEnergyPerYear(mix.electricity)}
         </Text>
 
         <Group gap="xs" mt="xs">
@@ -94,7 +94,7 @@ function EnergyMixSection({ title, mix }: EnergyMixSectionProps) {
           </Text>
         </Group>
         <Text size="md" fw={500} ml={24}>
-          {formatEnergy(mix.heatingOil)}
+          {formatEnergyPerYear(mix.heatingOil)}
         </Text>
       </Stack>
     </Box>

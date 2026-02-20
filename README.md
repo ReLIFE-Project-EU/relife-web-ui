@@ -20,114 +20,161 @@ npm run preview
 
 ## Renovation Tools Architecture
 
-The ReLIFE Web UI implements three distinct renovation tools, each targeting different user groups and use cases. The architecture follows a two-layer pattern: API wrappers (`src/api/`) handle low-level HTTP communication, while feature services (`src/features/<tool>/services/`) add business logic and orchestration.
+The ReLIFE Web UI implements three renovation tools with different implementation maturity levels. The diagrams below document current runtime behavior (not target design), including where services are real, mocked, partial, or not wired yet.
 
 ### Home Renovation Assistant
+
+#### Sequence Diagram
 
 ```mermaid
 sequenceDiagram
     participant UI as Web UI
     participant HRA as Home Renovation Assistant
-    participant BuildingSvc as Building Service
-    participant EnergySvc as Energy Service
-    participant RenovationSvc as Renovation Service
-    participant FinancialSvc as Financial Service
-    participant MCDASvc as MCDA Service (mock)
     participant FCAST as Forecasting API
     participant FIN as Financial API
+    participant TECH as Technical API
 
-    Note over UI,HRA: Step 1: Building Information & EPC Estimation
-    UI->>BuildingSvc: getOptions() + getArchetypes()
-    BuildingSvc->>FCAST: GET /building/available
-    FCAST-->>BuildingSvc: Available archetypes (country, category, period)
-    BuildingSvc-->>UI: Dynamic dropdown options (from archetypes)
-    UI->>UI: User selects location on interactive map
-    UI->>BuildingSvc: findMatchingArchetype(lat, lng, category, period)
-    BuildingSvc-->>UI: Best matching archetype (distance-based)
-    UI->>HRA: Submit building information
-    HRA->>EnergySvc: estimateEPC(building)
-    EnergySvc->>FCAST: POST /simulate?archetype=true&weather_source=pvgis
-    FCAST-->>EnergySvc: Energy simulation results (hourly data)
-    EnergySvc-->>HRA: EstimationResult (EPC, energy needs, costs)
-    HRA-->>UI: Display EPC estimation
-
-    Note over UI,HRA: Step 2: Renovation Measures & Financial Analysis
-    UI->>HRA: Select renovation measures
-    HRA->>RenovationSvc: evaluateScenarios(building, estimation, measures)
-    RenovationSvc->>FCAST: POST /ecm_application (envelope measures only)
-    Note over RenovationSvc: Currently supports: wall, roof, windows<br/>Systems/renewables: TODO
-    FCAST-->>RenovationSvc: Renovated scenario energy data
-    RenovationSvc-->>HRA: RenovationScenario[] (current + renovated)
-
-    HRA->>FinancialSvc: calculateForAllScenarios(scenarios, funding, ...)
-    loop For each scenario
-        FinancialSvc->>FIN: POST /arv (property value calculation)
-        FIN-->>FinancialSvc: ARV result
-        FinancialSvc->>FIN: POST /risk-assessment (Monte Carlo simulation)
-        FIN-->>FinancialSvc: Financial indicators (NPV, IRR, ROI, PBP, DPP)
+    UI->>HRA: Submit building inputs
+    HRA->>FCAST: listArchetypes / getArchetypeDetails
+    FCAST-->>HRA: Archetype metadata for matching
+    alt Modified archetype
+      HRA->>FCAST: simulateCustomBuilding(archetype=false)
+      FCAST-->>HRA: Baseline simulation results
+    else Default archetype
+      HRA->>FCAST: simulateDirect(archetype=true)
+      FCAST-->>HRA: Baseline simulation results
     end
-    FinancialSvc-->>HRA: FinancialResults (per scenario)
-    HRA-->>UI: Display scenarios with financial data
 
-    Note over UI,HRA: Step 3: MCDA Ranking & Decision Support
-    UI->>HRA: Select MCDA persona
-    HRA->>MCDASvc: rank(scenarios, financialResults, persona)
-    Note over MCDASvc: Mock implementation<br/>Local TOPSIS algorithm<br/>Technical API integration: TODO
-    MCDASvc-->>HRA: MCDARankingResult[] (sorted by rank)
-    HRA-->>UI: Display ranked recommendations
+    UI->>HRA: Evaluate selected measures
+    HRA->>FCAST: simulateECM(supported envelope measures)
+    FCAST-->>HRA: Current + renovated scenarios
+    HRA->>FIN: calculateARV and assessRisk per scenario
+    FIN-->>HRA: ARV and risk indicators
+    HRA-->>UI: Render scenarios and financial outputs
+
+    UI->>HRA: Run persona ranking with local MockMCDAService
+    HRA->>HRA: Technical API is not called in this flow
+    HRA-->>UI: Render ranked recommendations and scenario comparison
+    HRA->>HRA: ECM supports wall, roof, floor, windows, air-water heat pump
 ```
 
-**Implementation Status:**
+#### Flow Diagram
 
-- **Forecasting API**: Fully integrated. Building options are dynamically derived from available archetypes via `GET /building/available`. Uses archetype-based simulation (`/simulate` with `archetype=true`) for baseline EPC estimation and ECM application endpoint (`/ecm_application`) for renovation scenarios. Currently supports envelope measures (wall insulation, roof insulation, windows); systems and renewable measures are pending API support.
-- **Financial API**: Fully integrated. Calls `/arv` for property value calculation and `/risk-assessment` for Monte Carlo financial analysis. Both endpoints are production-ready.
-- **Technical API**: Not integrated. MCDA ranking uses a local mock implementation with TOPSIS algorithm. The Technical API's five pillar endpoints (`/ee`, `/rei`, `/sei`, `/uc`, `/fv`) are not yet called. See [`src/features/home-assistant/services/mock/MockMCDAService.ts`](src/features/home-assistant/services/mock/MockMCDAService.ts).
-- **Building Service**: Real implementation using Forecasting API archetypes. Dropdown options (building type, construction period) are dynamically filtered based on available archetypes. Location input uses an interactive Leaflet map with archetype markers. Distance-based matching selects the closest archetype using country reference coordinates. See [`src/features/home-assistant/services/BuildingService.ts`](src/features/home-assistant/services/BuildingService.ts).
+```mermaid
+flowchart LR
+    UserInput["USER INPUT<br/>---<br/>Required:<br/>- Country and location lat/lng<br/>- Building type and period<br/>- Floor area, project lifetime<br/>---<br/>Optional:<br/>- Archetype modifications<br/>- CAPEX and maintenance<br/>- Loan amount and term"]
+
+    DB[("ReLIFE Database<br/>---<br/>Forecasting archetypes<br/>Financial CAPEX/OPEX defaults<br/>Risk model parameters")]
+
+    Forecasting["FORECASTING API PARTIAL<br/>---<br/>GET /forecasting/building/available<br/>POST /forecasting/building archetype=true<br/>POST /forecasting/simulate<br/>POST /forecasting/ecm_application<br/>---<br/>Returns baseline and renovated energy outputs<br/>NOTE: ECM supports envelope and heat pump only"]
+
+    Financial["FINANCIAL API REAL<br/>---<br/>POST /financial/arv<br/>POST /financial/risk-assessment<br/>---<br/>Returns ARV + risk metrics<br/>NPV, IRR, ROI, PBP, DPP"]
+
+    Technical["TECHNICAL API STUB - NOT CALLED<br/>---<br/>Endpoints exist in src/api/technical.ts<br/>No HRA runtime invocation<br/>Ranking runs in local mock service"]
+
+    Output["HOME ASSISTANT RESULTS UI<br/>---<br/>Shows EPC and scenario comparisons<br/>Shows ARV and risk charts/metrics<br/>Shows ranking from local MockMCDAService"]
+
+    UserInput --> Forecasting
+    DB --> Forecasting
+    UserInput --> Financial
+    DB --> Financial
+    Forecasting --> Financial
+    Forecasting --> Output
+    Financial --> Output
+    Forecasting -. planned-only .-> Technical
+    Financial -. planned-only .-> Technical
+    Technical -. not-executed .-> Output
+
+    style UserInput fill:#f0f0f0
+    style DB fill:#d4edda
+    style Forecasting fill:#cfe2ff,stroke:#4c6ef5
+    style Financial fill:#fff3cd,stroke:#a37f00
+    style Technical fill:#f8d7da,stroke:#666,stroke-dasharray: 5 5
+    style Output fill:#d1ecf1
+```
+
+**Implementation status**
+
+- Real Forecasting + Financial integrations are wired through `src/services/BuildingService.ts`, `src/services/EnergyService.ts`, `src/services/RenovationService.ts`, and `src/services/FinancialService.ts`.
+- Technical API is not invoked in the HRA runtime path; ranking uses `src/services/mock/MockMCDAService.ts` (local TOPSIS) instead of `src/api/technical.ts`.
+- Renovation simulation is partial: `src/services/RenovationService.ts` sends envelope measures (wall, roof, floor, windows) and air-water heat pump to `forecasting.simulateECM(...)`; condensing boiler, PV, and solar thermal are not yet supported by the API path.
+- This means energy and financial outputs are backend-backed, while ranking and non-envelope technical effects are local/mock behavior.
+- The flow diagram above shows the current implementation; compare with the [design flow](docs/hra-tool-design.md#sequential-flow) to identify deviations.
 
 ### Portfolio Renovation Advisor
+
+#### Sequence Diagram
 
 ```mermaid
 sequenceDiagram
     participant UI as Web UI
     participant PRA as Portfolio Renovation Advisor
-    participant PM as Portfolio Manager
-    participant SB as Supabase (Storage)
     participant FCAST as Forecasting API
     participant FIN as Financial API
     participant TECH as Technical API
 
-    Note over UI,PM: Portfolio Management (Implemented)
-    UI->>PRA: Navigate to /my-portfolios
-    PRA->>PM: Load PortfolioManager component
-    PM->>SB: portfolioApi.list()
-    SB-->>PM: User's portfolios
-    PM-->>UI: Display portfolio selector
-
-    UI->>PM: Create new portfolio
-    PM->>SB: portfolioApi.create(name, description)
-    SB-->>PM: Portfolio created
-    
-    UI->>PM: Upload CSV building data
-    PM->>SB: fileApi.upload(file, portfolioId)
-    Note over PM,SB: Validates: file type, size (50MB max), quota
-    SB-->>PM: File stored in Supabase Storage
-    PM-->>UI: Display uploaded files with quota indicator
-
-    Note over PRA,TECH: Analysis Features (Not Yet Implemented)
-    UI->>PRA: Navigate to /portfolio-advisor
-    PRA-->>UI: Display landing page with planned features
-    Note over PRA: Planned:<br/>- Financial Analysis (FIN API)<br/>- Technical Analysis (TECH API)<br/>- Comparative Analytics
+    UI->>PRA: Configure portfolio and click Analyze Portfolio
+    PRA->>PRA: analyzePortfolio() with batched concurrency
+    loop Each building in batch
+      PRA->>FCAST: estimateEPC
+      FCAST-->>PRA: Baseline estimation
+      PRA->>FCAST: evaluateScenarios
+      FCAST-->>PRA: Scenario simulation results
+      PRA->>FIN: calculateARV + assessRisk
+      FIN-->>PRA: Financial outputs per scenario
+      PRA-->>UI: Progress callback and per-building result
+    end
+    PRA->>PRA: No Technical API call in portfolio analysis flow
+    PRA->>PRA: Same ECM support as HRA - envelope and heat pump
+    PRA-->>UI: Portfolio summary in results step
 ```
 
-**Implementation Status:**
+#### Flow Diagram
 
-- **Tool Status**: Partially implemented. Portfolio management is functional at `/my-portfolios` (authenticated). Landing page at `/portfolio-advisor` displays planned features.
-- **Portfolio Manager**: Fully implemented using Supabase. Supports CRUD operations for portfolios, CSV file upload/management, and storage quota tracking. See [`src/features/portfolio-manager/`](src/features/portfolio-manager/).
-- **Forecasting API**: Not integrated. Planned for building simulation across portfolio.
-- **Financial API**: Not integrated. Planned for portfolio-level financial analysis.
-- **Technical API**: Not integrated. Planned for MCDA across multiple buildings.
+```mermaid
+flowchart LR
+    ProfessionalInput["PROFESSIONAL INPUT<br/>---<br/>Portfolio buildings via CSV/manual<br/>Archetype and modification fields<br/>Selected renovation measures<br/>Project lifetime and financing settings"]
+
+    DB[("ReLIFE Database<br/>---<br/>Forecasting archetypes<br/>Financial CAPEX/OPEX defaults<br/>Risk model parameters")]
+
+    Forecasting["FORECASTING API PARTIAL<br/>---<br/>simulateDirect and simulateCustomBuilding<br/>simulateECM for selected measures<br/>---<br/>Used per building in batched analysis<br/>NOTE: ECM supports envelope and heat pump only"]
+
+    Financial["FINANCIAL API REAL<br/>---<br/>POST /financial/arv<br/>POST /financial/risk-assessment<br/>---<br/>Professional output level<br/>Provides metrics and probability metadata"]
+
+    Technical["TECHNICAL API STUB - NOT CALLED<br/>---<br/>No invocation in PortfolioAnalysisService<br/>MCDA/technical pillar scoring not wired"]
+
+    ProfessionalUI["PORTFOLIO ADVISOR RESULTS UI<br/>---<br/>Shows per-building baseline/renovated outputs<br/>Shows ARV and risk indicators<br/>Shows portfolio progress and aggregated results"]
+
+    ProfessionalInput --> Forecasting
+    DB --> Forecasting
+    ProfessionalInput --> Financial
+    DB --> Financial
+    Forecasting --> Financial
+    Forecasting --> ProfessionalUI
+    Financial --> ProfessionalUI
+    Forecasting -. planned-only .-> Technical
+    Financial -. planned-only .-> Technical
+    Technical -. not-executed .-> ProfessionalUI
+
+    style ProfessionalInput fill:#f0f0f0
+    style DB fill:#d4edda
+    style Forecasting fill:#cfe2ff,stroke:#4c6ef5
+    style Financial fill:#fff3cd,stroke:#a37f00
+    style Technical fill:#f8d7da,stroke:#666,stroke-dasharray: 5 5
+    style ProfessionalUI fill:#d1ecf1
+```
+
+**Implementation status**
+
+- Real Forecasting + Financial calls are orchestrated in `src/features/portfolio-advisor/services/PortfolioAnalysisService.ts`, triggered from `src/features/portfolio-advisor/components/steps/FinancingStep.tsx`.
+- Service wiring in `src/features/portfolio-advisor/context/ServiceContext.tsx` uses real `EnergyService`, `RenovationService`, and `FinancialService` with concurrency-limited batches.
+- Technical API is not called in the PRA analysis path; `src/api/technical.ts` endpoints are currently outside this runtime workflow.
+- This means portfolio energy and finance outputs are backend-backed, while technical/MCDA backend scoring remains unimplemented in the production path.
+- The flow diagram above shows the current implementation; compare with the [design flow](docs/pra-tool-design.md#sequential-flow) to identify deviations.
 
 ### Renovation Strategy Explorer
+
+#### Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -137,16 +184,52 @@ sequenceDiagram
     participant FIN as Financial API
     participant TECH as Technical API
 
-    Note over UI,RSE: Tool not yet implemented
     UI->>RSE: Navigate to /strategy-explorer
-    RSE-->>UI: Display landing page with planned features
-
-    Note over RSE: Planned features:<br/>- Building Stock Analysis<br/>- Regional Projections<br/>- Geographic Insights<br/>- Policy Dashboard
+    RSE->>RSE: No runtime API calls from this route
+    RSE->>RSE: Forecasting API not invoked
+    RSE->>RSE: Financial API not invoked
+    RSE->>RSE: Technical API not invoked
+    RSE-->>UI: Render static landing content and disabled Coming Soon CTA
 ```
 
-**Implementation Status:**
+#### Flow Diagram
 
-- **Tool Status**: Not implemented. Only a landing page exists at `/strategy-explorer` route (see [`src/routes/StrategyExplorerLanding.tsx`](src/routes/StrategyExplorerLanding.tsx)). The landing page displays planned features but no actual tool functionality is available.
-- **Forecasting API**: Not integrated.
-- **Financial API**: Not integrated.
-- **Technical API**: Not integrated.
+```mermaid
+flowchart LR
+    PolicyInput["POLICYMAKER INPUT PLACEHOLDER<br/>---<br/>User navigates to strategy page<br/>No data-capture form implemented"]
+
+    DB[("ReLIFE Database<br/>---<br/>Not used in this flow - no RSE reads or writes yet")]
+
+    Forecasting["FORECASTING API STUB - NOT CALLED<br/>---<br/>No route or service invocation<br/>No request payloads implemented"]
+
+    Financial["FINANCIAL API STUB - NOT CALLED<br/>---<br/>No route or service invocation<br/>No request payloads implemented"]
+
+    Technical["TECHNICAL API STUB - NOT CALLED<br/>---<br/>No route or service invocation<br/>No request payloads implemented"]
+
+    PolicyUI["STRATEGY EXPLORER LANDING UI<br/>---<br/>Static feature cards<br/>Disabled Coming Soon button"]
+
+    PolicyInput --> PolicyUI
+    PolicyInput -. planned-only .-> Forecasting
+    PolicyInput -. planned-only .-> Financial
+    PolicyInput -. planned-only .-> Technical
+    DB -. planned-only .-> Forecasting
+    DB -. planned-only .-> Financial
+    DB -. planned-only .-> Technical
+    Forecasting -. not-executed .-> PolicyUI
+    Financial -. not-executed .-> PolicyUI
+    Technical -. not-executed .-> PolicyUI
+
+    style PolicyInput fill:#f0f0f0
+    style DB fill:#d4edda
+    style Forecasting fill:#cfe2ff,stroke:#666,stroke-dasharray: 5 5
+    style Financial fill:#fff3cd,stroke:#666,stroke-dasharray: 5 5
+    style Technical fill:#f8d7da,stroke:#666,stroke-dasharray: 5 5
+    style PolicyUI fill:#e2e3e5
+```
+
+**Implementation status**
+
+- The current implementation is a UI stub in `src/routes/StrategyExplorerLanding.tsx`, mounted via `src/App.tsx`.
+- The page shows static planned-feature content with a disabled CTA and no orchestration/service layer.
+- Forecasting, Financial, and Technical APIs are all uninvoked in this tool path at runtime.
+- This means Strategy Explorer is visible in navigation but remains a non-functional placeholder.

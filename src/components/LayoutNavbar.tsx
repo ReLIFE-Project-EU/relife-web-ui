@@ -4,7 +4,6 @@ import {
   IconBuildingEstate,
   IconHome,
   IconHomeHeart,
-  IconTools,
 } from "@tabler/icons-react";
 import React from "react";
 import { useLocation } from "react-router-dom";
@@ -40,16 +39,6 @@ const navigationData: NavItem[] = [
     label: "Home Assistant",
     icon: IconHomeHeart,
     link: "/home-assistant",
-  },
-
-  // Direct access to underlying calculators and services
-  {
-    label: "Expert Tools",
-    icon: IconTools,
-    links: [
-      { label: "Financial Calculator", link: "/financial" },
-      { label: "Technical Analysis", link: "/technical" },
-    ],
   },
 ];
 

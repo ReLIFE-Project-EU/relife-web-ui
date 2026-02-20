@@ -1,6 +1,7 @@
 import {
   Badge,
   Box,
+  Button,
   Card,
   Container,
   List,
@@ -11,6 +12,7 @@ import {
   Title,
 } from "@mantine/core";
 import {
+  IconArrowRight,
   IconBuildingCommunity,
   IconChartAreaLine,
   IconMap,
@@ -56,11 +58,19 @@ export const StrategyExplorerLanding = () => {
           <Title order={1} mb="sm">
             Renovation Strategy Explorer
           </Title>
-          <Text c="dimmed" size="lg" maw={700}>
+          <Text c="dimmed" size="lg" maw={700} mb="lg">
             Comprehensive tools for analyzing building stock at national and
             regional levels. Develop evidence-based renovation strategies and
             track policy impacts across Europe.
           </Text>
+          <Button
+            size="lg"
+            color="blue"
+            rightSection={<IconArrowRight size={18} />}
+            disabled
+          >
+            Coming Soon
+          </Button>
         </Box>
 
         {/* Target Users */}

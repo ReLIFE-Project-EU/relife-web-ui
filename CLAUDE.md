@@ -45,6 +45,60 @@ This repository implements the **ReLIFE Web UI**, part of the EU LIFE program Re
 
 D3.2 represents formal project requirements, but implementation realities may require adjustments. The user must explicitly approve any deviation from documented requirements.
 
+## Development Process
+
+This project prioritizes transparency, restraint, and verifiability over speed or comprehensiveness.
+
+### 1. Think Before Coding
+
+**State assumptions explicitly. If uncertain, ask.**
+
+- Surface multiple interpretations rather than deciding silently
+- Acknowledge simpler alternatives when they exist
+- When encountering ambiguous requirements or conflicts, pause and clarify with the user
+- Use `AskUserQuestion` to validate assumptions for anything non-trivial
+
+**Never proceed with uncertainty silently.** This is more important than moving fast.
+
+### 2. Simplicity First
+
+**Write minimal code solving the stated problem only.**
+
+- Implement exactly what was requested; avoid speculative features or unused abstractions
+- If you can solve the problem in 50 lines instead of 200, refactor to the simpler solution
+- Skip error handling for scenarios that shouldn't occur (trust framework guarantees for internal code; validate only at system boundaries)
+- Treat code length as a signal: growing files should be split, not expanded
+
+**Before writing**: Ask "What is the simplest way to solve this?"
+
+### 3. Surgical Changes
+
+**Modify only what the request requires; preserve surrounding code style.**
+
+- Don't refactor working code or "improve" unrelated sections
+- Don't remove dependencies unless YOUR changes created them
+- Match the existing code patterns in the file/feature you're modifying
+- If you spot pre-existing dead code, flag it to the user rather than deleting it silently
+
+**Scope matters**: A bug fix doesn't require code cleanup. A new feature doesn't need comprehensive error handling for edge cases that can't occur.
+
+### 4. Goal-Driven Execution
+
+**Transform vague requests into measurable success criteria.**
+
+- For multi-step tasks, create a brief verification plan upfront
+- Test before and after changes to establish causality
+- Strong success criteria enable independent iteration and reduce ambiguity
+
+**Example**: Instead of "improve performance", clarify:
+- What metric? (load time, render time, bundle size)
+- What is "improved"? (10% faster, under 2 seconds)
+- How will we measure it? (specific test, profiling tool, benchmark)
+
+---
+
+**These principles trade speed for correctness**—appropriate for non-trivial work. They reduce AI-driven coding mistakes by prioritizing caution and verifiability.
+
 ## API Specifications (OpenAPI)
 
 The OpenAPI specifications for the Financial, Forecasting, and Technical services are stored in `api-specs/`. This directory contains timestamped subdirectories that track the evolution of each service's API (e.g., `api-specs/20260114-165540`) and are sortable alphabetically. Use these specs as the formal reference for API interfaces when implementing or reviewing integrations.
@@ -139,10 +193,14 @@ flowchart TD
 
 ### General Principles
 
+These principles are grounded in the **Development Process** section above, especially *Simplicity First* and *Surgical Changes*:
+
 - **Keep it minimal**: Do not add new dependencies unless strictly necessary and clearly justified.
 - **Prefer built-in features** from Vite, React, and Mantine over external libraries.
 - **Use TypeScript** with strict typing (`strict: true`) and avoid `any` unless unavoidable (and document why).
 - **Always prefer Mantine components and layout primitives**: Use built-in Mantine components for all UI and layout needs. Custom CSS should only be used as a last resort when Mantine does not provide a clean, comparable solution.
+
+**Scope reminder**: If you're adding a feature, don't refactor surrounding code. If you're fixing a bug, don't add error handling for hypothetical scenarios. Write for the problem at hand.
 
 ### Project Structure
 
@@ -225,28 +283,58 @@ flowchart TD
 
 ## Universal Dos/Don'ts
 
+**Grounded in the Development Process above**, these rules ensure code quality, maintainability, and alignment with project values.
+
 ### Don't
 
+**Simplicity & Scope**
 - Add dependencies unless native APIs are insufficient.
-- Leave dependency versions unpinned—always specify range (at least major).
+- Add speculative features, unused abstractions, or "future-proofing" beyond the current task.
+- Refactor or improve unrelated sections when fixing a bug or implementing a feature.
+- Skip error handling for scenarios that can't happen (trust framework guarantees internally).
+- Expand files past ~300 lines without splitting them.
+
+**Changes & Commits**
 - Make large, unfocused commits; prefer atomic changes.
+- Commit secrets—use env vars and `.gitignore` for sensitive files.
+- Leave dependency versions unpinned—always specify range (at least major).
+- Delete pre-existing dead code silently; flag it instead.
+
+**Configuration & Code Quality**
+- Hardcode environment-specific URLs, tokens, or magic numbers; use constants and config files.
+- Use inline CSS/styles or violate framework conventions (e.g., always use Mantine components first).
+- Leave dead code, unused imports, or commented-out sections.
+- Ignore errors; handle all failures visibly with user-facing messages.
+- Over-optimize before profiling; ship working code first.
+- Rely on mutable globals or unclear side effects.
+
+**Project Integrity**
 - Omit root-level README.md.
 - Work outside of a git directory.
-- Commit secrets—use env vars.
-- Hardcode values; use named constants/config.
-- Over-optimize before profiling.
-- Ignore errors; handle all failures visibly.
-- Rely on mutable globals.
-- Leave dead code or commented-out sections.
-- Use inline CSS/styles or violate framework conventions.
 
 ### Do
 
-- Clarify requirements with short planning, especially for ambiguous work.
+**Before Coding**
+- Clarify ambiguous requirements with short planning or `AskUserQuestion`; surface alternatives explicitly.
+- State assumptions clearly; ask rather than assume.
+- Transform vague requests into measurable success criteria.
 - Search GitHub/GitLab for real code patterns before complex implementation.
-- Confirm framework/library versions before writing code.
-- Make atomic, descriptive commits.
-- Generate automated smoke tests for key logic. Invite user guidance for complex test cases.
-- Document the reasoning behind key code decisions.
-- Ensure code passes local lint/build before pushing.
+- Confirm framework/library versions before writing code (see Tech Stack Versions).
+
+**During Implementation**
+- Write minimal code solving exactly what was requested.
+- Match existing code patterns and style in the file/feature you're modifying.
+- Use TypeScript strict typing and avoid `any` (document if unavoidable).
+- Make atomic, descriptive commits that reflect the "why" of changes.
+- Run lint and build locally before completing work.
 - Sanitize inputs and follow security best practices (e.g., OWASP Top 10).
+
+**Testing & Verification**
+- Generate automated smoke tests for key logic; invite user guidance for complex cases.
+- Test before and after changes to establish causality.
+- Verify changes work as intended before claiming completion.
+
+**Documentation & Decisions**
+- Document the reasoning behind non-obvious code decisions.
+- Keep README.md up-to-date with project changes.
+- Write comments only for non-obvious logic; self-documenting code is preferred.

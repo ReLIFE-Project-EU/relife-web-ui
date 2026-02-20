@@ -31,7 +31,7 @@ const features = [
     icon: IconListCheck,
     title: "Renovation Options",
     description:
-      "Browse pre-validated renovation packages (Soft, Regular, Deep) with clear explanations of what each includes.",
+      "Browse available renovation measures with clear explanations of each intervention and expected impact.",
   },
   {
     icon: IconCoin,

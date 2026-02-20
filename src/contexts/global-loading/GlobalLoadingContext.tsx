@@ -5,13 +5,14 @@
  * to handle multiple concurrent loading operations correctly.
  */
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   GlobalLoadingContext,
   type GlobalLoadingState,
   type LoadingSource,
 } from "./GlobalLoadingContextDefinition";
+import { subscribeToPendingHttpRequests } from "./httpLoadingStore";
 
 interface GlobalLoadingProviderProps {
   children: ReactNode;
@@ -41,6 +42,7 @@ export function GlobalLoadingProvider({
 
   // Track which sources have been stopped to prevent double-decrement
   const stoppedSourcesRef = useRef<Set<string>>(new Set());
+  const activeHttpSourcesRef = useRef<Map<string, () => void>>(new Map());
 
   const stopLoadingInternal = useCallback((sourceId: string) => {
     // Guard against double-stop
@@ -131,6 +133,31 @@ export function GlobalLoadingProvider({
     }),
     [state.count, state.sources, startLoading, stopLoading, withLoading],
   );
+
+  useEffect(() => {
+    return subscribeToPendingHttpRequests((pendingRequests) => {
+      const nextHttpRequestIds = new Set<string>();
+
+      for (const request of pendingRequests.values()) {
+        nextHttpRequestIds.add(request.id);
+        if (activeHttpSourcesRef.current.has(request.id)) {
+          continue;
+        }
+
+        const sourceId = `HttpRequest|${request.id}|${request.method}|${encodeURIComponent(request.path)}`;
+        const stop = startLoading(sourceId);
+        activeHttpSourcesRef.current.set(request.id, stop);
+      }
+
+      for (const [requestId, stop] of activeHttpSourcesRef.current) {
+        if (nextHttpRequestIds.has(requestId)) {
+          continue;
+        }
+        stop();
+        activeHttpSourcesRef.current.delete(requestId);
+      }
+    });
+  }, [startLoading]);
 
   return (
     <GlobalLoadingContext.Provider value={contextValue}>

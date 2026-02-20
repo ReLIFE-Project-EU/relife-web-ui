@@ -14,14 +14,22 @@ import { IconFolder, IconLogin, IconLogout } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
 import { getKeycloakLogoutUrl, signInWithKeycloak, supabase } from "../auth";
 import { useSupabaseSession, useWhoami } from "../hooks/useAuth";
+import { DevelopmentVersionNotice } from "./DevelopmentVersionNotice";
 import { ServiceStatus } from "./ServiceStatus";
 
 interface LayoutHeaderProps {
   opened: boolean;
   onToggle: () => void;
+  showNotice: boolean;
+  onCloseNotice: () => void;
 }
 
-export const LayoutHeader = ({ opened, onToggle }: LayoutHeaderProps) => {
+export const LayoutHeader = ({
+  opened,
+  onToggle,
+  showNotice,
+  onCloseNotice,
+}: LayoutHeaderProps) => {
   const { session, loading: sessionLoading } = useSupabaseSession();
   const { fullName, loading: profileLoading } = useWhoami(session);
 
@@ -47,8 +55,9 @@ export const LayoutHeader = ({ opened, onToggle }: LayoutHeaderProps) => {
   };
 
   return (
-    <AppShell.Header bg="relife.7" c="white" withBorder={false}>
-      <Group h="100%" px="md" justify="space-between">
+    <AppShell.Header withBorder={false}>
+      {showNotice && <DevelopmentVersionNotice onClose={onCloseNotice} />}
+      <Group h={60} px="md" justify="space-between" bg="relife.7" c="white">
         <Group gap="md">
           <Burger
             opened={opened}

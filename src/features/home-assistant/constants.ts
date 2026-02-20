@@ -4,6 +4,13 @@
  * Centralised constants for UI validation, ranges, and defaults.
  */
 
+import type { OutputLevel } from "../../utils/apiMappings";
+
+/**
+ * Default output level for HRA tool
+ */
+export const HRA_OUTPUT_LEVEL: OutputLevel = "private";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Building Input Constraints
 // ─────────────────────────────────────────────────────────────────────────────

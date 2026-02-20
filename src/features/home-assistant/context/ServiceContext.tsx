@@ -15,7 +15,7 @@ import { RenovationService } from "../services/RenovationService";
 import { ServiceContext } from "./ServiceContextDefinition";
 
 // Real API services
-const energyService = new EnergyService();
+const energyService = new EnergyService(buildingService);
 const financialService = new FinancialService();
 const renovationService = new RenovationService();
 

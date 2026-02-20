@@ -17,8 +17,10 @@ import type { RenovationScenario } from "../../context/types";
 import {
   calculatePercentChange,
   formatCurrency,
+  formatCurrencyDecimal,
   formatEnergyPerYear,
 } from "../../utils/formatters";
+import { ENERGY_PRICE_EUR_PER_KWH } from "../../services/energyUtils";
 import { DeltaBadge, EPCBadge } from "../shared";
 
 export function ScenarioComparison() {
@@ -81,7 +83,7 @@ export function ScenarioComparison() {
 
               {/* Energy Needs Row */}
               <MetricRow
-                label="Annual Energy Needs"
+                label="Annual HVAC Energy Needs"
                 baseValue={
                   currentScenario?.annualEnergyNeeds ||
                   estimation.annualEnergyNeeds
@@ -94,7 +96,7 @@ export function ScenarioComparison() {
 
               {/* Energy Cost Row */}
               <MetricRow
-                label="Cost of Annual Energy Needs"
+                label="Cost of Annual HVAC Energy Needs"
                 baseValue={
                   currentScenario?.annualEnergyCost ||
                   estimation.annualEnergyCost
@@ -105,22 +107,9 @@ export function ScenarioComparison() {
                 lowerIsBetter
               />
 
-              {/* Heating/Cooling Row */}
-              <MetricRow
-                label="Annual Heating/Cooling Needs"
-                baseValue={
-                  currentScenario?.heatingCoolingNeeds ||
-                  estimation.heatingCoolingNeeds
-                }
-                scenarios={renovationScenarios}
-                getValue={(s) => s.heatingCoolingNeeds}
-                formatter={formatEnergyPerYear}
-                lowerIsBetter
-              />
-
               {/* Flexibility Index Row */}
               <MetricRow
-                label="Flexibility Index"
+                label="Flexibility Index (0–100)"
                 baseValue={
                   currentScenario?.flexibilityIndex ||
                   estimation.flexibilityIndex
@@ -133,7 +122,7 @@ export function ScenarioComparison() {
 
               {/* Comfort Index Row */}
               <MetricRow
-                label="Comfort Index"
+                label="Comfort Index (0–100)"
                 baseValue={
                   currentScenario?.comfortIndex || estimation.comfortIndex
                 }
@@ -145,6 +134,10 @@ export function ScenarioComparison() {
             </Table.Tbody>
           </Table>
         </ScrollArea>
+        <Text size="xs" c="dimmed">
+          Cost values use a frontend flat tariff of{" "}
+          {formatCurrencyDecimal(ENERGY_PRICE_EUR_PER_KWH)}/kWh.
+        </Text>
       </Stack>
     </Card>
   );

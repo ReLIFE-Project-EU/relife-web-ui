@@ -92,8 +92,8 @@ export const forecasting = {
     });
 
     const formData = new FormData();
-    formData.append("bui", JSON.stringify(payload.bui));
-    formData.append("system", JSON.stringify(payload.system));
+    formData.append("bui_json", JSON.stringify(payload.bui));
+    formData.append("system_json", JSON.stringify(payload.system));
 
     return uploadRequest<SimulateDirectResponse>(
       `/forecasting/simulate?${searchParams.toString()}`,
@@ -157,8 +157,11 @@ export const forecasting = {
       country: params.country,
       name: params.name,
       weather_source: params.weatherSource || "pvgis",
-      scenario_elements: params.scenario_elements,
     });
+
+    if (params.scenario_elements) {
+      searchParams.set("scenario_elements", params.scenario_elements);
+    }
 
     if (params.u_wall !== undefined) {
       searchParams.set("u_wall", String(params.u_wall));
@@ -168,6 +171,15 @@ export const forecasting = {
     }
     if (params.u_window !== undefined) {
       searchParams.set("u_window", String(params.u_window));
+    }
+    if (params.u_slab !== undefined) {
+      searchParams.set("u_slab", String(params.u_slab));
+    }
+    if (params.use_heat_pump !== undefined) {
+      searchParams.set("use_heat_pump", String(params.use_heat_pump));
+    }
+    if (params.use_heat_pump && params.heat_pump_cop !== undefined) {
+      searchParams.set("heat_pump_cop", String(params.heat_pump_cop));
     }
     if (params.include_baseline !== undefined) {
       searchParams.set("include_baseline", String(params.include_baseline));

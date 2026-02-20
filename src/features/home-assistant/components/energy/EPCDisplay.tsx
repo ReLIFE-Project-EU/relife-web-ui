@@ -13,7 +13,12 @@ import {
   Title,
 } from "@mantine/core";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
-import { formatCurrency, formatEnergyPerYear } from "../../utils/formatters";
+import {
+  formatCurrency,
+  formatCurrencyDecimal,
+  formatEnergyPerYear,
+} from "../../utils/formatters";
+import { ENERGY_PRICE_EUR_PER_KWH } from "../../services/energyUtils";
 import { EPCBadge, MetricCard } from "../shared";
 
 export function EPCDisplay() {
@@ -31,7 +36,7 @@ export function EPCDisplay() {
         <Group justify="space-between" align="flex-start">
           <Box>
             <Title order={3} mb="xs">
-              Estimated Energy Needs
+              Estimated HVAC Energy Needs
             </Title>
             <Text size="sm" c="dimmed">
               Based on your building information
@@ -47,20 +52,20 @@ export function EPCDisplay() {
         </Group>
 
         {/* Energy metrics */}
-        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
           <MetricCard
-            label="Annual energy needs"
+            label="Annual HVAC energy needs"
             value={formatEnergyPerYear(estimation.annualEnergyNeeds)}
           />
           <MetricCard
-            label="Cost of annual energy needs"
+            label="Cost of annual HVAC energy needs"
             value={formatCurrency(estimation.annualEnergyCost)}
           />
-          <MetricCard
-            label="Annual energy needs for heating/cooling"
-            value={formatEnergyPerYear(estimation.heatingCoolingNeeds)}
-          />
         </SimpleGrid>
+        <Text size="xs" c="dimmed">
+          Cost estimate uses a frontend flat tariff of{" "}
+          {formatCurrencyDecimal(ENERGY_PRICE_EUR_PER_KWH)}/kWh.
+        </Text>
       </Stack>
     </Card>
   );

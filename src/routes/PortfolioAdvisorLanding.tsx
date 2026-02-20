@@ -1,6 +1,7 @@
 import {
   Badge,
   Box,
+  Button,
   Card,
   Container,
   List,
@@ -11,24 +12,26 @@ import {
   Title,
 } from "@mantine/core";
 import {
+  IconArrowRight,
   IconCalculator,
   IconChartBar,
   IconListDetails,
   IconScale,
 } from "@tabler/icons-react";
+import { Link } from "react-router-dom";
 
-const plannedFeatures = [
+const features = [
   {
     icon: IconListDetails,
     title: "Portfolio Manager",
     description:
-      "Input and manage building portfolios with batch data upload and organization tools.",
+      "Input and manage building portfolios with batch CSV import and manual entry.",
   },
   {
     icon: IconCalculator,
     title: "Financial Analysis",
     description:
-      "Comprehensive financial indicators including NPV, IRR, ROI, payback periods, and Monte Carlo risk assessment.",
+      "Comprehensive financial indicators including NPV, IRR, ROI, payback periods, and Monte Carlo risk assessment at professional output level.",
   },
   {
     icon: IconScale,
@@ -56,11 +59,20 @@ export const PortfolioAdvisorLanding = () => {
           <Title order={1} mb="sm">
             Portfolio Renovation Advisor
           </Title>
-          <Text c="dimmed" size="lg" maw={700}>
+          <Text c="dimmed" size="lg" maw={700} mb="lg">
             Professional-grade tools for portfolio-level renovation assessment.
             Evaluate multiple buildings, assess financial viability, and make
             data-driven investment decisions.
           </Text>
+          <Button
+            component={Link}
+            to="/portfolio-advisor/tool"
+            size="lg"
+            color="teal"
+            rightSection={<IconArrowRight size={18} />}
+          >
+            Start Portfolio Analysis
+          </Button>
         </Box>
 
         {/* Target Users */}
@@ -76,13 +88,13 @@ export const PortfolioAdvisorLanding = () => {
           </List>
         </Card>
 
-        {/* Planned Features */}
+        {/* Features */}
         <Box>
           <Title order={2} mb="lg">
-            Planned Features
+            Features
           </Title>
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-            {plannedFeatures.map((feature) => (
+            {features.map((feature) => (
               <Card key={feature.title} withBorder radius="md" p="lg">
                 <ThemeIcon size={44} radius="md" variant="light" color="teal">
                   <feature.icon size={24} />

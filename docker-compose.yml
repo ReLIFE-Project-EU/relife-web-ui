@@ -30,6 +30,8 @@ services:
         VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL}
         VITE_KEYCLOAK_REALM: ${VITE_KEYCLOAK_REALM}
         VITE_KEYCLOAK_CLIENT_ID: ${VITE_KEYCLOAK_CLIENT_ID}
+        APP_COMMIT_SHA: ${APP_COMMIT_SHA:-unknown}
+        APP_COMMIT_DATE: ${APP_COMMIT_DATE:-unknown}
     ports:
       - ${HOST_PORT_CADDY}:8080
     depends_on:
