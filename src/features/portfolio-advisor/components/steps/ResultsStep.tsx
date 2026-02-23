@@ -13,7 +13,9 @@ import {
   Table,
   Text,
   Title,
+  Tooltip,
 } from "@mantine/core";
+import { IconInfoCircle } from "@tabler/icons-react";
 import { memo, useMemo } from "react";
 import { EPCBadge } from "../../../../components/shared/EPCBadge";
 import { ErrorAlert } from "../../../../components/shared/ErrorAlert";
@@ -160,13 +162,37 @@ const BuildingResultsTable = memo(function BuildingResultsTable({
               (s) => s.id === "renovated",
             )?.epcClass;
             const fr = result.financialResults;
+            const noSavings =
+              isSuccess &&
+              fr?.riskAssessment === null &&
+              !!result.scenarios?.find((s) => s.id === "renovated");
 
             return (
               <Table.Tr key={building.id}>
                 <Table.Td>
-                  <Text size="sm" fw={500}>
-                    {building.name}
-                  </Text>
+                  <Stack gap={4}>
+                    <Text size="sm" fw={500}>
+                      {building.name}
+                    </Text>
+                    {noSavings && (
+                      <Tooltip
+                        label="This building's current specifications already meet the targets for the selected renovation measures. No energy savings could be computed, so financial indicators are not meaningful."
+                        multiline
+                        w={300}
+                        position="bottom-start"
+                      >
+                        <Badge
+                          color="yellow"
+                          variant="light"
+                          size="sm"
+                          leftSection={<IconInfoCircle size={11} />}
+                          style={{ cursor: "default" }}
+                        >
+                          Already at renovation target
+                        </Badge>
+                      </Tooltip>
+                    )}
+                  </Stack>
                 </Table.Td>
                 <Table.Td>
                   <Badge
@@ -194,19 +220,27 @@ const BuildingResultsTable = memo(function BuildingResultsTable({
                   {epcAfter ? <EPCBadge epcClass={epcAfter} size="sm" /> : "-"}
                 </Table.Td>
                 <Table.Td>
-                  {isSuccess && fr
-                    ? formatCurrency(fr.netPresentValue)
-                    : result.status === "error"
-                      ? result.error?.substring(0, 40)
+                  {isSuccess && fr ? (
+                    <Text size="sm" c={noSavings ? "dimmed" : undefined}>
+                      {formatCurrency(fr.netPresentValue)}
+                    </Text>
+                  ) : result.status === "error" ? (
+                    result.error?.substring(0, 40)
+                  ) : (
+                    "-"
+                  )}
+                </Table.Td>
+                <Table.Td>
+                  <Text size="sm" c={noSavings ? "dimmed" : undefined}>
+                    {isSuccess && fr
+                      ? `${formatDecimal(fr.returnOnInvestment * 100)}%`
                       : "-"}
+                  </Text>
                 </Table.Td>
                 <Table.Td>
-                  {isSuccess && fr
-                    ? `${formatDecimal(fr.returnOnInvestment * 100)}%`
-                    : "-"}
-                </Table.Td>
-                <Table.Td>
-                  {isSuccess && fr ? formatDecimal(fr.paybackTime) : "-"}
+                  <Text size="sm" c={noSavings ? "dimmed" : undefined}>
+                    {isSuccess && fr ? formatDecimal(fr.paybackTime) : "-"}
+                  </Text>
                 </Table.Td>
               </Table.Tr>
             );
