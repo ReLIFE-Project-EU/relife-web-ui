@@ -12,6 +12,14 @@ import type {
 } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Temporary defaults — pre-fill cost fields while the Financial API requires
+// non-null values. These will be removed once the backend accepts null.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DEFAULT_CAPEX = 10_000; // EUR — typical single-measure starting estimate
+const DEFAULT_ANNUAL_MAINTENANCE = 300; // EUR/year — typical O&M starting estimate
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Initial State
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -52,8 +60,8 @@ const initialBuilding: BuildingInfo = {
 
 const initialRenovation: RenovationSelections = {
   selectedMeasures: [],
-  estimatedCapex: null,
-  estimatedMaintenanceCost: null,
+  estimatedCapex: DEFAULT_CAPEX,
+  estimatedMaintenanceCost: DEFAULT_ANNUAL_MAINTENANCE,
 };
 
 const initialFunding: FundingOptions = {

@@ -116,10 +116,23 @@ export function MeasureSelector() {
                   selected
                 </Text>
               </Box>
+              <Alert
+                variant="light"
+                color="yellow"
+                icon={<IconInfoCircle size={16} />}
+              >
+                <Text fw={600} size="sm" mb={4}>
+                  Temporary requirement
+                </Text>
+                Due to a current API limitation, these cost fields cannot be
+                left empty for now. The pre-filled values are starting estimates
+                — please update them to match your project. This requirement
+                will be removed once the backend is updated.
+              </Alert>
               <Group grow align="flex-start">
                 <NumberInput
-                  label="Estimated CAPEX (optional)"
-                  description="Total investment cost. Leave empty to use database estimate."
+                  label="Estimated CAPEX"
+                  description="Total investment cost. Defaults to a starting estimate; update to reflect your project."
                   placeholder="e.g. 25000"
                   value={estimatedCapex ?? ""}
                   onChange={handleCapexChange}
@@ -127,10 +140,15 @@ export function MeasureSelector() {
                   step={1000}
                   thousandSeparator=","
                   leftSection={<IconCurrencyEuro size={16} />}
+                  error={
+                    estimatedCapex === null
+                      ? "Required — please enter a value or keep the default."
+                      : undefined
+                  }
                 />
                 <NumberInput
-                  label="Annual maintenance cost (optional)"
-                  description="Yearly O&M cost. Leave empty to use database estimate."
+                  label="Annual maintenance cost"
+                  description="Yearly O&M cost. Defaults to a starting estimate; update to reflect your project."
                   placeholder="e.g. 500"
                   value={estimatedMaintenanceCost ?? ""}
                   onChange={handleMaintenanceCostChange}
@@ -139,6 +157,11 @@ export function MeasureSelector() {
                   thousandSeparator=","
                   leftSection={<IconCurrencyEuro size={16} />}
                   suffix="/year"
+                  error={
+                    estimatedMaintenanceCost === null
+                      ? "Required — please enter a value or keep the default."
+                      : undefined
+                  }
                 />
               </Group>
             </Stack>
