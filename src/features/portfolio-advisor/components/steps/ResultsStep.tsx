@@ -20,6 +20,7 @@ import { memo, useMemo } from "react";
 import { EPCBadge } from "../../../../components/shared/EPCBadge";
 import { ErrorAlert } from "../../../../components/shared/ErrorAlert";
 import { MetricCard } from "../../../../components/shared/MetricCard";
+import { MetricExplainer } from "../../../../components/shared/MetricExplainer";
 import { formatCurrency, formatDecimal } from "../../../../utils/formatters";
 import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
@@ -97,12 +98,22 @@ const PortfolioSummary = memo(function PortfolioSummary({
           }
         />
         <MetricCard
-          label="Total CAPEX"
+          label={
+            <Group gap={4} wrap="nowrap">
+              Total Investment Required
+              <MetricExplainer metric="CAPEX" />
+            </Group>
+          }
           value={formatCurrency(stats.totalCapex)}
           variant="highlight"
         />
         <MetricCard
-          label="Avg NPV"
+          label={
+            <Group gap={4} wrap="nowrap">
+              Avg. Net Present Value
+              <MetricExplainer metric="NPV" />
+            </Group>
+          }
           value={formatCurrency(stats.avgNPV)}
           variant="highlight"
         />
@@ -110,11 +121,21 @@ const PortfolioSummary = memo(function PortfolioSummary({
 
       <SimpleGrid cols={{ base: 2, sm: 2 }} spacing="md">
         <MetricCard
-          label="Avg ROI"
+          label={
+            <Group gap={4} wrap="nowrap">
+              Avg. Return on Investment
+              <MetricExplainer metric="ROI" />
+            </Group>
+          }
           value={`${formatDecimal(stats.avgROI * 100)}%`}
         />
         <MetricCard
-          label="Avg Payback Period"
+          label={
+            <Group gap={4} wrap="nowrap">
+              Avg. Payback Period
+              <MetricExplainer metric="PBP" />
+            </Group>
+          }
           value={`${formatDecimal(stats.avgPBP)} years`}
         />
       </SimpleGrid>
@@ -144,11 +165,26 @@ const BuildingResultsTable = memo(function BuildingResultsTable({
           <Table.Tr>
             <Table.Th>Building</Table.Th>
             <Table.Th>Status</Table.Th>
-            <Table.Th>EPC Before</Table.Th>
-            <Table.Th>EPC After</Table.Th>
-            <Table.Th>NPV (EUR)</Table.Th>
-            <Table.Th>ROI (%)</Table.Th>
-            <Table.Th>Payback (years)</Table.Th>
+            <Table.Th>EPC Before Renovation</Table.Th>
+            <Table.Th>EPC After Renovation</Table.Th>
+            <Table.Th>
+              <Group gap={4} wrap="nowrap">
+                Net Present Value
+                <MetricExplainer metric="NPV" />
+              </Group>
+            </Table.Th>
+            <Table.Th>
+              <Group gap={4} wrap="nowrap">
+                Return on Investment
+                <MetricExplainer metric="ROI" />
+              </Group>
+            </Table.Th>
+            <Table.Th>
+              <Group gap={4} wrap="nowrap">
+                Payback Period
+                <MetricExplainer metric="PBP" />
+              </Group>
+            </Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
@@ -206,18 +242,28 @@ const BuildingResultsTable = memo(function BuildingResultsTable({
                     size="sm"
                     variant="light"
                   >
-                    {result.status}
+                    {result.status === "success"
+                      ? "Analyzed"
+                      : result.status === "error"
+                        ? "Failed"
+                        : result.status === "running"
+                          ? "Running"
+                          : "Pending"}
                   </Badge>
                 </Table.Td>
                 <Table.Td>
                   {epcBefore ? (
-                    <EPCBadge epcClass={epcBefore} size="sm" />
+                    <EPCBadge epcClass={epcBefore} size="sm" showTooltip />
                   ) : (
                     "-"
                   )}
                 </Table.Td>
                 <Table.Td>
-                  {epcAfter ? <EPCBadge epcClass={epcAfter} size="sm" /> : "-"}
+                  {epcAfter ? (
+                    <EPCBadge epcClass={epcAfter} size="sm" showTooltip />
+                  ) : (
+                    "-"
+                  )}
                 </Table.Td>
                 <Table.Td>
                   {isSuccess && fr ? (
@@ -292,7 +338,8 @@ export function ResultsStep() {
           Portfolio Analysis Results
         </Title>
         <Text c="dimmed" size="sm">
-          Review the analysis results for your building portfolio.
+          Below you&apos;ll find a summary of your portfolio&apos;s renovation
+          economics and a per-building breakdown of key financial outcomes.
         </Text>
       </Box>
 
