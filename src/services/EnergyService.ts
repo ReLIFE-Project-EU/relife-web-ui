@@ -519,7 +519,10 @@ export class EnergyService implements IEnergyService {
       },
       // Bug 2 fix: persist modified BUI so RenovationService applies ECM to the same building
       ...(resolvedModifiedBui !== undefined
-        ? { modifiedBui: resolvedModifiedBui, modifiedSystem: resolvedModifiedSystem }
+        ? {
+            modifiedBui: resolvedModifiedBui,
+            modifiedSystem: resolvedModifiedSystem,
+          }
         : {}),
     };
   }

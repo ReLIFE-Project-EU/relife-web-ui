@@ -91,6 +91,7 @@ This project prioritizes transparency, restraint, and verifiability over speed o
 - Strong success criteria enable independent iteration and reduce ambiguity
 
 **Example**: Instead of "improve performance", clarify:
+
 - What metric? (load time, render time, bundle size)
 - What is "improved"? (10% faster, under 2 seconds)
 - How will we measure it? (specific test, profiling tool, benchmark)
@@ -193,7 +194,7 @@ flowchart TD
 
 ### General Principles
 
-These principles are grounded in the **Development Process** section above, especially *Simplicity First* and *Surgical Changes*:
+These principles are grounded in the **Development Process** section above, especially _Simplicity First_ and _Surgical Changes_:
 
 - **Keep it minimal**: Do not add new dependencies unless strictly necessary and clearly justified.
 - **Prefer built-in features** from Vite, React, and Mantine over external libraries.
@@ -288,6 +289,7 @@ These principles are grounded in the **Development Process** section above, espe
 ### Don't
 
 **Simplicity & Scope**
+
 - Add dependencies unless native APIs are insufficient.
 - Add speculative features, unused abstractions, or "future-proofing" beyond the current task.
 - Refactor or improve unrelated sections when fixing a bug or implementing a feature.
@@ -295,12 +297,14 @@ These principles are grounded in the **Development Process** section above, espe
 - Expand files past ~300 lines without splitting them.
 
 **Changes & Commits**
+
 - Make large, unfocused commits; prefer atomic changes.
 - Commit secrets—use env vars and `.gitignore` for sensitive files.
 - Leave dependency versions unpinned—always specify range (at least major).
 - Delete pre-existing dead code silently; flag it instead.
 
 **Configuration & Code Quality**
+
 - Hardcode environment-specific URLs, tokens, or magic numbers; use constants and config files.
 - Use inline CSS/styles or violate framework conventions (e.g., always use Mantine components first).
 - Leave dead code, unused imports, or commented-out sections.
@@ -309,12 +313,14 @@ These principles are grounded in the **Development Process** section above, espe
 - Rely on mutable globals or unclear side effects.
 
 **Project Integrity**
+
 - Omit root-level README.md.
 - Work outside of a git directory.
 
 ### Do
 
 **Before Coding**
+
 - Clarify ambiguous requirements with short planning or `AskUserQuestion`; surface alternatives explicitly.
 - State assumptions clearly; ask rather than assume.
 - Transform vague requests into measurable success criteria.
@@ -322,6 +328,7 @@ These principles are grounded in the **Development Process** section above, espe
 - Confirm framework/library versions before writing code (see Tech Stack Versions).
 
 **During Implementation**
+
 - Write minimal code solving exactly what was requested.
 - Match existing code patterns and style in the file/feature you're modifying.
 - Use TypeScript strict typing and avoid `any` (document if unavoidable).
@@ -330,11 +337,13 @@ These principles are grounded in the **Development Process** section above, espe
 - Sanitize inputs and follow security best practices (e.g., OWASP Top 10).
 
 **Testing & Verification**
+
 - Generate automated smoke tests for key logic; invite user guidance for complex cases.
 - Test before and after changes to establish causality.
 - Verify changes work as intended before claiming completion.
 
 **Documentation & Decisions**
+
 - Document the reasoning behind non-obvious code decisions.
 - Keep README.md up-to-date with project changes.
 - Write comments only for non-obvious logic; self-documenting code is preferred.
