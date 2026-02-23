@@ -136,10 +136,10 @@ function MeasureCard({
               </Stack>
             </Group>
             <Tooltip
-              label={measure.description}
+              label={measure.technicalDescription ?? measure.description}
               position="left"
               multiline
-              w={260}
+              w={320}
             >
               <IconInfoCircle
                 size={16}
@@ -344,7 +344,7 @@ export function EnergyRenovationStep() {
         <Title order={4} mb="md">
           Project Settings
         </Title>
-        <Box maw={500}>
+        <Box pb="xl">
           <Text size="sm" mb="xs">
             Project Lifetime: {state.projectLifetime} years
           </Text>

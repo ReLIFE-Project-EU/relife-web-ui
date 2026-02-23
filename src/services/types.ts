@@ -165,6 +165,12 @@ export interface RenovationMeasure {
   id: RenovationMeasureId;
   name: string;
   description: string;
+  /**
+   * Technical description for professional users (e.g. PRA).
+   * Includes API parameter targets and simulation assumptions.
+   * Falls back to `description` when not set.
+   */
+  technicalDescription?: string;
   category: MeasureCategory;
   /**
    * Estimated energy savings range (percentage)
