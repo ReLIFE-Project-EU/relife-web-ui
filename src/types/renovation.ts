@@ -113,6 +113,12 @@ export interface EstimationResult {
     country: string;
     name: string;
   };
+
+  /** Modified BUI/system payloads (only present when building.isModified = true).
+   * Stored here so RenovationService can apply ECM to the same custom building
+   * used for baseline simulation, ensuring savings are computed on comparable results. */
+  modifiedBui?: unknown;
+  modifiedSystem?: unknown;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

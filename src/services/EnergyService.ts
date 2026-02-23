@@ -364,6 +364,9 @@ export class EnergyService implements IEnergyService {
 
     // Branch: modified or unmodified simulation
     let simulationResponse;
+    let resolvedArchetypeArea: number | undefined;
+    let resolvedModifiedBui: unknown | undefined;
+    let resolvedModifiedSystem: unknown | undefined;
 
     if (building.isModified && building.modifications) {
       // Modified archetype path: fetch full details, apply modifications, simulate custom
@@ -376,10 +379,19 @@ export class EnergyService implements IEnergyService {
           },
         );
 
+        // Bug 1 fix: read floor area from archetypeDetails (not from simulate response,
+        // which does not include building_area for custom-building mode)
+        resolvedArchetypeArea = archetypeDetails.floorArea;
+
         const { bui, system } = applyAllModifications(
           archetypeDetails,
           building.modifications,
         );
+
+        // Bug 2 fix: persist modified BUI/system so RenovationService can apply ECM
+        // to the same custom building used here, ensuring comparable savings deltas
+        resolvedModifiedBui = bui;
+        resolvedModifiedSystem = system;
 
         simulationResponse = await forecasting.simulateCustomBuilding(
           { bui, system },
@@ -434,12 +446,15 @@ export class EnergyService implements IEnergyService {
     // Calculate annual totals from hourly data
     const annualData = calculateAnnualTotals(hourlyData);
 
-    // Use archetype area if available, otherwise default
-    // Note: building_area may be provided in extended response fields
+    // Use archetype area if available, otherwise default.
+    // Bug 1 fix: for modified buildings, resolvedArchetypeArea is set from archetypeDetails.floorArea
+    // (since simulateCustomBuilding response does not include building_area).
     const archetypeArea =
+      resolvedArchetypeArea ??
       ((simulationResponse as Record<string, unknown>).building_area as
         | number
-        | undefined) ?? DEFAULT_FLOOR_AREA;
+        | undefined) ??
+      DEFAULT_FLOOR_AREA;
     const userArea = building.floorArea || DEFAULT_FLOOR_AREA;
 
     // Extract energy values from calculated annual totals
@@ -502,6 +517,10 @@ export class EnergyService implements IEnergyService {
         country: archetype.country,
         name: archetype.name,
       },
+      // Bug 2 fix: persist modified BUI so RenovationService applies ECM to the same building
+      ...(resolvedModifiedBui !== undefined
+        ? { modifiedBui: resolvedModifiedBui, modifiedSystem: resolvedModifiedSystem }
+        : {}),
     };
   }
 }

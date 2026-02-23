@@ -19,6 +19,11 @@
 
 import { forecasting } from "../api";
 import type {
+  ECMApplicationParams,
+  ECMArchetypeParams,
+  ECMCustomBuildingParams,
+} from "../types/forecasting";
+import type {
   BuildingInfo,
   EstimationResult,
   RenovationScenario,
@@ -145,48 +150,47 @@ export class RenovationService implements IRenovationService {
       .filter((e): e is string => e !== undefined)
       .join(",");
 
-    // Build API parameters (single-scenario mode)
-    const params: {
-      category: string;
-      country: string;
-      name: string;
-      scenario_elements?: string;
-      u_wall?: number;
-      u_roof?: number;
-      u_window?: number;
-      u_slab?: number;
-      use_heat_pump?: boolean;
-      heat_pump_cop?: number;
-    } = {
-      category: archetype.category,
-      country: archetype.country,
-      name: archetype.name,
-      // Omit scenario_elements when empty (e.g. heat-pump-only selection)
-      ...(elements && { scenario_elements: elements }),
-    };
+    // Build common measure parameters shared by both archetype and custom-building modes
+    const commonParams: Partial<ECMCustomBuildingParams & ECMArchetypeParams> =
+      {
+        ...(elements && { scenario_elements: elements }),
+      };
 
-    // Add U-values for selected envelope measures
     if (envelopeMeasures.includes("wall-insulation")) {
-      params.u_wall = U_VALUE_TARGETS["wall-insulation"];
+      commonParams.u_wall = U_VALUE_TARGETS["wall-insulation"];
     }
     if (envelopeMeasures.includes("roof-insulation")) {
-      params.u_roof = U_VALUE_TARGETS["roof-insulation"];
+      commonParams.u_roof = U_VALUE_TARGETS["roof-insulation"];
     }
     if (envelopeMeasures.includes("floor-insulation")) {
-      params.u_slab = U_VALUE_TARGETS["floor-insulation"];
+      commonParams.u_slab = U_VALUE_TARGETS["floor-insulation"];
     }
     if (envelopeMeasures.includes("windows")) {
-      params.u_window = U_VALUE_TARGETS["windows"];
+      commonParams.u_window = U_VALUE_TARGETS["windows"];
+    }
+    if (useHeatPump) {
+      commonParams.use_heat_pump = true;
+      commonParams.heat_pump_cop = DEFAULT_HEAT_PUMP_COP;
     }
 
-    // Add heat pump parameters if selected
-    if (useHeatPump) {
-      params.use_heat_pump = true;
-      params.heat_pump_cop = DEFAULT_HEAT_PUMP_COP;
-    }
+    // Bug 2 fix: apply ECM to the modified BUI when present, so the savings delta is
+    // computed between comparable buildings (custom baseline vs. custom+ECM).
+    // Fall back to archetype mode when the building was not modified.
+    const ecmParams: ECMApplicationParams = estimation.modifiedBui
+      ? ({
+          bui: estimation.modifiedBui,
+          system: estimation.modifiedSystem,
+          ...commonParams,
+        } as ECMCustomBuildingParams)
+      : ({
+          category: archetype.category,
+          country: archetype.country,
+          name: archetype.name,
+          ...commonParams,
+        } as ECMArchetypeParams);
 
     // Call ECM API (single-scenario mode)
-    const ecmResponse = await forecasting.simulateECM(params);
+    const ecmResponse = await forecasting.simulateECM(ecmParams);
 
     // Extract renovated scenario
     // In single-scenario mode, the array contains one scenario corresponding to the requested elements

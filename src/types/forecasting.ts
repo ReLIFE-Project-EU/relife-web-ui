@@ -215,15 +215,9 @@ export interface ECMApplicationResponse {
 }
 
 /**
- * Parameters for simulateECM API call
+ * Common ECM simulation parameters shared by both archetype and custom-building modes.
  */
-export interface ECMApplicationParams {
-  /** Building category (required for archetype mode) */
-  category: string;
-  /** Country (required for archetype mode) */
-  country: string;
-  /** Archetype name (required for archetype mode) */
-  name: string;
+interface ECMBaseParams {
   /** Weather source, defaults to 'pvgis' */
   weatherSource?: "pvgis" | "epw";
   /** Elements to simulate, comma-separated (e.g., "wall,window"). Omit for system-only measures (e.g. heat pump only). */
@@ -243,3 +237,34 @@ export interface ECMApplicationParams {
   /** Include baseline scenario in response (omit/false for single-scenario mode) */
   include_baseline?: boolean;
 }
+
+/**
+ * Parameters for simulateECM in archetype mode (archetype=true).
+ * Use when the building has not been modified by the user.
+ */
+export interface ECMArchetypeParams extends ECMBaseParams {
+  /** Building category (required for archetype mode) */
+  category: string;
+  /** Country (required for archetype mode) */
+  country: string;
+  /** Archetype name (required for archetype mode) */
+  name: string;
+}
+
+/**
+ * Parameters for simulateECM in custom-building mode (archetype=false).
+ * Use when the building has been modified by the user (isModified = true),
+ * so ECM is applied to the same custom BUI used for baseline simulation.
+ */
+export interface ECMCustomBuildingParams extends ECMBaseParams {
+  /** Modified BUI payload from applyAllModifications() */
+  bui: unknown;
+  /** Modified system payload from applyAllModifications() (optional) */
+  system?: unknown;
+}
+
+/**
+ * Discriminated union of ECM simulation parameters.
+ * Detect mode at runtime with: 'bui' in params
+ */
+export type ECMApplicationParams = ECMArchetypeParams | ECMCustomBuildingParams;
