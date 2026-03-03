@@ -20,7 +20,7 @@ import {
   ThemeIcon,
   Title,
 } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
+import { useDebouncedValue, useDisclosure } from "@mantine/hooks";
 import {
   IconAlertTriangle,
   IconChevronDown,
@@ -32,12 +32,14 @@ import {
 import { useEffect, useReducer, useState } from "react";
 import { deriveConstructionPeriod } from "../../../../utils/apiMappings";
 import { checkAreaArchetypeMismatch } from "../../../../utils/inputSanityChecks";
+import { formatArchetypeName } from "../../../../utils/archetypeLabels";
 import type { BuildingModifications } from "../../../../types/archetype";
 import { usePortfolioAdvisorServices } from "../../hooks/usePortfolioAdvisorServices";
 import type { PRABuilding } from "../../context/types";
 import { initialFormState, manualAddFormReducer } from "./manualAddFormReducer";
 import type { ManualAddFormState } from "./manualAddFormReducer";
 import { MODIFICATION_FIELDS } from "./modificationFieldConfig";
+import { ArchetypeLocationMap } from "./ArchetypeLocationMap";
 
 const APARTMENT_LOCATION_OPTIONS = [
   { value: "bottom", label: "Bottom floor" },
@@ -95,6 +97,15 @@ export function ManualAddPanel({
     selectedArchetypeName,
   } = formState;
 
+  const [debouncedLat] = useDebouncedValue(lat, 500);
+  const [debouncedLng] = useDebouncedValue(lng, 500);
+
+  // Immediately invalidate any stale archetype match when raw coordinates change,
+  // before the debounce fires, so the Add button is disabled during the window.
+  useEffect(() => {
+    dispatch({ type: "CLEAR_ARCHETYPE" });
+  }, [lat, lng]);
+
   // Load building categories
   useEffect(() => {
     buildingService
@@ -109,8 +120,8 @@ export function ManualAddPanel({
       !category ||
       !constructionYear ||
       typeof constructionYear !== "number" ||
-      typeof lat !== "number" ||
-      typeof lng !== "number"
+      typeof debouncedLat !== "number" ||
+      typeof debouncedLng !== "number"
     ) {
       dispatch({ type: "CLEAR_ARCHETYPE" });
       dispatch({ type: "SET_LOADING_ARCHETYPE", loading: false });
@@ -122,7 +133,10 @@ export function ManualAddPanel({
     const period = deriveConstructionPeriod(constructionYear);
 
     buildingService
-      .findMatchingArchetype(category, period, { lat, lng })
+      .findMatchingArchetype(category, period, {
+        lat: debouncedLat,
+        lng: debouncedLng,
+      })
       .then(async (matched) => {
         if (controller.signal.aborted) return;
         if (!matched) {
@@ -169,7 +183,7 @@ export function ManualAddPanel({
       });
 
     return () => controller.abort();
-  }, [buildingService, category, constructionYear, lat, lng]);
+  }, [buildingService, category, constructionYear, debouncedLat, debouncedLng]);
 
   // When user changes archetype manually
   useEffect(() => {
@@ -195,6 +209,14 @@ export function ManualAddPanel({
 
   const buildingTypeValue =
     propertyType === "apartment" ? "Apartment" : category;
+
+  // Detect when the user's selection doesn't match any backend category directly
+  const categoryFallback =
+    propertyType === "apartment" &&
+    category &&
+    !category.toLowerCase().includes("apartment")
+      ? category
+      : null;
 
   function handleBuildingTypeChange(value: string | null) {
     if (!value) return;
@@ -227,6 +249,7 @@ export function ManualAddPanel({
     (propertyType !== "apartment" || formState.apartmentLocation !== null) &&
     typeof lat === "number" &&
     typeof lng === "number" &&
+    !loadingArchetype &&
     matchedArchetype;
 
   const handleAdd = () => {
@@ -353,6 +376,22 @@ export function ManualAddPanel({
           </Grid.Col>
         </Grid>
 
+        {categoryFallback && (
+          <Alert
+            icon={<IconInfoCircle size={16} />}
+            color="yellow"
+            variant="light"
+            p="xs"
+          >
+            <Text size="sm">
+              No <strong>Apartment</strong> archetype is available. Using{" "}
+              <strong>{categoryFallback}</strong> as the closest match.
+              Simulation results will represent the entire building, not an
+              individual unit.
+            </Text>
+          </Alert>
+        )}
+
         <Grid>
           <Grid.Col span={6}>
             <NumberInput
@@ -454,7 +493,7 @@ export function ManualAddPanel({
                   <IconHome size={20} />
                 </ThemeIcon>
                 <Text size="sm" fw={500}>
-                  {matchedArchetype.name}
+                  {formatArchetypeName(matchedArchetype.name)}
                 </Text>
               </Group>
 
@@ -512,13 +551,21 @@ export function ManualAddPanel({
                 </div>
               </SimpleGrid>
 
+              {typeof lat === "number" && typeof lng === "number" && (
+                <ArchetypeLocationMap
+                  userLat={lat}
+                  userLng={lng}
+                  archetypeCountry={matchedArchetype.country}
+                />
+              )}
+
               {availableArchetypes.length > 1 && (
                 <Select
                   label="Change archetype"
                   placeholder="Select different archetype"
                   data={availableArchetypes.map((a) => ({
                     value: a.name,
-                    label: a.name,
+                    label: formatArchetypeName(a.name),
                   }))}
                   value={selectedArchetypeName}
                   onChange={(val) =>

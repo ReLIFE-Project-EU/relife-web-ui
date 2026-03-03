@@ -1,20 +1,25 @@
 /**
  * CSVImportPanel Component
- * Card for importing buildings from a portfolio CSV file.
+ * Compact collapsible card for importing buildings from a portfolio CSV file.
  */
 
 import {
   Alert,
   Button,
   Card,
+  Collapse,
   Group,
   Select,
   Stack,
   Text,
   Title,
+  UnstyledButton,
 } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
 import {
   IconAlertCircle,
+  IconChevronDown,
+  IconChevronUp,
   IconFileSpreadsheet,
   IconUpload,
 } from "@tabler/icons-react";
@@ -42,6 +47,7 @@ export function CSVImportPanel({
   const [loading, setLoading] = useState(false);
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [portfolioError, setPortfolioError] = useState<string | null>(null);
+  const [opened, { toggle }] = useDisclosure(true);
 
   // Load portfolios
   useEffect(() => {
@@ -102,63 +108,72 @@ export function CSVImportPanel({
 
   return (
     <Card withBorder radius="md" p="lg">
-      <Group mb="md">
-        <IconFileSpreadsheet size={20} />
-        <Title order={4}>Import from Portfolio</Title>
-      </Group>
+      <UnstyledButton onClick={toggle} style={{ width: "100%" }}>
+        <Group justify="space-between">
+          <Group>
+            <IconFileSpreadsheet size={20} />
+            <Title order={4}>Import from Portfolio</Title>
+          </Group>
+          {opened ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
+        </Group>
+      </UnstyledButton>
 
-      {portfolioError && (
-        <Alert color="yellow" mb="sm" icon={<IconAlertCircle size={16} />}>
-          {portfolioError}
-        </Alert>
-      )}
+      <Collapse in={opened}>
+        <Stack gap="sm" mt="md">
+          {portfolioError && (
+            <Alert color="yellow" icon={<IconAlertCircle size={16} />}>
+              {portfolioError}
+            </Alert>
+          )}
 
-      <Stack gap="sm">
-        <Select
-          label="Select Portfolio"
-          placeholder="Choose a portfolio"
-          data={portfolios.map((p) => ({ value: p.id, label: p.name }))}
-          value={selectedPortfolioId}
-          onChange={setSelectedPortfolioId}
-          clearable
-        />
+          <Group grow align="end">
+            <Select
+              label="Portfolio"
+              placeholder="Choose a portfolio"
+              data={portfolios.map((p) => ({ value: p.id, label: p.name }))}
+              value={selectedPortfolioId}
+              onChange={setSelectedPortfolioId}
+              clearable
+            />
 
-        <Select
-          label="Select File"
-          placeholder="Choose a CSV file"
-          data={files.map((f) => ({
-            value: f.id,
-            label: f.originalFilename,
-          }))}
-          value={selectedFileId}
-          onChange={setSelectedFileId}
-          disabled={!selectedPortfolioId || files.length === 0}
-          clearable
-        />
+            <Select
+              label="File"
+              placeholder="Choose a CSV file"
+              data={files.map((f) => ({
+                value: f.id,
+                label: f.originalFilename,
+              }))}
+              value={selectedFileId}
+              onChange={setSelectedFileId}
+              disabled={!selectedPortfolioId || files.length === 0}
+              clearable
+            />
 
-        <Button
-          leftSection={<IconUpload size={16} />}
-          onClick={handleImport}
-          loading={loading}
-          disabled={!selectedFileId}
-        >
-          Import Buildings
-        </Button>
+            <Button
+              leftSection={<IconUpload size={16} />}
+              onClick={handleImport}
+              loading={loading}
+              disabled={!selectedFileId}
+            >
+              Import
+            </Button>
+          </Group>
 
-        {importErrors.length > 0 && (
-          <Alert
-            color="red"
-            icon={<IconAlertCircle size={16} />}
-            title="Import Errors"
-          >
-            {importErrors.map((err, i) => (
-              <Text key={i} size="sm">
-                {err}
-              </Text>
-            ))}
-          </Alert>
-        )}
-      </Stack>
+          {importErrors.length > 0 && (
+            <Alert
+              color="red"
+              icon={<IconAlertCircle size={16} />}
+              title="Import Errors"
+            >
+              {importErrors.map((err, i) => (
+                <Text key={i} size="sm">
+                  {err}
+                </Text>
+              ))}
+            </Alert>
+          )}
+        </Stack>
+      </Collapse>
     </Card>
   );
 }
