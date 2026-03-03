@@ -11,6 +11,7 @@
 
 TEMP-*.md
 *-trace-*.md
+*.har
 
 # External services source code
 external-services/
