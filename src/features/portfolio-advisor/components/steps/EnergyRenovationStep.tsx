@@ -38,6 +38,7 @@ import type { RenovationMeasureId } from "../../../../types/renovation";
 import type { RenovationMeasure } from "../../../../services/types";
 import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
 import { usePortfolioAdvisorServices } from "../../hooks/usePortfolioAdvisorServices";
+import { BuildingMeasuresTable } from "../BuildingMeasuresTable";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Measure Card
@@ -320,6 +321,9 @@ export function EnergyRenovationStep() {
           will be simulated at this time.
         </Alert>
       )}
+
+      {/* Per-Building Measure Overrides */}
+      <BuildingMeasuresTable />
 
       {/* Cost Overrides */}
       <Card withBorder radius="md" p="lg">

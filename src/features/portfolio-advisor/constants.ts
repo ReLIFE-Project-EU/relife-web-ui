@@ -66,4 +66,5 @@ export const CSV_OPTIONAL_COLUMNS = [
   "floor_number",
   "capex",
   "annual_maintenance_cost",
+  "measures",
 ] as const;

@@ -130,6 +130,19 @@ export function portfolioAdvisorReducer(
         ...clearedAnalysisResults,
       };
 
+    case "SET_BUILDING_MEASURES": {
+      const buildings = state.buildings.map((b) =>
+        b.id === action.buildingId
+          ? { ...b, selectedMeasures: action.measures }
+          : b,
+      );
+      return {
+        ...state,
+        buildings,
+        ...clearedAnalysisResults,
+      };
+    }
+
     case "SET_ESTIMATED_CAPEX":
       return {
         ...state,

@@ -7,6 +7,18 @@
 
 import { CSV_REQUIRED_COLUMNS } from "../constants";
 import type { PRABuilding } from "../context/types";
+import type { RenovationMeasureId } from "../../../types/renovation";
+
+const VALID_MEASURE_IDS: ReadonlySet<string> = new Set<RenovationMeasureId>([
+  "wall-insulation",
+  "roof-insulation",
+  "floor-insulation",
+  "windows",
+  "air-water-heat-pump",
+  "condensing-boiler",
+  "pv",
+  "solar-thermal",
+]);
 
 export interface CSVParseResult {
   buildings: PRABuilding[];
@@ -138,6 +150,24 @@ export function parseCSV(text: string): CSVParseResult {
         ? parseFloat(values[maintenanceIdx])
         : undefined;
 
+    // Parse optional per-building measures (semicolon-separated list)
+    const measuresIdx = colIndex("measures");
+    let selectedMeasures: RenovationMeasureId[] | undefined;
+    if (measuresIdx >= 0 && values[measuresIdx]?.trim()) {
+      const rawMeasures = values[measuresIdx]
+        .split(";")
+        .map((m) => m.trim().toLowerCase())
+        .filter((m) => m.length > 0);
+      const invalid = rawMeasures.filter((m) => !VALID_MEASURE_IDS.has(m));
+      if (invalid.length > 0) {
+        rowErrors.push(
+          `Row ${rowNum}: invalid measures: ${invalid.join(", ")}. Valid values: ${[...VALID_MEASURE_IDS].join(", ")}`,
+        );
+      } else if (rawMeasures.length > 0) {
+        selectedMeasures = rawMeasures as RenovationMeasureId[];
+      }
+    }
+
     if (rowErrors.length > 0) {
       errors.push(...rowErrors);
       continue;
@@ -159,6 +189,7 @@ export function parseCSV(text: string): CSVParseResult {
       floorNumber,
       estimatedCapex,
       annualMaintenanceCost,
+      selectedMeasures,
       validationStatus: "valid",
     });
   }

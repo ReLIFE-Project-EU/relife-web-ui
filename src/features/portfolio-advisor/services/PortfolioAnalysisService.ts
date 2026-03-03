@@ -61,7 +61,7 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
         batch.map((b) =>
           this.analyzeBuilding(
             b,
-            selectedMeasures,
+            b.selectedMeasures ?? selectedMeasures,
             funding,
             projectLifetime,
             globalCapex,
