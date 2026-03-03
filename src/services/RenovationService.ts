@@ -228,8 +228,19 @@ export class RenovationService implements IRenovationService {
 
     // Scale by floor area ratio (archetype vs user building).
     // Use the archetype area stored during baseline estimation to ensure consistent scaling.
+    // archetypeFloorArea reflects the area actually simulated: the original archetype area
+    // for unmodified buildings, or the modified floor area for buildings with floor-area edits.
     const userArea = building.floorArea || DEFAULT_FLOOR_AREA;
-    const archetypeArea = estimation.archetypeFloorArea ?? DEFAULT_FLOOR_AREA;
+    if (
+      estimation.archetypeFloorArea === undefined ||
+      estimation.archetypeFloorArea <= 0
+    ) {
+      throw new Error(
+        "Archetype floor area not available on estimation result. " +
+          `archetypeFloorArea=${estimation.archetypeFloorArea}`,
+      );
+    }
+    const archetypeArea = estimation.archetypeFloorArea;
     const areaScaleFactor = userArea / archetypeArea;
 
     const scaledRenovatedHvac = renovatedHvacEnergy * areaScaleFactor;

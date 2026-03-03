@@ -379,14 +379,19 @@ export class EnergyService implements IEnergyService {
           },
         );
 
-        // Bug 1 fix: read floor area from archetypeDetails (not from simulate response,
-        // which does not include building_area for custom-building mode)
-        resolvedArchetypeArea = archetypeDetails.floorArea;
-
         const { bui, system } = applyAllModifications(
           archetypeDetails,
           building.modifications,
         );
+
+        // Use the floor area that was actually simulated for scaling.
+        // When floor area is modified, applyAllModifications updates
+        // net_floor_area in the BUI. The simulation produces results for
+        // that modified area, so using the original archetype area would
+        // cause double-scaling (simulation already models the larger
+        // building, then scaling multiplies again by userArea/origArea).
+        resolvedArchetypeArea =
+          building.modifications.floorArea ?? archetypeDetails.floorArea;
 
         // Bug 2 fix: persist modified BUI/system so RenovationService can apply ECM
         // to the same custom building used here, ensuring comparable savings deltas
@@ -411,6 +416,19 @@ export class EnergyService implements IEnergyService {
     } else {
       // Unmodified archetype path: direct simulation
       try {
+        // Fetch archetype details to get the real floor area for scaling.
+        // The /simulate response does not include building_area, so without
+        // this the code falls back to DEFAULT_FLOOR_AREA (100 m²), which
+        // grossly inflates energy values for large archetypes.
+        const archetypeDetails = await this.buildingService.getArchetypeDetails(
+          {
+            category: archetype.category,
+            country: archetype.country,
+            name: archetype.name,
+          },
+        );
+        resolvedArchetypeArea = archetypeDetails.floorArea;
+
         simulationResponse = await forecasting.simulateDirect({
           category: archetype.category,
           country: archetype.country,
@@ -446,15 +464,18 @@ export class EnergyService implements IEnergyService {
     // Calculate annual totals from hourly data
     const annualData = calculateAnnualTotals(hourlyData);
 
-    // Use archetype area if available, otherwise default.
-    // Bug 1 fix: for modified buildings, resolvedArchetypeArea is set from archetypeDetails.floorArea
-    // (since simulateCustomBuilding response does not include building_area).
-    const archetypeArea =
-      resolvedArchetypeArea ??
-      ((simulationResponse as Record<string, unknown>).building_area as
-        | number
-        | undefined) ??
-      DEFAULT_FLOOR_AREA;
+    // Both the modified and unmodified paths above fetch archetypeDetails to
+    // resolve the real floor area. Fail loudly if this was somehow skipped —
+    // a silent fallback to DEFAULT_FLOOR_AREA (100 m²) would inflate every
+    // downstream energy and financial value by the ratio userArea/100.
+    if (resolvedArchetypeArea === undefined || resolvedArchetypeArea <= 0) {
+      throw new APIResponseError(
+        "Could not determine archetype floor area. " +
+          `resolvedArchetypeArea=${resolvedArchetypeArea}`,
+      );
+    }
+
+    const archetypeArea = resolvedArchetypeArea;
     const userArea = building.floorArea || DEFAULT_FLOOR_AREA;
 
     // Extract energy values from calculated annual totals

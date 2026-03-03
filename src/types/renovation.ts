@@ -96,10 +96,14 @@ export interface EstimationResult {
   annualEnergyConsumption: number; // kWh/year
 
   /**
-   * Floor area of the matched archetype (m²).
+   * Floor area (m²) that the simulation was actually run with.
+   * - Unmodified path: the archetype's original floor area from archetypeDetails.
+   * - Modified path: the user-modified floor area (if floor area was modified),
+   *   or the original archetype area (if only other fields were modified).
+   *
    * Stored here so RenovationService can use the same denominator as EnergyService
    * when scaling simulated energy values to the user's building area.
-   * Falls back to DEFAULT_FLOOR_AREA (100 m²) when the API does not return building_area.
+   * EnergyService throws if this value cannot be determined.
    */
   archetypeFloorArea: number;
 
