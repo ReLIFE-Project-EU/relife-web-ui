@@ -5,6 +5,7 @@ export interface ManualAddFormState {
   category: string | null;
   constructionYear: number | string;
   propertyType: string | null;
+  apartmentLocation: "top" | "middle" | "bottom" | null;
   lat: number | string;
   lng: number | string;
   matchedArchetype: ArchetypeDetails | null;
@@ -27,6 +28,7 @@ export const initialFormState: ManualAddFormState = {
   category: null,
   constructionYear: "",
   propertyType: null,
+  apartmentLocation: null,
   lat: "",
   lng: "",
   matchedArchetype: null,

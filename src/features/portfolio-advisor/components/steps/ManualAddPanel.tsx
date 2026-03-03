@@ -37,12 +37,34 @@ import { initialFormState, manualAddFormReducer } from "./manualAddFormReducer";
 import type { ManualAddFormState } from "./manualAddFormReducer";
 import { MODIFICATION_FIELDS } from "./modificationFieldConfig";
 
-const PROPERTY_TYPE_OPTIONS = [
-  { value: "apartment", label: "Apartment" },
-  { value: "detached", label: "Detached House" },
-  { value: "semi-detached", label: "House" },
-  { value: "Other", label: "Other" },
+const APARTMENT_LOCATION_OPTIONS = [
+  { value: "bottom", label: "Bottom floor" },
+  { value: "middle", label: "Middle floor" },
+  { value: "top", label: "Top floor" },
 ];
+
+function derivePropertyType(category: string): string {
+  const lower = category.toLowerCase();
+  if (lower.includes("apartment")) return "apartment";
+  if (lower.includes("semi")) return "semi-detached";
+  if (lower.includes("single family") || lower.includes("detached"))
+    return "detached";
+  return "Other";
+}
+
+function getApartmentArchetypeCategory(categories: string[]): string {
+  return (
+    categories.find((c) => c.toLowerCase().includes("apartment")) ??
+    categories.find((c) => c.toLowerCase().includes("multi family")) ??
+    categories.find(
+      (c) =>
+        c.toLowerCase().includes("single family") ||
+        c.toLowerCase().includes("residential"),
+    ) ??
+    categories[0] ??
+    ""
+  );
+}
 
 export function ManualAddPanel({
   onAdd,
@@ -162,6 +184,37 @@ export function ManualAddPanel({
     }
   }, [selectedArchetypeName, availableArchetypes]);
 
+  const buildingTypeOptions = [
+    { value: "Apartment", label: "Apartment" },
+    ...categories
+      .filter((c) => !c.toLowerCase().includes("apartment"))
+      .map((c) => ({ value: c, label: c })),
+  ];
+
+  const buildingTypeValue =
+    propertyType === "apartment" ? "Apartment" : category;
+
+  function handleBuildingTypeChange(value: string | null) {
+    if (!value) return;
+    if (value === "Apartment") {
+      const aptCategory = getApartmentArchetypeCategory(categories);
+      dispatch({ type: "SET_FIELD", field: "category", value: aptCategory });
+      dispatch({
+        type: "SET_FIELD",
+        field: "propertyType",
+        value: "apartment",
+      });
+    } else {
+      dispatch({ type: "SET_FIELD", field: "category", value });
+      dispatch({
+        type: "SET_FIELD",
+        field: "propertyType",
+        value: derivePropertyType(value),
+      });
+      dispatch({ type: "SET_FIELD", field: "apartmentLocation", value: null });
+    }
+  }
+
   const isValid =
     name.trim() &&
     category &&
@@ -169,6 +222,7 @@ export function ManualAddPanel({
     constructionYear >= 1800 &&
     constructionYear <= 2030 &&
     propertyType &&
+    (propertyType !== "apartment" || formState.apartmentLocation !== null) &&
     typeof lat === "number" &&
     typeof lng === "number" &&
     matchedArchetype;
@@ -217,6 +271,19 @@ export function ManualAddPanel({
           ? formState.modNumberOfFloors
           : matchedArchetype.numberOfFloors,
       propertyType: propertyType!,
+      floorNumber: (() => {
+        if (propertyType === "apartment" && formState.apartmentLocation) {
+          const floors =
+            typeof formState.modNumberOfFloors === "number"
+              ? formState.modNumberOfFloors
+              : matchedArchetype.numberOfFloors;
+          if (formState.apartmentLocation === "bottom") return 0;
+          if (formState.apartmentLocation === "middle")
+            return Math.floor(floors / 2);
+          return floors - 1;
+        }
+        return undefined;
+      })(),
       validationStatus: "valid",
     };
 
@@ -272,17 +339,11 @@ export function ManualAddPanel({
           </Grid.Col>
           <Grid.Col span={6}>
             <Select
-              label="Category"
-              placeholder="Select category"
-              data={categories.map((c) => ({ value: c, label: c }))}
-              value={category}
-              onChange={(val) =>
-                dispatch({
-                  type: "SET_FIELD",
-                  field: "category",
-                  value: val as ManualAddFormState[keyof ManualAddFormState],
-                })
-              }
+              label="Building Type"
+              placeholder="Select building type"
+              data={buildingTypeOptions}
+              value={buildingTypeValue}
+              onChange={handleBuildingTypeChange}
               searchable
               required
             />
@@ -307,22 +368,24 @@ export function ManualAddPanel({
               required
             />
           </Grid.Col>
-          <Grid.Col span={6}>
-            <Select
-              label="Property Type"
-              placeholder="Select type"
-              data={PROPERTY_TYPE_OPTIONS}
-              value={propertyType}
-              onChange={(val) =>
-                dispatch({
-                  type: "SET_FIELD",
-                  field: "propertyType",
-                  value: val as ManualAddFormState[keyof ManualAddFormState],
-                })
-              }
-              required
-            />
-          </Grid.Col>
+          {propertyType === "apartment" && (
+            <Grid.Col span={6}>
+              <Select
+                label="Apartment Location"
+                placeholder="Select floor position"
+                data={APARTMENT_LOCATION_OPTIONS}
+                value={formState.apartmentLocation}
+                onChange={(val) =>
+                  dispatch({
+                    type: "SET_FIELD",
+                    field: "apartmentLocation",
+                    value: val as ManualAddFormState[keyof ManualAddFormState],
+                  })
+                }
+                required
+              />
+            </Grid.Col>
+          )}
         </Grid>
 
         <Grid>
