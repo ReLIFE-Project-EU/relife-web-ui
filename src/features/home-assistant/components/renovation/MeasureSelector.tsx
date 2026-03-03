@@ -20,8 +20,13 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import { IconCurrencyEuro, IconInfoCircle } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconCurrencyEuro,
+  IconInfoCircle,
+} from "@tabler/icons-react";
 import type { RenovationMeasureId } from "../../context/types";
+import { checkCapexPerSqm } from "../../../../utils/inputSanityChecks";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 import { MeasureCard } from "./MeasureCard";
@@ -34,6 +39,12 @@ export function MeasureSelector() {
   const selectedMeasures = state.renovation.selectedMeasures;
   const estimatedCapex = state.renovation.estimatedCapex;
   const estimatedMaintenanceCost = state.renovation.estimatedMaintenanceCost;
+  const floorArea = state.building.floorArea;
+
+  const capexWarning =
+    estimatedCapex !== null && floorArea !== null && floorArea > 0
+      ? checkCapexPerSqm(estimatedCapex, floorArea)
+      : { warning: false, message: "" };
 
   const handleToggleMeasure = (measureId: RenovationMeasureId) => {
     dispatch({ type: "TOGGLE_MEASURE", measureId });
@@ -164,6 +175,15 @@ export function MeasureSelector() {
                   }
                 />
               </Group>
+              {capexWarning.warning && (
+                <Alert
+                  color="yellow"
+                  icon={<IconAlertTriangle size={16} />}
+                  variant="light"
+                >
+                  {capexWarning.message}
+                </Alert>
+              )}
             </Stack>
           </Paper>
         </>

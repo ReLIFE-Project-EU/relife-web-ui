@@ -33,6 +33,7 @@ export interface PRABuilding {
   lat: number;
   lng: number;
   floorArea: number;
+  archetypeFloorArea?: number; // floor area of the matched archetype (m²) — used for mismatch warnings
   constructionYear: number;
   numberOfFloors: number;
   propertyType: string;

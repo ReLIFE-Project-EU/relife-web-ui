@@ -21,6 +21,7 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import {
+  IconAlertTriangle,
   IconBuildingEstate,
   IconBolt,
   IconFlame,
@@ -32,6 +33,7 @@ import {
   IconWindow,
 } from "@tabler/icons-react";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
+import { checkCapexPerSqm } from "../../../../utils/inputSanityChecks";
 import type { RenovationMeasureId } from "../../../../types/renovation";
 import type { RenovationMeasure } from "../../../../services/types";
 import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
@@ -232,6 +234,24 @@ export function EnergyRenovationStep() {
     state.renovation.estimatedCapex !== null &&
     state.renovation.estimatedMaintenanceCost !== null;
 
+  // CAPEX sanity check: warn when the global CAPEX is low relative to the
+  // average floor area of the buildings that will actually use it (i.e. those
+  // without a per-building estimatedCapex override).
+  const globalCapexBuildings = state.buildings.filter(
+    (b) => b.estimatedCapex == null,
+  );
+  const avgFloorArea =
+    globalCapexBuildings.length > 0
+      ? globalCapexBuildings.reduce((sum, b) => sum + b.floorArea, 0) /
+        globalCapexBuildings.length
+      : 0;
+  const capexWarning =
+    globalCapexBuildings.length > 0 &&
+    state.renovation.estimatedCapex !== null &&
+    avgFloorArea > 0
+      ? checkCapexPerSqm(state.renovation.estimatedCapex, avgFloorArea)
+      : { warning: false, message: "" };
+
   const handleNext = () => {
     if (selectedMeasures.length > 0 && hasSupportedMeasure && costFieldsValid) {
       dispatch({ type: "SET_STEP", step: 2 });
@@ -340,6 +360,16 @@ export function EnergyRenovationStep() {
                   : undefined
               }
             />
+            {capexWarning.warning && (
+              <Alert
+                color="yellow"
+                icon={<IconAlertTriangle size={16} />}
+                variant="light"
+                mt="xs"
+              >
+                {capexWarning.message}
+              </Alert>
+            )}
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 6 }}>
             <NumberInput

@@ -22,6 +22,7 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
+  IconAlertTriangle,
   IconChevronDown,
   IconChevronUp,
   IconHome,
@@ -30,6 +31,7 @@ import {
 } from "@tabler/icons-react";
 import { useEffect, useReducer, useState } from "react";
 import { deriveConstructionPeriod } from "../../../../utils/apiMappings";
+import { checkAreaArchetypeMismatch } from "../../../../utils/inputSanityChecks";
 import type { BuildingModifications } from "../../../../types/archetype";
 import { usePortfolioAdvisorServices } from "../../hooks/usePortfolioAdvisorServices";
 import type { PRABuilding } from "../../context/types";
@@ -257,6 +259,7 @@ export function ManualAddPanel({
       category: category!,
       country: matchedArchetype.country,
       archetypeName: matchedArchetype.name,
+      archetypeFloorArea: matchedArchetype.floorArea,
       modifications:
         Object.keys(modifications).length > 0 ? modifications : undefined,
       lat: lat as number,
@@ -596,6 +599,25 @@ export function ManualAddPanel({
                     />
                   ))}
                 </SimpleGrid>
+
+                {typeof formState.modFloorArea === "number" &&
+                  checkAreaArchetypeMismatch(
+                    formState.modFloorArea,
+                    matchedArchetype.floorArea,
+                  ).warning && (
+                    <Alert
+                      color="yellow"
+                      icon={<IconAlertTriangle size={16} />}
+                      variant="light"
+                    >
+                      {
+                        checkAreaArchetypeMismatch(
+                          formState.modFloorArea,
+                          matchedArchetype.floorArea,
+                        ).message
+                      }
+                    </Alert>
+                  )}
 
                 <Text size="xs" fw={500} mt="xs">
                   Thermal Envelope
