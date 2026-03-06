@@ -68,7 +68,7 @@ flowchart LR
 
     Forecasting["FORECASTING API PARTIAL<br/>---<br/>GET /forecasting/building/available<br/>POST /forecasting/building archetype=true<br/>POST /forecasting/simulate<br/>POST /forecasting/ecm_application<br/>---<br/>Returns baseline and renovated energy outputs<br/>NOTE: ECM supports envelope and heat pump only"]
 
-    Financial["FINANCIAL API REAL<br/>---<br/>POST /financial/arv<br/>POST /financial/risk-assessment<br/>---<br/>Returns ARV + risk metrics<br/>NPV, IRR, ROI, PBP, DPP"]
+    Financial["FINANCIAL API REAL<br/>---<br/>POST /financial/arv<br/>POST /financial/risk-assessment<br/>---<br/>Private output level<br/>Returns ARV + risk metrics<br/>NPV, IRR, ROI, PBP, DPP<br/>Cash flow visualization data"]
 
     Technical["TECHNICAL API STUB - NOT CALLED<br/>---<br/>Endpoints exist in src/api/technical.ts<br/>No HRA runtime invocation<br/>Ranking runs in local mock service"]
 
@@ -133,7 +133,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    ProfessionalInput["PROFESSIONAL INPUT<br/>---<br/>Portfolio buildings via CSV/manual<br/>Archetype and modification fields<br/>Selected renovation measures<br/>Project lifetime and financing settings"]
+    ProfessionalInput["PROFESSIONAL INPUT<br/>---<br/>Portfolio buildings via CSV or manual entry<br/>Archetype and modification fields<br/>Selected renovation measures per building<br/>Project lifetime and financing settings"]
 
     DB[("ReLIFE Database<br/>---<br/>Forecasting archetypes<br/>Financial CAPEX/OPEX defaults<br/>Risk model parameters")]
 
@@ -233,3 +233,4 @@ flowchart LR
 - The page shows static planned-feature content with a disabled CTA and no orchestration/service layer.
 - Forecasting, Financial, and Technical APIs are all uninvoked in this tool path at runtime.
 - This means Strategy Explorer is visible in navigation but remains a non-functional placeholder.
+- The flow diagram above shows the current implementation; compare with the [design flow](docs/rse-tool-design.md#sequential-flow) to identify deviations.
