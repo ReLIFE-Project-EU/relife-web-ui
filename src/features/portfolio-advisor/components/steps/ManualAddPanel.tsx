@@ -40,6 +40,7 @@ import { initialFormState, manualAddFormReducer } from "./manualAddFormReducer";
 import type { ManualAddFormState } from "./manualAddFormReducer";
 import { MODIFICATION_FIELDS } from "./modificationFieldConfig";
 import { ArchetypeLocationMap } from "./ArchetypeLocationMap";
+import { PRALocationMap } from "./PRALocationMap";
 
 const APARTMENT_LOCATION_OPTIONS = [
   { value: "bottom", label: "Bottom floor" },
@@ -83,6 +84,7 @@ export function ManualAddPanel({
   const [categories, setCategories] = useState<string[]>([]);
   const [modificationsOpened, { toggle: toggleModifications }] =
     useDisclosure(false);
+  const [showManualCoords, setShowManualCoords] = useState(false);
 
   const {
     name,
@@ -317,6 +319,13 @@ export function ManualAddPanel({
     dispatch({ type: "RESET_FORM" });
   };
 
+  function handleMapClick(clickedLat: number, clickedLng: number) {
+    const roundedLat = Math.round(clickedLat * 10000) / 10000;
+    const roundedLng = Math.round(clickedLng * 10000) / 10000;
+    dispatch({ type: "SET_FIELD", field: "lat", value: roundedLat });
+    dispatch({ type: "SET_FIELD", field: "lng", value: roundedLng });
+  }
+
   const geometryFields = MODIFICATION_FIELDS.filter(
     (f) => f.group === "geometry",
   );
@@ -430,44 +439,82 @@ export function ManualAddPanel({
           )}
         </Grid>
 
-        <Grid>
-          <Grid.Col span={6}>
-            <NumberInput
-              label="Latitude"
-              placeholder="e.g., 37.98"
-              value={lat}
-              onChange={(val) =>
-                dispatch({
-                  type: "SET_FIELD",
-                  field: "lat",
-                  value: val as ManualAddFormState[keyof ManualAddFormState],
-                })
-              }
-              min={-90}
-              max={90}
-              decimalScale={6}
-              required
-            />
-          </Grid.Col>
-          <Grid.Col span={6}>
-            <NumberInput
-              label="Longitude"
-              placeholder="e.g., 23.73"
-              value={lng}
-              onChange={(val) =>
-                dispatch({
-                  type: "SET_FIELD",
-                  field: "lng",
-                  value: val as ManualAddFormState[keyof ManualAddFormState],
-                })
-              }
-              min={-180}
-              max={180}
-              decimalScale={6}
-              required
-            />
-          </Grid.Col>
-        </Grid>
+        <div>
+          <Text size="sm" fw={500} mb={4}>
+            Building Location
+          </Text>
+          <Text size="xs" c="dimmed" mb="xs">
+            Click on the map to set the building location.
+          </Text>
+          <PRALocationMap
+            lat={typeof lat === "number" ? lat : null}
+            lng={typeof lng === "number" ? lng : null}
+            onLocationChange={handleMapClick}
+          />
+        </div>
+
+        {typeof lat === "number" && typeof lng === "number" && (
+          <Text size="sm" c="dimmed">
+            Selected:{" "}
+            <Text span fw={500} c="dark">
+              {lat.toFixed(4)}, {lng.toFixed(4)}
+            </Text>
+          </Text>
+        )}
+
+        <Button
+          variant="subtle"
+          size="xs"
+          onClick={() => setShowManualCoords((v) => !v)}
+          leftSection={
+            showManualCoords ? (
+              <IconChevronUp size={14} />
+            ) : (
+              <IconChevronDown size={14} />
+            )
+          }
+        >
+          {showManualCoords ? "Hide" : "Show"} manual coordinate input
+        </Button>
+
+        <Collapse in={showManualCoords}>
+          <Grid>
+            <Grid.Col span={6}>
+              <NumberInput
+                label="Latitude"
+                placeholder="e.g., 37.98"
+                value={lat}
+                onChange={(val) =>
+                  dispatch({
+                    type: "SET_FIELD",
+                    field: "lat",
+                    value: val as ManualAddFormState[keyof ManualAddFormState],
+                  })
+                }
+                min={-90}
+                max={90}
+                decimalScale={6}
+              />
+            </Grid.Col>
+            <Grid.Col span={6}>
+              <NumberInput
+                label="Longitude"
+                placeholder="e.g., 23.73"
+                value={lng}
+                onChange={(val) =>
+                  dispatch({
+                    type: "SET_FIELD",
+                    field: "lng",
+                    value: val as ManualAddFormState[keyof ManualAddFormState],
+                  })
+                }
+                min={-180}
+                max={180}
+                decimalScale={6}
+              />
+            </Grid.Col>
+          </Grid>
+        </Collapse>
 
         {/* Section 2: Archetype match */}
         {matchedArchetype && (
