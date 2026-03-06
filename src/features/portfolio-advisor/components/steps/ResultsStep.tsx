@@ -4,24 +4,34 @@
  */
 
 import {
+  Alert,
   Badge,
   Box,
   Card,
   Group,
+  List,
   SimpleGrid,
   Stack,
   Table,
   Text,
+  ThemeIcon,
   Title,
   Tooltip,
 } from "@mantine/core";
-import { IconInfoCircle } from "@tabler/icons-react";
+import { IconInfoCircle, IconShieldCheck } from "@tabler/icons-react";
 import { memo, useMemo } from "react";
+import { DeltaBadge } from "../../../../components/shared/DeltaValue";
 import { EPCBadge } from "../../../../components/shared/EPCBadge";
 import { ErrorAlert } from "../../../../components/shared/ErrorAlert";
 import { MetricCard } from "../../../../components/shared/MetricCard";
 import { MetricExplainer } from "../../../../components/shared/MetricExplainer";
-import { formatCurrency, formatDecimal } from "../../../../utils/formatters";
+import {
+  calculatePercentChange,
+  formatCurrency,
+  formatDecimal,
+} from "../../../../utils/formatters";
+import { getEPCImprovement } from "../../../../utils/epcUtils";
+import { ENERGY_PRICE_EUR_PER_KWH } from "../../../../services/energyUtils";
 import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
 import type { BuildingAnalysisResult } from "../../context/types";
@@ -48,6 +58,11 @@ const PortfolioSummary = memo(function PortfolioSummary({
     let totalPBP = 0;
     let validFinancialCount = 0;
 
+    let totalEnergyReduction = 0;
+    let validEnergyCount = 0;
+    let totalEPCImprovement = 0;
+    let validEPCCount = 0;
+
     for (const result of successful) {
       const fr = result.financialResults;
       if (fr) {
@@ -57,11 +72,38 @@ const PortfolioSummary = memo(function PortfolioSummary({
         totalPBP += fr.paybackTime;
         validFinancialCount++;
       }
+
+      const energyBefore = result.estimation?.annualEnergyNeeds;
+      const renovated = result.scenarios?.find((s) => s.id === "renovated");
+      const energyAfter = renovated?.annualEnergyNeeds;
+
+      if (
+        energyBefore !== undefined &&
+        energyAfter !== undefined &&
+        energyBefore > 0
+      ) {
+        totalEnergyReduction += calculatePercentChange(
+          energyBefore,
+          energyAfter,
+        );
+        validEnergyCount++;
+      }
+
+      const epcBefore = result.estimation?.estimatedEPC;
+      const epcAfter = renovated?.epcClass;
+      if (epcBefore && epcAfter) {
+        totalEPCImprovement += getEPCImprovement(epcBefore, epcAfter);
+        validEPCCount++;
+      }
     }
 
     const avgNPV = validFinancialCount > 0 ? totalNPV / validFinancialCount : 0;
     const avgROI = validFinancialCount > 0 ? totalROI / validFinancialCount : 0;
     const avgPBP = validFinancialCount > 0 ? totalPBP / validFinancialCount : 0;
+    const avgEnergyReduction =
+      validEnergyCount > 0 ? totalEnergyReduction / validEnergyCount : null;
+    const avgEPCImprovement =
+      validEPCCount > 0 ? totalEPCImprovement / validEPCCount : null;
 
     return {
       totalBuildings,
@@ -71,6 +113,8 @@ const PortfolioSummary = memo(function PortfolioSummary({
       avgNPV,
       avgROI,
       avgPBP,
+      avgEnergyReduction,
+      avgEPCImprovement,
     };
   }, [results, totalBuildings]);
 
@@ -119,7 +163,7 @@ const PortfolioSummary = memo(function PortfolioSummary({
         />
       </SimpleGrid>
 
-      <SimpleGrid cols={{ base: 2, sm: 2 }} spacing="md">
+      <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
         <MetricCard
           label={
             <Group gap={4} wrap="nowrap">
@@ -138,6 +182,32 @@ const PortfolioSummary = memo(function PortfolioSummary({
           }
           value={`${formatDecimal(stats.avgPBP)} years`}
         />
+        <MetricCard
+          label={
+            <Group gap={4} wrap="nowrap">
+              Avg. Energy Reduction
+              <MetricExplainer metric="EnergyReduction" />
+            </Group>
+          }
+          value={
+            stats.avgEnergyReduction !== null
+              ? `${formatDecimal(stats.avgEnergyReduction)}%`
+              : "-"
+          }
+        />
+        <MetricCard
+          label={
+            <Group gap={4} wrap="nowrap">
+              Avg. EPC Improvement
+              <MetricExplainer metric="EPCClass" />
+            </Group>
+          }
+          value={
+            stats.avgEPCImprovement !== null
+              ? `${stats.avgEPCImprovement > 0 ? "+" : ""}${formatDecimal(stats.avgEPCImprovement)} classes`
+              : "-"
+          }
+        />
       </SimpleGrid>
     </Card>
   );
@@ -151,7 +221,7 @@ const BuildingResultsTable = memo(function BuildingResultsTable({
   buildings,
   results,
 }: {
-  buildings: Array<{ id: string; name: string }>;
+  buildings: Array<{ id: string; name: string; floorArea: number }>;
   results: Record<string, BuildingAnalysisResult>;
 }) {
   return (
@@ -165,8 +235,24 @@ const BuildingResultsTable = memo(function BuildingResultsTable({
           <Table.Tr>
             <Table.Th>Building</Table.Th>
             <Table.Th>Status</Table.Th>
-            <Table.Th>EPC Before Renovation</Table.Th>
-            <Table.Th>EPC After Renovation</Table.Th>
+            <Table.Th>
+              <Group gap={4} wrap="nowrap">
+                EPC Before Renovation
+                <MetricExplainer metric="EPCClass" />
+              </Group>
+            </Table.Th>
+            <Table.Th>
+              <Group gap={4} wrap="nowrap">
+                EPC After Renovation
+                <MetricExplainer metric="EPCClass" />
+              </Group>
+            </Table.Th>
+            <Table.Th>
+              <Group gap={4} wrap="nowrap">
+                Energy Reduction
+                <MetricExplainer metric="EnergyReduction" />
+              </Group>
+            </Table.Th>
             <Table.Th>
               <Group gap={4} wrap="nowrap">
                 Net Present Value
@@ -194,14 +280,30 @@ const BuildingResultsTable = memo(function BuildingResultsTable({
 
             const isSuccess = result.status === "success";
             const epcBefore = result.estimation?.estimatedEPC;
-            const epcAfter = result.scenarios?.find(
+            const renovated = result.scenarios?.find(
               (s) => s.id === "renovated",
-            )?.epcClass;
+            );
+            const epcAfter = renovated?.epcClass;
             const fr = result.financialResults;
             const noSavings =
-              isSuccess &&
-              fr?.riskAssessment === null &&
-              !!result.scenarios?.find((s) => s.id === "renovated");
+              isSuccess && fr?.riskAssessment === null && !!renovated;
+
+            const energyBefore = result.estimation?.annualEnergyNeeds;
+            const energyAfter = renovated?.annualEnergyNeeds;
+            const intensityBefore =
+              energyBefore !== undefined && building.floorArea > 0
+                ? energyBefore / building.floorArea
+                : undefined;
+            const intensityAfter =
+              energyAfter !== undefined && building.floorArea > 0
+                ? energyAfter / building.floorArea
+                : undefined;
+            const energyReduction =
+              energyBefore !== undefined &&
+              energyAfter !== undefined &&
+              energyBefore > 0
+                ? calculatePercentChange(energyBefore, energyAfter)
+                : undefined;
 
             return (
               <Table.Tr key={building.id}>
@@ -253,14 +355,48 @@ const BuildingResultsTable = memo(function BuildingResultsTable({
                 </Table.Td>
                 <Table.Td>
                   {epcBefore ? (
-                    <EPCBadge epcClass={epcBefore} size="sm" showTooltip />
+                    <Group gap="xs" wrap="nowrap">
+                      <EPCBadge
+                        epcClass={epcBefore}
+                        size="sm"
+                        energyIntensity={intensityBefore}
+                        estimated
+                      />
+                      {intensityBefore !== undefined && (
+                        <Text size="xs" c="dimmed">
+                          {Math.round(intensityBefore)} kWh/m²/y
+                        </Text>
+                      )}
+                    </Group>
                   ) : (
                     "-"
                   )}
                 </Table.Td>
                 <Table.Td>
                   {epcAfter ? (
-                    <EPCBadge epcClass={epcAfter} size="sm" showTooltip />
+                    <Group gap="xs" wrap="nowrap">
+                      <EPCBadge
+                        epcClass={epcAfter}
+                        size="sm"
+                        energyIntensity={intensityAfter}
+                        estimated
+                      />
+                      {intensityAfter !== undefined && (
+                        <Text size="xs" c="dimmed">
+                          {Math.round(intensityAfter)} kWh/m²/y
+                        </Text>
+                      )}
+                    </Group>
+                  ) : (
+                    "-"
+                  )}
+                </Table.Td>
+                <Table.Td>
+                  {energyReduction !== undefined ? (
+                    <DeltaBadge
+                      delta={energyReduction}
+                      higherIsBetter={false}
+                    />
                   ) : (
                     "-"
                   )}
@@ -357,6 +493,62 @@ export function ResultsStep() {
         buildings={state.buildings}
         results={state.buildingResults}
       />
+
+      {/* Data Transparency */}
+      <Alert
+        variant="light"
+        color="gray"
+        radius="md"
+        title="Data Transparency"
+        icon={<IconShieldCheck size={20} />}
+      >
+        <List
+          size="xs"
+          spacing={6}
+          icon={
+            <ThemeIcon color="gray" variant="transparent" size="sm">
+              <IconInfoCircle size={14} />
+            </ThemeIcon>
+          }
+        >
+          <List.Item>
+            <Text size="xs" c="dimmed">
+              <Text span size="xs" fw={500} c="dimmed">
+                EPC classes
+              </Text>{" "}
+              — Estimated by the ReLIFE Platform from energy simulations using
+              approximate kWh/m²/year thresholds. Not official certificates.
+            </Text>
+          </List.Item>
+          <List.Item>
+            <Text size="xs" c="dimmed">
+              <Text span size="xs" fw={500} c="dimmed">
+                Energy reduction
+              </Text>{" "}
+              — Calculated by the ReLIFE Platform as (after − before) / before.
+              Negative values indicate reduced consumption.
+            </Text>
+          </List.Item>
+          <List.Item>
+            <Text size="xs" c="dimmed">
+              <Text span size="xs" fw={500} c="dimmed">
+                Energy costs
+              </Text>{" "}
+              — Use a flat tariff of EUR {ENERGY_PRICE_EUR_PER_KWH}/kWh
+              (platform assumption, not country-specific).
+            </Text>
+          </List.Item>
+          <List.Item>
+            <Text size="xs" c="dimmed">
+              <Text span size="xs" fw={500} c="dimmed">
+                Financial indicators
+              </Text>{" "}
+              (NPV, ROI, PBP) — Computed by the Financial Service using Monte
+              Carlo simulation.
+            </Text>
+          </List.Item>
+        </List>
+      </Alert>
 
       {/* Navigation */}
       <StepNavigation
