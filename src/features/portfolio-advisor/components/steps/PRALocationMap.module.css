@@ -5,22 +5,18 @@
   border: 1px solid var(--mantine-color-gray-3);
   position: relative;
   z-index: 0;
-}
-
-.mapContainer :global(.leaflet-pane),
-.mapContainer :global(.leaflet-top),
-.mapContainer :global(.leaflet-bottom) {
-  z-index: auto !important;
-}
-
-.mapContainer :global(.leaflet-control-zoom) {
-  z-index: 1 !important;
-}
-
-.mapContainer :global(.leaflet-control-attribution) {
-  z-index: 1 !important;
+  isolation: isolate;
 }
 
 .mapContainer :global(.leaflet-container) {
+  z-index: 0;
   cursor: crosshair;
+}
+
+.mapContainer :global(.leaflet-control-zoom) {
+  z-index: 400 !important;
+}
+
+.mapContainer :global(.leaflet-control-attribution) {
+  z-index: 400 !important;
 }

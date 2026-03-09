@@ -42,6 +42,24 @@ const COUNTRY_CODES: Record<string, string> = {
   SK: "Slovakia",
 };
 
+// Reverse lookup: "Greece" → "GR"
+const NAME_TO_CODE: Record<string, string> = Object.fromEntries(
+  Object.entries(COUNTRY_CODES).map(([code, name]) => [name, code]),
+);
+
+export function countryNameToCode(name: string): string | undefined {
+  return NAME_TO_CODE[name];
+}
+
+// "GR" → "🇬🇷"
+export function countryFlag(isoCode: string): string {
+  const upper = isoCode.toUpperCase();
+  return (
+    String.fromCodePoint(0x1f1e6 + upper.codePointAt(0)! - 65) +
+    String.fromCodePoint(0x1f1e6 + upper.codePointAt(1)! - 65)
+  );
+}
+
 function formatPeriod(parts: string[]): string {
   if (parts.length === 0) return "";
   // "0_1945" → "Pre-1945"

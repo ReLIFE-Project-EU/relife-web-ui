@@ -18,7 +18,11 @@ import {
 import { IconAlertTriangle, IconPencil, IconTrash } from "@tabler/icons-react";
 import { useCallback } from "react";
 import { checkAreaArchetypeMismatch } from "../../../../utils/inputSanityChecks";
-import { formatArchetypeName } from "../../../../utils/archetypeLabels";
+import {
+  countryFlag,
+  countryNameToCode,
+  formatArchetypeName,
+} from "../../../../utils/archetypeLabels";
 import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
 import type { PRABuilding } from "../../context/types";
@@ -100,7 +104,17 @@ export function BuildingPortfolioStep() {
                 <Table.Tr key={building.id}>
                   <Table.Td>{building.name}</Table.Td>
                   <Table.Td>{building.category}</Table.Td>
-                  <Table.Td>{building.country}</Table.Td>
+                  <Table.Td>
+                    <Group gap={4} wrap="nowrap">
+                      {(() => {
+                        const code = countryNameToCode(building.country);
+                        return code ? (
+                          <Text size="sm">{countryFlag(code)}</Text>
+                        ) : null;
+                      })()}
+                      <Text size="sm">{building.country}</Text>
+                    </Group>
+                  </Table.Td>
                   <Table.Td>
                     <Group gap={4} wrap="nowrap">
                       <Text size="sm">{building.floorArea}</Text>

@@ -31,7 +31,11 @@ import {
 } from "@tabler/icons-react";
 import { useEffect, useReducer, useState } from "react";
 import { checkAreaArchetypeMismatch } from "../../../../utils/inputSanityChecks";
-import { formatArchetypeName } from "../../../../utils/archetypeLabels";
+import {
+  countryFlag,
+  countryNameToCode,
+  formatArchetypeName,
+} from "../../../../utils/archetypeLabels";
 import type { BuildingModifications } from "../../../../types/archetype";
 import { usePortfolioAdvisorServices } from "../../hooks/usePortfolioAdvisorServices";
 import type { PRABuilding } from "../../context/types";
@@ -202,7 +206,13 @@ export function ManualAddPanel({
       });
 
     return () => controller.abort();
-  }, [buildingService, category, constructionPeriod, debouncedLat, debouncedLng]);
+  }, [
+    buildingService,
+    category,
+    constructionPeriod,
+    debouncedLat,
+    debouncedLng,
+  ]);
 
   // When user changes archetype manually
   useEffect(() => {
@@ -385,6 +395,14 @@ export function ManualAddPanel({
               value={matchedArchetype?.country ?? ""}
               readOnly
               variant="filled"
+              leftSection={(() => {
+                const code = matchedArchetype?.country
+                  ? countryNameToCode(matchedArchetype.country)
+                  : undefined;
+                return code ? (
+                  <Text size="sm">{countryFlag(code)}</Text>
+                ) : undefined;
+              })()}
             />
           </Grid.Col>
           <Grid.Col span={6}>
