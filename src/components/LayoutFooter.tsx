@@ -5,7 +5,7 @@ import {
   IconWorld,
 } from "@tabler/icons-react";
 import { forwardRef } from "react";
-import euFlag from "../assets/icons/eu.png";
+const lifeLogo = "/life-logo.png";
 
 export const LayoutFooter = forwardRef<HTMLDivElement>((_, ref) => {
   return (
@@ -23,10 +23,10 @@ export const LayoutFooter = forwardRef<HTMLDivElement>((_, ref) => {
         <Group justify="space-between" align="center">
           <Group gap="md" wrap="nowrap">
             <Image
-              src={euFlag}
-              alt="EU"
-              w={32}
-              h={32}
+              src={lifeLogo}
+              alt="LIFE Programme"
+              w={40}
+              h={40}
               fit="contain"
               style={{ flexShrink: 0 }}
             />
