@@ -10,6 +10,9 @@ import {
   TileLayer,
   Marker,
   Popup,
+  Tooltip,
+  Circle,
+  CircleMarker,
   useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
@@ -55,18 +58,33 @@ const archetypeIcon = new L.Icon({
   popupAnchor: [0, -12],
 });
 
-const matchedArchetypeIcon = new L.Icon({
+const tentativeArchetypeIcon = new L.Icon({
   iconUrl:
     "data:image/svg+xml;base64," +
     btoa(`
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28">
-      <circle cx="12" cy="12" r="10" fill="#27ae60" stroke="#1e8449" stroke-width="2"/>
-      <circle cx="12" cy="12" r="4" fill="white"/>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="28" height="28">
+      <circle cx="14" cy="14" r="12" fill="#ffd8a8" stroke="#f08c00" stroke-width="2"/>
+      <circle cx="14" cy="14" r="7" fill="#fff4e6" stroke="#f08c00" stroke-width="2"/>
     </svg>
   `),
   iconSize: [28, 28],
   iconAnchor: [14, 14],
   popupAnchor: [0, -14],
+});
+
+const matchedArchetypeIcon = new L.Icon({
+  iconUrl:
+    "data:image/svg+xml;base64," +
+    btoa(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+      <circle cx="16" cy="16" r="14" fill="#f1c40f" stroke="#b88900" stroke-width="2"/>
+      <circle cx="16" cy="16" r="10" fill="#27ae60" stroke="#1e8449" stroke-width="2"/>
+      <path d="M12.4 16.1l2.2 2.3 5-5.3" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  `),
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
+  popupAnchor: [0, -16],
 });
 
 // Map click handler component
@@ -83,20 +101,37 @@ function MapClickHandler({ onMapClick }: MapClickHandlerProps) {
   return null;
 }
 
-// Component to update map view when coordinates change
+// Component to update map view when both the building and matched archetype
+// should be framed together.
 interface MapViewUpdaterProps {
   lat: number | null;
   lng: number | null;
+  highlightedArchetype?: ArchetypeInfo | null;
 }
 
-function MapViewUpdater({ lat, lng }: MapViewUpdaterProps) {
+function MapViewUpdater({
+  lat,
+  lng,
+  highlightedArchetype,
+}: MapViewUpdaterProps) {
   const map = useMapEvents({});
+  const highlightedCoords = highlightedArchetype
+    ? ARCHETYPE_LOCATIONS[highlightedArchetype.country]
+    : null;
 
   useEffect(() => {
-    if (lat !== null && lng !== null) {
-      map.setView([lat, lng], Math.max(map.getZoom(), 6));
+    if (lat !== null && lng !== null && highlightedCoords) {
+      const bounds = L.latLngBounds(
+        [lat, lng],
+        [highlightedCoords.lat, highlightedCoords.lng],
+      );
+
+      map.fitBounds(bounds, {
+        padding: [48, 48],
+        maxZoom: 6,
+      });
     }
-  }, [lat, lng, map]);
+  }, [highlightedCoords, lat, lng, map]);
 
   return null;
 }
@@ -147,7 +182,8 @@ export interface LocationMapProps {
   lng: number | null;
   onLocationChange: (lat: number, lng: number) => void;
   archetypes: ArchetypeInfo[];
-  matchedArchetype?: ArchetypeInfo | null;
+  tentativeArchetype?: ArchetypeInfo | null;
+  selectedArchetype?: ArchetypeInfo | null;
   loading?: boolean;
 }
 
@@ -156,11 +192,13 @@ export function LocationMap({
   lng,
   onLocationChange,
   archetypes,
-  matchedArchetype,
+  tentativeArchetype,
+  selectedArchetype,
   loading = false,
 }: LocationMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const highlightedArchetype = selectedArchetype ?? tentativeArchetype ?? null;
 
   // Calculate center based on user location or default
   const center: [number, number] = useMemo(() => {
@@ -192,11 +230,33 @@ export function LocationMap({
   }, [archetypes]);
 
   // Check if an archetype location is the matched one
-  const isMatchedLocation = (markerLat: number, markerLng: number): boolean => {
-    if (!matchedArchetype) return false;
-    const matchedCoords = ARCHETYPE_LOCATIONS[matchedArchetype.country];
-    if (!matchedCoords) return false;
-    return matchedCoords.lat === markerLat && matchedCoords.lng === markerLng;
+  const getMarkerState = (
+    markerLat: number,
+    markerLng: number,
+  ): "available" | "tentative" | "selected" => {
+    if (selectedArchetype) {
+      const selectedCoords = ARCHETYPE_LOCATIONS[selectedArchetype.country];
+      if (
+        selectedCoords &&
+        selectedCoords.lat === markerLat &&
+        selectedCoords.lng === markerLng
+      ) {
+        return "selected";
+      }
+    }
+
+    if (tentativeArchetype) {
+      const tentativeCoords = ARCHETYPE_LOCATIONS[tentativeArchetype.country];
+      if (
+        tentativeCoords &&
+        tentativeCoords.lat === markerLat &&
+        tentativeCoords.lng === markerLng
+      ) {
+        return "tentative";
+      }
+    }
+
+    return "available";
   };
 
   if (loading) {
@@ -243,55 +303,157 @@ export function LocationMap({
         <MapClickHandler onMapClick={onLocationChange} />
 
         {/* View updater */}
-        {mapReady && <MapViewUpdater lat={lat} lng={lng} />}
+        {mapReady && (
+          <MapViewUpdater
+            lat={lat}
+            lng={lng}
+            highlightedArchetype={highlightedArchetype}
+          />
+        )}
 
         {/* User location marker */}
         {lat !== null && lng !== null && (
-          <Marker position={[lat, lng]} icon={userIcon}>
-            <Popup>
-              <Text size="sm" fw={500}>
-                Your Building Location
-              </Text>
-              <Text size="xs" c="dimmed">
-                Lat: {lat.toFixed(4)}, Lng: {lng.toFixed(4)}
-              </Text>
-            </Popup>
-          </Marker>
+          <>
+            <Circle
+              center={[lat, lng]}
+              radius={6000}
+              pathOptions={{
+                color: "#1c7ed6",
+                weight: 2,
+                fillColor: "#4dabf7",
+                fillOpacity: 0.18,
+              }}
+            />
+            <Marker position={[lat, lng]} icon={userIcon} zIndexOffset={1000}>
+              <Tooltip permanent direction="top" offset={[0, -32]}>
+                <Text size="xs" fw={600}>
+                  Your building
+                </Text>
+              </Tooltip>
+              <Popup>
+                <Text size="sm" fw={500}>
+                  Your Building Location
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Lat: {lat.toFixed(4)}, Lng: {lng.toFixed(4)}
+                </Text>
+              </Popup>
+            </Marker>
+          </>
         )}
 
         {/* Archetype location markers */}
         {archetypeMarkers.map((marker) => (
-          <Marker
+          <Box
             key={`${marker.lat},${marker.lng}`}
-            position={[marker.lat, marker.lng]}
-            icon={
-              isMatchedLocation(marker.lat, marker.lng)
-                ? matchedArchetypeIcon
-                : archetypeIcon
-            }
+            component="span"
+            style={{ display: "contents" }}
           >
-            <Popup>
-              <Text size="sm" fw={500}>
-                {marker.archetypes[0].country} Reference Buildings
-              </Text>
-              <Text size="xs" c="dimmed" mt={4}>
-                {marker.archetypes.length} archetype
-                {marker.archetypes.length > 1 ? "s" : ""} available:
-              </Text>
-              <ul style={{ margin: "4px 0", paddingLeft: 16, fontSize: 12 }}>
-                {marker.archetypes.map((a) => (
-                  <li key={a.name}>
-                    {a.category} ({a.name.match(/\d{4}_\d{4}/)?.[0] || "N/A"})
-                  </li>
-                ))}
-              </ul>
-              {isMatchedLocation(marker.lat, marker.lng) && (
-                <Text size="xs" c="green" fw={500} mt={4}>
-                  ✓ Matched archetype
+            {getMarkerState(marker.lat, marker.lng) !== "available" && (
+              <>
+                <Circle
+                  center={[marker.lat, marker.lng]}
+                  radius={
+                    getMarkerState(marker.lat, marker.lng) === "selected"
+                      ? 40000
+                      : 32000
+                  }
+                  pathOptions={{
+                    color:
+                      getMarkerState(marker.lat, marker.lng) === "selected"
+                        ? "#f1c40f"
+                        : "#f08c00",
+                    weight: 2,
+                    fillColor:
+                      getMarkerState(marker.lat, marker.lng) === "selected"
+                        ? "#ffe066"
+                        : "#ffd8a8",
+                    fillOpacity:
+                      getMarkerState(marker.lat, marker.lng) === "selected"
+                        ? 0.08
+                        : 0.12,
+                  }}
+                />
+                {getMarkerState(marker.lat, marker.lng) === "selected" ? (
+                  <CircleMarker
+                    center={[marker.lat, marker.lng]}
+                    radius={18}
+                    pathOptions={{
+                      color: "#f1c40f",
+                      weight: 3,
+                      fillColor: "#2f9e44",
+                      fillOpacity: 0.22,
+                      className: styles.matchedArchetypePulse,
+                    }}
+                  />
+                ) : null}
+              </>
+            )}
+
+            <Marker
+              position={[marker.lat, marker.lng]}
+              icon={
+                getMarkerState(marker.lat, marker.lng) === "selected"
+                  ? matchedArchetypeIcon
+                  : getMarkerState(marker.lat, marker.lng) === "tentative"
+                    ? tentativeArchetypeIcon
+                    : archetypeIcon
+              }
+              zIndexOffset={
+                getMarkerState(marker.lat, marker.lng) === "selected"
+                  ? 900
+                  : getMarkerState(marker.lat, marker.lng) === "tentative"
+                    ? 700
+                    : 0
+              }
+            >
+              <Popup>
+                <Text size="sm" fw={500}>
+                  {marker.archetypes[0].country} Reference Buildings
                 </Text>
-              )}
-            </Popup>
-          </Marker>
+                <Text
+                  size="xs"
+                  fw={600}
+                  c={
+                    getMarkerState(marker.lat, marker.lng) === "selected"
+                      ? "green"
+                      : getMarkerState(marker.lat, marker.lng) === "tentative"
+                        ? "orange"
+                        : "red"
+                  }
+                  mt={4}
+                >
+                  {getMarkerState(marker.lat, marker.lng) === "selected"
+                    ? "Selected"
+                    : getMarkerState(marker.lat, marker.lng) === "tentative"
+                      ? "Tentative match"
+                      : "Available"}
+                </Text>
+                <Text size="xs" c="dimmed" mt={4}>
+                  {marker.archetypes.length} archetype
+                  {marker.archetypes.length > 1 ? "s" : ""} available:
+                </Text>
+                <ul style={{ margin: "4px 0", paddingLeft: 16, fontSize: 12 }}>
+                  {marker.archetypes.map((a) => (
+                    <li key={a.name}>
+                      {a.category} ({a.name.match(/\d{4}_\d{4}/)?.[0] || "N/A"})
+                    </li>
+                  ))}
+                </ul>
+                {getMarkerState(marker.lat, marker.lng) === "selected" ? (
+                  <Text size="xs" c="green" fw={600} mt={4}>
+                    Accepted as the current building archetype.
+                  </Text>
+                ) : null}
+                {getMarkerState(marker.lat, marker.lng) === "tentative" ? (
+                  <Text size="xs" c="orange.8" fw={600} mt={4}>
+                    Matched from your inputs. Review it in Building Archetype to
+                    accept it.
+                  </Text>
+                ) : null}
+              </Popup>
+            </Marker>
+          </Box>
         ))}
       </MapContainer>
     </Box>

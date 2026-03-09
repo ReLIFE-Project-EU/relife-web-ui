@@ -4,26 +4,45 @@
  */
 
 .mapContainer {
-  height: 350px;
+  height: 420px;
   border-radius: var(--mantine-radius-md);
   overflow: hidden;
   border: 1px solid var(--mantine-color-gray-3);
   position: relative;
   z-index: 0;
+  isolation: isolate;
 }
 
-/* Override Leaflet's default z-indexes to keep everything contained */
-.mapContainer :global(.leaflet-pane),
-.mapContainer :global(.leaflet-top),
-.mapContainer :global(.leaflet-bottom) {
-  z-index: auto !important;
+/* Keep Leaflet inside the local stacking context without breaking pane order */
+.mapContainer :global(.leaflet-container) {
+  z-index: 0;
 }
 
-/* Ensure controls stay within map context */
 .mapContainer :global(.leaflet-control-zoom) {
-  z-index: 1 !important;
+  z-index: 400 !important;
 }
 
 .mapContainer :global(.leaflet-control-attribution) {
-  z-index: 1 !important;
+  z-index: 400 !important;
+}
+
+.matchedArchetypePulse {
+  animation: matched-archetype-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes matched-archetype-pulse {
+  0% {
+    stroke-opacity: 0.95;
+    fill-opacity: 0.28;
+  }
+
+  50% {
+    stroke-opacity: 0.45;
+    fill-opacity: 0.1;
+  }
+
+  100% {
+    stroke-opacity: 0.95;
+    fill-opacity: 0.28;
+  }
 }
