@@ -25,7 +25,6 @@ import type {
 } from "../types/forecasting";
 import type {
   BuildingInfo,
-  EnergyMix,
   EstimationResult,
 } from "../types/renovation";
 import {
@@ -98,46 +97,6 @@ const CLIMATE_REGIONS: Record<string, string[]> = {
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper Functions
 // ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Calculate energy mix based on heating/cooling needs and technology
- */
-function calculateEnergyMix(
-  heatingNeeds: number,
-  coolingNeeds: number,
-  heatingTech: string,
-): { cooling: EnergyMix; heating: EnergyMix; overall: EnergyMix } {
-  const isElectric = [
-    "heat-pump-air",
-    "heat-pump-ground",
-    "electric-resistance",
-  ].includes(heatingTech);
-  const isOil = heatingTech === "oil-boiler";
-
-  // Cooling is typically electric
-  const coolingMix: EnergyMix = {
-    electricity: coolingNeeds,
-    heatingOil: 0,
-  };
-
-  // Heating depends on technology
-  const heatingMix: EnergyMix = isElectric
-    ? { electricity: heatingNeeds, heatingOil: 0 }
-    : isOil
-      ? { electricity: heatingNeeds * 0.1, heatingOil: heatingNeeds * 0.9 }
-      : { electricity: heatingNeeds * 0.3, heatingOil: heatingNeeds * 0.7 };
-
-  const overallMix: EnergyMix = {
-    electricity: coolingMix.electricity + heatingMix.electricity,
-    heatingOil: coolingMix.heatingOil + heatingMix.heatingOil,
-  };
-
-  return {
-    cooling: coolingMix,
-    heating: heatingMix,
-    overall: overallMix,
-  };
-}
 
 /**
  * Calculate comfort index based on building characteristics
@@ -408,11 +367,6 @@ export class EnergyService implements IEnergyService {
     const annualEnergyCost = estimateAnnualHvacEnergyCost(annualEnergyNeeds);
     const estimatedEPC = getEPCClass(energyIntensity);
 
-    const energyMix = calculateEnergyMix(
-      scaledHeating,
-      scaledCooling,
-      building.heatingTechnology,
-    );
     const comfortIndex = calculateComfortIndex(building);
     const flexibilityIndex = calculateFlexibilityIndex(building);
 
@@ -421,20 +375,8 @@ export class EnergyService implements IEnergyService {
       annualEnergyNeeds: Math.round(annualEnergyNeeds),
       annualEnergyCost: Math.round(annualEnergyCost),
       heatingCoolingNeeds: Math.round(scaledHvacTotal),
-      energyMix: {
-        cooling: {
-          electricity: Math.round(energyMix.cooling.electricity),
-          heatingOil: Math.round(energyMix.cooling.heatingOil),
-        },
-        heating: {
-          electricity: Math.round(energyMix.heating.electricity),
-          heatingOil: Math.round(energyMix.heating.heatingOil),
-        },
-        overall: {
-          electricity: Math.round(energyMix.overall.electricity),
-          heatingOil: Math.round(energyMix.overall.heatingOil),
-        },
-      },
+      heatingDemand: Math.round(scaledHeating),
+      coolingDemand: Math.round(scaledCooling),
       flexibilityIndex: Math.round(flexibilityIndex),
       comfortIndex: Math.round(comfortIndex),
       annualEnergyConsumption: Math.round(annualEnergyNeeds),

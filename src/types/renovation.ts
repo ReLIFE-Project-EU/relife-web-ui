@@ -73,26 +73,24 @@ export interface BuildingInfo {
 // Energy Estimation Types (Screen 1 -> Screen 2)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export interface EnergyMix {
-  electricity: number; // kWh/year
-  /**
-   * Annual consumption of the primary non-electric fuel (kWh/year).
-   * Named "heatingOil" for historical reasons but covers any primary fuel type
-   * (heating oil, natural gas, etc.) depending on the building's heating technology.
-   */
-  heatingOil: number; // kWh/year
-}
-
 export interface EstimationResult {
   estimatedEPC: string; // UI label (A+ to G), maps to Greek for API
   annualEnergyNeeds: number; // kWh/year (HVAC demand, API-derived)
   annualEnergyCost: number; // EUR/year (derived from annualEnergyNeeds using ENERGY_PRICE_EUR_PER_KWH)
   heatingCoolingNeeds: number; // kWh/year (HVAC demand, API-derived)
-  energyMix: {
-    cooling: EnergyMix;
-    heating: EnergyMix;
-    overall: EnergyMix;
-  };
+  /**
+   * Annual ideal heating thermal demand in kWh/year.
+   * Derived directly from Q_H_total in the Forecasting API simulation response.
+   * This is the ideal thermal load, NOT delivered energy — actual consumption
+   * depends on system efficiency (e.g. heat pump COP, boiler efficiency).
+   */
+  heatingDemand: number; // kWh/year (API-derived)
+  /**
+   * Annual ideal cooling thermal demand in kWh/year.
+   * Derived directly from Q_C_total in the Forecasting API simulation response.
+   * This is the ideal thermal load, NOT delivered energy.
+   */
+  coolingDemand: number; // kWh/year (API-derived)
   flexibilityIndex: number; // 0-100
   comfortIndex: number; // 0-100
 

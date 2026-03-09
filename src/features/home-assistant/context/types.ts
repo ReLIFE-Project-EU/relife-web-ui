@@ -34,7 +34,6 @@ export type {
   ARVResult,
   BuildingInfo,
   CashFlowData,
-  EnergyMix,
   EstimationResult,
   FinancialResults,
   FinancialScenario,
