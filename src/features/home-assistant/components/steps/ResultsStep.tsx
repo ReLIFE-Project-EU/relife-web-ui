@@ -11,10 +11,7 @@ import {
   MeasuresList,
   ScenarioComparison,
 } from "../results";
-import {
-  ErrorAlert,
-  StepNavigation,
-} from "../shared";
+import { ErrorAlert, StepNavigation } from "../shared";
 
 export function ResultsStep() {
   const { state, dispatch } = useHomeAssistant();

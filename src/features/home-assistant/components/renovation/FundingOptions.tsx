@@ -147,9 +147,7 @@ function FinancingCard({
         p="md"
         style={{
           borderColor: selected ? "var(--mantine-color-teal-6)" : undefined,
-          backgroundColor: selected
-            ? "var(--mantine-color-teal-0)"
-            : undefined,
+          backgroundColor: selected ? "var(--mantine-color-teal-0)" : undefined,
         }}
       >
         <Group justify="space-between" mb="xs">

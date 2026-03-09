@@ -72,27 +72,46 @@ export function ScenarioComparison() {
                 <Table.Td fw={500}>EPC Rank</Table.Td>
                 <Table.Td style={{ textAlign: "center" }}>
                   {(() => {
-                    const epc = currentScenario?.epcClass || estimation.estimatedEPC;
-                    const energy = currentScenario?.annualEnergyNeeds || estimation.annualEnergyNeeds;
+                    const epc =
+                      currentScenario?.epcClass || estimation.estimatedEPC;
+                    const energy =
+                      currentScenario?.annualEnergyNeeds ||
+                      estimation.annualEnergyNeeds;
                     const intensity = computeIntensity(energy);
                     return (
                       <Stack gap={4} align="center">
-                        <EPCBadge epcClass={epc} size="md" energyIntensity={intensity} estimated />
+                        <EPCBadge
+                          epcClass={epc}
+                          size="md"
+                          energyIntensity={intensity}
+                          estimated
+                        />
                         {intensity !== undefined && (
-                          <Text size="xs" c="dimmed">~{Math.round(intensity)} kWh/m²/y</Text>
+                          <Text size="xs" c="dimmed">
+                            ~{Math.round(intensity)} kWh/m²/y
+                          </Text>
                         )}
                       </Stack>
                     );
                   })()}
                 </Table.Td>
                 {renovationScenarios.map((scenario) => {
-                  const intensity = computeIntensity(scenario.annualEnergyNeeds);
+                  const intensity = computeIntensity(
+                    scenario.annualEnergyNeeds,
+                  );
                   return (
                     <Table.Td key={scenario.id} style={{ textAlign: "center" }}>
                       <Stack gap={4} align="center">
-                        <EPCBadge epcClass={scenario.epcClass} size="md" energyIntensity={intensity} estimated />
+                        <EPCBadge
+                          epcClass={scenario.epcClass}
+                          size="md"
+                          energyIntensity={intensity}
+                          estimated
+                        />
                         {intensity !== undefined && (
-                          <Text size="xs" c="dimmed">~{Math.round(intensity)} kWh/m²/y</Text>
+                          <Text size="xs" c="dimmed">
+                            ~{Math.round(intensity)} kWh/m²/y
+                          </Text>
                         )}
                       </Stack>
                     </Table.Td>

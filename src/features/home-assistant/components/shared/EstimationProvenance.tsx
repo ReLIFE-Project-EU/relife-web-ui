@@ -1,11 +1,4 @@
-import {
-  Card,
-  Group,
-  Stack,
-  Table,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Card, Group, Stack, Table, Text, Title } from "@mantine/core";
 import { IconBuildingCommunity, IconHome } from "@tabler/icons-react";
 import type { EstimationResult } from "../../../../types/renovation";
 import {

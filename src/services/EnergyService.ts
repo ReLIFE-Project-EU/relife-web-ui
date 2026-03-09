@@ -23,10 +23,7 @@ import type {
   ArchetypeInfo,
   SimulateDirectResponse,
 } from "../types/forecasting";
-import type {
-  BuildingInfo,
-  EstimationResult,
-} from "../types/renovation";
+import type { BuildingInfo, EstimationResult } from "../types/renovation";
 import {
   DEFAULT_FLOOR_AREA,
   calculateAnnualTotals,
@@ -239,7 +236,11 @@ export class EnergyService implements IEnergyService {
     console.warn(
       `Selected archetype ${selected.name} not found, falling back to matching`,
     );
-    return { name: selected.name, category: selected.category, country: selected.country };
+    return {
+      name: selected.name,
+      category: selected.category,
+      country: selected.country,
+    };
   }
 
   /**

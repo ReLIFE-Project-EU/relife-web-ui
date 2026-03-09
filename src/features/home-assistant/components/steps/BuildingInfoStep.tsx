@@ -74,7 +74,12 @@ export function BuildingInfoStep() {
       </Box>
 
       {/* Workflow info card */}
-      <Card withBorder radius="md" p="lg" bg="var(--mantine-color-default-hover)">
+      <Card
+        withBorder
+        radius="md"
+        p="lg"
+        bg="var(--mantine-color-default-hover)"
+      >
         <Text size="sm" fw={600} c="dimmed" tt="uppercase" ls="0.05em" mb="md">
           How this works
         </Text>
