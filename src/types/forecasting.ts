@@ -15,6 +15,30 @@ export interface ArchetypeInfo {
 }
 
 // ============================================================================
+// Validation Types (POST /validate with archetype=false)
+// ============================================================================
+
+/**
+ * Response from POST /validate?archetype=false
+ *
+ * The backend auto-corrects minor issues and returns the validated payloads.
+ * A successful HTTP 200 means the building passed validation.
+ * Use `bui_checked` and `system_checked` for subsequent simulation.
+ */
+export interface ValidateCustomBuildingResponse {
+  source: string;
+  name: string | null;
+  category: string | null;
+  country: string | null;
+  bui_fixed: unknown;
+  bui_checked: unknown;
+  system_checked: unknown;
+  bui_report_fixed: string[];
+  bui_issues: string[];
+  system_messages: string[];
+}
+
+// ============================================================================
 // Direct Simulation Types (POST /simulate with archetype=true)
 // ============================================================================
 

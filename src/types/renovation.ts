@@ -33,12 +33,18 @@ export interface BuildingInfo {
     category: string;
     country: string;
   };
+  tentativeArchetype?: {
+    name: string;
+    category: string;
+    country: string;
+  };
 
   // User-modifiable parameters (Optional - for modified archetype workflow)
   isModified: boolean; // Whether user has modified archetype defaults
   modifications?: import("./archetype").BuildingModifications; // Modifications to apply to archetype
   floorArea: number | null; // m² - can be modified by user
   numberOfFloors: number | null; // 1-100 - can be modified by user
+  apartmentLocation?: "bottom" | "middle" | "top";
 
   // Deprecated fields (kept for backward compatibility with Financial API)
   // These are now derived from archetype or removed from user input
@@ -94,6 +100,25 @@ export interface EstimationResult {
   // Named "Consumption" to distinguish it from savings, which are computed in FinancialService
   // by subtracting the renovated scenario's annualEnergyNeeds from this value.
   annualEnergyConsumption: number; // kWh/year
+
+  /**
+   * Notices returned during validation of a modified archetype.
+   * These do not block the simulation, but they should be shown to the user.
+   */
+  validationNotes?: string[];
+
+  /**
+   * Reference simulation for the original archetype.
+   * Present when the user estimated an adjusted archetype.
+   */
+  referenceEstimation?: {
+    estimatedEPC: string;
+    annualEnergyNeeds: number;
+    annualEnergyCost: number;
+    heatingCoolingNeeds: number;
+    flexibilityIndex: number;
+    comfortIndex: number;
+  };
 
   /**
    * Floor area (m²) that the simulation was actually run with.

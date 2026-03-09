@@ -15,6 +15,7 @@ import type {
   SimulateDirectParams,
   SimulateDirectResponse,
   SimulateResponse,
+  ValidateCustomBuildingResponse,
 } from "../types/forecasting";
 import {
   createServiceApi,
@@ -70,7 +71,7 @@ export const forecasting = {
    * Use this to validate modified buildings before simulation
    */
   validateCustomBuilding: (payload: { bui: unknown; system: unknown }) =>
-    request<{ valid: boolean; issues?: string[] }>(
+    request<ValidateCustomBuildingResponse>(
       "/forecasting/validate?archetype=false",
       {
         method: "POST",

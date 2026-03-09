@@ -37,11 +37,13 @@ const initialBuilding: BuildingInfo = {
 
   // Archetype selection
   selectedArchetype: undefined,
+  tentativeArchetype: undefined,
   isModified: false,
 
   // User-modifiable fields
   floorArea: null,
   numberOfFloors: null,
+  apartmentLocation: undefined,
 
   // Deprecated fields (kept for compatibility)
   climateZone: "",
