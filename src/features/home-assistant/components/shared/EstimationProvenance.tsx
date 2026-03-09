@@ -1,11 +1,12 @@
 import {
   Card,
   Group,
-  SimpleGrid,
   Stack,
+  Table,
   Text,
   Title,
 } from "@mantine/core";
+import { IconBuildingCommunity, IconHome } from "@tabler/icons-react";
 import type { EstimationResult } from "../../../../types/renovation";
 import {
   calculatePercentChange,
@@ -38,6 +39,8 @@ export function ReferenceAdjustedComparisonCard({
       ? estimation.annualEnergyNeeds / floorArea
       : undefined;
 
+  const epcChanged = estimation.estimatedEPC !== reference.estimatedEPC;
+
   return (
     <Card withBorder radius="md" p="lg">
       <Stack gap="lg">
@@ -51,49 +54,47 @@ export function ReferenceAdjustedComparisonCard({
           </Text>
         </div>
 
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-          <Card withBorder radius="md" p="md" bg="gray.0">
-            <Stack gap="sm">
-              <Text size="sm" fw={600}>
-                Reference archetype
-              </Text>
-              <Group justify="space-between">
-                <Text size="sm">Estimated EPC</Text>
+        <Table highlightOnHover withRowBorders>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th style={{ width: "40%" }} />
+              <Table.Th>
+                <Group gap="xs" wrap="nowrap">
+                  <IconBuildingCommunity
+                    size={14}
+                    color="var(--mantine-color-gray-6)"
+                  />
+                  <Text size="xs" fw={600} tt="uppercase" c="dimmed">
+                    Reference archetype
+                  </Text>
+                </Group>
+              </Table.Th>
+              <Table.Th>
+                <Group gap="xs" wrap="nowrap">
+                  <IconHome size={14} color="var(--mantine-color-blue-6)" />
+                  <Text size="xs" fw={600} tt="uppercase" c="blue">
+                    Your adjusted home
+                  </Text>
+                </Group>
+              </Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            <Table.Tr>
+              <Table.Td>
+                <Text size="sm" c="dimmed">
+                  Estimated EPC
+                </Text>
+              </Table.Td>
+              <Table.Td>
                 <EPCBadge
                   epcClass={reference.estimatedEPC}
                   size="md"
                   energyIntensity={referenceIntensity}
                   estimated
                 />
-              </Group>
-              <Group justify="space-between">
-                <Text size="sm">Annual HVAC energy</Text>
-                <Text size="sm" fw={500}>
-                  {formatEnergyPerYear(reference.annualEnergyNeeds)}
-                </Text>
-              </Group>
-              <Group justify="space-between">
-                <Text size="sm">Annual HVAC cost</Text>
-                <Text size="sm" fw={500}>
-                  {formatCurrency(reference.annualEnergyCost)}
-                </Text>
-              </Group>
-              <Group justify="space-between">
-                <Text size="sm">Comfort index</Text>
-                <Text size="sm" fw={500}>
-                  {reference.comfortIndex}
-                </Text>
-              </Group>
-            </Stack>
-          </Card>
-
-          <Card withBorder radius="md" p="md" bg="blue.0">
-            <Stack gap="sm">
-              <Text size="sm" fw={600}>
-                Adjusted home
-              </Text>
-              <Group justify="space-between">
-                <Text size="sm">Estimated EPC</Text>
+              </Table.Td>
+              <Table.Td>
                 <Group gap="xs">
                   <EPCBadge
                     epcClass={estimation.estimatedEPC}
@@ -101,13 +102,27 @@ export function ReferenceAdjustedComparisonCard({
                     energyIntensity={adjustedIntensity}
                     estimated
                   />
-                  <Text size="xs" c="dimmed">
-                    from {reference.estimatedEPC}
-                  </Text>
+                  {epcChanged && (
+                    <Text size="xs" c="dimmed">
+                      from {reference.estimatedEPC}
+                    </Text>
+                  )}
                 </Group>
-              </Group>
-              <Group justify="space-between">
-                <Text size="sm">Annual HVAC energy</Text>
+              </Table.Td>
+            </Table.Tr>
+
+            <Table.Tr>
+              <Table.Td>
+                <Text size="sm" c="dimmed">
+                  Annual HVAC energy
+                </Text>
+              </Table.Td>
+              <Table.Td>
+                <Text size="sm" fw={500}>
+                  {formatEnergyPerYear(reference.annualEnergyNeeds)}
+                </Text>
+              </Table.Td>
+              <Table.Td>
                 <DeltaValue
                   value={estimation.annualEnergyNeeds}
                   delta={calculatePercentChange(
@@ -117,9 +132,21 @@ export function ReferenceAdjustedComparisonCard({
                   formatter={formatEnergyPerYear}
                   higherIsBetter={false}
                 />
-              </Group>
-              <Group justify="space-between">
-                <Text size="sm">Annual HVAC cost</Text>
+              </Table.Td>
+            </Table.Tr>
+
+            <Table.Tr>
+              <Table.Td>
+                <Text size="sm" c="dimmed">
+                  Annual HVAC cost
+                </Text>
+              </Table.Td>
+              <Table.Td>
+                <Text size="sm" fw={500}>
+                  {formatCurrency(reference.annualEnergyCost)}
+                </Text>
+              </Table.Td>
+              <Table.Td>
                 <DeltaValue
                   value={estimation.annualEnergyCost}
                   delta={calculatePercentChange(
@@ -129,9 +156,21 @@ export function ReferenceAdjustedComparisonCard({
                   formatter={formatCurrency}
                   higherIsBetter={false}
                 />
-              </Group>
-              <Group justify="space-between">
-                <Text size="sm">Comfort index</Text>
+              </Table.Td>
+            </Table.Tr>
+
+            <Table.Tr>
+              <Table.Td>
+                <Text size="sm" c="dimmed">
+                  Comfort index
+                </Text>
+              </Table.Td>
+              <Table.Td>
+                <Text size="sm" fw={500}>
+                  {reference.comfortIndex}
+                </Text>
+              </Table.Td>
+              <Table.Td>
                 <DeltaValue
                   value={estimation.comfortIndex}
                   delta={calculatePercentChange(
@@ -140,15 +179,15 @@ export function ReferenceAdjustedComparisonCard({
                   )}
                   higherIsBetter
                 />
-              </Group>
-            </Stack>
-          </Card>
-        </SimpleGrid>
+              </Table.Td>
+            </Table.Tr>
+          </Table.Tbody>
+        </Table>
 
         <Text size="sm" c="dimmed">
-          {
-            "We started from a standard building profile similar to yours, applied your specific details, ran an energy simulation, and calculated the results shown above."
-          }
+          We started from a standard building profile similar to yours, applied
+          your specific details, ran an energy simulation, and calculated the
+          results shown above.
         </Text>
       </Stack>
     </Card>
