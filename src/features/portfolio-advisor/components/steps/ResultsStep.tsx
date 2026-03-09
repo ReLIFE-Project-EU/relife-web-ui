@@ -31,6 +31,7 @@ import {
   formatDecimal,
 } from "../../../../utils/formatters";
 import { getEPCImprovement } from "../../../../utils/epcUtils";
+import { formatArchetypeName } from "../../../../utils/archetypeLabels";
 import { ENERGY_PRICE_EUR_PER_KWH } from "../../../../services/energyUtils";
 import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
@@ -221,7 +222,12 @@ const BuildingResultsTable = memo(function BuildingResultsTable({
   buildings,
   results,
 }: {
-  buildings: Array<{ id: string; name: string; floorArea: number }>;
+  buildings: Array<{
+    id: string;
+    name: string;
+    floorArea: number;
+    archetypeName?: string;
+  }>;
   results: Record<string, BuildingAnalysisResult>;
 }) {
   return (
@@ -234,6 +240,7 @@ const BuildingResultsTable = memo(function BuildingResultsTable({
         <Table.Thead>
           <Table.Tr>
             <Table.Th>Building</Table.Th>
+            <Table.Th>Matched Archetype</Table.Th>
             <Table.Th>Status</Table.Th>
             <Table.Th>
               <Group gap={4} wrap="nowrap">
@@ -305,6 +312,9 @@ const BuildingResultsTable = memo(function BuildingResultsTable({
                 ? calculatePercentChange(energyBefore, energyAfter)
                 : undefined;
 
+            const archetype = result.estimation?.archetype;
+            const wasAutoMatched = !building.archetypeName && !!archetype;
+
             return (
               <Table.Tr key={building.id}>
                 <Table.Td>
@@ -331,6 +341,30 @@ const BuildingResultsTable = memo(function BuildingResultsTable({
                       </Tooltip>
                     )}
                   </Stack>
+                </Table.Td>
+                <Table.Td>
+                  {archetype ? (
+                    <Tooltip
+                      label={`${archetype.category} · ${archetype.country} · ${archetype.name}`}
+                      multiline
+                      w={260}
+                    >
+                      <Stack gap={4} style={{ cursor: "default" }}>
+                        <Text size="sm">
+                          {formatArchetypeName(archetype.name)}
+                        </Text>
+                        {wasAutoMatched && (
+                          <Badge color="gray" variant="light" size="xs">
+                            Auto
+                          </Badge>
+                        )}
+                      </Stack>
+                    </Tooltip>
+                  ) : (
+                    <Text size="sm" c="dimmed">
+                      —
+                    </Text>
+                  )}
                 </Table.Td>
                 <Table.Td>
                   <Badge
