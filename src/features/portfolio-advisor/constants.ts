@@ -56,7 +56,7 @@ export const CSV_REQUIRED_COLUMNS = [
   "category",
   "country",
   "floor_area",
-  "construction_year",
+  "construction_period",
   "number_of_floors",
   "property_type",
 ] as const;

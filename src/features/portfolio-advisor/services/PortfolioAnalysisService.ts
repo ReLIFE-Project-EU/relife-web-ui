@@ -15,7 +15,7 @@ import type {
   FundingOptions,
   RenovationMeasureId,
 } from "../../../types/renovation";
-import { deriveConstructionPeriod } from "../../../utils/apiMappings";
+import { deriveConstructionYear } from "../../../utils/apiMappings";
 import { PRA_CONCURRENCY_LIMIT } from "../constants";
 import type { FinancingScheme } from "../constants";
 import type {
@@ -194,7 +194,7 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       lat: b.lat,
       lng: b.lng,
       buildingType: b.propertyType,
-      constructionPeriod: deriveConstructionPeriod(b.constructionYear),
+      constructionPeriod: b.constructionPeriod,
       selectedArchetype: b.archetypeName
         ? { name: b.archetypeName, category: b.category, country: b.country }
         : undefined,
@@ -208,7 +208,7 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       hotWaterTechnology: "",
       numberOfOpenings: null,
       glazingTechnology: "",
-      constructionYear: b.constructionYear,
+      constructionYear: deriveConstructionYear(b.constructionPeriod),
       floorNumber: b.floorNumber ?? null,
       projectLifetime,
       renovatedLast5Years: true,

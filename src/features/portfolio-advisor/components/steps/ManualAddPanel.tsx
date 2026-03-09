@@ -30,7 +30,6 @@ import {
   IconPlus,
 } from "@tabler/icons-react";
 import { useEffect, useReducer, useState } from "react";
-import { deriveConstructionPeriod } from "../../../../utils/apiMappings";
 import { checkAreaArchetypeMismatch } from "../../../../utils/inputSanityChecks";
 import { formatArchetypeName } from "../../../../utils/archetypeLabels";
 import type { BuildingModifications } from "../../../../types/archetype";
@@ -82,6 +81,7 @@ export function ManualAddPanel({
     initialFormState,
   );
   const [categories, setCategories] = useState<string[]>([]);
+  const [availablePeriods, setAvailablePeriods] = useState<string[]>([]);
   const [modificationsOpened, { toggle: toggleModifications }] =
     useDisclosure(false);
   const [showManualCoords, setShowManualCoords] = useState(false);
@@ -89,7 +89,7 @@ export function ManualAddPanel({
   const {
     name,
     category,
-    constructionYear,
+    constructionPeriod,
     propertyType,
     lat,
     lng,
@@ -116,12 +116,30 @@ export function ManualAddPanel({
       .catch(() => {});
   }, [buildingService]);
 
-  // Auto-match archetype when category + year + coordinates are set
+  // Load available construction periods when category changes
+  useEffect(() => {
+    if (!category) return;
+    buildingService
+      .getAvailablePeriods(category)
+      .then((periods) => {
+        setAvailablePeriods(periods);
+        // Clear selected period if it's no longer available
+        if (constructionPeriod && !periods.includes(constructionPeriod)) {
+          dispatch({
+            type: "SET_FIELD",
+            field: "constructionPeriod",
+            value: null,
+          });
+        }
+      })
+      .catch(() => {});
+  }, [buildingService, category, constructionPeriod]);
+
+  // Auto-match archetype when category + period + coordinates are set
   useEffect(() => {
     if (
       !category ||
-      !constructionYear ||
-      typeof constructionYear !== "number" ||
+      !constructionPeriod ||
       typeof debouncedLat !== "number" ||
       typeof debouncedLng !== "number"
     ) {
@@ -132,10 +150,9 @@ export function ManualAddPanel({
 
     const controller = new AbortController();
     dispatch({ type: "SET_LOADING_ARCHETYPE", loading: true });
-    const period = deriveConstructionPeriod(constructionYear);
 
     buildingService
-      .findMatchingArchetype(category, period, {
+      .findMatchingArchetype(category, constructionPeriod, {
         lat: debouncedLat,
         lng: debouncedLng,
       })
@@ -185,7 +202,7 @@ export function ManualAddPanel({
       });
 
     return () => controller.abort();
-  }, [buildingService, category, constructionYear, debouncedLat, debouncedLng]);
+  }, [buildingService, category, constructionPeriod, debouncedLat, debouncedLng]);
 
   // When user changes archetype manually
   useEffect(() => {
@@ -244,9 +261,7 @@ export function ManualAddPanel({
   const isValid =
     name.trim() &&
     category &&
-    typeof constructionYear === "number" &&
-    constructionYear >= 1800 &&
-    constructionYear <= 2030 &&
+    constructionPeriod &&
     propertyType &&
     (propertyType !== "apartment" || formState.apartmentLocation !== null) &&
     typeof lat === "number" &&
@@ -293,7 +308,7 @@ export function ManualAddPanel({
         typeof formState.modFloorArea === "number"
           ? formState.modFloorArea
           : matchedArchetype.floorArea,
-      constructionYear: constructionYear as number,
+      constructionPeriod: constructionPeriod!,
       numberOfFloors:
         typeof formState.modNumberOfFloors === "number"
           ? formState.modNumberOfFloors
@@ -403,19 +418,18 @@ export function ManualAddPanel({
 
         <Grid>
           <Grid.Col span={6}>
-            <NumberInput
-              label="Construction Year"
-              placeholder="e.g., 1985"
-              value={constructionYear}
+            <Select
+              label="Construction Period"
+              placeholder="Select period"
+              data={availablePeriods}
+              value={constructionPeriod}
               onChange={(val) =>
                 dispatch({
                   type: "SET_FIELD",
-                  field: "constructionYear",
+                  field: "constructionPeriod",
                   value: val as ManualAddFormState[keyof ManualAddFormState],
                 })
               }
-              min={1800}
-              max={2030}
               required
             />
           </Grid.Col>

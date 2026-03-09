@@ -3,7 +3,7 @@ import type { ArchetypeDetails } from "../../../../types/archetype";
 export interface ManualAddFormState {
   name: string;
   category: string | null;
-  constructionYear: number | string;
+  constructionPeriod: string | null;
   propertyType: string | null;
   apartmentLocation: "top" | "middle" | "bottom" | null;
   lat: number | string;
@@ -26,7 +26,7 @@ export interface ManualAddFormState {
 export const initialFormState: ManualAddFormState = {
   name: "",
   category: null,
-  constructionYear: "",
+  constructionPeriod: null,
   propertyType: null,
   apartmentLocation: null,
   lat: "",
