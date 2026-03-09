@@ -1,0 +1,5 @@
+building_name,lat,lng,category,country,floor_area,construction_period,number_of_floors,property_type,archetype_name,floor_number,capex,annual_maintenance_cost,measures
+Athens Riverside Apartments,37.9838,23.7275,Multi Family House,Greece,4200,1971-1990,8,apartment,,4,680000,18500,wall-insulation;roof-insulation;windows
+Rome Historic Townhouse,41.9028,12.4964,Single Family House,Italy,260,pre-1945,3,semi-detached,,1,92000,3400,wall-insulation;floor-insulation;windows;condensing-boiler
+Milan Central Office Block,45.4642,9.19,Office,Italy,9800,1945-1970,12,detached,,6,1450000,52000,wall-insulation;roof-insulation;windows;air-water-heat-pump;pv
+Thessaloniki Seafront Residences,40.6401,22.9444,Multi Family House,Greece,3150,1991-2000,7,apartment,,3,510000,16000,windows;air-water-heat-pump;solar-thermal

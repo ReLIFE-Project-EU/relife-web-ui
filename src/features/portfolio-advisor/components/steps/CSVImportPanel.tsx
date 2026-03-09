@@ -5,6 +5,7 @@
 
 import {
   Alert,
+  Anchor,
   Button,
   Card,
   Collapse,
@@ -20,6 +21,7 @@ import {
   IconAlertCircle,
   IconChevronDown,
   IconChevronUp,
+  IconDownload,
   IconFileSpreadsheet,
   IconUpload,
 } from "@tabler/icons-react";
@@ -158,6 +160,21 @@ export function CSVImportPanel({
               Import
             </Button>
           </Group>
+
+          <Text size="xs" c="dimmed">
+            Not sure about the format?{" "}
+            <Anchor
+              href={`${import.meta.env.BASE_URL}portfolio_example.csv`}
+              download="portfolio_example.csv"
+              size="xs"
+              inline
+            >
+              <Group gap={4} component="span" display="inline-flex">
+                <IconDownload size={12} />
+                Download an example CSV
+              </Group>
+            </Anchor>
+          </Text>
 
           {importErrors.length > 0 && (
             <Alert
