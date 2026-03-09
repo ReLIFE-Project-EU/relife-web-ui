@@ -80,7 +80,14 @@ export function BuildingInfoStep() {
         p="lg"
         bg="var(--mantine-color-default-hover)"
       >
-        <Text size="sm" fw={600} c="dimmed" tt="uppercase" ls="0.05em" mb="md">
+        <Text
+          size="sm"
+          fw={600}
+          c="dimmed"
+          tt="uppercase"
+          style={{ letterSpacing: "0.05em" }}
+          mb="md"
+        >
           How this works
         </Text>
         <Timeline color="relife" active={-1} bulletSize={32} lineWidth={2}>
