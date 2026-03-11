@@ -1,13 +1,12 @@
 import { Card, Group, Stack, Table, Text, Title } from "@mantine/core";
 import { IconBuildingCommunity, IconHome } from "@tabler/icons-react";
 import type { EstimationResult } from "../../../../types/renovation";
+import { DeltaValue, EPCBadge } from "../../../../components/shared";
 import {
   calculatePercentChange,
   formatCurrency,
   formatEnergyPerYear,
 } from "../../utils/formatters";
-import { DeltaValue } from "./DeltaValue";
-import { EPCBadge } from "../../../../components/shared";
 
 export function ReferenceAdjustedComparisonCard({
   estimation,

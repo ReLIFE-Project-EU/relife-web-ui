@@ -37,7 +37,7 @@ import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { CashFlowChart } from "./CashFlowChart";
 import { FinancialMetricCard } from "./FinancialMetricCard";
 import { RiskGauge } from "./RiskGauge";
-import { MetricExplainer } from "../shared/MetricExplainer";
+import { MetricExplainer } from "../shared";
 import type {
   CashFlowData,
   FinancialResults,
