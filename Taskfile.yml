@@ -187,6 +187,17 @@ tasks:
           SERVICE_NAME: relife-technical-service
           SERVICE_DIR: external-services/relife-technical-service
 
+  test-unit:
+    desc: "Run unit tests (no backend services required)"
+    cmds:
+      - npm run test:unit
+
+  test:
+    desc: "Run unit tests followed by integration tests"
+    cmds:
+      - task: test-unit
+      - task: test-integration
+
   test-integration:
     desc: "Run integration tests against the Docker Compose services"
     vars:
