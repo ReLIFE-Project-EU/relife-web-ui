@@ -610,6 +610,99 @@ for more information refers to `Guidelines`: <https://eurac-eebgroup.github.io/p
 
 ---
 
+### Distribution Chart Rendering Examples
+
+The `chart_metadata` object in the professional output provides all data needed for the frontend to render five distribution histogram charts — one for each financial KPI (NPV, IRR, ROI, PBP, DPP). Below is a Python/Matplotlib example showing how to render a single distribution chart using **only the API metadata** (simulating what the frontend will do with a charting library like Recharts or Chart.js), followed by the rendered outputs for each indicator:
+
+```python
+import matplotlib.pyplot as plt
+import numpy as np
+
+def render_distribution_chart(indicator_name, chart_data, ax, color='steelblue'):
+    """Render a single indicator distribution histogram from chart_metadata."""
+    bins = chart_data['bins']
+    stats = chart_data['statistics']
+
+    centers = bins['centers']
+    counts = bins['counts']
+    edges = bins['edges']
+
+    # Plot histogram bars
+    ax.bar(centers, counts, width=np.diff(edges), align='center',
+           color=color, alpha=0.75, edgecolor='white', linewidth=0.5)
+
+    # Vertical lines for key percentiles and mean
+    ax.axvline(stats['P10'], color='orange', linestyle='--', linewidth=1.5,
+               label=f"P10: {stats['P10']:,.1f}")
+    ax.axvline(stats['P50'], color='red', linestyle='-', linewidth=2,
+               label=f"P50: {stats['P50']:,.1f}")
+    ax.axvline(stats['P90'], color='orange', linestyle='--', linewidth=1.5,
+               label=f"P90: {stats['P90']:,.1f}")
+    ax.axvline(stats['mean'], color='black', linestyle=':', linewidth=1.5,
+               label=f"Mean: {stats['mean']:,.1f}")
+
+    ax.set_title(indicator_name, fontsize=13, fontweight='bold')
+    ax.set_xlabel(indicator_name)
+    ax.set_ylabel('Frequency')
+    ax.legend(fontsize=9, framealpha=0.9)
+    ax.grid(True, alpha=0.3, linestyle=':')
+
+# Render all 5 indicators in a 2×3 grid
+fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+colors = ['steelblue', 'seagreen', 'darkorange', 'mediumpurple', 'crimson']
+indicators = ['NPV', 'IRR', 'ROI', 'PBP', 'DPP']
+
+for indicator, ax, color in zip(indicators, axes.flat, colors):
+    render_distribution_chart(indicator, chart_metadata[indicator], ax, color)
+
+axes.flat[-1].set_visible(False)  # Hide unused 6th subplot
+plt.suptitle('Financial Indicator Distributions — Professional Output',
+             fontsize=16, fontweight='bold', y=1.02)
+plt.tight_layout()
+plt.show()
+```
+
+**Rendered Outputs:**
+
+#### NPV Distribution
+
+![NPV Distribution](distribution_npv.png)
+
+#### IRR Distribution
+
+![IRR Distribution](distribution_irr.png)
+
+#### ROI Distribution
+
+![ROI Distribution](distribution_roi.png)
+
+#### PBP Distribution
+
+![PBP Distribution](distribution_pbp.png)
+
+#### DPP Distribution
+
+![DPP Distribution](distribution_dpp.png)
+
+**Key Chart Elements:**
+
+- **Histogram bars:** Frequency distribution of Monte Carlo simulation outcomes across the full uncertainty range
+- **Red solid line (P50):** Median outcome — the most likely value under uncertainty
+- **Orange dashed lines (P10 / P90):** 80% confidence interval bounds, containing 80% of all simulated outcomes
+- **Black dotted line (Mean):** Average outcome across all simulations
+- **Narrow distribution:** Lower uncertainty / more predictable outcome for this indicator
+- **Wide distribution:** Higher uncertainty / greater variability in projected returns
+
+**Frontend Implementation Notes:**
+
+- Each of the 5 charts is rendered independently from its `chart_metadata[indicator]` sub-object
+- The probability values (`Pr(NPV > 0)`, `Pr(PBP < lifetime)`, `Pr(DPP < lifetime)`) displayed alongside the charts come from the top-level `probabilities` field — not from `chart_metadata`
+- Use **Recharts** `<BarChart>`, **Chart.js** histogram mode, or **D3.js** for interactive rendering
+- Add tooltips showing exact bin counts and percentile values on hover
+- Consider highlighting the "profitable zone" (values > 0 for NPV; values < project lifetime for PBP/DPP) with a contrasting bar colour to make risk immediately visible
+
+---
+
 ### Technical API
 
 **Endpoint:** `POST /[TO_BE_DEFINED]`
