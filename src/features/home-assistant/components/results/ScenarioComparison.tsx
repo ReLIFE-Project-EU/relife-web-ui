@@ -26,6 +26,7 @@ import { DeltaBadge, EPCBadge } from "../shared";
 export function ScenarioComparison() {
   const { state } = useHomeAssistant();
   const { scenarios, estimation } = state;
+  const floorArea = state.building.floorArea;
 
   if (scenarios.length === 0 || !estimation) {
     return null;
@@ -34,6 +35,9 @@ export function ScenarioComparison() {
   // Get the current scenario for baseline comparisons
   const currentScenario = scenarios.find((s) => s.id === "current");
   const renovationScenarios = scenarios.filter((s) => s.id !== "current");
+
+  const computeIntensity = (annualEnergyNeeds: number) =>
+    floorArea && floorArea > 0 ? annualEnergyNeeds / floorArea : undefined;
 
   return (
     <Card withBorder radius="md" p="lg">
@@ -67,18 +71,52 @@ export function ScenarioComparison() {
               <Table.Tr>
                 <Table.Td fw={500}>EPC Rank</Table.Td>
                 <Table.Td style={{ textAlign: "center" }}>
-                  <EPCBadge
-                    epcClass={
-                      currentScenario?.epcClass || estimation.estimatedEPC
-                    }
-                    size="md"
-                  />
+                  {(() => {
+                    const epc =
+                      currentScenario?.epcClass || estimation.estimatedEPC;
+                    const energy =
+                      currentScenario?.annualEnergyNeeds ||
+                      estimation.annualEnergyNeeds;
+                    const intensity = computeIntensity(energy);
+                    return (
+                      <Stack gap={4} align="center">
+                        <EPCBadge
+                          epcClass={epc}
+                          size="md"
+                          energyIntensity={intensity}
+                          estimated
+                        />
+                        {intensity !== undefined && (
+                          <Text size="xs" c="dimmed">
+                            ~{Math.round(intensity)} kWh/m²/y
+                          </Text>
+                        )}
+                      </Stack>
+                    );
+                  })()}
                 </Table.Td>
-                {renovationScenarios.map((scenario) => (
-                  <Table.Td key={scenario.id} style={{ textAlign: "center" }}>
-                    <EPCBadge epcClass={scenario.epcClass} size="md" />
-                  </Table.Td>
-                ))}
+                {renovationScenarios.map((scenario) => {
+                  const intensity = computeIntensity(
+                    scenario.annualEnergyNeeds,
+                  );
+                  return (
+                    <Table.Td key={scenario.id} style={{ textAlign: "center" }}>
+                      <Stack gap={4} align="center">
+                        <EPCBadge
+                          epcClass={scenario.epcClass}
+                          size="md"
+                          energyIntensity={intensity}
+                          estimated
+                        />
+                        {intensity !== undefined && (
+                          <Text size="xs" c="dimmed">
+                            ~{Math.round(intensity)} kWh/m²/y
+                          </Text>
+                        )}
+                      </Stack>
+                    </Table.Td>
+                  );
+                })}
               </Table.Tr>
 
               {/* Energy Needs Row */}

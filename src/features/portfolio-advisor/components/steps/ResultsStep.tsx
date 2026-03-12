@@ -4,21 +4,35 @@
  */
 
 import {
+  Alert,
   Badge,
   Box,
   Card,
   Group,
+  List,
   SimpleGrid,
   Stack,
   Table,
   Text,
+  ThemeIcon,
   Title,
+  Tooltip,
 } from "@mantine/core";
+import { IconInfoCircle, IconShieldCheck } from "@tabler/icons-react";
 import { memo, useMemo } from "react";
+import { DeltaBadge } from "../../../../components/shared/DeltaValue";
 import { EPCBadge } from "../../../../components/shared/EPCBadge";
 import { ErrorAlert } from "../../../../components/shared/ErrorAlert";
 import { MetricCard } from "../../../../components/shared/MetricCard";
-import { formatCurrency, formatDecimal } from "../../../../utils/formatters";
+import { MetricExplainer } from "../../../../components/shared/MetricExplainer";
+import {
+  calculatePercentChange,
+  formatCurrency,
+  formatDecimal,
+} from "../../../../utils/formatters";
+import { getEPCImprovement } from "../../../../utils/epcUtils";
+import { formatArchetypeName } from "../../../../utils/archetypeLabels";
+import { ENERGY_PRICE_EUR_PER_KWH } from "../../../../services/energyUtils";
 import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
 import type { BuildingAnalysisResult } from "../../context/types";
@@ -45,6 +59,11 @@ const PortfolioSummary = memo(function PortfolioSummary({
     let totalPBP = 0;
     let validFinancialCount = 0;
 
+    let totalEnergyReduction = 0;
+    let validEnergyCount = 0;
+    let totalEPCImprovement = 0;
+    let validEPCCount = 0;
+
     for (const result of successful) {
       const fr = result.financialResults;
       if (fr) {
@@ -54,11 +73,38 @@ const PortfolioSummary = memo(function PortfolioSummary({
         totalPBP += fr.paybackTime;
         validFinancialCount++;
       }
+
+      const energyBefore = result.estimation?.annualEnergyNeeds;
+      const renovated = result.scenarios?.find((s) => s.id === "renovated");
+      const energyAfter = renovated?.annualEnergyNeeds;
+
+      if (
+        energyBefore !== undefined &&
+        energyAfter !== undefined &&
+        energyBefore > 0
+      ) {
+        totalEnergyReduction += calculatePercentChange(
+          energyBefore,
+          energyAfter,
+        );
+        validEnergyCount++;
+      }
+
+      const epcBefore = result.estimation?.estimatedEPC;
+      const epcAfter = renovated?.epcClass;
+      if (epcBefore && epcAfter) {
+        totalEPCImprovement += getEPCImprovement(epcBefore, epcAfter);
+        validEPCCount++;
+      }
     }
 
     const avgNPV = validFinancialCount > 0 ? totalNPV / validFinancialCount : 0;
     const avgROI = validFinancialCount > 0 ? totalROI / validFinancialCount : 0;
     const avgPBP = validFinancialCount > 0 ? totalPBP / validFinancialCount : 0;
+    const avgEnergyReduction =
+      validEnergyCount > 0 ? totalEnergyReduction / validEnergyCount : null;
+    const avgEPCImprovement =
+      validEPCCount > 0 ? totalEPCImprovement / validEPCCount : null;
 
     return {
       totalBuildings,
@@ -68,6 +114,8 @@ const PortfolioSummary = memo(function PortfolioSummary({
       avgNPV,
       avgROI,
       avgPBP,
+      avgEnergyReduction,
+      avgEPCImprovement,
     };
   }, [results, totalBuildings]);
 
@@ -95,25 +143,71 @@ const PortfolioSummary = memo(function PortfolioSummary({
           }
         />
         <MetricCard
-          label="Total CAPEX"
+          label={
+            <Group gap={4} wrap="nowrap">
+              Total Investment Required
+              <MetricExplainer metric="CAPEX" />
+            </Group>
+          }
           value={formatCurrency(stats.totalCapex)}
           variant="highlight"
         />
         <MetricCard
-          label="Avg NPV"
+          label={
+            <Group gap={4} wrap="nowrap">
+              Avg. Net Present Value
+              <MetricExplainer metric="NPV" />
+            </Group>
+          }
           value={formatCurrency(stats.avgNPV)}
           variant="highlight"
         />
       </SimpleGrid>
 
-      <SimpleGrid cols={{ base: 2, sm: 2 }} spacing="md">
+      <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
         <MetricCard
-          label="Avg ROI"
+          label={
+            <Group gap={4} wrap="nowrap">
+              Avg. Return on Investment
+              <MetricExplainer metric="ROI" />
+            </Group>
+          }
           value={`${formatDecimal(stats.avgROI * 100)}%`}
         />
         <MetricCard
-          label="Avg Payback Period"
+          label={
+            <Group gap={4} wrap="nowrap">
+              Avg. Payback Period
+              <MetricExplainer metric="PBP" />
+            </Group>
+          }
           value={`${formatDecimal(stats.avgPBP)} years`}
+        />
+        <MetricCard
+          label={
+            <Group gap={4} wrap="nowrap">
+              Avg. Energy Reduction
+              <MetricExplainer metric="EnergyReduction" />
+            </Group>
+          }
+          value={
+            stats.avgEnergyReduction !== null
+              ? `${formatDecimal(stats.avgEnergyReduction)}%`
+              : "-"
+          }
+        />
+        <MetricCard
+          label={
+            <Group gap={4} wrap="nowrap">
+              Avg. EPC Improvement
+              <MetricExplainer metric="EPCClass" />
+            </Group>
+          }
+          value={
+            stats.avgEPCImprovement !== null
+              ? `${stats.avgEPCImprovement > 0 ? "+" : ""}${formatDecimal(stats.avgEPCImprovement)} classes`
+              : "-"
+          }
         />
       </SimpleGrid>
     </Card>
@@ -128,7 +222,12 @@ const BuildingResultsTable = memo(function BuildingResultsTable({
   buildings,
   results,
 }: {
-  buildings: Array<{ id: string; name: string }>;
+  buildings: Array<{
+    id: string;
+    name: string;
+    floorArea: number;
+    archetypeName?: string;
+  }>;
   results: Record<string, BuildingAnalysisResult>;
 }) {
   return (
@@ -141,12 +240,44 @@ const BuildingResultsTable = memo(function BuildingResultsTable({
         <Table.Thead>
           <Table.Tr>
             <Table.Th>Building</Table.Th>
+            <Table.Th>Matched Archetype</Table.Th>
             <Table.Th>Status</Table.Th>
-            <Table.Th>EPC Before</Table.Th>
-            <Table.Th>EPC After</Table.Th>
-            <Table.Th>NPV (EUR)</Table.Th>
-            <Table.Th>ROI (%)</Table.Th>
-            <Table.Th>Payback (years)</Table.Th>
+            <Table.Th>
+              <Group gap={4} wrap="nowrap">
+                EPC Before Renovation
+                <MetricExplainer metric="EPCClass" />
+              </Group>
+            </Table.Th>
+            <Table.Th>
+              <Group gap={4} wrap="nowrap">
+                EPC After Renovation
+                <MetricExplainer metric="EPCClass" />
+              </Group>
+            </Table.Th>
+            <Table.Th>
+              <Group gap={4} wrap="nowrap">
+                Energy Reduction
+                <MetricExplainer metric="EnergyReduction" />
+              </Group>
+            </Table.Th>
+            <Table.Th>
+              <Group gap={4} wrap="nowrap">
+                Net Present Value
+                <MetricExplainer metric="NPV" />
+              </Group>
+            </Table.Th>
+            <Table.Th>
+              <Group gap={4} wrap="nowrap">
+                Return on Investment
+                <MetricExplainer metric="ROI" />
+              </Group>
+            </Table.Th>
+            <Table.Th>
+              <Group gap={4} wrap="nowrap">
+                Payback Period
+                <MetricExplainer metric="PBP" />
+              </Group>
+            </Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
@@ -156,17 +287,84 @@ const BuildingResultsTable = memo(function BuildingResultsTable({
 
             const isSuccess = result.status === "success";
             const epcBefore = result.estimation?.estimatedEPC;
-            const epcAfter = result.scenarios?.find(
+            const renovated = result.scenarios?.find(
               (s) => s.id === "renovated",
-            )?.epcClass;
+            );
+            const epcAfter = renovated?.epcClass;
             const fr = result.financialResults;
+            const noSavings =
+              isSuccess && fr?.riskAssessment === null && !!renovated;
+
+            const energyBefore = result.estimation?.annualEnergyNeeds;
+            const energyAfter = renovated?.annualEnergyNeeds;
+            const intensityBefore =
+              energyBefore !== undefined && building.floorArea > 0
+                ? energyBefore / building.floorArea
+                : undefined;
+            const intensityAfter =
+              energyAfter !== undefined && building.floorArea > 0
+                ? energyAfter / building.floorArea
+                : undefined;
+            const energyReduction =
+              energyBefore !== undefined &&
+              energyAfter !== undefined &&
+              energyBefore > 0
+                ? calculatePercentChange(energyBefore, energyAfter)
+                : undefined;
+
+            const archetype = result.estimation?.archetype;
+            const wasAutoMatched = !building.archetypeName && !!archetype;
 
             return (
               <Table.Tr key={building.id}>
                 <Table.Td>
-                  <Text size="sm" fw={500}>
-                    {building.name}
-                  </Text>
+                  <Stack gap={4}>
+                    <Text size="sm" fw={500}>
+                      {building.name}
+                    </Text>
+                    {noSavings && (
+                      <Tooltip
+                        label="This building's current specifications already meet the targets for the selected renovation measures. No energy savings could be computed, so financial indicators are not meaningful."
+                        multiline
+                        w={300}
+                        position="bottom-start"
+                      >
+                        <Badge
+                          color="yellow"
+                          variant="light"
+                          size="sm"
+                          leftSection={<IconInfoCircle size={11} />}
+                          style={{ cursor: "default" }}
+                        >
+                          Already at renovation target
+                        </Badge>
+                      </Tooltip>
+                    )}
+                  </Stack>
+                </Table.Td>
+                <Table.Td>
+                  {archetype ? (
+                    <Tooltip
+                      label={`${archetype.category} · ${archetype.country} · ${archetype.name}`}
+                      multiline
+                      w={260}
+                    >
+                      <Stack gap={4} style={{ cursor: "default" }}>
+                        <Text size="sm">
+                          {formatArchetypeName(archetype.name)}
+                        </Text>
+                        {wasAutoMatched && (
+                          <Badge color="gray" variant="light" size="xs">
+                            Auto
+                          </Badge>
+                        )}
+                      </Stack>
+                    </Tooltip>
+                  ) : (
+                    <Text size="sm" c="dimmed">
+                      —
+                    </Text>
+                  )}
                 </Table.Td>
                 <Table.Td>
                   <Badge
@@ -180,33 +378,85 @@ const BuildingResultsTable = memo(function BuildingResultsTable({
                     size="sm"
                     variant="light"
                   >
-                    {result.status}
+                    {result.status === "success"
+                      ? "Analyzed"
+                      : result.status === "error"
+                        ? "Failed"
+                        : result.status === "running"
+                          ? "Running"
+                          : "Pending"}
                   </Badge>
                 </Table.Td>
                 <Table.Td>
                   {epcBefore ? (
-                    <EPCBadge epcClass={epcBefore} size="sm" />
+                    <Group gap="xs" wrap="nowrap">
+                      <EPCBadge
+                        epcClass={epcBefore}
+                        size="sm"
+                        energyIntensity={intensityBefore}
+                        estimated
+                      />
+                      {intensityBefore !== undefined && (
+                        <Text size="xs" c="dimmed">
+                          {Math.round(intensityBefore)} kWh/m²/y
+                        </Text>
+                      )}
+                    </Group>
                   ) : (
                     "-"
                   )}
                 </Table.Td>
                 <Table.Td>
-                  {epcAfter ? <EPCBadge epcClass={epcAfter} size="sm" /> : "-"}
+                  {epcAfter ? (
+                    <Group gap="xs" wrap="nowrap">
+                      <EPCBadge
+                        epcClass={epcAfter}
+                        size="sm"
+                        energyIntensity={intensityAfter}
+                        estimated
+                      />
+                      {intensityAfter !== undefined && (
+                        <Text size="xs" c="dimmed">
+                          {Math.round(intensityAfter)} kWh/m²/y
+                        </Text>
+                      )}
+                    </Group>
+                  ) : (
+                    "-"
+                  )}
                 </Table.Td>
                 <Table.Td>
-                  {isSuccess && fr
-                    ? formatCurrency(fr.netPresentValue)
-                    : result.status === "error"
-                      ? result.error?.substring(0, 40)
+                  {energyReduction !== undefined ? (
+                    <DeltaBadge
+                      delta={energyReduction}
+                      higherIsBetter={false}
+                    />
+                  ) : (
+                    "-"
+                  )}
+                </Table.Td>
+                <Table.Td>
+                  {isSuccess && fr ? (
+                    <Text size="sm" c={noSavings ? "dimmed" : undefined}>
+                      {formatCurrency(fr.netPresentValue)}
+                    </Text>
+                  ) : result.status === "error" ? (
+                    result.error?.substring(0, 40)
+                  ) : (
+                    "-"
+                  )}
+                </Table.Td>
+                <Table.Td>
+                  <Text size="sm" c={noSavings ? "dimmed" : undefined}>
+                    {isSuccess && fr
+                      ? `${formatDecimal(fr.returnOnInvestment * 100)}%`
                       : "-"}
+                  </Text>
                 </Table.Td>
                 <Table.Td>
-                  {isSuccess && fr
-                    ? `${formatDecimal(fr.returnOnInvestment * 100)}%`
-                    : "-"}
-                </Table.Td>
-                <Table.Td>
-                  {isSuccess && fr ? formatDecimal(fr.paybackTime) : "-"}
+                  <Text size="sm" c={noSavings ? "dimmed" : undefined}>
+                    {isSuccess && fr ? formatDecimal(fr.paybackTime) : "-"}
+                  </Text>
                 </Table.Td>
               </Table.Tr>
             );
@@ -258,7 +508,8 @@ export function ResultsStep() {
           Portfolio Analysis Results
         </Title>
         <Text c="dimmed" size="sm">
-          Review the analysis results for your building portfolio.
+          Below you&apos;ll find a summary of your portfolio&apos;s renovation
+          economics and a per-building breakdown of key financial outcomes.
         </Text>
       </Box>
 
@@ -276,6 +527,62 @@ export function ResultsStep() {
         buildings={state.buildings}
         results={state.buildingResults}
       />
+
+      {/* Data Transparency */}
+      <Alert
+        variant="light"
+        color="gray"
+        radius="md"
+        title="Data Transparency"
+        icon={<IconShieldCheck size={20} />}
+      >
+        <List
+          size="xs"
+          spacing={6}
+          icon={
+            <ThemeIcon color="gray" variant="transparent" size="sm">
+              <IconInfoCircle size={14} />
+            </ThemeIcon>
+          }
+        >
+          <List.Item>
+            <Text size="xs" c="dimmed">
+              <Text span size="xs" fw={500} c="dimmed">
+                EPC classes
+              </Text>{" "}
+              — Estimated by the ReLIFE Platform from energy simulations using
+              approximate kWh/m²/year thresholds. Not official certificates.
+            </Text>
+          </List.Item>
+          <List.Item>
+            <Text size="xs" c="dimmed">
+              <Text span size="xs" fw={500} c="dimmed">
+                Energy reduction
+              </Text>{" "}
+              — Calculated by the ReLIFE Platform as (after − before) / before.
+              Negative values indicate reduced consumption.
+            </Text>
+          </List.Item>
+          <List.Item>
+            <Text size="xs" c="dimmed">
+              <Text span size="xs" fw={500} c="dimmed">
+                Energy costs
+              </Text>{" "}
+              — Use a flat tariff of EUR {ENERGY_PRICE_EUR_PER_KWH}/kWh
+              (platform assumption, not country-specific).
+            </Text>
+          </List.Item>
+          <List.Item>
+            <Text size="xs" c="dimmed">
+              <Text span size="xs" fw={500} c="dimmed">
+                Financial indicators
+              </Text>{" "}
+              (NPV, ROI, PBP) — Computed by the Financial Service using Monte
+              Carlo simulation.
+            </Text>
+          </List.Item>
+        </List>
+      </Alert>
 
       {/* Navigation */}
       <StepNavigation

@@ -120,6 +120,8 @@ export const fileApi = {
    * Download a file
    */
   async download(file: PortfolioFile): Promise<Blob> {
+    await requireAuthenticatedUser();
+
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
       .download(file.storagePath);

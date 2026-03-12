@@ -33,12 +33,14 @@ export interface PRABuilding {
   lat: number;
   lng: number;
   floorArea: number;
-  constructionYear: number;
+  archetypeFloorArea?: number; // floor area of the matched archetype (m²) — used for mismatch warnings
+  constructionPeriod: string;
   numberOfFloors: number;
   propertyType: string;
   floorNumber?: number;
   estimatedCapex?: number; // EUR — total capital expenditure for renovation
   annualMaintenanceCost?: number; // EUR/year — annual O&M cost post-renovation
+  selectedMeasures?: RenovationMeasureId[]; // Per-building override; falls back to portfolio-level measures when undefined
   validationStatus: "valid" | "invalid" | "pending";
   validationErrors?: string[];
 }
@@ -125,6 +127,11 @@ export type PortfolioAdvisorAction =
   | { type: "APPEND_BUILDINGS"; buildings: PRABuilding[] }
   | { type: "TOGGLE_MEASURE"; measureId: RenovationMeasureId }
   | { type: "SET_MEASURES"; measures: RenovationMeasureId[] }
+  | {
+      type: "SET_BUILDING_MEASURES";
+      buildingId: string;
+      measures: RenovationMeasureId[] | undefined;
+    }
   | { type: "SET_ESTIMATED_CAPEX"; capex: number | null }
   | { type: "SET_ESTIMATED_MAINTENANCE_COST"; cost: number | null }
   | { type: "SET_PROJECT_LIFETIME"; years: number }

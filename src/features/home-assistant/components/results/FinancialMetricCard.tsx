@@ -6,11 +6,11 @@
 
 import { Card, Group, Stack, Text } from "@mantine/core";
 import type { MantineColor } from "@mantine/core";
-import { RangeIndicator } from "../shared/RangeIndicator";
 import {
   MetricExplainer,
+  RangeIndicator,
   type FinancialMetricType,
-} from "../shared/MetricExplainer";
+} from "../shared";
 import type { PercentileData } from "../../context/types";
 
 export interface FinancialMetricCardProps {

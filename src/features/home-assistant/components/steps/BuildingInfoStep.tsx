@@ -3,12 +3,21 @@
  * Screen 1: Collects building information and triggers EPC estimation.
  */
 
-import { Alert, Box, Divider, Stack, Text, Title } from "@mantine/core";
+import {
+  Box,
+  Card,
+  Divider,
+  Stack,
+  Text,
+  Timeline,
+  Title,
+} from "@mantine/core";
 import {
   IconBuildingCommunity,
   IconHome,
-  IconInfoCircle,
   IconMapPin,
+  IconSearch,
+  IconSettings,
 } from "@tabler/icons-react";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
@@ -22,6 +31,8 @@ import {
 export function BuildingInfoStep() {
   const { state, dispatch } = useHomeAssistant();
   const { energy } = useHomeAssistantServices();
+  const hasSimulationAdjustments =
+    state.building.isModified && state.building.modifications;
 
   // Validation - only require archetype selection fields
   const isValid =
@@ -62,19 +73,54 @@ export function BuildingInfoStep() {
         </Text>
       </Box>
 
-      {/* Workflow info alert */}
-      <Alert variant="light" color="blue" icon={<IconInfoCircle size={16} />}>
-        <Text size="sm" fw={500} mb={4}>
-          How this works:
+      {/* Workflow info card */}
+      <Card
+        withBorder
+        radius="md"
+        p="lg"
+        bg="var(--mantine-color-default-hover)"
+      >
+        <Text
+          size="sm"
+          fw={600}
+          c="dimmed"
+          tt="uppercase"
+          style={{ letterSpacing: "0.05em" }}
+          mb="md"
+        >
+          How this works
         </Text>
-        <Text size="sm">
-          <strong>Step 1:</strong> Enter your building's location, type, and
-          construction period to find a matching archetype.
-          <br />
-          <strong>Step 2:</strong> Review and select the matched archetype, then
-          optionally modify parameters to better match your building.
-        </Text>
-      </Alert>
+        <Timeline color="relife" active={-1} bulletSize={32} lineWidth={2}>
+          <Timeline.Item
+            bullet={<IconSearch size={16} stroke={1.75} />}
+            title={
+              <Text size="sm" fw={600}>
+                Find your archetype
+              </Text>
+            }
+          >
+            <Text size="xs" c="dimmed" mt={4}>
+              Enter your building's location, type, and construction period to
+              find a matching reference archetype from the European building
+              stock database.
+            </Text>
+          </Timeline.Item>
+          <Timeline.Item
+            bullet={<IconSettings size={16} stroke={1.75} />}
+            title={
+              <Text size="sm" fw={600}>
+                Review and refine
+              </Text>
+            }
+          >
+            <Text size="xs" c="dimmed" mt={4}>
+              Review and select the matched archetype, then optionally adjust
+              parameters to better reflect your building's actual
+              characteristics.
+            </Text>
+          </Timeline.Item>
+        </Timeline>
+      </Card>
 
       {/* Location Section */}
       <Box>
@@ -133,7 +179,11 @@ export function BuildingInfoStep() {
         currentStep={0}
         totalSteps={3}
         onPrimaryAction={handleEstimateEPC}
-        primaryActionLabel="Estimate EPC"
+        primaryActionLabel={
+          hasSimulationAdjustments
+            ? "Estimate EPC for adjusted home"
+            : "Estimate EPC"
+        }
         isLoading={state.isEstimating}
         primaryDisabled={!isValid}
       />

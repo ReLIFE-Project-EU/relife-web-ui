@@ -4,7 +4,7 @@
  * Features an interactive map for easy location selection.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   SimpleGrid,
   Text,
@@ -24,6 +24,7 @@ import {
 } from "../../constants";
 import { LocationMap } from "./LocationMap";
 import type { ArchetypeInfo } from "../../../../types/forecasting";
+import { extractConstructionPeriod } from "../../../../utils/archetypeModifier";
 
 // Import Leaflet CSS
 import "leaflet/dist/leaflet.css";
@@ -35,6 +36,30 @@ export function LocationInputs() {
   const [archetypes, setArchetypes] = useState<ArchetypeInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [showManualInputs, setShowManualInputs] = useState(false);
+
+  const filteredArchetypes = useMemo(() => {
+    return archetypes.filter((archetype) => {
+      if (
+        state.building.buildingType &&
+        archetype.category !== state.building.buildingType
+      ) {
+        return false;
+      }
+
+      if (state.building.constructionPeriod) {
+        return (
+          extractConstructionPeriod(archetype.name) ===
+          state.building.constructionPeriod
+        );
+      }
+
+      return true;
+    });
+  }, [
+    archetypes,
+    state.building.buildingType,
+    state.building.constructionPeriod,
+  ]);
 
   // Fetch archetypes for map markers
   useEffect(() => {
@@ -77,26 +102,27 @@ export function LocationInputs() {
           Click on the map to set your building location
         </Text>
         <Text size="xs" c="dimmed" mb="xs">
-          Red markers show available reference building locations. Click
-          anywhere to place your building.
+          {state.building.buildingType || state.building.constructionPeriod
+            ? `Reference markers update automatically for the selected building details. Showing ${filteredArchetypes.length} matching archetype${
+                filteredArchetypes.length === 1 ? "" : "s"
+              }.`
+            : "Red markers show available reference building locations. Select building details to narrow them down, or click anywhere to place your building."}
         </Text>
         <LocationMap
           lat={state.building.lat}
           lng={state.building.lng}
           onLocationChange={handleMapClick}
-          archetypes={archetypes}
-          matchedArchetype={state.building.selectedArchetype}
+          archetypes={filteredArchetypes}
+          tentativeArchetype={state.building.tentativeArchetype}
+          selectedArchetype={state.building.selectedArchetype}
           loading={loading}
         />
       </div>
 
-      {/* Current coordinates display */}
-      {state.building.lat !== null && state.building.lng !== null && (
+      {!loading && filteredArchetypes.length === 0 && (
         <Text size="sm" c="dimmed">
-          Selected coordinates:{" "}
-          <Text span fw={500} c="dark">
-            {state.building.lat.toFixed(4)}, {state.building.lng.toFixed(4)}
-          </Text>
+          No reference markers match the current building details yet. Adjust
+          the building type or construction period to see available archetypes.
         </Text>
       )}
 

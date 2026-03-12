@@ -33,12 +33,18 @@ export interface BuildingInfo {
     category: string;
     country: string;
   };
+  tentativeArchetype?: {
+    name: string;
+    category: string;
+    country: string;
+  };
 
   // User-modifiable parameters (Optional - for modified archetype workflow)
   isModified: boolean; // Whether user has modified archetype defaults
   modifications?: import("./archetype").BuildingModifications; // Modifications to apply to archetype
   floorArea: number | null; // m² - can be modified by user
   numberOfFloors: number | null; // 1-100 - can be modified by user
+  apartmentLocation?: "bottom" | "middle" | "top";
 
   // Deprecated fields (kept for backward compatibility with Financial API)
   // These are now derived from archetype or removed from user input
@@ -67,26 +73,24 @@ export interface BuildingInfo {
 // Energy Estimation Types (Screen 1 -> Screen 2)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export interface EnergyMix {
-  electricity: number; // kWh/year
-  /**
-   * Annual consumption of the primary non-electric fuel (kWh/year).
-   * Named "heatingOil" for historical reasons but covers any primary fuel type
-   * (heating oil, natural gas, etc.) depending on the building's heating technology.
-   */
-  heatingOil: number; // kWh/year
-}
-
 export interface EstimationResult {
   estimatedEPC: string; // UI label (A+ to G), maps to Greek for API
   annualEnergyNeeds: number; // kWh/year (HVAC demand, API-derived)
   annualEnergyCost: number; // EUR/year (derived from annualEnergyNeeds using ENERGY_PRICE_EUR_PER_KWH)
   heatingCoolingNeeds: number; // kWh/year (HVAC demand, API-derived)
-  energyMix: {
-    cooling: EnergyMix;
-    heating: EnergyMix;
-    overall: EnergyMix;
-  };
+  /**
+   * Annual ideal heating thermal demand in kWh/year.
+   * Derived directly from Q_H_total in the Forecasting API simulation response.
+   * This is the ideal thermal load, NOT delivered energy — actual consumption
+   * depends on system efficiency (e.g. heat pump COP, boiler efficiency).
+   */
+  heatingDemand: number; // kWh/year (API-derived)
+  /**
+   * Annual ideal cooling thermal demand in kWh/year.
+   * Derived directly from Q_C_total in the Forecasting API simulation response.
+   * This is the ideal thermal load, NOT delivered energy.
+   */
+  coolingDemand: number; // kWh/year (API-derived)
   flexibilityIndex: number; // 0-100
   comfortIndex: number; // 0-100
 
@@ -96,10 +100,33 @@ export interface EstimationResult {
   annualEnergyConsumption: number; // kWh/year
 
   /**
-   * Floor area of the matched archetype (m²).
+   * Notices returned during validation of a modified archetype.
+   * These do not block the simulation, but they should be shown to the user.
+   */
+  validationNotes?: string[];
+
+  /**
+   * Reference simulation for the original archetype.
+   * Present when the user estimated an adjusted archetype.
+   */
+  referenceEstimation?: {
+    estimatedEPC: string;
+    annualEnergyNeeds: number;
+    annualEnergyCost: number;
+    heatingCoolingNeeds: number;
+    flexibilityIndex: number;
+    comfortIndex: number;
+  };
+
+  /**
+   * Floor area (m²) that the simulation was actually run with.
+   * - Unmodified path: the archetype's original floor area from archetypeDetails.
+   * - Modified path: the user-modified floor area (if floor area was modified),
+   *   or the original archetype area (if only other fields were modified).
+   *
    * Stored here so RenovationService can use the same denominator as EnergyService
    * when scaling simulated energy values to the user's building area.
-   * Falls back to DEFAULT_FLOOR_AREA (100 m²) when the API does not return building_area.
+   * EnergyService throws if this value cannot be determined.
    */
   archetypeFloorArea: number;
 
@@ -113,6 +140,12 @@ export interface EstimationResult {
     country: string;
     name: string;
   };
+
+  /** Modified BUI/system payloads (only present when building.isModified = true).
+   * Stored here so RenovationService can apply ECM to the same custom building
+   * used for baseline simulation, ensuring savings are computed on comparable results. */
+  modifiedBui?: unknown;
+  modifiedSystem?: unknown;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

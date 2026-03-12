@@ -1,9 +1,15 @@
 /**
  * EnergyMixDisplay Component
- * Shows the breakdown of energy sources for cooling, heating, and overall.
+ * Shows the breakdown of annual thermal demand into heating and cooling.
+ *
+ * Values are ideal thermal loads (Q_H, Q_C) derived directly from the
+ * Forecasting API simulation. They represent the energy the building needs
+ * to maintain comfort, NOT the delivered energy consumed by the HVAC system
+ * (actual consumption depends on system efficiency, e.g. heat pump COP).
  */
 
 import {
+  Alert,
   Box,
   Card,
   Group,
@@ -12,9 +18,8 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import { IconBolt, IconFlame } from "@tabler/icons-react";
+import { IconFlame, IconInfoCircle, IconSnowflake } from "@tabler/icons-react";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
-import type { EnergyMix } from "../../context/types";
 import { formatEnergyPerYear } from "../../utils/formatters";
 
 export function EnergyMixDisplay() {
@@ -25,7 +30,11 @@ export function EnergyMixDisplay() {
     return null;
   }
 
-  const { energyMix } = estimation;
+  const { heatingDemand, coolingDemand, heatingCoolingNeeds } = estimation;
+
+  if (!Number.isFinite(heatingDemand) || !Number.isFinite(coolingDemand)) {
+    return null;
+  }
 
   return (
     <Card withBorder radius="md" p="lg">
@@ -35,35 +44,55 @@ export function EnergyMixDisplay() {
             Estimated Aggregated Energy Results
           </Title>
           <Text size="sm" c="dimmed">
-            Energy source breakdown by usage type
+            Annual thermal demand by end use
           </Text>
         </Box>
 
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
-          <EnergyMixSection
-            title="Energy Mix - Cooling"
-            mix={energyMix.cooling}
+          <DemandSection
+            title="Heating Demand"
+            value={heatingDemand}
+            icon={<IconFlame size={16} color="var(--mantine-color-orange-6)" />}
           />
-          <EnergyMixSection
-            title="Energy Mix - Heating"
-            mix={energyMix.heating}
+          <DemandSection
+            title="Cooling Demand"
+            value={coolingDemand}
+            icon={
+              <IconSnowflake size={16} color="var(--mantine-color-blue-5)" />
+            }
           />
-          <EnergyMixSection
-            title="Energy Mix - Overall"
-            mix={energyMix.overall}
+          <DemandSection
+            title="Total HVAC Demand"
+            value={heatingCoolingNeeds}
+            icon={<IconFlame size={16} color="var(--mantine-color-gray-6)" />}
           />
         </SimpleGrid>
+
+        <Alert
+          icon={<IconInfoCircle size={16} />}
+          color="blue"
+          variant="light"
+          p="sm"
+        >
+          <Text size="xs">
+            These figures are <strong>ideal thermal loads</strong> from the
+            building energy simulation — the energy the building needs to
+            maintain comfort. Actual energy consumption will be higher and
+            depends on your heating and cooling system efficiency.
+          </Text>
+        </Alert>
       </Stack>
     </Card>
   );
 }
 
-interface EnergyMixSectionProps {
+interface DemandSectionProps {
   title: string;
-  mix: EnergyMix;
+  value: number;
+  icon: React.ReactNode;
 }
 
-function EnergyMixSection({ title, mix }: EnergyMixSectionProps) {
+function DemandSection({ title, value, icon }: DemandSectionProps) {
   return (
     <Box
       p="md"
@@ -75,26 +104,15 @@ function EnergyMixSection({ title, mix }: EnergyMixSectionProps) {
       <Text size="sm" fw={500} mb="sm">
         {title}
       </Text>
-
       <Stack gap="xs">
         <Group gap="xs">
-          <IconBolt size={16} color="var(--mantine-color-yellow-6)" />
+          {icon}
           <Text size="sm" c="dimmed">
-            Total Electricity
+            Annual demand
           </Text>
         </Group>
         <Text size="md" fw={500} ml={24}>
-          {formatEnergyPerYear(mix.electricity)}
-        </Text>
-
-        <Group gap="xs" mt="xs">
-          <IconFlame size={16} color="var(--mantine-color-orange-6)" />
-          <Text size="sm" c="dimmed">
-            Heating Oil
-          </Text>
-        </Group>
-        <Text size="md" fw={500} ml={24}>
-          {formatEnergyPerYear(mix.heatingOil)}
+          {formatEnergyPerYear(value)}
         </Text>
       </Stack>
     </Box>

@@ -1,19 +1,31 @@
 /**
  * ArchetypeSelector Component
  *
- * Displays the matched archetype based on user's country, location, building type,
- * and construction period selections. Allows user to confirm selection.
+ * Matches the user's building to a reference archetype and lets them either:
+ * - use the archetype as-is, or
+ * - apply a small set of homeowner-friendly adjustments before simulation.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import {
   Alert,
   Badge,
+  Box,
   Button,
   Card,
   Collapse,
+  Divider,
   Group,
   Loader,
+  NumberInput,
+  Paper,
+  Select,
   SimpleGrid,
   Stack,
   Text,
@@ -23,37 +35,352 @@ import { useDisclosure } from "@mantine/hooks";
 import {
   IconBuildingCommunity,
   IconCheck,
-  IconChevronDown,
-  IconChevronUp,
-  IconFlame,
+  IconEqual,
+  IconHome,
   IconInfoCircle,
+  IconMapPin,
   IconRuler,
-  IconSnowflake,
-  IconThermometer,
-  IconWindow,
+  IconStack2,
 } from "@tabler/icons-react";
 import type { ArchetypeInfo } from "../../../../types/forecasting";
-import type { ArchetypeDetails } from "../../../../types/archetype";
+import type {
+  ArchetypeDetails,
+  BuildingModifications,
+} from "../../../../types/archetype";
+import {
+  countryFlag,
+  countryNameToCode,
+  formatArchetypeName,
+} from "../../../../utils/archetypeLabels";
+import { validateModifications } from "../../../../utils/archetypeModifier";
+import { checkAreaArchetypeMismatch } from "../../../../utils/inputSanityChecks";
+import {
+  formatArea,
+  formatDecimal,
+  formatNumber,
+} from "../../utils/formatters";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 
-interface ArchetypeSummaryProps {
-  details: ArchetypeDetails;
-  isSelected: boolean;
-  onSelect: () => void;
+type ApartmentLocation = "bottom" | "middle" | "top";
+
+interface DraftState {
+  floorArea: number | string;
+  numberOfFloors: number | string;
+  averageFloorHeight: number | string;
+  apartmentLocation: ApartmentLocation | null;
+}
+
+const APARTMENT_LOCATION_OPTIONS = [
+  { value: "bottom", label: "Bottom floor" },
+  { value: "middle", label: "Middle floor" },
+  { value: "top", label: "Top floor" },
+] as const;
+
+function getReferenceAverageFloorHeight(details: ArchetypeDetails): number {
+  if (details.numberOfFloors <= 0) {
+    return details.buildingHeight;
+  }
+  return details.buildingHeight / details.numberOfFloors;
+}
+
+function isApartmentLikeCategory(category: string): boolean {
+  const normalized = category.toLowerCase();
+  return normalized.includes("apartment");
+}
+
+function mapApartmentLocationToFloorNumber(
+  location: ApartmentLocation,
+  floors: number,
+): number {
+  if (location === "bottom") return 0;
+  if (location === "middle") return Math.max(0, Math.floor(floors / 2));
+  return Math.max(0, floors - 1);
+}
+
+function formatDelta(
+  current: number,
+  reference: number,
+  suffix: string,
+): string {
+  const delta = current - reference;
+  if (Math.abs(delta) < 0.05) {
+    return "No change";
+  }
+
+  const sign = delta > 0 ? "+" : "";
+  const value =
+    suffix === "m"
+      ? formatDecimal(delta)
+      : Number.isInteger(delta)
+        ? formatNumber(delta)
+        : formatDecimal(delta);
+
+  return `${sign}${value} ${suffix}`;
+}
+
+function formatComparisonValue(value: number, suffix: string): string {
+  if (suffix === "m") {
+    return `${formatDecimal(value)} m`;
+  }
+  if (suffix === "m²") {
+    return `${formatNumber(value)} m²`;
+  }
+  return `${formatNumber(value)} ${suffix}`;
+}
+
+function getFloorAreaMax(details: ArchetypeDetails): number {
+  return Math.max(1000, Math.ceil(details.floorArea * 3));
+}
+
+function buildDraftState(
+  details: ArchetypeDetails,
+  apartmentLocation?: ApartmentLocation,
+  modifications?: BuildingModifications,
+): DraftState {
+  const referenceAverageFloorHeight = getReferenceAverageFloorHeight(details);
+  const resolvedFloors =
+    modifications?.numberOfFloors ?? details.numberOfFloors;
+  const resolvedBuildingHeight =
+    modifications?.buildingHeight ?? details.buildingHeight;
+  const resolvedAverageFloorHeight =
+    resolvedFloors > 0
+      ? resolvedBuildingHeight / resolvedFloors
+      : referenceAverageFloorHeight;
+
+  return {
+    floorArea: modifications?.floorArea ?? details.floorArea,
+    numberOfFloors: resolvedFloors,
+    averageFloorHeight: Number(resolvedAverageFloorHeight.toFixed(1)),
+    apartmentLocation: apartmentLocation ?? null,
+  };
+}
+
+function buildAppliedChanges(
+  details: ArchetypeDetails,
+  draft: DraftState,
+  isApartment: boolean,
+): {
+  modifications?: BuildingModifications;
+  floorArea: number;
+  numberOfFloors: number;
+  apartmentLocation?: ApartmentLocation;
+  floorNumber: number | null;
+  simulationChanges: string[];
+  contextChanges: string[];
+} {
+  const referenceAverageFloorHeight = getReferenceAverageFloorHeight(details);
+  const floorArea =
+    typeof draft.floorArea === "number" ? draft.floorArea : details.floorArea;
+  const numberOfFloors =
+    typeof draft.numberOfFloors === "number"
+      ? draft.numberOfFloors
+      : details.numberOfFloors;
+  const averageFloorHeight =
+    typeof draft.averageFloorHeight === "number"
+      ? draft.averageFloorHeight
+      : referenceAverageFloorHeight;
+  const buildingHeight = Number(
+    (numberOfFloors * averageFloorHeight).toFixed(1),
+  );
+
+  const modifications: BuildingModifications = {};
+  const simulationChanges: string[] = [];
+  const contextChanges: string[] = [];
+
+  if (Math.abs(floorArea - details.floorArea) >= 0.05) {
+    modifications.floorArea = floorArea;
+    simulationChanges.push(
+      `Floor area: ${formatArea(details.floorArea)} -> ${formatArea(floorArea)}`,
+    );
+  }
+
+  if (numberOfFloors !== details.numberOfFloors) {
+    modifications.numberOfFloors = numberOfFloors;
+    simulationChanges.push(
+      `Number of floors: ${details.numberOfFloors} -> ${numberOfFloors}`,
+    );
+  }
+
+  if (Math.abs(buildingHeight - details.buildingHeight) >= 0.05) {
+    modifications.buildingHeight = buildingHeight;
+    simulationChanges.push(
+      `Building height: ${formatDecimal(details.buildingHeight)} m -> ${formatDecimal(buildingHeight)} m`,
+    );
+  }
+
+  let floorNumber: number | null = null;
+  if (isApartment && draft.apartmentLocation) {
+    floorNumber = mapApartmentLocationToFloorNumber(
+      draft.apartmentLocation,
+      numberOfFloors,
+    );
+    contextChanges.push(`Apartment location: ${draft.apartmentLocation} floor`);
+  }
+
+  return {
+    modifications:
+      Object.keys(modifications).length > 0 ? modifications : undefined,
+    floorArea,
+    numberOfFloors,
+    apartmentLocation: draft.apartmentLocation ?? undefined,
+    floorNumber,
+    simulationChanges,
+    contextChanges,
+  };
+}
+
+function ReferenceDeltaCard({
+  currentValue,
+  referenceValue,
+  suffix,
+}: {
+  currentValue?: number;
+  referenceValue: number;
+  suffix: string;
+}) {
+  const resolvedCurrentValue =
+    typeof currentValue === "number" ? currentValue : referenceValue;
+  const isChanged = Math.abs(resolvedCurrentValue - referenceValue) >= 0.05;
+
+  return (
+    <Paper withBorder radius="md" p="sm" bg={isChanged ? "blue.0" : "gray.0"}>
+      <Stack gap="xs">
+        <Group justify="space-between" align="center">
+          <Text size="xs" fw={600} c="dimmed" tt="uppercase">
+            Change from reference
+          </Text>
+          <Badge color={isChanged ? "blue" : "gray"} variant="light">
+            {isChanged ? "Adjusted" : "Unchanged"}
+          </Badge>
+        </Group>
+
+        <SimpleGrid cols={2} spacing="xs">
+          <Box>
+            <Text size="xs" c="dimmed" mb={2}>
+              Reference
+            </Text>
+            <Text size="sm" fw={600}>
+              {formatComparisonValue(referenceValue, suffix)}
+            </Text>
+          </Box>
+          <Box>
+            <Text size="xs" c="dimmed" mb={2}>
+              Current
+            </Text>
+            <Text size="sm" fw={600}>
+              {formatComparisonValue(resolvedCurrentValue, suffix)}
+            </Text>
+          </Box>
+        </SimpleGrid>
+
+        <Group gap="xs" align="center">
+          <ThemeIcon
+            size="sm"
+            radius="xl"
+            variant="light"
+            color={isChanged ? "blue" : "gray"}
+          >
+            <IconEqual size={14} />
+          </ThemeIcon>
+          <Text size="sm" fw={600} c={isChanged ? "blue.7" : "dimmed"}>
+            {formatDelta(resolvedCurrentValue, referenceValue, suffix)}
+          </Text>
+        </Group>
+      </Stack>
+    </Paper>
+  );
+}
+
+function DetailEvolutionRow({
+  icon,
+  label,
+  referenceValue,
+  currentValue,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  referenceValue: string;
+  currentValue?: string;
+}) {
+  const hasCurrentValue =
+    Boolean(currentValue) && currentValue !== referenceValue;
+
+  return (
+    <Group gap="xs" wrap="nowrap" align="center">
+      <ThemeIcon size="xs" variant="light" color="gray">
+        {icon}
+      </ThemeIcon>
+      <Group gap={6} wrap="wrap">
+        <Text size="sm" c="dimmed">
+          {label}:
+        </Text>
+        <Text size="sm" fw={500}>
+          {referenceValue}
+        </Text>
+        {hasCurrentValue ? (
+          <Group gap={6} wrap="nowrap">
+            <Text size="sm" c="dimmed">
+              →
+            </Text>
+            <Badge color="blue" variant="light">
+              {currentValue}
+            </Badge>
+          </Group>
+        ) : null}
+      </Group>
+    </Group>
+  );
 }
 
 function ArchetypeSummary({
   details,
   isSelected,
-  onSelect,
-}: ArchetypeSummaryProps) {
-  const [detailsOpen, { toggle: toggleDetails }] = useDisclosure(false);
+  isModified,
+  onUseReference,
+  draft,
+  setDraft,
+  onApplyAdjustments,
+  appliedModifications,
+  appliedApartmentLocation,
+}: {
+  details: ArchetypeDetails;
+  isSelected: boolean;
+  isModified: boolean;
+  onUseReference: () => void;
+  draft: DraftState;
+  setDraft: Dispatch<SetStateAction<DraftState | null>>;
+  onApplyAdjustments: () => void;
+  appliedModifications?: BuildingModifications;
+  appliedApartmentLocation?: ApartmentLocation;
+}) {
+  const [adjustmentsOpen, { toggle: toggleAdjustments }] = useDisclosure(false);
+
+  const isApartment = isApartmentLikeCategory(details.category);
+  const referenceAverageFloorHeight = getReferenceAverageFloorHeight(details);
+  const areaWarning =
+    typeof draft.floorArea === "number"
+      ? checkAreaArchetypeMismatch(draft.floorArea, details.floorArea)
+      : { warning: false, message: "" };
+  const appliedFloorArea = appliedModifications?.floorArea;
+  const appliedNumberOfFloors = appliedModifications?.numberOfFloors;
+  const appliedBuildingHeight = appliedModifications?.buildingHeight;
+  const appliedAverageFloorHeight =
+    appliedBuildingHeight !== undefined &&
+    appliedNumberOfFloors !== undefined &&
+    appliedNumberOfFloors > 0
+      ? appliedBuildingHeight / appliedNumberOfFloors
+      : undefined;
+
+  const previewSummary = buildAppliedChanges(details, draft, isApartment);
+  const validationResult = validateModifications(
+    previewSummary.modifications ?? {},
+    details,
+  );
 
   return (
     <Card withBorder shadow="sm" radius="md" p="lg">
       <Stack gap="md">
-        {/* Header */}
         <Group justify="space-between" align="flex-start">
           <Stack gap={4}>
             <Group gap="xs">
@@ -65,137 +392,260 @@ function ArchetypeSummary({
               </Text>
             </Group>
             <Text size="sm" c="dimmed">
-              {details.country} • {details.name}
+              {(() => {
+                const code = countryNameToCode(details.country);
+                const formattedName = formatArchetypeName(details.name);
+                if (!code) return formattedName;
+                // Avoid duplicating the country if formatArchetypeName already starts with it
+                if (formattedName.startsWith(details.country)) {
+                  return `${countryFlag(code)} ${formattedName}`;
+                }
+                return `${countryFlag(code)} ${details.country} · ${formattedName}`;
+              })()}
             </Text>
           </Stack>
-          {isSelected && (
-            <Badge color="green" leftSection={<IconCheck size={12} />}>
-              Selected
+          {isSelected ? (
+            <Badge color={isModified ? "teal" : "green"}>
+              {isModified ? "Adjusted" : "Selected"}
             </Badge>
-          )}
+          ) : null}
         </Group>
 
-        {/* Key metrics */}
-        <SimpleGrid cols={2} spacing="sm">
-          <Group gap="xs">
-            <ThemeIcon size="xs" variant="light" color="gray">
-              <IconRuler size={12} />
-            </ThemeIcon>
-            <Text size="sm">
-              <Text span fw={500}>
-                {details.floorArea.toFixed(0)}
-              </Text>{" "}
-              m² floor area
-            </Text>
-          </Group>
-          <Group gap="xs">
-            <ThemeIcon size="xs" variant="light" color="gray">
-              <IconWindow size={12} />
-            </ThemeIcon>
-            <Text size="sm">
-              <Text span fw={500}>
-                {details.totalWindowArea.toFixed(1)}
-              </Text>{" "}
-              m² windows
-            </Text>
-          </Group>
-          <Group gap="xs">
-            <ThemeIcon size="xs" variant="light" color="red">
-              <IconFlame size={12} />
-            </ThemeIcon>
-            <Text size="sm">
-              Heating:{" "}
-              <Text span fw={500}>
-                {details.setpoints.heatingSetpoint}°C
-              </Text>
-            </Text>
-          </Group>
-          <Group gap="xs">
-            <ThemeIcon size="xs" variant="light" color="blue">
-              <IconSnowflake size={12} />
-            </ThemeIcon>
-            <Text size="sm">
-              Cooling:{" "}
-              <Text span fw={500}>
-                {details.setpoints.coolingSetpoint}°C
-              </Text>
-            </Text>
-          </Group>
-        </SimpleGrid>
+        <Card withBorder bg="gray.0" radius="sm" p="sm">
+          <Stack gap="xs">
+            <DetailEvolutionRow
+              icon={<IconRuler size={12} />}
+              label="Floor area"
+              referenceValue={formatArea(details.floorArea)}
+              currentValue={
+                appliedFloorArea !== undefined
+                  ? formatArea(appliedFloorArea)
+                  : undefined
+              }
+            />
+            <DetailEvolutionRow
+              icon={<IconStack2 size={12} />}
+              label="Number of floors"
+              referenceValue={`${details.numberOfFloors}`}
+              currentValue={
+                appliedNumberOfFloors !== undefined
+                  ? `${appliedNumberOfFloors}`
+                  : undefined
+              }
+            />
+            <DetailEvolutionRow
+              icon={<IconRuler size={12} />}
+              label="Average floor height"
+              referenceValue={`${formatDecimal(referenceAverageFloorHeight)} m`}
+              currentValue={
+                appliedAverageFloorHeight !== undefined
+                  ? `${formatDecimal(appliedAverageFloorHeight)} m`
+                  : undefined
+              }
+            />
+            <DetailEvolutionRow
+              icon={<IconStack2 size={12} />}
+              label="Building height"
+              referenceValue={`${formatDecimal(details.buildingHeight)} m`}
+              currentValue={
+                appliedBuildingHeight !== undefined
+                  ? `${formatDecimal(appliedBuildingHeight)} m`
+                  : undefined
+              }
+            />
+            {isApartment ? (
+              <DetailEvolutionRow
+                icon={<IconHome size={12} />}
+                label="Apartment location"
+                referenceValue="Not specified"
+                currentValue={appliedApartmentLocation}
+              />
+            ) : null}
+          </Stack>
+        </Card>
 
-        {/* Thermal properties section */}
-        <Button
-          variant="subtle"
-          size="xs"
-          onClick={toggleDetails}
-          rightSection={
-            detailsOpen ? (
-              <IconChevronUp size={14} />
-            ) : (
-              <IconChevronDown size={14} />
-            )
-          }
-          justify="flex-start"
-          px={0}
-        >
-          {detailsOpen ? "Hide" : "Show"} thermal properties
-        </Button>
-
-        <Collapse in={detailsOpen}>
-          <Card withBorder bg="gray.0" radius="sm" p="sm">
-            <Stack gap="xs">
-              <Group gap="xs">
-                <ThemeIcon size="xs" variant="light" color="orange">
-                  <IconThermometer size={12} />
-                </ThemeIcon>
-                <Text size="sm" c="dimmed">
-                  U-values (W/m²K):
-                </Text>
-              </Group>
-              <SimpleGrid cols={3} spacing="xs">
-                <Text size="xs">
-                  Wall:{" "}
-                  <Text span fw={500}>
-                    {details.thermalProperties.wallUValue.toFixed(2)}
-                  </Text>
-                </Text>
-                <Text size="xs">
-                  Roof:{" "}
-                  <Text span fw={500}>
-                    {details.thermalProperties.roofUValue.toFixed(2)}
-                  </Text>
-                </Text>
-                <Text size="xs">
-                  Window:{" "}
-                  <Text span fw={500}>
-                    {details.thermalProperties.windowUValue.toFixed(2)}
-                  </Text>
-                </Text>
-              </SimpleGrid>
-              <Text size="xs" c="dimmed" mt="xs">
-                {details.numberOfFloors} floor(s) •{" "}
-                {details.buildingHeight.toFixed(1)}m height • Location:{" "}
-                {details.location.lat.toFixed(2)}°,{" "}
-                {details.location.lng.toFixed(2)}°
-              </Text>
-            </Stack>
-          </Card>
-        </Collapse>
-
-        {/* Action button */}
-        {!isSelected ? (
-          <Button
-            color="blue"
-            onClick={onSelect}
-            leftSection={<IconCheck size={16} />}
-          >
-            Select This Archetype
-          </Button>
-        ) : (
-          <Text size="sm" c="dimmed" ta="center">
-            This archetype is selected. You can proceed to estimate EPC.
+        <Alert color="blue" variant="light" icon={<IconInfoCircle size={16} />}>
+          <Text size="sm">
+            This reference home is the closest archetype for your location,
+            building type, and construction period. You can use it directly or
+            adjust a small set of fields to better match your building.
           </Text>
-        )}
+        </Alert>
+
+        <Group grow>
+          <Button
+            variant={isSelected && !isModified ? "filled" : "default"}
+            leftSection={<IconCheck size={16} />}
+            onClick={onUseReference}
+          >
+            Use reference home
+          </Button>
+          <Button
+            variant="light"
+            leftSection={<IconHome size={16} />}
+            onClick={toggleAdjustments}
+          >
+            {adjustmentsOpen ? "Hide adjustments" : "Adjust to my home"}
+          </Button>
+        </Group>
+
+        <Collapse in={adjustmentsOpen}>
+          <Stack gap="md">
+            <Divider />
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              <NumberInput
+                label="Floor area (m²)"
+                description={`Reference: ${formatArea(details.floorArea)}`}
+                value={draft.floorArea}
+                onChange={(value) =>
+                  setDraft((current) =>
+                    current ? { ...current, floorArea: value } : current,
+                  )
+                }
+                min={10}
+                max={getFloorAreaMax(details)}
+              />
+              <ReferenceDeltaCard
+                currentValue={
+                  typeof draft.floorArea === "number"
+                    ? draft.floorArea
+                    : undefined
+                }
+                referenceValue={details.floorArea}
+                suffix="m²"
+              />
+              <NumberInput
+                label="Number of floors"
+                description={`Reference: ${details.numberOfFloors}`}
+                value={draft.numberOfFloors}
+                onChange={(value) =>
+                  setDraft((current) => ({
+                    ...(current ?? draft),
+                    numberOfFloors: value,
+                  }))
+                }
+                min={1}
+                max={20}
+              />
+              <ReferenceDeltaCard
+                currentValue={
+                  typeof draft.numberOfFloors === "number"
+                    ? draft.numberOfFloors
+                    : undefined
+                }
+                referenceValue={details.numberOfFloors}
+                suffix="floors"
+              />
+              <NumberInput
+                label="Average floor height (m)"
+                description={`Reference: ${formatDecimal(referenceAverageFloorHeight)} m`}
+                value={draft.averageFloorHeight}
+                onChange={(value) =>
+                  setDraft((current) => ({
+                    ...(current ?? draft),
+                    averageFloorHeight: value,
+                  }))
+                }
+                min={2}
+                max={6}
+                step={0.1}
+                decimalScale={1}
+              />
+              <ReferenceDeltaCard
+                currentValue={
+                  typeof draft.averageFloorHeight === "number"
+                    ? draft.averageFloorHeight
+                    : undefined
+                }
+                referenceValue={referenceAverageFloorHeight}
+                suffix="m"
+              />
+            </SimpleGrid>
+
+            {isApartment ? (
+              <Select
+                label="Apartment location"
+                description="Used for property context only. It does not change the energy simulation."
+                placeholder="Select floor position"
+                data={APARTMENT_LOCATION_OPTIONS.map((option) => ({
+                  value: option.value,
+                  label: option.label,
+                }))}
+                value={draft.apartmentLocation}
+                onChange={(value) =>
+                  setDraft((current) => ({
+                    ...(current ?? draft),
+                    apartmentLocation:
+                      (value as ApartmentLocation | null) ?? null,
+                  }))
+                }
+                clearable
+              />
+            ) : null}
+
+            {areaWarning.warning ? (
+              <Alert
+                color="yellow"
+                variant="light"
+                icon={<IconInfoCircle size={16} />}
+              >
+                <Text size="sm">{areaWarning.message}</Text>
+              </Alert>
+            ) : null}
+
+            {!validationResult.isValid ? (
+              <Alert
+                color="red"
+                variant="light"
+                icon={<IconInfoCircle size={16} />}
+              >
+                <Stack gap={4}>
+                  {validationResult.errors.map((error) => (
+                    <Text key={`${error.field}-${error.message}`} size="sm">
+                      {error.message}
+                    </Text>
+                  ))}
+                </Stack>
+              </Alert>
+            ) : null}
+            <Text size="sm" c="dimmed">
+              {isApartment
+                ? "Geometry changes affect the energy simulation. Apartment location is kept only for property and financial context."
+                : "Geometry changes affect the energy simulation."}
+            </Text>
+
+            <Button
+              onClick={onApplyAdjustments}
+              disabled={!validationResult.isValid}
+            >
+              Apply adjustments
+            </Button>
+          </Stack>
+        </Collapse>
+      </Stack>
+    </Card>
+  );
+}
+
+function ArchetypePlaceholder({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <Card withBorder radius="md" p="lg" bg="gray.0">
+      <Stack gap="sm">
+        <Group gap="xs">
+          <ThemeIcon size="sm" variant="light" color="gray">
+            <IconMapPin size={14} />
+          </ThemeIcon>
+          <Text fw={600}>{title}</Text>
+        </Group>
+        <Text size="sm" c="dimmed">
+          {description}
+        </Text>
       </Stack>
     </Card>
   );
@@ -211,23 +661,49 @@ export function ArchetypeSelector() {
     useState<ArchetypeDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [draft, setDraft] = useState<DraftState | null>(null);
 
   const { lat, lng, buildingType, constructionPeriod } = state.building;
-
-  // Check if we have all required fields to search for archetypes
   const canSearch =
     lat !== null && lng !== null && buildingType && constructionPeriod;
 
-  // Check if current selection matches the form fields
   const isCurrentSelectionValid =
     state.building.selectedArchetype &&
-    state.building.selectedArchetype.category === buildingType;
+    matchedArchetype &&
+    state.building.selectedArchetype.name === matchedArchetype.name &&
+    state.building.selectedArchetype.country === matchedArchetype.country &&
+    state.building.selectedArchetype.category === matchedArchetype.category;
 
-  // Find matching archetype when inputs change
+  useEffect(() => {
+    if (!archetypeDetails) {
+      setDraft(null);
+      return;
+    }
+
+    setDraft(
+      buildDraftState(
+        archetypeDetails,
+        state.building.apartmentLocation,
+        state.building.modifications,
+      ),
+    );
+  }, [
+    archetypeDetails,
+    state.building.apartmentLocation,
+    state.building.modifications,
+  ]);
+
   useEffect(() => {
     if (!canSearch) {
       setMatchedArchetype(null);
       setArchetypeDetails(null);
+      setDraft(null);
+      dispatch({
+        type: "SET_BUILDING",
+        building: {
+          tentativeArchetype: undefined,
+        },
+      });
       return;
     }
 
@@ -242,29 +718,57 @@ export function ArchetypeSelector() {
           { lat: lat!, lng: lng! },
         );
 
-        if (match) {
-          setMatchedArchetype(match);
-          const details = await building.getArchetypeDetails(match);
-          setArchetypeDetails(details);
-
-          // Auto-populate country from matched archetype and clear selection if archetype changed
-          if (
-            !state.building.selectedArchetype ||
-            state.building.selectedArchetype.name !== match.name ||
-            state.building.selectedArchetype.country !== match.country
-          ) {
-            dispatch({
-              type: "SET_BUILDING",
-              building: {
-                country: match.country, // Set country from matched archetype
-                selectedArchetype: undefined, // Clear selection
-              },
-            });
-          }
-        } else {
+        if (!match) {
           setMatchedArchetype(null);
           setArchetypeDetails(null);
+          setDraft(null);
+          dispatch({
+            type: "SET_BUILDING",
+            building: {
+              tentativeArchetype: undefined,
+            },
+          });
           setError("No matching archetype found for your selections.");
+          return;
+        }
+
+        const details = await building.getArchetypeDetails(match);
+        setMatchedArchetype(match);
+        setArchetypeDetails(details);
+        dispatch({
+          type: "SET_BUILDING",
+          building: {
+            tentativeArchetype: {
+              name: match.name,
+              category: match.category,
+              country: match.country,
+            },
+          },
+        });
+
+        if (
+          !state.building.selectedArchetype ||
+          state.building.selectedArchetype.name !== match.name ||
+          state.building.selectedArchetype.country !== match.country
+        ) {
+          dispatch({
+            type: "SET_BUILDING",
+            building: {
+              country: match.country,
+              tentativeArchetype: {
+                name: match.name,
+                category: match.category,
+                country: match.country,
+              },
+              selectedArchetype: undefined,
+              floorArea: null,
+              numberOfFloors: null,
+              apartmentLocation: undefined,
+              floorNumber: null,
+              isModified: false,
+              modifications: undefined,
+            },
+          });
         }
       } catch (err) {
         setError(
@@ -272,6 +776,13 @@ export function ArchetypeSelector() {
         );
         setMatchedArchetype(null);
         setArchetypeDetails(null);
+        setDraft(null);
+        dispatch({
+          type: "SET_BUILDING",
+          building: {
+            tentativeArchetype: undefined,
+          },
+        });
       } finally {
         setIsLoading(false);
       }
@@ -279,41 +790,82 @@ export function ArchetypeSelector() {
 
     findArchetype();
   }, [
+    building,
+    buildingType,
     canSearch,
+    constructionPeriod,
+    dispatch,
     lat,
     lng,
-    buildingType,
-    constructionPeriod,
-    building,
-    dispatch,
     state.building.selectedArchetype,
   ]);
 
-  const handleSelect = useCallback(() => {
-    if (!matchedArchetype) return;
+  const handleUseReference = useCallback(() => {
+    if (!matchedArchetype || !archetypeDetails) return;
 
     dispatch({
       type: "SET_BUILDING",
       building: {
+        tentativeArchetype: {
+          name: matchedArchetype.name,
+          category: matchedArchetype.category,
+          country: matchedArchetype.country,
+        },
         selectedArchetype: {
           name: matchedArchetype.name,
           category: matchedArchetype.category,
           country: matchedArchetype.country,
         },
-        // Also update floor area from archetype
-        floorArea: archetypeDetails?.floorArea ?? null,
-        numberOfFloors: archetypeDetails?.numberOfFloors ?? null,
+        floorArea: archetypeDetails.floorArea,
+        numberOfFloors: archetypeDetails.numberOfFloors,
+        apartmentLocation: undefined,
+        floorNumber: null,
         isModified: false,
+        modifications: undefined,
       },
     });
-  }, [matchedArchetype, archetypeDetails, dispatch]);
 
-  // Don't render if not enough data
+    setDraft(buildDraftState(archetypeDetails));
+  }, [archetypeDetails, dispatch, matchedArchetype]);
+
+  const handleApplyAdjustments = useCallback(() => {
+    if (!matchedArchetype || !archetypeDetails || !draft) return;
+
+    const isApartment = isApartmentLikeCategory(archetypeDetails.category);
+    const summary = buildAppliedChanges(archetypeDetails, draft, isApartment);
+
+    dispatch({
+      type: "SET_BUILDING",
+      building: {
+        tentativeArchetype: {
+          name: matchedArchetype.name,
+          category: matchedArchetype.category,
+          country: matchedArchetype.country,
+        },
+        selectedArchetype: {
+          name: matchedArchetype.name,
+          category: matchedArchetype.category,
+          country: matchedArchetype.country,
+        },
+        floorArea: summary.floorArea,
+        numberOfFloors: summary.numberOfFloors,
+        apartmentLocation: summary.apartmentLocation,
+        floorNumber: summary.floorNumber,
+        isModified: summary.modifications !== undefined,
+        modifications: summary.modifications,
+      },
+    });
+  }, [archetypeDetails, dispatch, draft, matchedArchetype]);
+
   if (!canSearch) {
-    return null;
+    return (
+      <ArchetypePlaceholder
+        title="Reference home pending"
+        description="Set your building location, type, and construction period to see the best matching reference archetype here."
+      />
+    );
   }
 
-  // Loading state
   if (isLoading) {
     return (
       <Card withBorder shadow="sm" radius="md" p="lg">
@@ -327,47 +879,51 @@ export function ArchetypeSelector() {
     );
   }
 
-  // Error state
   if (error) {
     return (
-      <Alert
-        variant="light"
-        color="red"
-        icon={<IconInfoCircle size={16} />}
-        title="No Archetype Found"
-      >
-        <Text size="sm" mb="xs">
-          {error}
-        </Text>
-        <Text size="sm" c="dimmed">
-          <strong>Try:</strong>
-          <br />• Adjusting your coordinates slightly
-          <br />• Selecting a different building type or construction period
-          <br />• Contact support if you believe this location should be
-          supported
-        </Text>
-      </Alert>
+      <Stack gap="sm">
+        <ArchetypePlaceholder
+          title="No tentative archetype yet"
+          description="Try adjusting the map location or the building details to find a reference home you can review before accepting."
+        />
+        <Alert
+          variant="light"
+          color="red"
+          icon={<IconInfoCircle size={16} />}
+          title="No Archetype Found"
+        >
+          <Text size="sm" mb="xs">
+            {error}
+          </Text>
+          <Text size="sm" c="dimmed">
+            Try adjusting your coordinates, building type, or construction
+            period.
+          </Text>
+        </Alert>
+      </Stack>
     );
   }
 
-  // No match found
-  if (!matchedArchetype || !archetypeDetails) {
+  if (!matchedArchetype || !archetypeDetails || !draft) {
     return (
-      <Alert variant="light" color="yellow" icon={<IconInfoCircle size={16} />}>
-        <Text size="sm">
-          No archetype matches your current selections. Please adjust your
-          country, building type, or construction period.
-        </Text>
-      </Alert>
+      <ArchetypePlaceholder
+        title="No tentative archetype yet"
+        description="Adjust the map location or the building details to surface a matching reference home here."
+      />
     );
   }
 
-  // Show matched archetype
   return (
     <ArchetypeSummary
       details={archetypeDetails}
-      isSelected={isCurrentSelectionValid ?? false}
-      onSelect={handleSelect}
+      isSelected={Boolean(isCurrentSelectionValid)}
+      isModified={Boolean(state.building.isModified)}
+      onUseReference={handleUseReference}
+      draft={draft}
+      setDraft={setDraft}
+      onApplyAdjustments={handleApplyAdjustments}
+      appliedModifications={state.building.modifications}
+      appliedApartmentLocation={state.building.apartmentLocation}
     />
   );
 }

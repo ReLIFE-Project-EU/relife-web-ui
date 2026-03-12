@@ -21,6 +21,7 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import {
+  IconAlertTriangle,
   IconBuildingEstate,
   IconBolt,
   IconFlame,
@@ -32,10 +33,12 @@ import {
   IconWindow,
 } from "@tabler/icons-react";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
+import { checkCapexPerSqm } from "../../../../utils/inputSanityChecks";
 import type { RenovationMeasureId } from "../../../../types/renovation";
 import type { RenovationMeasure } from "../../../../services/types";
 import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
 import { usePortfolioAdvisorServices } from "../../hooks/usePortfolioAdvisorServices";
+import { BuildingMeasuresTable } from "../BuildingMeasuresTable";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Measure Card
@@ -136,10 +139,10 @@ function MeasureCard({
               </Stack>
             </Group>
             <Tooltip
-              label={measure.description}
+              label={measure.technicalDescription ?? measure.description}
               position="left"
               multiline
-              w={260}
+              w={320}
             >
               <IconInfoCircle
                 size={16}
@@ -228,8 +231,30 @@ export function EnergyRenovationStep() {
     dispatch({ type: "SET_STEP", step: 0 });
   };
 
+  const costFieldsValid =
+    state.renovation.estimatedCapex !== null &&
+    state.renovation.estimatedMaintenanceCost !== null;
+
+  // CAPEX sanity check: warn when the global CAPEX is low relative to the
+  // average floor area of the buildings that will actually use it (i.e. those
+  // without a per-building estimatedCapex override).
+  const globalCapexBuildings = state.buildings.filter(
+    (b) => b.estimatedCapex == null,
+  );
+  const avgFloorArea =
+    globalCapexBuildings.length > 0
+      ? globalCapexBuildings.reduce((sum, b) => sum + b.floorArea, 0) /
+        globalCapexBuildings.length
+      : 0;
+  const capexWarning =
+    globalCapexBuildings.length > 0 &&
+    state.renovation.estimatedCapex !== null &&
+    avgFloorArea > 0
+      ? checkCapexPerSqm(state.renovation.estimatedCapex, avgFloorArea)
+      : { warning: false, message: "" };
+
   const handleNext = () => {
-    if (selectedMeasures.length > 0 && hasSupportedMeasure) {
+    if (selectedMeasures.length > 0 && hasSupportedMeasure && costFieldsValid) {
       dispatch({ type: "SET_STEP", step: 2 });
     }
   };
@@ -297,19 +322,33 @@ export function EnergyRenovationStep() {
         </Alert>
       )}
 
-      {/* Optional Cost Overrides */}
+      {/* Per-Building Measure Overrides */}
+      <BuildingMeasuresTable />
+
+      {/* Cost Overrides */}
       <Card withBorder radius="md" p="lg">
         <Title order={4} mb="md">
-          Optional Cost Overrides
+          Cost Overrides
         </Title>
-        <Text size="sm" c="dimmed" mb="md">
-          Leave blank to let the system estimate costs from its database.
-        </Text>
+        <Alert
+          variant="light"
+          color="yellow"
+          icon={<IconInfoCircle size={16} />}
+          mb="md"
+        >
+          <Text fw={600} size="sm" mb={4}>
+            Temporary requirement
+          </Text>
+          Due to a current API limitation, these cost fields cannot be left
+          empty for now. The pre-filled values are starting estimates — please
+          update them to match your project. This requirement will be removed
+          once the backend is updated.
+        </Alert>
         <Grid>
           <Grid.Col span={{ base: 12, sm: 6 }}>
             <NumberInput
               label="Total CAPEX (EUR)"
-              placeholder="Auto-estimated"
+              placeholder="e.g. 10000"
               value={state.renovation.estimatedCapex ?? ""}
               onChange={(val) =>
                 dispatch({
@@ -319,12 +358,27 @@ export function EnergyRenovationStep() {
               }
               min={0}
               thousandSeparator=","
+              error={
+                state.renovation.estimatedCapex === null
+                  ? "Required — please enter a value or keep the default."
+                  : undefined
+              }
             />
+            {capexWarning.warning && (
+              <Alert
+                color="yellow"
+                icon={<IconAlertTriangle size={16} />}
+                variant="light"
+                mt="xs"
+              >
+                {capexWarning.message}
+              </Alert>
+            )}
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 6 }}>
             <NumberInput
               label="Annual Maintenance Cost (EUR/year)"
-              placeholder="Auto-estimated"
+              placeholder="e.g. 300"
               value={state.renovation.estimatedMaintenanceCost ?? ""}
               onChange={(val) =>
                 dispatch({
@@ -334,6 +388,11 @@ export function EnergyRenovationStep() {
               }
               min={0}
               thousandSeparator=","
+              error={
+                state.renovation.estimatedMaintenanceCost === null
+                  ? "Required — please enter a value or keep the default."
+                  : undefined
+              }
             />
           </Grid.Col>
         </Grid>
@@ -344,7 +403,7 @@ export function EnergyRenovationStep() {
         <Title order={4} mb="md">
           Project Settings
         </Title>
-        <Box maw={500}>
+        <Box pb="xl">
           <Text size="sm" mb="xs">
             Project Lifetime: {state.projectLifetime} years
           </Text>
@@ -367,7 +426,7 @@ export function EnergyRenovationStep() {
         totalSteps={4}
         onPrevious={handlePrevious}
         onNext={handleNext}
-        primaryDisabled={!hasSupportedMeasure}
+        primaryDisabled={!hasSupportedMeasure || !costFieldsValid}
       />
     </Stack>
   );

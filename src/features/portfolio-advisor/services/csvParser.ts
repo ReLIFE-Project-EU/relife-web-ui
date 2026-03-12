@@ -5,8 +5,26 @@
  * No external library needed - uses native string splitting.
  */
 
+import {
+  CONSTRUCTION_PERIODS,
+  deriveConstructionPeriod,
+} from "../../../utils/apiMappings";
 import { CSV_REQUIRED_COLUMNS } from "../constants";
 import type { PRABuilding } from "../context/types";
+import type { RenovationMeasureId } from "../../../types/renovation";
+
+const VALID_PERIODS = new Set(CONSTRUCTION_PERIODS);
+
+const VALID_MEASURE_IDS: ReadonlySet<string> = new Set<RenovationMeasureId>([
+  "wall-insulation",
+  "roof-insulation",
+  "floor-insulation",
+  "windows",
+  "air-water-heat-pump",
+  "condensing-boiler",
+  "pv",
+  "solar-thermal",
+]);
 
 export interface CSVParseResult {
   buildings: PRABuilding[];
@@ -34,10 +52,17 @@ export function parseCSV(text: string): CSVParseResult {
   // Parse header
   const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
 
-  // Validate required columns
-  const missingColumns = CSV_REQUIRED_COLUMNS.filter(
-    (col) => !headers.includes(col),
-  );
+  // Support legacy CSV files that use construction_year instead of construction_period
+  const hasConstructionPeriod = headers.includes("construction_period");
+  const hasConstructionYear = headers.includes("construction_year");
+
+  // Validate required columns (allow construction_year as fallback for construction_period)
+  const missingColumns = CSV_REQUIRED_COLUMNS.filter((col) => {
+    if (col === "construction_period") {
+      return !hasConstructionPeriod && !hasConstructionYear;
+    }
+    return !headers.includes(col);
+  });
   if (missingColumns.length > 0) {
     errors.push(`Missing required columns: ${missingColumns.join(", ")}`);
     return { buildings, errors };
@@ -87,18 +112,32 @@ export function parseCSV(text: string): CSVParseResult {
       rowErrors.push(`Row ${rowNum}: floor_area must be a positive number.`);
     }
 
-    const constructionYear = parseInt(
-      values[colIndex("construction_year")],
-      10,
-    );
-    if (
-      isNaN(constructionYear) ||
-      constructionYear < 1800 ||
-      constructionYear > 2030
-    ) {
-      rowErrors.push(
-        `Row ${rowNum}: construction_year must be between 1800 and 2030.`,
-      );
+    // Parse construction period — accept period strings or numeric years (backwards compat)
+    let constructionPeriod: string | undefined;
+    if (hasConstructionPeriod) {
+      const raw = values[colIndex("construction_period")]?.trim().toLowerCase();
+      if (VALID_PERIODS.has(raw)) {
+        constructionPeriod = raw;
+      } else {
+        // Try parsing as a numeric year
+        const asYear = parseInt(raw, 10);
+        if (!isNaN(asYear) && asYear >= 1800 && asYear <= 2030) {
+          constructionPeriod = deriveConstructionPeriod(asYear);
+        } else {
+          rowErrors.push(
+            `Row ${rowNum}: construction_period must be one of: ${CONSTRUCTION_PERIODS.join(", ")} (or a year between 1800–2030).`,
+          );
+        }
+      }
+    } else if (hasConstructionYear) {
+      const yearVal = parseInt(values[colIndex("construction_year")], 10);
+      if (!isNaN(yearVal) && yearVal >= 1800 && yearVal <= 2030) {
+        constructionPeriod = deriveConstructionPeriod(yearVal);
+      } else {
+        rowErrors.push(
+          `Row ${rowNum}: construction_year must be between 1800 and 2030.`,
+        );
+      }
     }
 
     const numberOfFloors = parseInt(values[colIndex("number_of_floors")], 10);
@@ -138,6 +177,24 @@ export function parseCSV(text: string): CSVParseResult {
         ? parseFloat(values[maintenanceIdx])
         : undefined;
 
+    // Parse optional per-building measures (semicolon-separated list)
+    const measuresIdx = colIndex("measures");
+    let selectedMeasures: RenovationMeasureId[] | undefined;
+    if (measuresIdx >= 0 && values[measuresIdx]?.trim()) {
+      const rawMeasures = values[measuresIdx]
+        .split(";")
+        .map((m) => m.trim().toLowerCase())
+        .filter((m) => m.length > 0);
+      const invalid = rawMeasures.filter((m) => !VALID_MEASURE_IDS.has(m));
+      if (invalid.length > 0) {
+        rowErrors.push(
+          `Row ${rowNum}: invalid measures: ${invalid.join(", ")}. Valid values: ${[...VALID_MEASURE_IDS].join(", ")}`,
+        );
+      } else if (rawMeasures.length > 0) {
+        selectedMeasures = rawMeasures as RenovationMeasureId[];
+      }
+    }
+
     if (rowErrors.length > 0) {
       errors.push(...rowErrors);
       continue;
@@ -153,12 +210,13 @@ export function parseCSV(text: string): CSVParseResult {
       lat,
       lng,
       floorArea,
-      constructionYear,
+      constructionPeriod: constructionPeriod || "",
       numberOfFloors,
       propertyType: propertyType || "",
       floorNumber,
       estimatedCapex,
       annualMaintenanceCost,
+      selectedMeasures,
       validationStatus: "valid",
     });
   }

@@ -1,0 +1,480 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Technical Service APIs",
+    "description": "FastAPI application for all technical indicators",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Health Check",
+        "description": "Basic health check endpoint that returns service status and current timestamp.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          }
+        }
+      }
+    },
+    "/whoami": {
+      "get": {
+        "tags": ["auth"],
+        "summary": "Whoami With Roles",
+        "description": "Return authenticated user's information including their Keycloak roles.",
+        "operationId": "whoami_with_roles_whoami_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthenticatedUser" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/storage": {
+      "get": {
+        "tags": ["examples"],
+        "summary": "List Files",
+        "description": "List all files uploaded by the authenticated user to the default Supabase Storage bucket.\n\nThis endpoint retrieves a comprehensive list of all files that the current user\nhas uploaded to their personal storage folder. Each file entry includes metadata\nsuch as size, creation date, and public access URL.",
+        "operationId": "list_files_storage_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": { "$ref": "#/components/schemas/StorageFileInfo" },
+                  "type": "array",
+                  "title": "Response List Files Storage Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      },
+      "post": {
+        "tags": ["examples"],
+        "summary": "Upload File",
+        "description": "Upload a file to Supabase Storage with user-specific organization.\n\nThis endpoint uploads files to a user-specific folder within the configured storage bucket.\nEach user's files are isolated in their own directory to prevent unauthorized access.",
+        "operationId": "upload_file_storage_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_file_storage_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FileUploadResponse" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/table/{table_name}": {
+      "get": {
+        "tags": ["examples"],
+        "summary": "Read Table",
+        "description": "Read data from a Supabase table. The table name is passed as a path parameter.\n\nThis endpoint respects Row Level Security (RLS) policies configured on the table.\nUsers will only see data they are authorized to access based on their permissions.",
+        "operationId": "read_table_table__table_name__get",
+        "security": [{ "HTTPBearer": [] }],
+        "parameters": [
+          {
+            "name": "table_name",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "title": "Table Name" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TableDataResponse" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user-profile": {
+      "get": {
+        "tags": ["examples"],
+        "summary": "Get User Profile",
+        "description": "Get comprehensive user profile information including Keycloak roles.\n\nThis endpoint demonstrates how to work with users authenticated via Keycloak\nwithout requiring them to be present in Supabase. It shows how to access\nuser information and roles from the Keycloak authentication context.\n\nThis works with both Supabase-synchronized and direct Keycloak users.",
+        "operationId": "get_user_profile_user_profile_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get User Profile User Profile Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/mcda/topsis": {
+      "post": {
+        "tags": ["mcda"],
+        "summary": "Run Topsis",
+        "operationId": "run_topsis_mcda_topsis_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/McdaTopsisRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/McdaTopsisResponse" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuthenticatedUser": {
+        "properties": {
+          "token": { "type": "string", "title": "Token" },
+          "user": { "$ref": "#/components/schemas/UniversalUser" },
+          "authentication_method": {
+            "$ref": "#/components/schemas/AuthenticationMethod"
+          },
+          "keycloak_roles": {
+            "anyOf": [
+              {
+                "items": { "$ref": "#/components/schemas/KeycloakRole" },
+                "type": "array"
+              },
+              { "type": "null" }
+            ],
+            "title": "Keycloak Roles"
+          }
+        },
+        "type": "object",
+        "required": ["token", "user", "authentication_method"],
+        "title": "AuthenticatedUser",
+        "description": "Authenticated user model supporting multiple authentication providers.\n\nThis model abstracts authentication information from various sources (Supabase, Keycloak)\nand provides a consistent interface for user data and permissions."
+      },
+      "AuthenticationMethod": {
+        "type": "string",
+        "enum": ["supabase", "keycloak"],
+        "title": "AuthenticationMethod",
+        "description": "Authentication method used to authenticate the user."
+      },
+      "Body_upload_file_storage_post": {
+        "properties": {
+          "file": { "type": "string", "format": "binary", "title": "File" }
+        },
+        "type": "object",
+        "required": ["file"],
+        "title": "Body_upload_file_storage_post"
+      },
+      "FileUploadResponse": {
+        "properties": {
+          "message": { "type": "string", "title": "Message" },
+          "path": { "type": "string", "title": "Path" },
+          "public_url": { "type": "string", "title": "Public Url" }
+        },
+        "type": "object",
+        "required": ["message", "path", "public_url"],
+        "title": "FileUploadResponse",
+        "description": "Response model for file upload endpoint."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": { "$ref": "#/components/schemas/ValidationError" },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "KeycloakRole": {
+        "properties": {
+          "id": { "type": "string", "title": "Id" },
+          "name": { "type": "string", "title": "Name" },
+          "description": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Description"
+          },
+          "composite": {
+            "anyOf": [{ "type": "boolean" }, { "type": "null" }],
+            "title": "Composite"
+          },
+          "clientRole": {
+            "anyOf": [{ "type": "boolean" }, { "type": "null" }],
+            "title": "Clientrole"
+          },
+          "containerId": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Containerid"
+          }
+        },
+        "type": "object",
+        "required": ["id", "name"],
+        "title": "KeycloakRole",
+        "description": "Representation of a Keycloak role with its attributes.\n\nThis model represents role information retrieved from Keycloak's identity provider."
+      },
+      "McdaTopsisRequest": {
+        "properties": {
+          "profile": {
+            "type": "string",
+            "title": "Profile",
+            "description": "User profile",
+            "examples": ["Environment-Oriented"]
+          },
+          "technologies": {
+            "items": { "$ref": "#/components/schemas/TechnologyKpis" },
+            "type": "array",
+            "minItems": 1,
+            "title": "Technologies"
+          },
+          "mins_maxes": {
+            "additionalProperties": {
+              "prefixItems": [{ "type": "number" }, { "type": "number" }],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "object",
+            "title": "Mins Maxes",
+            "description": "Min/max ranges"
+          }
+        },
+        "type": "object",
+        "required": ["profile", "technologies", "mins_maxes"],
+        "title": "McdaTopsisRequest"
+      },
+      "McdaTopsisResponse": {
+        "properties": {
+          "profile": { "type": "string", "title": "Profile" },
+          "count": { "type": "integer", "title": "Count" },
+          "ranking": {
+            "items": { "$ref": "#/components/schemas/RankedTechnology" },
+            "type": "array",
+            "title": "Ranking"
+          }
+        },
+        "type": "object",
+        "required": ["profile", "count", "ranking"],
+        "title": "McdaTopsisResponse"
+      },
+      "RankedTechnology": {
+        "properties": {
+          "name": { "type": "string", "title": "Name" },
+          "closeness": { "type": "number", "title": "Closeness" },
+          "S_plus": { "type": "number", "title": "S Plus" },
+          "S_minus": { "type": "number", "title": "S Minus" }
+        },
+        "type": "object",
+        "required": ["name", "closeness", "S_plus", "S_minus"],
+        "title": "RankedTechnology"
+      },
+      "StorageFileInfo": {
+        "properties": {
+          "name": { "type": "string", "title": "Name" },
+          "size": { "type": "integer", "title": "Size" },
+          "created_at": { "type": "string", "title": "Created At" },
+          "public_url": { "type": "string", "title": "Public Url" }
+        },
+        "type": "object",
+        "required": ["name", "size", "created_at", "public_url"],
+        "title": "StorageFileInfo",
+        "description": "Model representing information about a stored file."
+      },
+      "TableDataResponse": {
+        "properties": {
+          "table_name": { "type": "string", "title": "Table Name" },
+          "data": {
+            "items": { "additionalProperties": true, "type": "object" },
+            "type": "array",
+            "title": "Data"
+          },
+          "count": { "type": "integer", "title": "Count" }
+        },
+        "type": "object",
+        "required": ["table_name", "data", "count"],
+        "title": "TableDataResponse",
+        "description": "Response model for table read endpoint."
+      },
+      "TechnologyKpis": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Technology name/identifier"
+          },
+          "envelope_kpi": { "type": "number", "title": "Envelope Kpi" },
+          "window_kpi": { "type": "number", "title": "Window Kpi" },
+          "heating_system_kpi": {
+            "type": "number",
+            "title": "Heating System Kpi"
+          },
+          "cooling_system_kpi": {
+            "type": "number",
+            "title": "Cooling System Kpi"
+          },
+          "ii_kpi": { "type": "number", "title": "Ii Kpi" },
+          "aoc_kpi": { "type": "number", "title": "Aoc Kpi" },
+          "irr_kpi": { "type": "number", "title": "Irr Kpi" },
+          "npv_kpi": { "type": "number", "title": "Npv Kpi" },
+          "pp_kpi": { "type": "number", "title": "Pp Kpi" },
+          "arv_kpi": { "type": "number", "title": "Arv Kpi" },
+          "st_coverage_kpi": { "type": "number", "title": "St Coverage Kpi" },
+          "onsite_res_kpi": { "type": "number", "title": "Onsite Res Kpi" },
+          "net_energy_export_kpi": {
+            "type": "number",
+            "title": "Net Energy Export Kpi"
+          },
+          "embodied_carbon_kpi": {
+            "type": "number",
+            "title": "Embodied Carbon Kpi"
+          },
+          "gwp_kpi": { "type": "number", "title": "Gwp Kpi" },
+          "thermal_comfort_air_temp_kpi": {
+            "type": "number",
+            "title": "Thermal Comfort Air Temp Kpi"
+          },
+          "thermal_comfort_humidity_kpi": {
+            "type": "number",
+            "title": "Thermal Comfort Humidity Kpi"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "envelope_kpi",
+          "window_kpi",
+          "heating_system_kpi",
+          "cooling_system_kpi",
+          "ii_kpi",
+          "aoc_kpi",
+          "irr_kpi",
+          "npv_kpi",
+          "pp_kpi",
+          "arv_kpi",
+          "st_coverage_kpi",
+          "onsite_res_kpi",
+          "net_energy_export_kpi",
+          "embodied_carbon_kpi",
+          "gwp_kpi",
+          "thermal_comfort_air_temp_kpi",
+          "thermal_comfort_humidity_kpi"
+        ],
+        "title": "TechnologyKpis"
+      },
+      "UniversalUser": {
+        "properties": {
+          "id": { "type": "string", "title": "Id" },
+          "email": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Email"
+          },
+          "user_metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "User Metadata",
+            "default": {}
+          },
+          "identities": {
+            "items": { "$ref": "#/components/schemas/UserIdentity" },
+            "type": "array",
+            "title": "Identities",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": ["id"],
+        "title": "UniversalUser",
+        "description": "Provider-agnostic user model that works with any authentication provider.\n\nThis model abstracts away the differences between Supabase GoTrue User objects\nand Keycloak JWT payloads, providing a consistent interface for user data\nregardless of the authentication provider."
+      },
+      "UserIdentity": {
+        "properties": {
+          "provider": { "type": "string", "title": "Provider" },
+          "id": { "type": "string", "title": "Id" }
+        },
+        "type": "object",
+        "required": ["provider", "id"],
+        "title": "UserIdentity",
+        "description": "Represents a user identity from an authentication provider."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": { "anyOf": [{ "type": "string" }, { "type": "integer" }] },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": { "type": "string", "title": "Message" },
+          "type": { "type": "string", "title": "Error Type" }
+        },
+        "type": "object",
+        "required": ["loc", "msg", "type"],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": { "HTTPBearer": { "type": "http", "scheme": "bearer" } }
+  }
+}

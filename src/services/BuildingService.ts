@@ -8,6 +8,7 @@ import type { ArchetypeInfo } from "../types/forecasting";
 import type {
   ArchetypeDetails,
   BuildingPayload,
+  BuildingSurface,
   SystemPayload,
 } from "../types/archetype";
 import {
@@ -347,24 +348,56 @@ export class BuildingService implements IBuildingService {
   }
 
   /**
-   * Extract U-value for a specific surface type
+   * Extract a representative U-value for a specific surface type.
+   *
+   * Wall surfaces in some archetypes (e.g. Greek) are named by orientation
+   * ("Opaque north surface") rather than by the word "wall", so we match on
+   * orientation keywords in addition to "wall".  This mirrors the detection
+   * logic already used in applyThermalModification (archetypeModifier.ts).
+   *
+   * When multiple surfaces of the same type are present (common for windows
+   * and walls), we return the area-weighted average U-value so the displayed
+   * default is representative of the whole envelope rather than an arbitrary
+   * first match.
    */
   private extractUValue(
     bui: BuildingPayload,
     type: "wall" | "roof" | "window",
   ): number {
-    let surface;
+    let surfaces: BuildingSurface[];
 
     if (type === "window") {
-      surface = bui.building_surface.find((s) => s.type === "transparent");
+      surfaces = bui.building_surface.filter((s) => s.type === "transparent");
+    } else if (type === "roof") {
+      surfaces = bui.building_surface.filter(
+        (s) => s.type === "opaque" && s.name.toLowerCase().includes("roof"),
+      );
     } else {
-      surface = bui.building_surface.find((s) => {
+      // Wall: match explicit "wall" name OR cardinal-orientation names.
+      // Exclude roof and ground/slab surfaces to avoid false positives.
+      surfaces = bui.building_surface.filter((s) => {
         const name = s.name.toLowerCase();
-        return s.type === "opaque" && name.includes(type);
+        return (
+          s.type === "opaque" &&
+          !name.includes("roof") &&
+          !name.includes("slab") &&
+          !name.includes("ground") &&
+          (name.includes("wall") ||
+            name.includes("north") ||
+            name.includes("south") ||
+            name.includes("east") ||
+            name.includes("west"))
+        );
       });
     }
 
-    return surface?.u_value || 0;
+    if (surfaces.length === 0) return 0;
+
+    // Area-weighted average across all matched surfaces
+    const totalArea = surfaces.reduce((sum, s) => sum + s.area, 0);
+    if (totalArea === 0) return surfaces[0].u_value ?? 0;
+
+    return surfaces.reduce((sum, s) => sum + s.u_value * s.area, 0) / totalArea;
   }
 }
 

@@ -157,11 +157,28 @@ export const CONSTRUCTION_PERIOD_TO_YEAR: Record<string, number> = {
 };
 
 /**
- * Derive construction year from period string
- * Returns the midpoint year for the period
+ * Ordered list of construction period options for UI dropdowns and CSV validation.
+ */
+export const CONSTRUCTION_PERIODS = Object.keys(CONSTRUCTION_PERIOD_TO_YEAR);
+
+/**
+ * Derive construction year from period string.
+ * Handles both API-mapping periods ("1945-1970", "pre-1945") and
+ * archetype-derived periods ("1946-1969") by computing the midpoint.
  */
 export function deriveConstructionYear(period: string): number {
-  return CONSTRUCTION_PERIOD_TO_YEAR[period] ?? 1980; // Default to 1980
+  // Check the known lookup table first
+  if (CONSTRUCTION_PERIOD_TO_YEAR[period] !== undefined) {
+    return CONSTRUCTION_PERIOD_TO_YEAR[period];
+  }
+
+  // Try parsing as "YYYY-YYYY" (archetype-derived format)
+  const match = period.match(/^(\d{4})-(\d{4})$/);
+  if (match) {
+    return Math.round((parseInt(match[1], 10) + parseInt(match[2], 10)) / 2);
+  }
+
+  return 1980; // Default fallback
 }
 
 /**

@@ -9,7 +9,7 @@ import {
   IconAlertTriangle,
   IconAlertCircle,
 } from "@tabler/icons-react";
-import { MetricExplainer } from "../shared/MetricExplainer";
+import { MetricExplainer } from "../shared";
 
 interface RiskGaugeProps {
   /** Success rate as a decimal (0-1) */

@@ -1,0 +1,22 @@
+.mapContainer {
+  height: 280px;
+  border-radius: var(--mantine-radius-md);
+  overflow: hidden;
+  border: 1px solid var(--mantine-color-gray-3);
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
+}
+
+.mapContainer :global(.leaflet-container) {
+  z-index: 0;
+  cursor: crosshair;
+}
+
+.mapContainer :global(.leaflet-control-zoom) {
+  z-index: 400 !important;
+}
+
+.mapContainer :global(.leaflet-control-attribution) {
+  z-index: 400 !important;
+}

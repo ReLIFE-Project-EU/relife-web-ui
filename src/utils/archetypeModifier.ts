@@ -26,9 +26,14 @@ export function validateModifications(
   archetypeDetails: ArchetypeDetails,
 ): ModificationValidation {
   const errors: ModificationValidation["errors"] = [];
+  const maxFloorArea = Math.max(
+    1000,
+    Math.ceil(archetypeDetails.floorArea * 3),
+  );
   const CONSTRAINTS = {
-    floorArea: { min: 10, max: 1000 },
+    floorArea: { min: 10, max: maxFloorArea },
     numberOfFloors: { min: 1, max: 20 },
+    buildingHeight: { min: 2, max: 60 },
     uValues: { min: 0.1, max: 5.0 },
     heatingSetpoint: { min: 15, max: 22 },
     coolingSetpoint: { min: 24, max: 30 },
@@ -54,6 +59,18 @@ export function validateModifications(
       errors.push({
         field: "numberOfFloors",
         message: `Number of floors must be between ${CONSTRAINTS.numberOfFloors.min}-${CONSTRAINTS.numberOfFloors.max}`,
+      });
+    }
+  }
+
+  if (modifications.buildingHeight !== undefined) {
+    if (
+      modifications.buildingHeight < CONSTRAINTS.buildingHeight.min ||
+      modifications.buildingHeight > CONSTRAINTS.buildingHeight.max
+    ) {
+      errors.push({
+        field: "buildingHeight",
+        message: `Building height must be between ${CONSTRAINTS.buildingHeight.min}-${CONSTRAINTS.buildingHeight.max} m`,
       });
     }
   }
@@ -170,6 +187,24 @@ export function applyFloorAreaModification(
   return modified;
 }
 
+export function applyGeometryModification(
+  bui: BuildingPayload,
+  numberOfFloors?: number,
+  buildingHeight?: number,
+): BuildingPayload {
+  const modified = JSON.parse(JSON.stringify(bui)) as BuildingPayload;
+
+  if (numberOfFloors !== undefined) {
+    modified.building.n_floors = numberOfFloors;
+  }
+
+  if (buildingHeight !== undefined) {
+    modified.building.height = buildingHeight;
+  }
+
+  return modified;
+}
+
 export function applyThermalModification(
   bui: BuildingPayload,
   wallU?: number,
@@ -241,6 +276,17 @@ export function applyAllModifications(
     modifiedBui = applyFloorAreaModification(
       modifiedBui,
       modifications.floorArea,
+    );
+  }
+
+  if (
+    modifications.numberOfFloors !== undefined ||
+    modifications.buildingHeight !== undefined
+  ) {
+    modifiedBui = applyGeometryModification(
+      modifiedBui,
+      modifications.numberOfFloors,
+      modifications.buildingHeight,
     );
   }
 

@@ -6,6 +6,14 @@ import { PRA_DEFAULT_PROJECT_LIFETIME } from "../constants";
 import type { PortfolioAdvisorAction, PortfolioAdvisorState } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Temporary defaults — pre-fill cost fields while the Financial API requires
+// non-null values. These will be removed once the backend accepts null.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DEFAULT_CAPEX = 10_000; // EUR — typical single-measure starting estimate
+const DEFAULT_ANNUAL_MAINTENANCE = 300; // EUR/year — typical O&M starting estimate
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Initial State
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -14,8 +22,8 @@ export const initialState: PortfolioAdvisorState = {
   buildings: [],
   renovation: {
     selectedMeasures: [],
-    estimatedCapex: null,
-    estimatedMaintenanceCost: null,
+    estimatedCapex: DEFAULT_CAPEX,
+    estimatedMaintenanceCost: DEFAULT_ANNUAL_MAINTENANCE,
   },
   projectLifetime: PRA_DEFAULT_PROJECT_LIFETIME,
   financingScheme: "equity",
@@ -121,6 +129,19 @@ export function portfolioAdvisorReducer(
         },
         ...clearedAnalysisResults,
       };
+
+    case "SET_BUILDING_MEASURES": {
+      const buildings = state.buildings.map((b) =>
+        b.id === action.buildingId
+          ? { ...b, selectedMeasures: action.measures }
+          : b,
+      );
+      return {
+        ...state,
+        buildings,
+        ...clearedAnalysisResults,
+      };
+    }
 
     case "SET_ESTIMATED_CAPEX":
       return {

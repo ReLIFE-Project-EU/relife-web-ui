@@ -18,7 +18,9 @@ export type FinancialMetricType =
   | "SuccessRate"
   | "CAPEX"
   | "ARV"
-  | "BreakEven";
+  | "BreakEven"
+  | "EnergyReduction"
+  | "EPCClass";
 
 interface MetricExplanation {
   title: string;
@@ -94,6 +96,20 @@ const explanations: Record<FinancialMetricType, MetricExplanation> = {
       "The first year when your cumulative savings exceed your cumulative costs. After this point, you're in profit.",
     goodValue:
       "Earlier break-even is better. Before year 10 is typically good.",
+  },
+  EnergyReduction: {
+    title: "Energy Consumption Change",
+    description:
+      "Percentage change in annual HVAC energy consumption after renovation, calculated as (after − before) / before. Negative values mean lower consumption. Computed by the ReLIFE Platform from energy simulation results.",
+    goodValue:
+      "Negative is better. Deep renovations typically achieve −40% to −70%.",
+  },
+  EPCClass: {
+    title: "EPC Class (Estimated)",
+    description:
+      "Energy Performance Certificate class derived by the ReLIFE Platform from simulated energy intensity (kWh/m²/year) using approximate thresholds. Not an official certificate — actual EPC boundaries vary by country.",
+    goodValue:
+      "A+ is best (under 30 kWh/m²/year). G is worst (over 450 kWh/m²/year).",
   },
 };
 

@@ -5,6 +5,8 @@ import type {
   BuildingUploadResponse,
   CreateProjectResponse,
   ECMApplicationParams,
+  ECMArchetypeParams,
+  ECMCustomBuildingParams,
   ECMApplicationResponse,
   EPCResponse,
   PlantPayload,
@@ -13,6 +15,7 @@ import type {
   SimulateDirectParams,
   SimulateDirectResponse,
   SimulateResponse,
+  ValidateCustomBuildingResponse,
 } from "../types/forecasting";
 import {
   createServiceApi,
@@ -68,7 +71,7 @@ export const forecasting = {
    * Use this to validate modified buildings before simulation
    */
   validateCustomBuilding: (payload: { bui: unknown; system: unknown }) =>
-    request<{ valid: boolean; issues?: string[] }>(
+    request<ValidateCustomBuildingResponse>(
       "/forecasting/validate?archetype=false",
       {
         method: "POST",
@@ -151,13 +154,19 @@ export const forecasting = {
   simulateECM: async (
     params: ECMApplicationParams,
   ): Promise<ECMApplicationResponse> => {
+    const isCustom = "bui" in params;
+
     const searchParams = new URLSearchParams({
-      archetype: "true",
-      category: params.category,
-      country: params.country,
-      name: params.name,
+      archetype: isCustom ? "false" : "true",
       weather_source: params.weatherSource || "pvgis",
     });
+
+    if (!isCustom) {
+      const ap = params as ECMArchetypeParams;
+      searchParams.set("category", ap.category);
+      searchParams.set("country", ap.country);
+      searchParams.set("name", ap.name);
+    }
 
     if (params.scenario_elements) {
       searchParams.set("scenario_elements", params.scenario_elements);
@@ -185,10 +194,18 @@ export const forecasting = {
       searchParams.set("include_baseline", String(params.include_baseline));
     }
 
-    // Use uploadRequest since the endpoint expects multipart/form-data
+    const formData = new FormData();
+    if (isCustom) {
+      const cp = params as ECMCustomBuildingParams;
+      formData.append("bui_json", JSON.stringify(cp.bui));
+      if (cp.system) {
+        formData.append("system_json", JSON.stringify(cp.system));
+      }
+    }
+
     return uploadRequest<ECMApplicationResponse>(
       `/forecasting/ecm_application?${searchParams.toString()}`,
-      new FormData(),
+      formData,
     );
   },
 

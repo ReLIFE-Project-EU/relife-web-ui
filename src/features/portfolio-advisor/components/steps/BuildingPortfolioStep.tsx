@@ -8,15 +8,21 @@ import {
   Badge,
   Box,
   Card,
-  Grid,
   Group,
   Stack,
   Table,
   Text,
   Title,
+  Tooltip,
 } from "@mantine/core";
-import { IconPencil, IconTrash } from "@tabler/icons-react";
+import { IconAlertTriangle, IconPencil, IconTrash } from "@tabler/icons-react";
 import { useCallback } from "react";
+import { checkAreaArchetypeMismatch } from "../../../../utils/inputSanityChecks";
+import {
+  countryFlag,
+  countryNameToCode,
+  formatArchetypeName,
+} from "../../../../utils/archetypeLabels";
 import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
 import type { PRABuilding } from "../../context/types";
@@ -65,15 +71,9 @@ export function BuildingPortfolioStep() {
         </Text>
       </Box>
 
-      {/* Two-panel input */}
-      <Grid>
-        <Grid.Col span={{ base: 12, md: 6 }}>
-          <CSVImportPanel onImport={handleCSVImport} />
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 6 }}>
-          <ManualAddPanel onAdd={handleManualAdd} />
-        </Grid.Col>
-      </Grid>
+      {/* Input panels — stacked vertically for better space utilization */}
+      <CSVImportPanel onImport={handleCSVImport} />
+      <ManualAddPanel onAdd={handleManualAdd} />
 
       {/* Building Table */}
       {state.buildings.length > 0 && (
@@ -104,14 +104,52 @@ export function BuildingPortfolioStep() {
                 <Table.Tr key={building.id}>
                   <Table.Td>{building.name}</Table.Td>
                   <Table.Td>{building.category}</Table.Td>
-                  <Table.Td>{building.country}</Table.Td>
-                  <Table.Td>{building.floorArea}</Table.Td>
+                  <Table.Td>
+                    <Group gap={4} wrap="nowrap">
+                      {(() => {
+                        const code = countryNameToCode(building.country);
+                        return code ? (
+                          <Text size="sm">{countryFlag(code)}</Text>
+                        ) : null;
+                      })()}
+                      <Text size="sm">{building.country}</Text>
+                    </Group>
+                  </Table.Td>
+                  <Table.Td>
+                    <Group gap={4} wrap="nowrap">
+                      <Text size="sm">{building.floorArea}</Text>
+                      {building.archetypeFloorArea &&
+                        checkAreaArchetypeMismatch(
+                          building.floorArea,
+                          building.archetypeFloorArea,
+                        ).warning && (
+                          <Tooltip
+                            label={
+                              checkAreaArchetypeMismatch(
+                                building.floorArea,
+                                building.archetypeFloorArea,
+                              ).message
+                            }
+                            multiline
+                            w={280}
+                          >
+                            <IconAlertTriangle
+                              size={14}
+                              color="var(--mantine-color-yellow-6)"
+                              style={{ cursor: "help", flexShrink: 0 }}
+                            />
+                          </Tooltip>
+                        )}
+                    </Group>
+                  </Table.Td>
                   <Table.Td>
                     {building.archetypeName ? (
                       <Group gap="xs">
-                        <Text size="sm">
-                          {building.archetypeName.split("_").pop()}
-                        </Text>
+                        <Tooltip label={building.archetypeName}>
+                          <Text size="sm">
+                            {formatArchetypeName(building.archetypeName)}
+                          </Text>
+                        </Tooltip>
                         {building.modifications &&
                           Object.keys(building.modifications).length > 0 && (
                             <Badge

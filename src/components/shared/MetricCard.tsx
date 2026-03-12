@@ -7,8 +7,8 @@ import { Box, Text } from "@mantine/core";
 import type { ReactNode } from "react";
 
 interface MetricCardProps {
-  /** Label describing the metric */
-  label: string;
+  /** Label describing the metric (string or React node for inline icons) */
+  label: ReactNode;
   /** Formatted value to display (string or React node) */
   value: ReactNode;
   /** Optional variant for different visual styles */

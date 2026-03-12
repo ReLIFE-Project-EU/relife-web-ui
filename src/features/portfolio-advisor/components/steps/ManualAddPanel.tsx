@@ -20,8 +20,9 @@ import {
   ThemeIcon,
   Title,
 } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
+import { useDebouncedValue, useDisclosure } from "@mantine/hooks";
 import {
+  IconAlertTriangle,
   IconChevronDown,
   IconChevronUp,
   IconHome,
@@ -29,20 +30,49 @@ import {
   IconPlus,
 } from "@tabler/icons-react";
 import { useEffect, useReducer, useState } from "react";
-import { deriveConstructionPeriod } from "../../../../utils/apiMappings";
+import { checkAreaArchetypeMismatch } from "../../../../utils/inputSanityChecks";
+import {
+  countryFlag,
+  countryNameToCode,
+  formatArchetypeName,
+} from "../../../../utils/archetypeLabels";
 import type { BuildingModifications } from "../../../../types/archetype";
 import { usePortfolioAdvisorServices } from "../../hooks/usePortfolioAdvisorServices";
 import type { PRABuilding } from "../../context/types";
 import { initialFormState, manualAddFormReducer } from "./manualAddFormReducer";
 import type { ManualAddFormState } from "./manualAddFormReducer";
 import { MODIFICATION_FIELDS } from "./modificationFieldConfig";
+import { ArchetypeLocationMap } from "./ArchetypeLocationMap";
+import { PRALocationMap } from "./PRALocationMap";
 
-const PROPERTY_TYPE_OPTIONS = [
-  { value: "apartment", label: "Apartment" },
-  { value: "detached", label: "Detached House" },
-  { value: "semi-detached", label: "House" },
-  { value: "Other", label: "Other" },
+const APARTMENT_LOCATION_OPTIONS = [
+  { value: "bottom", label: "Bottom floor" },
+  { value: "middle", label: "Middle floor" },
+  { value: "top", label: "Top floor" },
 ];
+
+function derivePropertyType(category: string): string {
+  const lower = category.toLowerCase();
+  if (lower.includes("apartment")) return "apartment";
+  if (lower.includes("semi")) return "semi-detached";
+  if (lower.includes("single family") || lower.includes("detached"))
+    return "detached";
+  return "Other";
+}
+
+function getApartmentArchetypeCategory(categories: string[]): string {
+  return (
+    categories.find((c) => c.toLowerCase().includes("apartment")) ??
+    categories.find((c) => c.toLowerCase().includes("multi family")) ??
+    categories.find(
+      (c) =>
+        c.toLowerCase().includes("single family") ||
+        c.toLowerCase().includes("residential"),
+    ) ??
+    categories[0] ??
+    ""
+  );
+}
 
 export function ManualAddPanel({
   onAdd,
@@ -55,13 +85,15 @@ export function ManualAddPanel({
     initialFormState,
   );
   const [categories, setCategories] = useState<string[]>([]);
+  const [availablePeriods, setAvailablePeriods] = useState<string[]>([]);
   const [modificationsOpened, { toggle: toggleModifications }] =
     useDisclosure(false);
+  const [showManualCoords, setShowManualCoords] = useState(false);
 
   const {
     name,
     category,
-    constructionYear,
+    constructionPeriod,
     propertyType,
     lat,
     lng,
@@ -71,6 +103,15 @@ export function ManualAddPanel({
     selectedArchetypeName,
   } = formState;
 
+  const [debouncedLat] = useDebouncedValue(lat, 500);
+  const [debouncedLng] = useDebouncedValue(lng, 500);
+
+  // Immediately invalidate any stale archetype match when raw coordinates change,
+  // before the debounce fires, so the Add button is disabled during the window.
+  useEffect(() => {
+    dispatch({ type: "CLEAR_ARCHETYPE" });
+  }, [lat, lng]);
+
   // Load building categories
   useEffect(() => {
     buildingService
@@ -79,14 +120,32 @@ export function ManualAddPanel({
       .catch(() => {});
   }, [buildingService]);
 
-  // Auto-match archetype when category + year + coordinates are set
+  // Load available construction periods when category changes
+  useEffect(() => {
+    if (!category) return;
+    buildingService
+      .getAvailablePeriods(category)
+      .then((periods) => {
+        setAvailablePeriods(periods);
+        // Clear selected period if it's no longer available
+        if (constructionPeriod && !periods.includes(constructionPeriod)) {
+          dispatch({
+            type: "SET_FIELD",
+            field: "constructionPeriod",
+            value: null,
+          });
+        }
+      })
+      .catch(() => {});
+  }, [buildingService, category, constructionPeriod]);
+
+  // Auto-match archetype when category + period + coordinates are set
   useEffect(() => {
     if (
       !category ||
-      !constructionYear ||
-      typeof constructionYear !== "number" ||
-      typeof lat !== "number" ||
-      typeof lng !== "number"
+      !constructionPeriod ||
+      typeof debouncedLat !== "number" ||
+      typeof debouncedLng !== "number"
     ) {
       dispatch({ type: "CLEAR_ARCHETYPE" });
       dispatch({ type: "SET_LOADING_ARCHETYPE", loading: false });
@@ -95,10 +154,12 @@ export function ManualAddPanel({
 
     const controller = new AbortController();
     dispatch({ type: "SET_LOADING_ARCHETYPE", loading: true });
-    const period = deriveConstructionPeriod(constructionYear);
 
     buildingService
-      .findMatchingArchetype(category, period, { lat, lng })
+      .findMatchingArchetype(category, constructionPeriod, {
+        lat: debouncedLat,
+        lng: debouncedLng,
+      })
       .then(async (matched) => {
         if (controller.signal.aborted) return;
         if (!matched) {
@@ -145,7 +206,13 @@ export function ManualAddPanel({
       });
 
     return () => controller.abort();
-  }, [buildingService, category, constructionYear, lat, lng]);
+  }, [
+    buildingService,
+    category,
+    constructionPeriod,
+    debouncedLat,
+    debouncedLng,
+  ]);
 
   // When user changes archetype manually
   useEffect(() => {
@@ -162,15 +229,54 @@ export function ManualAddPanel({
     }
   }, [selectedArchetypeName, availableArchetypes]);
 
+  const buildingTypeOptions = [
+    { value: "Apartment", label: "Apartment" },
+    ...categories
+      .filter((c) => !c.toLowerCase().includes("apartment"))
+      .map((c) => ({ value: c, label: c })),
+  ];
+
+  const buildingTypeValue =
+    propertyType === "apartment" ? "Apartment" : category;
+
+  // Detect when the user's selection doesn't match any backend category directly
+  const categoryFallback =
+    propertyType === "apartment" &&
+    category &&
+    !category.toLowerCase().includes("apartment")
+      ? category
+      : null;
+
+  function handleBuildingTypeChange(value: string | null) {
+    if (!value) return;
+    if (value === "Apartment") {
+      const aptCategory = getApartmentArchetypeCategory(categories);
+      dispatch({ type: "SET_FIELD", field: "category", value: aptCategory });
+      dispatch({
+        type: "SET_FIELD",
+        field: "propertyType",
+        value: "apartment",
+      });
+    } else {
+      dispatch({ type: "SET_FIELD", field: "category", value });
+      dispatch({
+        type: "SET_FIELD",
+        field: "propertyType",
+        value: derivePropertyType(value),
+      });
+      dispatch({ type: "SET_FIELD", field: "apartmentLocation", value: null });
+    }
+  }
+
   const isValid =
     name.trim() &&
     category &&
-    typeof constructionYear === "number" &&
-    constructionYear >= 1800 &&
-    constructionYear <= 2030 &&
+    constructionPeriod &&
     propertyType &&
+    (propertyType !== "apartment" || formState.apartmentLocation !== null) &&
     typeof lat === "number" &&
     typeof lng === "number" &&
+    !loadingArchetype &&
     matchedArchetype;
 
   const handleAdd = () => {
@@ -203,6 +309,7 @@ export function ManualAddPanel({
       category: category!,
       country: matchedArchetype.country,
       archetypeName: matchedArchetype.name,
+      archetypeFloorArea: matchedArchetype.floorArea,
       modifications:
         Object.keys(modifications).length > 0 ? modifications : undefined,
       lat: lat as number,
@@ -211,18 +318,38 @@ export function ManualAddPanel({
         typeof formState.modFloorArea === "number"
           ? formState.modFloorArea
           : matchedArchetype.floorArea,
-      constructionYear: constructionYear as number,
+      constructionPeriod: constructionPeriod!,
       numberOfFloors:
         typeof formState.modNumberOfFloors === "number"
           ? formState.modNumberOfFloors
           : matchedArchetype.numberOfFloors,
       propertyType: propertyType!,
+      floorNumber: (() => {
+        if (propertyType === "apartment" && formState.apartmentLocation) {
+          const floors =
+            typeof formState.modNumberOfFloors === "number"
+              ? formState.modNumberOfFloors
+              : matchedArchetype.numberOfFloors;
+          if (formState.apartmentLocation === "bottom") return 0;
+          if (formState.apartmentLocation === "middle")
+            return Math.floor(floors / 2);
+          return floors - 1;
+        }
+        return undefined;
+      })(),
       validationStatus: "valid",
     };
 
     onAdd(building);
     dispatch({ type: "RESET_FORM" });
   };
+
+  function handleMapClick(clickedLat: number, clickedLng: number) {
+    const roundedLat = Math.round(clickedLat * 10000) / 10000;
+    const roundedLng = Math.round(clickedLng * 10000) / 10000;
+    dispatch({ type: "SET_FIELD", field: "lat", value: roundedLat });
+    dispatch({ type: "SET_FIELD", field: "lng", value: roundedLng });
+  }
 
   const geometryFields = MODIFICATION_FIELDS.filter(
     (f) => f.group === "geometry",
@@ -268,101 +395,158 @@ export function ManualAddPanel({
               value={matchedArchetype?.country ?? ""}
               readOnly
               variant="filled"
+              leftSection={(() => {
+                const code = matchedArchetype?.country
+                  ? countryNameToCode(matchedArchetype.country)
+                  : undefined;
+                return code ? (
+                  <Text size="sm">{countryFlag(code)}</Text>
+                ) : undefined;
+              })()}
             />
           </Grid.Col>
           <Grid.Col span={6}>
             <Select
-              label="Category"
-              placeholder="Select category"
-              data={categories.map((c) => ({ value: c, label: c }))}
-              value={category}
-              onChange={(val) =>
-                dispatch({
-                  type: "SET_FIELD",
-                  field: "category",
-                  value: val as ManualAddFormState[keyof ManualAddFormState],
-                })
-              }
+              label="Building Type"
+              placeholder="Select building type"
+              data={buildingTypeOptions}
+              value={buildingTypeValue}
+              onChange={handleBuildingTypeChange}
               searchable
               required
             />
           </Grid.Col>
         </Grid>
 
-        <Grid>
-          <Grid.Col span={6}>
-            <NumberInput
-              label="Construction Year"
-              placeholder="e.g., 1985"
-              value={constructionYear}
-              onChange={(val) =>
-                dispatch({
-                  type: "SET_FIELD",
-                  field: "constructionYear",
-                  value: val as ManualAddFormState[keyof ManualAddFormState],
-                })
-              }
-              min={1800}
-              max={2030}
-              required
-            />
-          </Grid.Col>
-          <Grid.Col span={6}>
-            <Select
-              label="Property Type"
-              placeholder="Select type"
-              data={PROPERTY_TYPE_OPTIONS}
-              value={propertyType}
-              onChange={(val) =>
-                dispatch({
-                  type: "SET_FIELD",
-                  field: "propertyType",
-                  value: val as ManualAddFormState[keyof ManualAddFormState],
-                })
-              }
-              required
-            />
-          </Grid.Col>
-        </Grid>
+        {categoryFallback && (
+          <Alert
+            icon={<IconInfoCircle size={16} />}
+            color="yellow"
+            variant="light"
+            p="xs"
+          >
+            <Text size="sm">
+              No <strong>Apartment</strong> archetype is available. Using{" "}
+              <strong>{categoryFallback}</strong> as the closest match.
+              Simulation results will represent the entire building, not an
+              individual unit.
+            </Text>
+          </Alert>
+        )}
 
         <Grid>
           <Grid.Col span={6}>
-            <NumberInput
-              label="Latitude"
-              placeholder="e.g., 37.98"
-              value={lat}
+            <Select
+              label="Construction Period"
+              placeholder="Select period"
+              data={availablePeriods}
+              value={constructionPeriod}
               onChange={(val) =>
                 dispatch({
                   type: "SET_FIELD",
-                  field: "lat",
+                  field: "constructionPeriod",
                   value: val as ManualAddFormState[keyof ManualAddFormState],
                 })
               }
-              min={-90}
-              max={90}
-              decimalScale={6}
               required
             />
           </Grid.Col>
-          <Grid.Col span={6}>
-            <NumberInput
-              label="Longitude"
-              placeholder="e.g., 23.73"
-              value={lng}
-              onChange={(val) =>
-                dispatch({
-                  type: "SET_FIELD",
-                  field: "lng",
-                  value: val as ManualAddFormState[keyof ManualAddFormState],
-                })
-              }
-              min={-180}
-              max={180}
-              decimalScale={6}
-              required
-            />
-          </Grid.Col>
+          {propertyType === "apartment" && (
+            <Grid.Col span={6}>
+              <Select
+                label="Apartment Location"
+                placeholder="Select floor position"
+                data={APARTMENT_LOCATION_OPTIONS}
+                value={formState.apartmentLocation}
+                onChange={(val) =>
+                  dispatch({
+                    type: "SET_FIELD",
+                    field: "apartmentLocation",
+                    value: val as ManualAddFormState[keyof ManualAddFormState],
+                  })
+                }
+                required
+              />
+            </Grid.Col>
+          )}
         </Grid>
+
+        <div>
+          <Text size="sm" fw={500} mb={4}>
+            Building Location
+          </Text>
+          <Text size="xs" c="dimmed" mb="xs">
+            Click on the map to set the building location.
+          </Text>
+          <PRALocationMap
+            lat={typeof lat === "number" ? lat : null}
+            lng={typeof lng === "number" ? lng : null}
+            onLocationChange={handleMapClick}
+          />
+        </div>
+
+        {typeof lat === "number" && typeof lng === "number" && (
+          <Text size="sm" c="dimmed">
+            Selected:{" "}
+            <Text span fw={500} c="dark">
+              {lat.toFixed(4)}, {lng.toFixed(4)}
+            </Text>
+          </Text>
+        )}
+
+        <Button
+          variant="subtle"
+          size="xs"
+          onClick={() => setShowManualCoords((v) => !v)}
+          leftSection={
+            showManualCoords ? (
+              <IconChevronUp size={14} />
+            ) : (
+              <IconChevronDown size={14} />
+            )
+          }
+        >
+          {showManualCoords ? "Hide" : "Show"} manual coordinate input
+        </Button>
+
+        <Collapse in={showManualCoords}>
+          <Grid>
+            <Grid.Col span={6}>
+              <NumberInput
+                label="Latitude"
+                placeholder="e.g., 37.98"
+                value={lat}
+                onChange={(val) =>
+                  dispatch({
+                    type: "SET_FIELD",
+                    field: "lat",
+                    value: val as ManualAddFormState[keyof ManualAddFormState],
+                  })
+                }
+                min={-90}
+                max={90}
+                decimalScale={6}
+              />
+            </Grid.Col>
+            <Grid.Col span={6}>
+              <NumberInput
+                label="Longitude"
+                placeholder="e.g., 23.73"
+                value={lng}
+                onChange={(val) =>
+                  dispatch({
+                    type: "SET_FIELD",
+                    field: "lng",
+                    value: val as ManualAddFormState[keyof ManualAddFormState],
+                  })
+                }
+                min={-180}
+                max={180}
+                decimalScale={6}
+              />
+            </Grid.Col>
+          </Grid>
+        </Collapse>
 
         {/* Section 2: Archetype match */}
         {matchedArchetype && (
@@ -388,7 +572,7 @@ export function ManualAddPanel({
                   <IconHome size={20} />
                 </ThemeIcon>
                 <Text size="sm" fw={500}>
-                  {matchedArchetype.name}
+                  {formatArchetypeName(matchedArchetype.name)}
                 </Text>
               </Group>
 
@@ -446,13 +630,21 @@ export function ManualAddPanel({
                 </div>
               </SimpleGrid>
 
+              {typeof lat === "number" && typeof lng === "number" && (
+                <ArchetypeLocationMap
+                  userLat={lat}
+                  userLng={lng}
+                  archetypeCountry={matchedArchetype.country}
+                />
+              )}
+
               {availableArchetypes.length > 1 && (
                 <Select
                   label="Change archetype"
                   placeholder="Select different archetype"
                   data={availableArchetypes.map((a) => ({
                     value: a.name,
-                    label: a.name,
+                    label: formatArchetypeName(a.name),
                   }))}
                   value={selectedArchetypeName}
                   onChange={(val) =>
@@ -533,6 +725,25 @@ export function ManualAddPanel({
                     />
                   ))}
                 </SimpleGrid>
+
+                {typeof formState.modFloorArea === "number" &&
+                  checkAreaArchetypeMismatch(
+                    formState.modFloorArea,
+                    matchedArchetype.floorArea,
+                  ).warning && (
+                    <Alert
+                      color="yellow"
+                      icon={<IconAlertTriangle size={16} />}
+                      variant="light"
+                    >
+                      {
+                        checkAreaArchetypeMismatch(
+                          formState.modFloorArea,
+                          matchedArchetype.floorArea,
+                        ).message
+                      }
+                    </Alert>
+                  )}
 
                 <Text size="xs" fw={500} mt="xs">
                   Thermal Envelope

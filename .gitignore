@@ -11,6 +11,10 @@
 
 TEMP-*.md
 *-trace-*.md
+*.har
+
+.desloppify
+scorecard.png
 
 # External services source code
 external-services/

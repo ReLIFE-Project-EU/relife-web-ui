@@ -145,7 +145,7 @@ export async function downloadRequest(path: string): Promise<Blob> {
     const response = await fetch(`${API_BASE}${path}`, { headers });
 
     if (!response.ok) {
-      throw new Error(`API error: ${response.status} ${response.statusText}`);
+      throw new APIError(response.status, response.statusText);
     }
 
     return response.blob();
