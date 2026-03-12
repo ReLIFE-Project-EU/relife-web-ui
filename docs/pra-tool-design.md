@@ -398,6 +398,9 @@ for more information refers to `Guidelines`: <https://eurac-eebgroup.github.io/p
 - `annual_maintenance_cost` (float) - If not provided, retrieved from database
 - `loan_amount` (float, default: 0.0)
 - `loan_term` (int, default: 0)
+- `upfront_incentive_percentage` (float, default: 0.0) - Upfront capital incentive as % of CAPEX (0-100)
+- `lifetime_incentive_amount` (float, default: 0.0) - Annual OPEX reduction (€/year)
+- `lifetime_incentive_years` (int, default: 0) - Duration of OPEX reduction (years)
 - `floor_number` (int, default: null)
 - `renovated_last_5_years` (bool, default: true)
 
@@ -491,8 +494,11 @@ for more information refers to `Guidelines`: <https://eurac-eebgroup.github.io/p
   "output_level": "professional", // SET BY FRONTEND ("professional" for PRA tool)
   "capex": 60000, // OPTIONAL: From user or DB
   "annual_maintenance_cost": 2000, // OPTIONAL: From user or DB
-  "loan_amount": 25000, // OPTIONAL
-  "loan_term": 15 // OPTIONAL
+  "loan_amount": 25000, // OPTIONAL: default 0
+  "loan_term": 15, // OPTIONAL: default 0
+  "upfront_incentive_percentage": 20, // OPTIONAL: Upfront capital incentive as % of CAPEX (0-100), default 0
+  "lifetime_incentive_amount": 500, // OPTIONAL: Annual OPEX reduction (€/year), default 0
+  "lifetime_incentive_years": 10 // OPTIONAL: Duration of OPEX reduction (years), default 0
   // NOTE: "indicators" is NOT an input - automatically determined by API based on output_level
 }
 ```
