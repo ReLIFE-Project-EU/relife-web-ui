@@ -112,8 +112,14 @@ function createMockBui(): BuildingPayload {
         {
           name: "Occupancy",
           full_load: 120,
-          weekday: [0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0],
-          weekend: [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],
+          weekday: [
+            0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0,
+            0,
+          ],
+          weekend: [
+            0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
+            0,
+          ],
         },
       ],
     },
@@ -196,7 +202,9 @@ describe("archetypeModifier", () => {
       const result = validateModifications(mods, archetype);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors.some((e) => e.field === "totalWindowArea")).toBe(true);
+      expect(result.errors.some((e) => e.field === "totalWindowArea")).toBe(
+        true,
+      );
     });
 
     it("28: returns error when coolingSetpoint ≤ heatingSetpoint", () => {
@@ -210,9 +218,13 @@ describe("archetypeModifier", () => {
 
       expect(result.isValid).toBe(false);
       // coolingSetpoint=20 is also out of range [24,30], plus ≤ heating
-      const coolingErrors = result.errors.filter((e) => e.field === "coolingSetpoint");
+      const coolingErrors = result.errors.filter(
+        (e) => e.field === "coolingSetpoint",
+      );
       expect(coolingErrors.length).toBeGreaterThanOrEqual(1);
-      expect(coolingErrors.some((e) => e.message.includes("higher than heating"))).toBe(true);
+      expect(
+        coolingErrors.some((e) => e.message.includes("higher than heating")),
+      ).toBe(true);
     });
   });
 

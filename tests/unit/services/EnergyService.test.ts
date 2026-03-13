@@ -1,7 +1,11 @@
 import { vi, describe, test, expect, beforeEach } from "vitest";
 import type { IBuildingService } from "../../../src/services/types";
 import type { BuildingInfo } from "../../../src/types/renovation";
-import type { ArchetypeDetails, BuildingPayload, SystemPayload } from "../../../src/types/archetype";
+import type {
+  ArchetypeDetails,
+  BuildingPayload,
+  SystemPayload,
+} from "../../../src/types/archetype";
 
 // ── Mock setup ──────────────────────────────────────────────────────────────
 
@@ -202,9 +206,9 @@ describe("EnergyService", () => {
     mockListArchetypes.mockResolvedValue(archetypeList);
     mockSimulateDirect.mockResolvedValue(stubSimulationResponse);
     mockSimulateCustomBuilding.mockResolvedValue(stubSimulationResponse);
-    (mockBuildingService.getArchetypeDetails as ReturnType<typeof vi.fn>).mockResolvedValue(
-      stubArchetypeDetails,
-    );
+    (
+      mockBuildingService.getArchetypeDetails as ReturnType<typeof vi.fn>
+    ).mockResolvedValue(stubArchetypeDetails);
     service = new EnergyService(mockBuildingService);
   });
 

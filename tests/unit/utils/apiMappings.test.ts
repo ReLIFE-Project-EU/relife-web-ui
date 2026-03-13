@@ -6,11 +6,6 @@ import {
   fromAPIEnergyClass,
   deriveConstructionYear,
   deriveConstructionPeriod,
-  PROPERTY_TYPE_TO_API,
-  PROPERTY_TYPE_FROM_API,
-  EPC_CLASS_TO_API,
-  EPC_CLASS_FROM_API,
-  CONSTRUCTION_PERIOD_TO_YEAR,
   type APIPropertyType,
   type APIEnergyClass,
 } from "../../../src/utils/apiMappings";
@@ -50,7 +45,7 @@ describe("apiMappings", () => {
 
     test("returns 'detached' for unknown API types", () => {
       expect(fromAPIPropertyType("NonExistent" as APIPropertyType)).toBe(
-        "detached"
+        "detached",
       );
     });
   });
@@ -61,7 +56,7 @@ describe("apiMappings", () => {
       (uiType) => {
         const apiType = toAPIPropertyType(uiType);
         expect(fromAPIPropertyType(apiType)).toBe(uiType);
-      }
+      },
     );
   });
 
@@ -113,7 +108,7 @@ describe("apiMappings", () => {
       (uiClass) => {
         const apiClass = toAPIEnergyClass(uiClass);
         expect(fromAPIEnergyClass(apiClass)).toBe(uiClass);
-      }
+      },
     );
   });
 
@@ -131,12 +126,9 @@ describe("apiMappings", () => {
     test.each([
       ["pre-1945", 1930],
       ["post-2010", 2018],
-    ] as const)(
-      "returns %i for special period '%s'",
-      (period, expected) => {
-        expect(deriveConstructionYear(period)).toBe(expected);
-      }
-    );
+    ] as const)("returns %i for special period '%s'", (period, expected) => {
+      expect(deriveConstructionYear(period)).toBe(expected);
+    });
 
     test("returns 1980 for unknown period strings", () => {
       expect(deriveConstructionYear("unknown")).toBe(1980);
@@ -155,12 +147,8 @@ describe("apiMappings", () => {
       [1971, "1971-1990"],
       [2010, "2001-2010"],
       [2011, "post-2010"],
-    ] as const)(
-      "boundary: year %i → '%s'",
-      (year, expected) => {
-        expect(deriveConstructionPeriod(year)).toBe(expected);
-      }
-    );
+    ] as const)("boundary: year %i → '%s'", (year, expected) => {
+      expect(deriveConstructionPeriod(year)).toBe(expected);
+    });
   });
-
 });
