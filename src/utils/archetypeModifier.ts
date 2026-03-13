@@ -7,6 +7,7 @@ import type {
   ArchetypeDetails,
   BuildingModifications,
   BuildingPayload,
+  BuildingSurface,
   ModificationValidation,
   SystemPayload,
 } from "../types/archetype";
@@ -194,12 +195,28 @@ export function applyGeometryModification(
 ): BuildingPayload {
   const modified = JSON.parse(JSON.stringify(bui)) as BuildingPayload;
 
+  const originalTotalHeight = bui.building.n_floors * bui.building.height;
+  const newTotalHeight =
+    (numberOfFloors ?? bui.building.n_floors) *
+    (floorHeight ?? bui.building.height);
+
   if (numberOfFloors !== undefined) {
     modified.building.n_floors = numberOfFloors;
   }
 
   if (floorHeight !== undefined) {
     modified.building.height = floorHeight;
+  }
+
+  // Rescale vertical surfaces (walls + windows) when total building height changes
+  if (originalTotalHeight > 0 && newTotalHeight !== originalTotalHeight) {
+    const heightScale = newTotalHeight / originalTotalHeight;
+    modified.building_surface = modified.building_surface.map((surface) => {
+      if (isVerticalSurface(surface)) {
+        return { ...surface, area: surface.area * heightScale };
+      }
+      return surface;
+    });
   }
 
   return modified;
@@ -327,6 +344,17 @@ export function applyAllModifications(
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+function isVerticalSurface(surface: BuildingSurface): boolean {
+  const name = surface.name.toLowerCase();
+  if (surface.type === "transparent") return true;
+  return (
+    surface.type === "opaque" &&
+    !name.includes("roof") &&
+    !name.includes("slab") &&
+    !name.includes("ground")
+  );
+}
 
 function calculateTotalWallArea(bui: BuildingPayload): number {
   return bui.building_surface

@@ -253,6 +253,56 @@ describe("archetypeModifier", () => {
     });
   });
 
+  // ---- applyGeometryModification (via applyAllModifications) ----
+
+  describe("applyAllModifications – geometry", () => {
+    it("scales wall and window areas when total building height changes", () => {
+      const archetype = createMockArchetypeDetails();
+      // Mock BUI: n_floors=2, height=6 → original total height = 12
+      // Change to n_floors=1 → new total height = 6 → scale = 0.5
+      const mods: BuildingModifications = { numberOfFloors: 1 };
+
+      const { bui } = applyAllModifications(archetype, mods);
+
+      expect(bui.building.n_floors).toBe(1);
+      for (const surface of bui.building_surface) {
+        const name = surface.name.toLowerCase();
+        if (name.includes("roof")) {
+          // Roof area unchanged (horizontal surface)
+          expect(surface.area).toBe(50);
+        } else if (surface.type === "transparent") {
+          // Window areas halved (vertical surface)
+          expect(surface.area).toBeCloseTo(2.5, 5);
+        } else {
+          // Wall areas halved (vertical surface)
+          expect(surface.area).toBeCloseTo(10, 5);
+        }
+      }
+    });
+
+    it("does not scale surfaces when total height is unchanged", () => {
+      const archetype = createMockArchetypeDetails();
+      // Mock BUI: n_floors=2, height=6 → total=12
+      // Change to n_floors=4, floorHeight=3 → total=12 (same)
+      const mods: BuildingModifications = { numberOfFloors: 4, floorHeight: 3 };
+
+      const { bui } = applyAllModifications(archetype, mods);
+
+      expect(bui.building.n_floors).toBe(4);
+      expect(bui.building.height).toBe(3);
+      for (const surface of bui.building_surface) {
+        const name = surface.name.toLowerCase();
+        if (name.includes("roof")) {
+          expect(surface.area).toBe(50);
+        } else if (surface.type === "transparent") {
+          expect(surface.area).toBe(5);
+        } else {
+          expect(surface.area).toBe(20);
+        }
+      }
+    });
+  });
+
   // ---- applyThermalModification (via applyAllModifications) ----
 
   describe("applyAllModifications – thermal", () => {
