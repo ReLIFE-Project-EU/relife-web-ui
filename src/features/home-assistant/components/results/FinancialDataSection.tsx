@@ -577,6 +577,33 @@ function ScenarioComparisonTable({
     },
   ];
 
+  const headerButtonStyle = (color: string, isSelected: boolean) => ({
+    display: "block",
+    width: "100%",
+    padding: "10px 8px",
+    borderRadius: "var(--mantine-radius-md)",
+    border: "1px solid transparent",
+    backgroundColor: isSelected
+      ? `var(--mantine-color-${color}-0)`
+      : "transparent",
+    cursor: "pointer",
+    textAlign: "center" as const,
+    transition: "background-color 0.15s ease",
+  });
+  const cellButtonStyle = (color: string, isSelected: boolean) => ({
+    display: "block",
+    width: "100%",
+    padding: "8px 6px",
+    borderRadius: "var(--mantine-radius-sm)",
+    border: "1px solid transparent",
+    backgroundColor: isSelected
+      ? `var(--mantine-color-${color}-0)`
+      : "transparent",
+    cursor: "pointer",
+    textAlign: "center" as const,
+    transition: "background-color 0.15s ease",
+  });
+
   return (
     <ScrollArea>
       <Table striped highlightOnHover withTableBorder withColumnBorders>
@@ -605,9 +632,10 @@ function ScenarioComparisonTable({
                   {isSelectable ? (
                     <UnstyledButton
                       onClick={() => onSelectScenario(scenario.id)}
-                      style={{ width: "100%" }}
+                      style={headerButtonStyle(color, isSelected)}
+                      aria-pressed={isSelected}
                     >
-                      <Stack gap={6} align="center">
+                      <Stack gap={4} align="center">
                         <Group gap={6} justify="center" align="center">
                           <Box
                             style={{
@@ -621,11 +649,13 @@ function ScenarioComparisonTable({
                             {scenario.label}
                           </Text>
                         </Group>
-                        {isSelected && (
-                          <Badge size="xs" color={color} variant="light">
-                            Selected
-                          </Badge>
-                        )}
+                        <Text
+                          size="xs"
+                          c={isSelected ? `${color}.7` : "dimmed"}
+                          fw={isSelected ? 600 : 500}
+                        >
+                          {isSelected ? "Viewing details" : "Select package"}
+                        </Text>
                       </Stack>
                     </UnstyledButton>
                   ) : (
@@ -679,17 +709,11 @@ function ScenarioComparisonTable({
                 return (
                   <Table.Td
                     key={scenario.id}
-                    style={{
-                      textAlign: "center",
-                      cursor: "pointer",
-                      backgroundColor: isSelected
-                        ? `var(--mantine-color-${color}-0)`
-                        : undefined,
-                    }}
+                    style={{ textAlign: "center", padding: 0 }}
                   >
                     <UnstyledButton
                       onClick={() => onSelectScenario(scenario.id)}
-                      style={{ width: "100%" }}
+                      style={cellButtonStyle(color, isSelected)}
                     >
                       <Text size="sm" fw={500}>
                         {metric.formatter(metric.getValue(fr))}
