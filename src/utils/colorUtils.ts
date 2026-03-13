@@ -20,6 +20,8 @@ export function getIndexColor(value: number): string {
  */
 export function getScenarioColor(scenarioId: string): string {
   switch (scenarioId) {
+    case "current":
+      return "gray";
     case "mild":
       return "green";
     case "regular":
@@ -27,7 +29,7 @@ export function getScenarioColor(scenarioId: string): string {
     case "deep":
       return "violet";
     default:
-      return "gray";
+      return getDeterministicColor(scenarioId);
   }
 }
 
@@ -62,4 +64,14 @@ export function getRankLabel(rank: number): string {
     default:
       return `${rank}th`;
   }
+}
+
+function getDeterministicColor(value: string): string {
+  const palette = ["green", "blue", "teal", "cyan", "indigo", "lime"];
+  const hash = [...value].reduce(
+    (accumulator, character) => accumulator + character.charCodeAt(0),
+    0,
+  );
+
+  return palette[hash % palette.length];
 }
