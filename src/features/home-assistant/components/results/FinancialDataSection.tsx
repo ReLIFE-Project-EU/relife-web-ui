@@ -19,7 +19,6 @@ import {
   Divider,
   Group,
   ScrollArea,
-  SegmentedControl,
   SimpleGrid,
   Stack,
   Table,
@@ -36,6 +35,10 @@ import {
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { CashFlowChart } from "./CashFlowChart";
 import { FinancialMetricCard } from "./FinancialMetricCard";
+import {
+  getEffectiveDetailScenarioId,
+  hasFinancialResultForScenario,
+} from "./financialSelection";
 import { RiskGauge } from "./RiskGauge";
 import { MetricExplainer } from "../shared";
 import type {
@@ -57,16 +60,19 @@ export function FinancialDataSection() {
   const [detailsOpened, { toggle: toggleDetails }] = useDisclosure(false);
 
   const renovationScenarios = scenarios.filter((s) => s.id !== "current");
-  const [selectedScenarioId, setSelectedScenarioId] =
+  const [selectedDetailScenarioId, setSelectedDetailScenarioId] =
     useState<ScenarioId | null>(renovationScenarios[0]?.id ?? null);
-
-  // Ensure selected scenario is valid
-  const effectiveScenarioId =
-    (selectedScenarioId &&
-      renovationScenarios.some((s) => s.id === selectedScenarioId) &&
-      selectedScenarioId) ||
-    renovationScenarios[0]?.id ||
-    null;
+  const effectiveDetailScenarioId = getEffectiveDetailScenarioId(
+    renovationScenarios,
+    financialResults,
+    selectedDetailScenarioId,
+  );
+  const selectedScenario = renovationScenarios.find(
+    (scenario) => scenario.id === effectiveDetailScenarioId,
+  );
+  const hasAnyFinancialResults = renovationScenarios.some((scenario) =>
+    hasFinancialResultForScenario(financialResults, scenario.id),
+  );
 
   // Funding option labels for display
   const enabledFunding: string[] = [];
@@ -77,8 +83,8 @@ export function FinancialDataSection() {
   }
 
   const selectedResult =
-    effectiveScenarioId && financialResults[effectiveScenarioId]
-      ? financialResults[effectiveScenarioId]
+    selectedScenario && financialResults[selectedScenario.id]
+      ? financialResults[selectedScenario.id]
       : undefined;
 
   const cashFlowData: CashFlowData | undefined =
@@ -136,40 +142,66 @@ export function FinancialDataSection() {
               )}
             </Group>
           </Box>
-
-          {/* Scenario Selector (when multiple scenarios) */}
-          {renovationScenarios.length > 1 && (
-            <SegmentedControl
-              value={effectiveScenarioId ?? undefined}
-              onChange={(value) => setSelectedScenarioId(value as ScenarioId)}
-              data={renovationScenarios.map((scenario) => ({
-                label: scenario.label,
-                value: scenario.id,
-              }))}
-            />
-          )}
         </Group>
 
-        {/* Scenario Badge (single scenario indicator) */}
-        {renovationScenarios.length === 1 && effectiveScenarioId && (
-          <Group gap="xs">
-            <Box
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: "50%",
-                backgroundColor: `var(--mantine-color-${getScenarioColor(effectiveScenarioId)}-6)`,
-              }}
+        {/* Comparison-first summary */}
+        {renovationScenarios.length > 1 && (
+          <Stack gap="sm">
+            <Box>
+              <Text size="sm" fw={500}>
+                Package Financial Comparison
+              </Text>
+              <Text size="xs" c="dimmed">
+                Compare all evaluated packages below, then click any package
+                column to inspect its detailed financial results and cash flow.
+              </Text>
+            </Box>
+            <ScenarioComparisonTable
+              scenarios={renovationScenarios}
+              financialResults={financialResults}
+              selectedScenarioId={effectiveDetailScenarioId}
+              onSelectScenario={setSelectedDetailScenarioId}
             />
-            <Text size="sm" fw={500}>
-              {renovationScenarios[0].label}
-            </Text>
-          </Group>
+          </Stack>
         )}
 
-        {/* Primary Financial Metrics */}
-        {selectedResult && (
+        {!hasAnyFinancialResults && (
+          <Alert color="yellow" title="Financial results unavailable">
+            No package-level financial details are available for the evaluated
+            packages yet.
+          </Alert>
+        )}
+
+        {/* Selected package details */}
+        {selectedResult && selectedScenario && (
           <Stack gap="md">
+            <Group justify="space-between" align="center">
+              <Box>
+                <Text size="sm" fw={500}>
+                  Selected Package Details
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Detailed financial results for {selectedScenario.label}.
+                </Text>
+              </Box>
+              <Group gap="xs">
+                <Box
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: "50%",
+                    backgroundColor: `var(--mantine-color-${getScenarioColor(selectedScenario.id)}-6)`,
+                  }}
+                />
+                <Badge
+                  color={getScenarioColor(selectedScenario.id)}
+                  variant="light"
+                >
+                  {selectedScenario.label}
+                </Badge>
+              </Group>
+            </Group>
+
             <Text size="sm" fw={500}>
               Key Financial Indicators
             </Text>
@@ -271,13 +303,17 @@ export function FinancialDataSection() {
         )}
 
         {/* Cash Flow Chart */}
-        {selectedResult && (
+        {selectedResult && selectedScenario && (
           <Stack gap="sm">
             <Text size="sm" fw={500}>
               Cash Flow Timeline
             </Text>
             <Text size="xs" c="dimmed">
-              Inflows, outflows, and net cash flow over the project lifetime.
+              Inflows, outflows, and net cash flow for{" "}
+              <Text span fw={600}>
+                {selectedScenario.label}
+              </Text>{" "}
+              over the project lifetime.
             </Text>
 
             {cashFlowData ? (
@@ -287,6 +323,7 @@ export function FinancialDataSection() {
                   projectLifetime={
                     selectedResult.riskAssessment?.metadata.project_lifetime
                   }
+                  scenarioLabel={selectedScenario.label}
                 />
                 <Alert
                   variant="light"
@@ -316,12 +353,15 @@ export function FinancialDataSection() {
             ) : cashFlowVisualization ? (
               <Card withBorder radius="md" p="md">
                 <Text size="sm" c="dimmed" mb="xs">
-                  Showing cash flow image from API (no structured data
-                  returned).
+                  Showing cash flow image from API for{" "}
+                  <Text span fw={600}>
+                    {selectedScenario.label}
+                  </Text>{" "}
+                  (no structured data returned).
                 </Text>
                 <img
                   src={cashFlowVisualization}
-                  alt="Cash flow timeline"
+                  alt={`Cash flow timeline for ${selectedScenario.label}`}
                   style={{
                     width: "100%",
                     maxHeight: 360,
@@ -332,23 +372,11 @@ export function FinancialDataSection() {
             ) : (
               <Card withBorder radius="md" p="md">
                 <Text size="sm" c="dimmed">
-                  Cash flow data is not available for this scenario yet.
+                  Cash flow data is not available for {selectedScenario.label}{" "}
+                  yet.
                 </Text>
               </Card>
             )}
-          </Stack>
-        )}
-
-        {/* Scenario Comparison Table (when multiple scenarios) */}
-        {renovationScenarios.length > 1 && (
-          <Stack gap="sm">
-            <Text size="sm" fw={500}>
-              Scenario Comparison
-            </Text>
-            <ScenarioComparisonTable
-              scenarios={renovationScenarios}
-              financialResults={financialResults}
-            />
           </Stack>
         )}
       </Stack>
@@ -499,11 +527,15 @@ function SecondaryMetricsTable({
 interface ScenarioComparisonTableProps {
   scenarios: { id: ScenarioId; label: string }[];
   financialResults: Record<ScenarioId, FinancialResults>;
+  selectedScenarioId: ScenarioId | null;
+  onSelectScenario: (scenarioId: ScenarioId) => void;
 }
 
 function ScenarioComparisonTable({
   scenarios,
   financialResults,
+  selectedScenarioId,
+  onSelectScenario,
 }: ScenarioComparisonTableProps) {
   const metrics: Array<{
     label: string;
@@ -551,29 +583,74 @@ function ScenarioComparisonTable({
         <Table.Thead>
           <Table.Tr>
             <Table.Th>Metric</Table.Th>
-            {scenarios.map((scenario) => (
-              <Table.Th
-                key={scenario.id}
-                style={{
-                  textAlign: "center",
-                  backgroundColor: `var(--mantine-color-${getScenarioColor(scenario.id)}-0)`,
-                }}
-              >
-                <Group gap={6} justify="center" align="center">
-                  <Box
-                    style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: "50%",
-                      backgroundColor: `var(--mantine-color-${getScenarioColor(scenario.id)}-6)`,
-                    }}
-                  />
-                  <Text size="sm" fw={600}>
-                    {scenario.label}
-                  </Text>
-                </Group>
-              </Table.Th>
-            ))}
+            {scenarios.map((scenario) => {
+              const color = getScenarioColor(scenario.id);
+              const isSelected = scenario.id === selectedScenarioId;
+              const isSelectable = hasFinancialResultForScenario(
+                financialResults,
+                scenario.id,
+              );
+
+              return (
+                <Table.Th
+                  key={scenario.id}
+                  style={{
+                    textAlign: "center",
+                    backgroundColor: `var(--mantine-color-${color}-${isSelected ? 1 : 0})`,
+                    boxShadow: isSelected
+                      ? `inset 0 0 0 1px var(--mantine-color-${color}-4)`
+                      : undefined,
+                  }}
+                >
+                  {isSelectable ? (
+                    <UnstyledButton
+                      onClick={() => onSelectScenario(scenario.id)}
+                      style={{ width: "100%" }}
+                    >
+                      <Stack gap={6} align="center">
+                        <Group gap={6} justify="center" align="center">
+                          <Box
+                            style={{
+                              width: 10,
+                              height: 10,
+                              borderRadius: "50%",
+                              backgroundColor: `var(--mantine-color-${color}-6)`,
+                            }}
+                          />
+                          <Text size="sm" fw={600}>
+                            {scenario.label}
+                          </Text>
+                        </Group>
+                        {isSelected && (
+                          <Badge size="xs" color={color} variant="light">
+                            Selected
+                          </Badge>
+                        )}
+                      </Stack>
+                    </UnstyledButton>
+                  ) : (
+                    <Stack gap={6} align="center">
+                      <Group gap={6} justify="center" align="center">
+                        <Box
+                          style={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: "50%",
+                            backgroundColor: `var(--mantine-color-${color}-4)`,
+                          }}
+                        />
+                        <Text size="sm" fw={600} c="dimmed">
+                          {scenario.label}
+                        </Text>
+                      </Group>
+                      <Badge size="xs" color="gray" variant="light">
+                        No data
+                      </Badge>
+                    </Stack>
+                  )}
+                </Table.Th>
+              );
+            })}
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
@@ -582,9 +659,17 @@ function ScenarioComparisonTable({
               <Table.Td fw={500}>{metric.label}</Table.Td>
               {scenarios.map((scenario) => {
                 const fr = financialResults[scenario.id];
+                const color = getScenarioColor(scenario.id);
+                const isSelected = scenario.id === selectedScenarioId;
                 if (!fr) {
                   return (
-                    <Table.Td key={scenario.id} style={{ textAlign: "center" }}>
+                    <Table.Td
+                      key={scenario.id}
+                      style={{
+                        textAlign: "center",
+                        color: "var(--mantine-color-dimmed)",
+                      }}
+                    >
                       <Text size="sm" c="dimmed">
                         N/A
                       </Text>
@@ -592,10 +677,24 @@ function ScenarioComparisonTable({
                   );
                 }
                 return (
-                  <Table.Td key={scenario.id} style={{ textAlign: "center" }}>
-                    <Text size="sm" fw={500}>
-                      {metric.formatter(metric.getValue(fr))}
-                    </Text>
+                  <Table.Td
+                    key={scenario.id}
+                    style={{
+                      textAlign: "center",
+                      cursor: "pointer",
+                      backgroundColor: isSelected
+                        ? `var(--mantine-color-${color}-0)`
+                        : undefined,
+                    }}
+                  >
+                    <UnstyledButton
+                      onClick={() => onSelectScenario(scenario.id)}
+                      style={{ width: "100%" }}
+                    >
+                      <Text size="sm" fw={500}>
+                        {metric.formatter(metric.getValue(fr))}
+                      </Text>
+                    </UnstyledButton>
                   </Table.Td>
                 );
               })}
