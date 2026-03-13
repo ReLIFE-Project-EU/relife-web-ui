@@ -67,7 +67,7 @@ type ApartmentLocation = "bottom" | "middle" | "top";
 interface DraftState {
   floorArea: number | string;
   numberOfFloors: number | string;
-  averageFloorHeight: number | string;
+  floorHeight: number | string;
   apartmentLocation: ApartmentLocation | null;
 }
 
@@ -76,13 +76,6 @@ const APARTMENT_LOCATION_OPTIONS = [
   { value: "middle", label: "Middle floor" },
   { value: "top", label: "Top floor" },
 ] as const;
-
-function getReferenceAverageFloorHeight(details: ArchetypeDetails): number {
-  if (details.numberOfFloors <= 0) {
-    return details.buildingHeight;
-  }
-  return details.buildingHeight / details.numberOfFloors;
-}
 
 function isApartmentLikeCategory(category: string): boolean {
   const normalized = category.toLowerCase();
@@ -138,20 +131,10 @@ function buildDraftState(
   apartmentLocation?: ApartmentLocation,
   modifications?: BuildingModifications,
 ): DraftState {
-  const referenceAverageFloorHeight = getReferenceAverageFloorHeight(details);
-  const resolvedFloors =
-    modifications?.numberOfFloors ?? details.numberOfFloors;
-  const resolvedBuildingHeight =
-    modifications?.buildingHeight ?? details.buildingHeight;
-  const resolvedAverageFloorHeight =
-    resolvedFloors > 0
-      ? resolvedBuildingHeight / resolvedFloors
-      : referenceAverageFloorHeight;
-
   return {
     floorArea: modifications?.floorArea ?? details.floorArea,
-    numberOfFloors: resolvedFloors,
-    averageFloorHeight: Number(resolvedAverageFloorHeight.toFixed(1)),
+    numberOfFloors: modifications?.numberOfFloors ?? details.numberOfFloors,
+    floorHeight: modifications?.floorHeight ?? details.floorHeight,
     apartmentLocation: apartmentLocation ?? null,
   };
 }
@@ -169,20 +152,16 @@ function buildAppliedChanges(
   simulationChanges: string[];
   contextChanges: string[];
 } {
-  const referenceAverageFloorHeight = getReferenceAverageFloorHeight(details);
   const floorArea =
     typeof draft.floorArea === "number" ? draft.floorArea : details.floorArea;
   const numberOfFloors =
     typeof draft.numberOfFloors === "number"
       ? draft.numberOfFloors
       : details.numberOfFloors;
-  const averageFloorHeight =
-    typeof draft.averageFloorHeight === "number"
-      ? draft.averageFloorHeight
-      : referenceAverageFloorHeight;
-  const buildingHeight = Number(
-    (numberOfFloors * averageFloorHeight).toFixed(1),
-  );
+  const floorHeight =
+    typeof draft.floorHeight === "number"
+      ? draft.floorHeight
+      : details.floorHeight;
 
   const modifications: BuildingModifications = {};
   const simulationChanges: string[] = [];
@@ -202,10 +181,10 @@ function buildAppliedChanges(
     );
   }
 
-  if (Math.abs(buildingHeight - details.buildingHeight) >= 0.05) {
-    modifications.buildingHeight = buildingHeight;
+  if (Math.abs(floorHeight - details.floorHeight) >= 0.05) {
+    modifications.floorHeight = floorHeight;
     simulationChanges.push(
-      `Building height: ${formatDecimal(details.buildingHeight)} m -> ${formatDecimal(buildingHeight)} m`,
+      `Floor height: ${formatDecimal(details.floorHeight)} m -> ${formatDecimal(floorHeight)} m`,
     );
   }
 
@@ -357,20 +336,13 @@ function ArchetypeSummary({
   const [adjustmentsOpen, { toggle: toggleAdjustments }] = useDisclosure(false);
 
   const isApartment = isApartmentLikeCategory(details.category);
-  const referenceAverageFloorHeight = getReferenceAverageFloorHeight(details);
   const areaWarning =
     typeof draft.floorArea === "number"
       ? checkAreaArchetypeMismatch(draft.floorArea, details.floorArea)
       : { warning: false, message: "" };
   const appliedFloorArea = appliedModifications?.floorArea;
   const appliedNumberOfFloors = appliedModifications?.numberOfFloors;
-  const appliedBuildingHeight = appliedModifications?.buildingHeight;
-  const appliedAverageFloorHeight =
-    appliedBuildingHeight !== undefined &&
-    appliedNumberOfFloors !== undefined &&
-    appliedNumberOfFloors > 0
-      ? appliedBuildingHeight / appliedNumberOfFloors
-      : undefined;
+  const appliedFloorHeight = appliedModifications?.floorHeight;
 
   const previewSummary = buildAppliedChanges(details, draft, isApartment);
   const validationResult = validateModifications(
@@ -435,21 +407,21 @@ function ArchetypeSummary({
             />
             <DetailEvolutionRow
               icon={<IconRuler size={12} />}
-              label="Average floor height"
-              referenceValue={`${formatDecimal(referenceAverageFloorHeight)} m`}
+              label="Floor height"
+              referenceValue={`${formatDecimal(details.floorHeight)} m`}
               currentValue={
-                appliedAverageFloorHeight !== undefined
-                  ? `${formatDecimal(appliedAverageFloorHeight)} m`
+                appliedFloorHeight !== undefined
+                  ? `${formatDecimal(appliedFloorHeight)} m`
                   : undefined
               }
             />
             <DetailEvolutionRow
               icon={<IconStack2 size={12} />}
               label="Building height"
-              referenceValue={`${formatDecimal(details.buildingHeight)} m`}
+              referenceValue={`${formatDecimal(details.floorHeight * details.numberOfFloors)} m`}
               currentValue={
-                appliedBuildingHeight !== undefined
-                  ? `${formatDecimal(appliedBuildingHeight)} m`
+                appliedFloorHeight !== undefined || appliedNumberOfFloors !== undefined
+                  ? `${formatDecimal((appliedFloorHeight ?? details.floorHeight) * (appliedNumberOfFloors ?? details.numberOfFloors))} m`
                   : undefined
               }
             />
@@ -537,13 +509,13 @@ function ArchetypeSummary({
                 suffix="floors"
               />
               <NumberInput
-                label="Average floor height (m)"
-                description={`Reference: ${formatDecimal(referenceAverageFloorHeight)} m`}
-                value={draft.averageFloorHeight}
+                label="Floor height (m)"
+                description={`Reference: ${formatDecimal(details.floorHeight)} m`}
+                value={draft.floorHeight}
                 onChange={(value) =>
                   setDraft((current) => ({
                     ...(current ?? draft),
-                    averageFloorHeight: value,
+                    floorHeight: value,
                   }))
                 }
                 min={2}
@@ -553,11 +525,11 @@ function ArchetypeSummary({
               />
               <ReferenceDeltaCard
                 currentValue={
-                  typeof draft.averageFloorHeight === "number"
-                    ? draft.averageFloorHeight
+                  typeof draft.floorHeight === "number"
+                    ? draft.floorHeight
                     : undefined
                 }
-                referenceValue={referenceAverageFloorHeight}
+                referenceValue={details.floorHeight}
                 suffix="m"
               />
             </SimpleGrid>

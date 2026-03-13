@@ -287,8 +287,8 @@ export function ManualAddPanel({
       modifications.floorArea = formState.modFloorArea;
     if (typeof formState.modNumberOfFloors === "number")
       modifications.numberOfFloors = formState.modNumberOfFloors;
-    if (typeof formState.modBuildingHeight === "number")
-      modifications.buildingHeight = formState.modBuildingHeight;
+    if (typeof formState.modFloorHeight === "number")
+      modifications.floorHeight = formState.modFloorHeight;
     if (typeof formState.modWallUValue === "number")
       modifications.wallUValue = formState.modWallUValue;
     if (typeof formState.modRoofUValue === "number")

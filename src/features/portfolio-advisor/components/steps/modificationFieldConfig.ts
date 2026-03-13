@@ -30,11 +30,13 @@ export const MODIFICATION_FIELDS: ModificationFieldConfig[] = [
     group: "geometry",
   },
   {
-    field: "modBuildingHeight",
-    label: "Building Height (m)",
-    getPlaceholder: (a) => `Default: ${a.buildingHeight}`,
+    field: "modFloorHeight",
+    label: "Floor Height (m)",
+    getPlaceholder: (a) => `Default: ${a.floorHeight}`,
     min: 2,
-    max: 60,
+    max: 6,
+    step: 0.1,
+    decimalScale: 1,
     group: "geometry",
   },
   {

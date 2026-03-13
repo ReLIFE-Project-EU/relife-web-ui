@@ -151,7 +151,7 @@ const stubArchetypeDetails: ArchetypeDetails = {
   name: "GR_SFH_1961_1980",
   floorArea: 100,
   numberOfFloors: 2,
-  buildingHeight: 6,
+  floorHeight: 3,
   totalWindowArea: 10,
   thermalProperties: {
     wallUValue: 1.5,

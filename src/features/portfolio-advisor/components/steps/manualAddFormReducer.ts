@@ -14,7 +14,7 @@ export interface ManualAddFormState {
   selectedArchetypeName: string | null;
   modFloorArea: number | string;
   modNumberOfFloors: number | string;
-  modBuildingHeight: number | string;
+  modFloorHeight: number | string;
   modWallUValue: number | string;
   modRoofUValue: number | string;
   modWindowUValue: number | string;
@@ -37,7 +37,7 @@ export const initialFormState: ManualAddFormState = {
   selectedArchetypeName: null,
   modFloorArea: "",
   modNumberOfFloors: "",
-  modBuildingHeight: "",
+  modFloorHeight: "",
   modWallUValue: "",
   modRoofUValue: "",
   modWindowUValue: "",

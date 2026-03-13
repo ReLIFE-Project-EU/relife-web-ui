@@ -145,7 +145,7 @@ function createMockArchetypeDetails(): ArchetypeDetails {
     name: "SFH_Italy_1990_2000",
     floorArea: 100,
     numberOfFloors: 2,
-    buildingHeight: 6,
+    floorHeight: 3,
     totalWindowArea: 10,
     thermalProperties: { wallUValue: 1.5, roofUValue: 0.8, windowUValue: 2.8 },
     setpoints: {
@@ -169,7 +169,7 @@ describe("archetypeModifier", () => {
       const mods: BuildingModifications = {
         floorArea: 150,
         numberOfFloors: 3,
-        buildingHeight: 9,
+        floorHeight: 4,
         wallUValue: 1.0,
         roofUValue: 0.5,
         windowUValue: 2.0,
