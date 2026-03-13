@@ -1,32 +1,11 @@
 /**
  * MeasureSelector Component
  * Displays renovation measures grouped by category with multi-select capability.
- *
- * NOTE: Cost estimates are not shown here. Per D3.2 design document,
- * CAPEX/costs are retrieved from the ReLIFE Database or Financial API,
- * not calculated by the frontend. However, users can optionally provide
- * their own CAPEX estimate if they have one.
  */
 
-import {
-  Alert,
-  Box,
-  Divider,
-  Group,
-  NumberInput,
-  Paper,
-  SimpleGrid,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
-import {
-  IconAlertTriangle,
-  IconCurrencyEuro,
-  IconInfoCircle,
-} from "@tabler/icons-react";
+import { Alert, Box, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import { IconInfoCircle } from "@tabler/icons-react";
 import type { RenovationMeasureId } from "../../context/types";
-import { checkCapexPerSqm } from "../../../../utils/inputSanityChecks";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 import { MeasureCard } from "./MeasureCard";
@@ -37,29 +16,9 @@ export function MeasureSelector() {
 
   const categories = renovation.getCategories();
   const selectedMeasures = state.renovation.selectedMeasures;
-  const estimatedCapex = state.renovation.estimatedCapex;
-  const estimatedMaintenanceCost = state.renovation.estimatedMaintenanceCost;
-  const floorArea = state.building.floorArea;
-
-  const capexWarning =
-    estimatedCapex !== null && floorArea !== null && floorArea > 0
-      ? checkCapexPerSqm(estimatedCapex, floorArea)
-      : { warning: false, message: "" };
 
   const handleToggleMeasure = (measureId: RenovationMeasureId) => {
     dispatch({ type: "TOGGLE_MEASURE", measureId });
-  };
-
-  const handleCapexChange = (value: string | number) => {
-    // Convert to number or null if empty
-    const capex = typeof value === "number" ? value : null;
-    dispatch({ type: "SET_ESTIMATED_CAPEX", capex });
-  };
-
-  const handleMaintenanceCostChange = (value: string | number) => {
-    // Convert to number or null if empty
-    const cost = typeof value === "number" ? value : null;
-    dispatch({ type: "SET_ESTIMATED_MAINTENANCE_COST", cost });
   };
 
   return (
@@ -79,7 +38,8 @@ export function MeasureSelector() {
       >
         Select one or more renovation measures to evaluate. Cost estimates and
         energy savings will be calculated based on your building
-        characteristics.
+        characteristics. Package-level cost inputs are configured in the
+        suggested packages section below.
       </Alert>
 
       <Stack gap="xl">
@@ -111,81 +71,18 @@ export function MeasureSelector() {
         })}
       </Stack>
 
-      {/* Selection summary and cost inputs */}
+      {/* Selection summary */}
       {selectedMeasures.length > 0 && (
         <>
-          <Divider my="lg" />
-          <Paper withBorder p="md" radius="md" bg="gray.0">
-            <Stack gap="md">
-              <Box>
-                <Text size="sm" c="dimmed">
-                  Selected measures
-                </Text>
-                <Text fw={500}>
-                  {selectedMeasures.length}{" "}
-                  {selectedMeasures.length === 1 ? "measure" : "measures"}{" "}
-                  selected
-                </Text>
-              </Box>
-              <Alert
-                variant="light"
-                color="yellow"
-                icon={<IconInfoCircle size={16} />}
-              >
-                <Text fw={600} size="sm" mb={4}>
-                  Temporary requirement
-                </Text>
-                Due to a current API limitation, these cost fields cannot be
-                left empty for now. The pre-filled values are starting estimates
-                — please update them to match your project. This requirement
-                will be removed once the backend is updated.
-              </Alert>
-              <Group grow align="flex-start">
-                <NumberInput
-                  label="Estimated CAPEX"
-                  description="Total investment cost. Defaults to a starting estimate; update to reflect your project."
-                  placeholder="e.g. 25000"
-                  value={estimatedCapex ?? ""}
-                  onChange={handleCapexChange}
-                  min={0}
-                  step={1000}
-                  thousandSeparator=","
-                  leftSection={<IconCurrencyEuro size={16} />}
-                  error={
-                    estimatedCapex === null
-                      ? "Required — please enter a value or keep the default."
-                      : undefined
-                  }
-                />
-                <NumberInput
-                  label="Annual maintenance cost"
-                  description="Yearly O&M cost. Defaults to a starting estimate; update to reflect your project."
-                  placeholder="e.g. 500"
-                  value={estimatedMaintenanceCost ?? ""}
-                  onChange={handleMaintenanceCostChange}
-                  min={0}
-                  step={100}
-                  thousandSeparator=","
-                  leftSection={<IconCurrencyEuro size={16} />}
-                  suffix="/year"
-                  error={
-                    estimatedMaintenanceCost === null
-                      ? "Required — please enter a value or keep the default."
-                      : undefined
-                  }
-                />
-              </Group>
-              {capexWarning.warning && (
-                <Alert
-                  color="yellow"
-                  icon={<IconAlertTriangle size={16} />}
-                  variant="light"
-                >
-                  {capexWarning.message}
-                </Alert>
-              )}
-            </Stack>
-          </Paper>
+          <Box mt="lg">
+            <Text size="sm" c="dimmed">
+              Selected measures
+            </Text>
+            <Text fw={500}>
+              {selectedMeasures.length}{" "}
+              {selectedMeasures.length === 1 ? "measure" : "measures"} selected
+            </Text>
+          </Box>
         </>
       )}
     </Box>

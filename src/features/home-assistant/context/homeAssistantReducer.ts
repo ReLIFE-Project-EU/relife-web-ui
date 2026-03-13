@@ -2,12 +2,18 @@
  * Reducer for the Home Renovation Assistant wizard state.
  */
 
-import { PROJECT_LIFETIME_DEFAULT } from "../constants";
+import {
+  PACKAGE_ANNUAL_MAINTENANCE_DEFAULT,
+  PACKAGE_CAPEX_DEFAULT,
+  PACKAGE_SELECTION_MAX,
+  PROJECT_LIFETIME_DEFAULT,
+} from "../constants";
 import type {
   BuildingInfo,
   FundingOptions,
   HomeAssistantAction,
   HomeAssistantState,
+  PackageFinancialInputsById,
   RenovationSelections,
 } from "./types";
 
@@ -15,9 +21,6 @@ import type {
 // Temporary defaults — pre-fill cost fields while the Financial API requires
 // non-null values. These will be removed once the backend accepts null.
 // ─────────────────────────────────────────────────────────────────────────────
-
-const DEFAULT_CAPEX = 10_000; // EUR — typical single-measure starting estimate
-const DEFAULT_ANNUAL_MAINTENANCE = 300; // EUR/year — typical O&M starting estimate
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Initial State
@@ -62,8 +65,8 @@ const initialBuilding: BuildingInfo = {
 
 const initialRenovation: RenovationSelections = {
   selectedMeasures: [],
-  estimatedCapex: DEFAULT_CAPEX,
-  estimatedMaintenanceCost: DEFAULT_ANNUAL_MAINTENANCE,
+  estimatedCapex: PACKAGE_CAPEX_DEFAULT,
+  estimatedMaintenanceCost: PACKAGE_ANNUAL_MAINTENANCE_DEFAULT,
 };
 
 const initialFunding: FundingOptions = {
@@ -81,10 +84,12 @@ export const initialState: HomeAssistantState = {
   estimation: null,
   renovation: initialRenovation,
   funding: initialFunding,
+  suggestedPackages: [],
+  selectedPackageIds: [],
+  packageFinancialInputs: {},
   scenarios: [],
   financialResults: {} as Record<string, never>,
   selectedFundingOption: "none",
-  selectedFinancialScenario: "baseline",
   selectedPersona: "cost-optimization",
   mcdaRanking: null,
   isEstimating: false,
@@ -111,6 +116,24 @@ const clearedFinancialResults = {
   financialResults: {} as Record<string, never>,
   mcdaRanking: null,
 } as const;
+
+function createDefaultPackageFinancialInput() {
+  return {
+    capex: PACKAGE_CAPEX_DEFAULT,
+    annualMaintenanceCost: PACKAGE_ANNUAL_MAINTENANCE_DEFAULT,
+  };
+}
+
+function syncPackageFinancialInputs(
+  packageIds: string[],
+  currentInputs: PackageFinancialInputsById,
+): PackageFinancialInputsById {
+  return packageIds.reduce<PackageFinancialInputsById>((acc, packageId) => {
+    acc[packageId] =
+      currentInputs[packageId] ?? createDefaultPackageFinancialInput();
+    return acc;
+  }, {});
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Reducer
@@ -212,6 +235,9 @@ export function homeAssistantReducer(
           ...state.renovation,
           selectedMeasures: newSelectedMeasures,
         },
+        suggestedPackages: [],
+        selectedPackageIds: [],
+        packageFinancialInputs: {},
         // Clear evaluation results when selections change
         ...clearedEvaluationResults,
       };
@@ -224,27 +250,56 @@ export function homeAssistantReducer(
           ...state.renovation,
           selectedMeasures: action.measures,
         },
+        suggestedPackages: [],
+        selectedPackageIds: [],
+        packageFinancialInputs: {},
         ...clearedEvaluationResults,
       };
     }
 
-    case "SET_ESTIMATED_CAPEX": {
+    case "SET_SUGGESTED_PACKAGES": {
+      const packageIds = action.packages.map((pkg) => pkg.id);
+
       return {
         ...state,
-        renovation: {
-          ...state.renovation,
-          estimatedCapex: action.capex,
-        },
+        suggestedPackages: action.packages,
+        selectedPackageIds: [],
+        packageFinancialInputs: syncPackageFinancialInputs(
+          packageIds,
+          state.packageFinancialInputs,
+        ),
         ...clearedEvaluationResults,
       };
     }
 
-    case "SET_ESTIMATED_MAINTENANCE_COST": {
+    case "TOGGLE_PACKAGE": {
+      const isSelected = state.selectedPackageIds.includes(action.packageId);
+      if (
+        !isSelected &&
+        state.selectedPackageIds.length >= PACKAGE_SELECTION_MAX
+      ) {
+        return state;
+      }
+
       return {
         ...state,
-        renovation: {
-          ...state.renovation,
-          estimatedMaintenanceCost: action.cost,
+        selectedPackageIds: isSelected
+          ? state.selectedPackageIds.filter((id) => id !== action.packageId)
+          : [...state.selectedPackageIds, action.packageId],
+        ...clearedEvaluationResults,
+      };
+    }
+
+    case "SET_PACKAGE_FINANCIAL_INPUT": {
+      return {
+        ...state,
+        packageFinancialInputs: {
+          ...state.packageFinancialInputs,
+          [action.packageId]: {
+            ...(state.packageFinancialInputs[action.packageId] ??
+              createDefaultPackageFinancialInput()),
+            [action.field]: action.value,
+          },
         },
         ...clearedEvaluationResults,
       };
@@ -311,12 +366,6 @@ export function homeAssistantReducer(
       return {
         ...state,
         selectedFundingOption: action.option,
-      };
-
-    case "SELECT_FINANCIAL_SCENARIO":
-      return {
-        ...state,
-        selectedFinancialScenario: action.scenario,
       };
 
     case "SELECT_PERSONA":

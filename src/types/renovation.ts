@@ -214,12 +214,25 @@ export interface FundingOptions {
 // Results Types (Screen 3)
 // ─────────────────────────────────────────────────────────────────────────────
 
+export interface RenovationPackage {
+  id: string;
+  label: string;
+  measureIds: RenovationMeasureId[];
+}
+
+export interface PackageFinancialInput {
+  capex: number | null;
+  annualMaintenanceCost: number | null;
+}
+
+export type PackageFinancialInputsById = Record<string, PackageFinancialInput>;
+
 /**
  * Scenario IDs for comparison.
  * - "current": Baseline before renovation
- * - "renovated": After applying selected measures
+ * - dynamic package IDs for evaluated renovation options
  */
-export type ScenarioId = "current" | "renovated";
+export type ScenarioId = string;
 
 export interface RenovationScenario {
   id: ScenarioId;
@@ -230,6 +243,8 @@ export interface RenovationScenario {
   heatingCoolingNeeds: number; // kWh/year (HVAC demand, API-derived)
   flexibilityIndex: number;
   comfortIndex: number;
+  packageId: string | null;
+  measureIds: RenovationMeasureId[];
   measures: string[];
 }
 
@@ -269,7 +284,7 @@ export interface RiskAssessmentPointForecasts {
 export interface RiskAssessmentMetadata {
   n_sims?: number; // Number of Monte Carlo simulations (optional - only show if API returns it)
   project_lifetime: number;
-  capex: number; // Used CAPEX value (may come from API dataset)
+  capex: number; // Used CAPEX value returned by the Financial API metadata
   loan_amount: number;
   annual_loan_payment?: number;
   loan_rate_percent?: number;

@@ -33,6 +33,7 @@ export function DecisionSupport() {
   } = state;
 
   const renovationScenarios = scenarios.filter((s) => s.id !== "current");
+  const canRank = renovationScenarios.length >= 2;
 
   // Get available personas from service
   const personas = mcda.getPersonas();
@@ -90,9 +91,10 @@ export function DecisionSupport() {
         </Box>
 
         <Alert variant="light" color="blue" icon={<IconInfoCircle size={16} />}>
-          Select a profile that matches your priorities. The ranking considers
-          energy efficiency, sustainability, comfort, and financial factors
-          based on your profile.
+          Select a profile that matches your priorities. The ranking uses the
+          Technical API over the evaluated envelope packages. Some criteria
+          currently use placeholder values while the live integration is still
+          being expanded.
         </Alert>
 
         {/* Persona Selection */}
@@ -120,46 +122,23 @@ export function DecisionSupport() {
             loading={isRanking}
             leftSection={<IconTrophy size={16} />}
             color="green"
+            disabled={!canRank}
           >
             Run
           </Button>
         </Group>
 
-        {/* Persona Weights Display */}
         {selectedPersonaData && (
-          <Box
-            p="sm"
-            style={{
-              backgroundColor: "var(--mantine-color-gray-0)",
-              borderRadius: "var(--mantine-radius-sm)",
-            }}
-          >
-            <Text size="xs" c="dimmed" mb="xs">
-              Priority weights for "{selectedPersonaData.name}":
-            </Text>
-            <Group gap="xs">
-              <WeightBadge
-                label="Financial"
-                weight={selectedPersonaData.weights.financial}
-              />
-              <WeightBadge
-                label="Energy"
-                weight={selectedPersonaData.weights.energyEfficiency}
-              />
-              <WeightBadge
-                label="Comfort"
-                weight={selectedPersonaData.weights.userComfort}
-              />
-              <WeightBadge
-                label="Sustainability"
-                weight={selectedPersonaData.weights.sustainability}
-              />
-              <WeightBadge
-                label="Renewables"
-                weight={selectedPersonaData.weights.resIntegration}
-              />
-            </Group>
-          </Box>
+          <Text size="sm" c="dimmed">
+            {selectedPersonaData.description}
+          </Text>
+        )}
+
+        {!canRank && (
+          <Alert color="yellow" icon={<IconInfoCircle size={16} />}>
+            At least two evaluated renovation packages are required to run the
+            ranking.
+          </Alert>
         )}
 
         {/* Ranking Results */}
@@ -169,65 +148,63 @@ export function DecisionSupport() {
               Ranking Results
             </Text>
             <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
-              {mcdaRanking
-                .sort((a, b) => a.rank - b.rank)
-                .map((result) => {
-                  const scenario = renovationScenarios.find(
-                    (s) => s.id === result.scenarioId,
-                  );
-                  if (!scenario) return null;
+              {mcdaRanking.map((result) => {
+                const scenario = renovationScenarios.find(
+                  (s) => s.id === result.scenarioId,
+                );
+                if (!scenario) return null;
 
-                  const isFirst = result.rank === 1;
+                const isFirst = result.rank === 1;
 
-                  return (
-                    <Box
-                      key={result.scenarioId}
-                      p="md"
+                return (
+                  <Box
+                    key={result.scenarioId}
+                    p="md"
+                    style={{
+                      backgroundColor: isFirst
+                        ? "var(--mantine-color-yellow-0)"
+                        : "var(--mantine-color-gray-0)",
+                      borderRadius: "var(--mantine-radius-sm)",
+                      border: isFirst
+                        ? "2px solid var(--mantine-color-yellow-5)"
+                        : "1px solid var(--mantine-color-gray-3)",
+                      position: "relative",
+                    }}
+                  >
+                    {/* Rank Badge */}
+                    <Badge
+                      color={getRankColor(result.rank)}
+                      variant={result.rank === 1 ? "filled" : "light"}
+                      size="lg"
                       style={{
-                        backgroundColor: isFirst
-                          ? "var(--mantine-color-yellow-0)"
-                          : "var(--mantine-color-gray-0)",
-                        borderRadius: "var(--mantine-radius-sm)",
-                        border: isFirst
-                          ? "2px solid var(--mantine-color-yellow-5)"
-                          : "1px solid var(--mantine-color-gray-3)",
-                        position: "relative",
+                        position: "absolute",
+                        top: -10,
+                        right: 10,
                       }}
                     >
-                      {/* Rank Badge */}
-                      <Badge
-                        color={getRankColor(result.rank)}
-                        variant={result.rank === 1 ? "filled" : "light"}
-                        size="lg"
-                        style={{
-                          position: "absolute",
-                          top: -10,
-                          right: 10,
-                        }}
-                      >
-                        #{result.rank}
-                      </Badge>
+                      #{result.rank}
+                    </Badge>
 
-                      <Stack gap="xs" mt="sm">
-                        <Text fw={600} size="lg">
-                          {scenario.label}
-                        </Text>
-                        <Text size="sm" c="dimmed">
-                          Score: {(result.score * 100).toFixed(1)}%
-                        </Text>
-                        {isFirst && (
-                          <Badge
-                            color="yellow"
-                            variant="light"
-                            leftSection={<IconTrophy size={12} />}
-                          >
-                            {getRankLabel(result.rank)}
-                          </Badge>
-                        )}
-                      </Stack>
-                    </Box>
-                  );
-                })}
+                    <Stack gap="xs" mt="sm">
+                      <Text fw={600} size="lg">
+                        {scenario.label}
+                      </Text>
+                      <Text size="sm" c="dimmed">
+                        Score: {(result.score * 100).toFixed(1)}%
+                      </Text>
+                      {isFirst && (
+                        <Badge
+                          color="yellow"
+                          variant="light"
+                          leftSection={<IconTrophy size={12} />}
+                        >
+                          {getRankLabel(result.rank)}
+                        </Badge>
+                      )}
+                    </Stack>
+                  </Box>
+                );
+              })}
             </SimpleGrid>
           </Box>
         )}
@@ -235,30 +212,12 @@ export function DecisionSupport() {
         {/* No ranking yet message */}
         {!mcdaRanking && (
           <Text size="sm" c="dimmed" ta="center" py="md">
-            Select a profile and click "Run" to see personalized ranking
+            {canRank
+              ? 'Select a profile and click "Run" to see personalized ranking'
+              : "Evaluate more than one package to enable ranking"}
           </Text>
         )}
       </Stack>
     </Card>
-  );
-}
-
-interface WeightBadgeProps {
-  label: string;
-  weight: number;
-}
-
-function WeightBadge({ label, weight }: WeightBadgeProps) {
-  // Determine intensity based on weight
-  const getIntensity = (w: number) => {
-    if (w >= 0.3) return "filled";
-    if (w >= 0.2) return "light";
-    return "outline";
-  };
-
-  return (
-    <Badge variant={getIntensity(weight)} color="blue" size="sm">
-      {label}: {(weight * 100).toFixed(0)}%
-    </Badge>
   );
 }

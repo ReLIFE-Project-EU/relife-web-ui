@@ -1,8 +1,9 @@
-import { vi, describe, test, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import type {
   BuildingInfo,
   EstimationResult,
   FundingOptions,
+  PackageFinancialInputsById,
   RenovationScenario,
   ScenarioId,
 } from "../../../src/types/renovation";
@@ -21,15 +22,11 @@ vi.mock("../../../src/api", () => ({
 
 import { FinancialService } from "../../../src/services/FinancialService";
 
-// ---------------------------------------------------------------------------
-// Stub API responses (raw shape returned by the API wrappers)
-// ---------------------------------------------------------------------------
-
 const stubARVResponse = {
   price_per_sqm: 2000,
   total_price: 200000,
   floor_area: 100,
-  energy_class: "\u0394", // Greek Delta (D)
+  energy_class: "\u0394",
   metadata: {},
 };
 
@@ -53,10 +50,6 @@ const stubRiskResponse = {
   percentiles: null,
   visualizations: null,
 };
-
-// ---------------------------------------------------------------------------
-// Test data
-// ---------------------------------------------------------------------------
 
 const mockBuilding = {
   country: "Greece",
@@ -99,6 +92,7 @@ const mockFundingOptions: FundingOptions = {
 
 const renovatedScenario = {
   id: "renovated" as ScenarioId,
+  packageId: "renovated",
   label: "After Renovation",
   epcClass: "B",
   annualEnergyNeeds: 5000,
@@ -106,12 +100,32 @@ const renovatedScenario = {
   heatingCoolingNeeds: 5000,
   flexibilityIndex: 55,
   comfortIndex: 75,
+  measureIds: ["wall-insulation"],
   measures: ["Wall Insulation"],
 } as RenovationScenario;
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+const secondScenario = {
+  ...renovatedScenario,
+  id: "package-windows" as ScenarioId,
+  packageId: "package-windows",
+  label: "Window Replacement",
+  annualEnergyNeeds: 4000,
+  annualEnergyCost: 1000,
+  heatingCoolingNeeds: 4000,
+  measureIds: ["windows"],
+  measures: ["Window Replacement"],
+} as RenovationScenario;
+
+const packageFinancialInputs: PackageFinancialInputsById = {
+  renovated: {
+    capex: 10000,
+    annualMaintenanceCost: 300,
+  },
+  "package-windows": {
+    capex: 18000,
+    annualMaintenanceCost: 450,
+  },
+};
 
 describe("FinancialService", () => {
   beforeEach(() => {
@@ -128,13 +142,10 @@ describe("FinancialService", () => {
       mockFundingOptions,
       100,
       mockEstimation,
-      "baseline",
-      null,
-      null,
+      packageFinancialInputs,
       mockBuilding,
     );
 
-    // "B" should be mapped to Greek Beta (Β = \u0392)
     expect(mockCalculateARV).toHaveBeenCalledWith(
       expect.objectContaining({ energy_class: "\u0392" }),
     );
@@ -148,9 +159,7 @@ describe("FinancialService", () => {
       mockFundingOptions,
       100,
       mockEstimation,
-      "baseline",
-      null,
-      null,
+      packageFinancialInputs,
       mockBuilding,
     );
 
@@ -167,15 +176,12 @@ describe("FinancialService", () => {
   test("risk assessment savings = max(0, round(baseline - renovated))", async () => {
     const service = new FinancialService();
 
-    // baseline=15000, renovated=5000 → savings=10000
     await service.calculateForAllScenarios(
       [renovatedScenario],
       mockFundingOptions,
       100,
       mockEstimation,
-      "baseline",
-      null,
-      null,
+      packageFinancialInputs,
       mockBuilding,
     );
 
@@ -189,7 +195,7 @@ describe("FinancialService", () => {
 
     const highEnergyScenario: RenovationScenario = {
       ...renovatedScenario,
-      annualEnergyNeeds: 20000, // > baseline 15000
+      annualEnergyNeeds: 20000,
     };
 
     const results = await service.calculateForAllScenarios(
@@ -197,9 +203,12 @@ describe("FinancialService", () => {
       mockFundingOptions,
       100,
       mockEstimation,
-      "baseline",
-      null,
-      null,
+      {
+        renovated: {
+          capex: 10000,
+          annualMaintenanceCost: 300,
+        },
+      },
       mockBuilding,
     );
 
@@ -215,14 +224,72 @@ describe("FinancialService", () => {
       mockFundingOptions,
       100,
       mockEstimation,
-      "baseline",
-      null,
-      null,
+      packageFinancialInputs,
       mockBuilding,
     );
 
     expect(mockAssessRisk).toHaveBeenCalledWith(
       expect.objectContaining({ output_level: "professional" }),
+    );
+  });
+
+  test("uses package-specific CAPEX and maintenance values for each scenario", async () => {
+    const service = new FinancialService();
+
+    await service.calculateForAllScenarios(
+      [renovatedScenario, secondScenario],
+      mockFundingOptions,
+      100,
+      mockEstimation,
+      packageFinancialInputs,
+      mockBuilding,
+    );
+
+    expect(mockAssessRisk).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        capex: 10000,
+        annual_maintenance_cost: 300,
+      }),
+    );
+    expect(mockAssessRisk).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        capex: 18000,
+        annual_maintenance_cost: 450,
+      }),
+    );
+  });
+
+  test("applies loan amounts per scenario package", async () => {
+    const service = new FinancialService();
+    const fundedOptions: FundingOptions = {
+      financingType: "loan",
+      loan: { percentage: 50, duration: 12, interestRate: 0.04 },
+    };
+
+    await service.calculateForAllScenarios(
+      [renovatedScenario, secondScenario],
+      fundedOptions,
+      100,
+      mockEstimation,
+      packageFinancialInputs,
+      mockBuilding,
+    );
+
+    expect(mockAssessRisk).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        capex: 10000,
+        loan_amount: 5000,
+      }),
+    );
+    expect(mockAssessRisk).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        capex: 18000,
+        loan_amount: 9000,
+      }),
     );
   });
 });

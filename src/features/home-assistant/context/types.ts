@@ -17,11 +17,13 @@
 import type {
   BuildingInfo,
   FinancialResults,
-  FinancialScenario,
   FinancingType,
   FundingOptions,
   LoanDetails,
   MCDARankingResult,
+  PackageFinancialInput,
+  PackageFinancialInputsById,
+  RenovationPackage,
   RenovationMeasureId,
   RenovationScenario,
   RenovationSelections,
@@ -42,7 +44,10 @@ export type {
   LoanDetails,
   MCDARankingResult,
   PackageId,
+  PackageFinancialInput,
+  PackageFinancialInputsById,
   PercentileData,
+  RenovationPackage,
   RenovationMeasureId,
   RenovationScenario,
   RenovationSelections,
@@ -69,12 +74,14 @@ export interface HomeAssistantState {
   // Screen 2 selections
   renovation: RenovationSelections;
   funding: FundingOptions;
+  suggestedPackages: RenovationPackage[];
+  selectedPackageIds: string[];
+  packageFinancialInputs: PackageFinancialInputsById;
 
   // Screen 3 results
   scenarios: RenovationScenario[];
   financialResults: Record<ScenarioId, FinancialResults>; // keyed by scenario ID
   selectedFundingOption: string;
-  selectedFinancialScenario: FinancialScenario;
   selectedPersona: string;
   mcdaRanking: MCDARankingResult[] | null;
 
@@ -109,8 +116,17 @@ export type HomeAssistantAction =
   // Renovation measure selections
   | { type: "TOGGLE_MEASURE"; measureId: RenovationMeasureId }
   | { type: "SET_MEASURES"; measures: RenovationMeasureId[] }
-  | { type: "SET_ESTIMATED_CAPEX"; capex: number | null }
-  | { type: "SET_ESTIMATED_MAINTENANCE_COST"; cost: number | null }
+  | {
+      type: "SET_SUGGESTED_PACKAGES";
+      packages: RenovationPackage[];
+    }
+  | { type: "TOGGLE_PACKAGE"; packageId: string }
+  | {
+      type: "SET_PACKAGE_FINANCIAL_INPUT";
+      packageId: string;
+      field: keyof PackageFinancialInput;
+      value: number | null;
+    }
 
   // Funding options
   | { type: "SET_FINANCING_TYPE"; financingType: FinancingType }
@@ -127,7 +143,6 @@ export type HomeAssistantAction =
 
   // Results interaction
   | { type: "SELECT_FUNDING_OPTION"; option: string }
-  | { type: "SELECT_FINANCIAL_SCENARIO"; scenario: FinancialScenario }
   | { type: "SELECT_PERSONA"; persona: string }
 
   // MCDA ranking

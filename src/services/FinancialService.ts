@@ -16,8 +16,8 @@ import type {
   CashFlowData,
   EstimationResult,
   FinancialResults,
-  FinancialScenario,
   FundingOptions,
+  PackageFinancialInputsById,
   PercentileData,
   RenovationScenario,
   RiskAssessmentPercentiles,
@@ -139,9 +139,7 @@ export class FinancialService implements IFinancialService {
    * @param fundingOptions Funding/loan configuration
    * @param floorArea Building floor area in m²
    * @param currentEstimation Current building energy estimation
-   * @param _financialScenario Economic scenario (baseline/optimistic/pessimistic)
-   * @param totalCapex Total capital expenditure for renovation (EUR), or null to let API fetch from database
-   * @param annualMaintenanceCost Annual O&M cost (EUR/year), or null to let API fetch from database
+   * @param packageFinancialInputs Package-scoped CAPEX and annual maintenance cost keyed by scenario/package id
    * @param building Building information for ARV calculation
    */
   async calculateForAllScenarios(
@@ -149,9 +147,7 @@ export class FinancialService implements IFinancialService {
     fundingOptions: FundingOptions,
     floorArea: number,
     currentEstimation: EstimationResult,
-    _financialScenario: FinancialScenario,
-    totalCapex: number | null,
-    annualMaintenanceCost: number | null,
+    packageFinancialInputs: PackageFinancialInputsById,
     building: BuildingInfo,
   ): Promise<Record<ScenarioId, FinancialResults>> {
     const results: Record<string, FinancialResults> = {};
@@ -184,15 +180,29 @@ export class FinancialService implements IFinancialService {
         continue;
       }
 
-      // For renovated scenario, use the provided totalCapex if available
-      // If totalCapex is null or 0, let the API fetch from its internal dataset
-      const hasCapex = totalCapex !== null && totalCapex > 0;
-      const renovationCost = hasCapex ? totalCapex : 0;
+      const packageInput = packageFinancialInputs[scenario.id];
+      if (
+        !packageInput ||
+        packageInput.capex === null ||
+        packageInput.capex <= 0
+      ) {
+        throw new Error(`Missing CAPEX for scenario ${scenario.id}`);
+      }
+      if (
+        packageInput.annualMaintenanceCost === null ||
+        packageInput.annualMaintenanceCost < 0
+      ) {
+        throw new Error(
+          `Missing annual maintenance cost for scenario ${scenario.id}`,
+        );
+      }
 
-      // Apply funding options only if we have a CAPEX value
-      const { effectiveCost, loanAmount } = hasCapex
-        ? applyFundingReduction(renovationCost, fundingOptions)
-        : { effectiveCost: undefined, loanAmount: 0 };
+      const renovationCost = packageInput.capex;
+      const annualMaintenanceCost = packageInput.annualMaintenanceCost;
+      const { effectiveCost, loanAmount } = applyFundingReduction(
+        renovationCost,
+        fundingOptions,
+      );
 
       // Calculate loan term based on financing type
       const loanTerm =
@@ -213,11 +223,6 @@ export class FinancialService implements IFinancialService {
         renovated_last_5_years: building.renovatedLast5Years,
       };
 
-      // Risk assessment request
-      // Note: capex and annual_maintenance_cost are optional
-      // If undefined, API retrieves from internal dataset
-      const hasMaintenanceCost =
-        annualMaintenanceCost !== null && annualMaintenanceCost > 0;
       const annualEnergySavingsKWh = Math.max(
         0,
         currentEstimation.annualEnergyNeeds - (scenario.annualEnergyNeeds ?? 0),
@@ -227,10 +232,8 @@ export class FinancialService implements IFinancialService {
         annual_energy_savings: Math.round(annualEnergySavingsKWh),
         project_lifetime: building.projectLifetime,
         output_level: this.outputLevel,
-        capex: effectiveCost, // undefined if no CAPEX provided, API will fetch from DB
-        annual_maintenance_cost: hasMaintenanceCost
-          ? annualMaintenanceCost
-          : undefined,
+        capex: effectiveCost,
+        annual_maintenance_cost: annualMaintenanceCost,
         loan_amount: loanAmount,
         loan_term: loanTerm,
       };
@@ -250,9 +253,7 @@ export class FinancialService implements IFinancialService {
         riskAssessment: riskResult,
         capitalExpenditure: riskResult
           ? Math.round(riskResult.metadata.capex)
-          : hasCapex
-            ? Math.round(effectiveCost ?? renovationCost)
-            : 0,
+          : Math.round(effectiveCost),
         returnOnInvestment: riskResult?.pointForecasts.ROI ?? 0,
         paybackTime: riskResult?.pointForecasts.PBP ?? 0,
         netPresentValue: riskResult?.pointForecasts.NPV ?? 0,

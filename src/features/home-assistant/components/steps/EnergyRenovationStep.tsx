@@ -3,12 +3,18 @@
  * Screen 2: Shows energy estimation results and allows renovation/funding selection.
  */
 
+import { useEffect } from "react";
 import { Alert, Box, Divider, Stack, Text, Title } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 import { ComfortDisplay, EnergyMixDisplay, EPCDisplay } from "../energy";
-import { FundingOptions, MeasureSelector } from "../renovation";
+import {
+  FundingOptions,
+  MeasureSelector,
+  PackageSelector,
+  areSelectedPackagesReady,
+} from "../renovation";
 import { ErrorAlert, StepNavigation } from "../shared";
 
 export function EnergyRenovationStep() {
@@ -16,6 +22,9 @@ export function EnergyRenovationStep() {
   const { financial, renovation } = useHomeAssistantServices();
 
   const selectedMeasures = state.renovation.selectedMeasures;
+  const suggestedPackages = state.suggestedPackages;
+  const selectedPackageIds = state.selectedPackageIds;
+  const packageFinancialInputs = state.packageFinancialInputs;
   const floorArea = state.building.floorArea || 100;
 
   // Identify unsupported measures that are selected (if any)
@@ -23,12 +32,31 @@ export function EnergyRenovationStep() {
     (m) => !renovation.getMeasure(m)?.isSupported,
   );
 
-  // Enable evaluation only when at least one measure is selected
-  // AND at least one supported measure is selected (to avoid empty API calls)
-  const hasSupportedMeasure = selectedMeasures.some(
-    (m) => renovation.getMeasure(m)?.isSupported,
+  const canEvaluate = areSelectedPackagesReady(
+    selectedPackageIds,
+    packageFinancialInputs,
   );
-  const canEvaluate = selectedMeasures.length > 0 && hasSupportedMeasure;
+
+  useEffect(() => {
+    const nextPackages = renovation.suggestPackages(selectedMeasures);
+    const hasSamePackages =
+      nextPackages.length === suggestedPackages.length &&
+      nextPackages.every(
+        (pkg, index) =>
+          suggestedPackages[index]?.id === pkg.id &&
+          suggestedPackages[index]?.measureIds.join(",") ===
+            pkg.measureIds.join(","),
+      );
+
+    if (hasSamePackages) {
+      return;
+    }
+
+    dispatch({
+      type: "SET_SUGGESTED_PACKAGES",
+      packages: nextPackages,
+    });
+  }, [dispatch, renovation, selectedMeasures, suggestedPackages]);
 
   const handlePrevious = () => {
     dispatch({ type: "PREV_STEP" });
@@ -40,18 +68,15 @@ export function EnergyRenovationStep() {
     dispatch({ type: "START_EVALUATION" });
 
     try {
-      // Evaluate renovation scenarios based on selected measures
-      // TODO: In production, this calls the Forecasting API
+      const selectedPackages = suggestedPackages.filter((pkg) =>
+        selectedPackageIds.includes(pkg.id),
+      );
+
       const scenarios = await renovation.evaluateScenarios(
         state.building,
         state.estimation,
-        selectedMeasures,
+        selectedPackages,
       );
-
-      // CAPEX and maintenance cost: Use user-provided values if available, otherwise null
-      // When null, the Financial API retrieves values from its internal dataset
-      const totalCapex = state.renovation.estimatedCapex;
-      const annualMaintenanceCost = state.renovation.estimatedMaintenanceCost;
 
       // Calculate financial results for all scenarios
       const financialResults = await financial.calculateForAllScenarios(
@@ -59,9 +84,7 @@ export function EnergyRenovationStep() {
         state.funding,
         floorArea,
         state.estimation,
-        state.selectedFinancialScenario,
-        totalCapex,
-        annualMaintenanceCost,
+        state.packageFinancialInputs,
         state.building,
       );
 
@@ -140,10 +163,29 @@ export function EnergyRenovationStep() {
               .map((m) => renovation.getMeasure(m)?.name)
               .join(", ")}
           </Text>
-          . Only envelope measures (wall, roof, floor, windows) and heat pump
-          will be simulated at this time.
+          . These measures are currently excluded from evaluation in the
+          comparison workflow.
         </Alert>
       )}
+
+      <Alert
+        color="blue"
+        icon={<IconInfoCircle size={16} />}
+        title="Ranked comparison scope"
+      >
+        The current comparison workflow evaluates and ranks envelope measures
+        only: wall, roof, floor, and windows.
+      </Alert>
+
+      {suggestedPackages.length > 0 ? (
+        <PackageSelector />
+      ) : selectedMeasures.length > 0 ? (
+        <Alert color="yellow" icon={<IconInfoCircle size={16} />}>
+          No rankable envelope packages are available from the current
+          selection. Select at least one envelope measure to evaluate and rank
+          renovation packages.
+        </Alert>
+      ) : null}
 
       <Divider my="md" />
 

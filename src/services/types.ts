@@ -18,9 +18,10 @@ import type {
   CashFlowData,
   EstimationResult,
   FinancialResults,
-  FinancialScenario,
   FundingOptions,
   MCDARankingResult,
+  PackageFinancialInputsById,
+  RenovationPackage,
   RenovationMeasureId,
   RenovationScenario,
   RiskAssessmentMetadata,
@@ -208,22 +209,27 @@ export interface IRenovationService {
   getSupportedMeasures(): RenovationMeasure[];
 
   /**
+   * Get all measures that can currently participate in ranked packages.
+   */
+  getRankableMeasures(): RenovationMeasure[];
+
+  /**
    * Get all measure categories with display info
    */
   getCategories(): MeasureCategoryInfo[];
 
   /**
-   * Evaluate renovation scenarios based on selected measures.
-   * Returns "current" (baseline) and "renovated" (with selected measures) scenarios.
-   *
-   * TODO: In production, this should call the Forecasting API to get
-   * actual energy_savings and energy_class values based on building simulation.
-   * Currently returns mock/placeholder data.
+   * Build package suggestions from the selected measures.
+   */
+  suggestPackages(selectedMeasures: RenovationMeasureId[]): RenovationPackage[];
+
+  /**
+   * Evaluate baseline + package scenarios.
    */
   evaluateScenarios(
     building: BuildingInfo,
     estimation: EstimationResult,
-    selectedMeasures: RenovationMeasureId[],
+    packages: RenovationPackage[],
   ): Promise<RenovationScenario[]>;
 }
 
@@ -259,8 +265,8 @@ export interface RiskAssessmentRequest {
   indicators?: string[]; // Default: ["IRR", "NPV", "PBP", "DPP", "ROI"]
   loan_amount?: number; // Default: 0
   loan_term?: number; // Default: 0 (years)
-  // capex and annual_maintenance_cost are optional
-  // API retrieves from internal dataset if not provided
+  // Backend fallback is planned but not currently available in the live service.
+  // HRA supplies these explicitly for now.
   capex?: number;
   annual_maintenance_cost?: number;
   include_visualizations?: boolean; // Override for visualizations
@@ -303,9 +309,7 @@ export interface IFinancialService {
    * @param fundingOptions Funding/loan configuration
    * @param floorArea Building floor area in m²
    * @param currentEstimation Current building energy estimation
-   * @param financialScenario Economic scenario (baseline/optimistic/pessimistic)
-   * @param totalCapex Total capital expenditure for renovation (EUR), or null to let API fetch from database
-   * @param annualMaintenanceCost Annual O&M cost (EUR/year), or null to let API fetch from database
+   * @param packageFinancialInputs Package-scoped CAPEX and annual maintenance cost keyed by scenario/package id
    * @param building Building information for ARV calculation
    */
   calculateForAllScenarios(
@@ -313,22 +317,14 @@ export interface IFinancialService {
     fundingOptions: FundingOptions,
     floorArea: number,
     currentEstimation: EstimationResult,
-    financialScenario: FinancialScenario,
-    totalCapex: number | null,
-    annualMaintenanceCost: number | null,
+    packageFinancialInputs: PackageFinancialInputsById,
     building: BuildingInfo,
   ): Promise<Record<ScenarioId, FinancialResults>>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MCDA Service Types
-// TBD: Technical API provides 5 separate pillar endpoints:
-//   POST /technical/ee  - Energy Efficiency
-//   POST /financial/rei - Renewable Energy Integration
-//   POST /technical/sei - Sustainability & Environmental Impact
-//   POST /technical/uc  - User Comfort
-//   POST /technical/fv  - Financial Viability
-// Current mock implements TOPSIS locally; future: call API endpoints
+// Technical API integration for renovation-package ranking.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface MCDAPersona {
@@ -345,21 +341,17 @@ export interface MCDAPersona {
 }
 
 /**
- * TBD: Technical API pillar request structure
- * Each pillar endpoint expects KPI values with min/max bounds and a profile
+ * @deprecated Kept only for backward-compatible type exports.
  */
 export interface TechnicalPillarRequest {
   profile: string; // Persona ID
-  // Each pillar has specific KPI fields with _kpi, _min, _max suffixes
-  // See api-specs/20260108-125427/technical.json for full schemas
 }
 
 /**
- * TBD: Technical API pillar response structure
+ * @deprecated Kept only for backward-compatible type exports.
  */
 export interface TechnicalPillarResponse {
-  kpiWeight: number; // Normalized weight for this pillar
-  // Plus individual normalized values for each criterion
+  kpiWeight: number;
 }
 
 export interface IMCDAService {
@@ -374,15 +366,8 @@ export interface IMCDAService {
   getPersona(personaId: string): MCDAPersona | undefined;
 
   /**
-   * Rank scenarios using TOPSIS algorithm with persona weights.
+   * Rank renovation scenarios using the Technical API.
    * Returns rankings sorted by rank (1 = best).
-   *
-   * TBD: When Technical API integration is ready, this should:
-   * 1. Extract KPIs from scenarios and financial results
-   * 2. Call each pillar endpoint (/ee, /rei, /sei, /uc, /fv)
-   * 3. Aggregate pillar weights into final ranking
-   *
-   * Current mock implements TOPSIS algorithm locally.
    */
   rank(
     scenarios: RenovationScenario[],

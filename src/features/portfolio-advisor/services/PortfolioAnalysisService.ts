@@ -14,6 +14,7 @@ import type {
   BuildingInfo,
   FundingOptions,
   RenovationMeasureId,
+  RenovationPackage,
 } from "../../../types/renovation";
 import { deriveConstructionYear } from "../../../utils/apiMappings";
 import { PRA_CONCURRENCY_LIMIT } from "../constants";
@@ -116,10 +117,33 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     const estimation = await this.energy.estimateEPC(buildingInfo);
 
     // Step 2: Evaluate renovation scenarios
+    const rankableMeasures = this.renovation
+      .getRankableMeasures()
+      .map((measure) => measure.id);
+    const renovatedMeasures = selectedMeasures.filter((measureId) =>
+      rankableMeasures.includes(measureId),
+    );
+
+    if (selectedMeasures.length > 0 && renovatedMeasures.length === 0) {
+      throw new Error(
+        "The current portfolio analysis flow requires at least one envelope measure. Selected non-envelope measures are visible in the UI but are not yet included in the analysis path.",
+      );
+    }
+
+    const packages: RenovationPackage[] =
+      renovatedMeasures.length > 0
+        ? [
+            {
+              id: "renovated",
+              label: "After Renovation",
+              measureIds: renovatedMeasures,
+            },
+          ]
+        : [];
     const scenarios = await this.renovation.evaluateScenarios(
       buildingInfo,
       estimation,
-      selectedMeasures,
+      packages,
     );
 
     // Step 3: Calculate financial results
@@ -133,9 +157,12 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       funding,
       building.floorArea,
       estimation,
-      "baseline",
-      capex,
-      maintenanceCost,
+      {
+        renovated: {
+          capex,
+          annualMaintenanceCost: maintenanceCost,
+        },
+      },
       buildingInfo,
     );
 

@@ -93,10 +93,8 @@ const SYSTEM_MEASURES: RenovationMeasure[] = [
     name: "Air-Water Heat Pump",
     description:
       "High-efficiency heat pump that extracts heat from outdoor air and transfers it to water for space heating and domestic hot water. Can also provide cooling in summer.",
-    technicalDescription:
-      "The simulation replaces the building's primary heat source with a heat pump using a COP of 3.2. When this measure is combined with envelope improvements, the reduced heating demand makes the heat pump operate even more efficiently.",
     category: "systems",
-    isSupported: true,
+    isSupported: false,
   },
   {
     id: "condensing-boiler",

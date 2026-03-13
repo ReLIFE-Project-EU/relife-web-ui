@@ -1,20 +1,6 @@
 /**
- * Renovation Service - Real Forecasting API Implementation
- *
- * Provides renovation scenario evaluation using the Forecasting API's
- * ECM (Energy Conservation Measures) application endpoint.
- *
- * Currently Supported Measures:
- * - Wall insulation (via u_wall parameter)
- * - Roof insulation (via u_roof parameter)
- * - Floor insulation (via u_slab parameter)
- * - Window replacement (via u_window parameter)
- * - Air-water heat pump (via use_heat_pump + heat_pump_cop parameters)
- *
- * Not Yet Supported (API pending):
- * - Condensing boiler (generator parameter coming)
- * - PV panels (separate /run/iso52016-uni11300-pv endpoint, out of scope)
- * - Solar thermal (pv-system parameter coming)
+ * Renovation Service - Forecasting API implementation for HRA/PRA package
+ * evaluation. The current comparison workflow is envelope-only.
  */
 
 import { forecasting } from "../api";
@@ -26,9 +12,9 @@ import type {
 import type {
   BuildingInfo,
   EstimationResult,
-  RenovationScenario,
   RenovationMeasureId,
-  ScenarioId,
+  RenovationPackage,
+  RenovationScenario,
 } from "../types/renovation";
 import {
   DEFAULT_FLOOR_AREA,
@@ -43,16 +29,6 @@ import {
 } from "./mock/data/renovationMeasures";
 import type { IRenovationService, RenovationMeasure } from "./types";
 
-// =============================================================================
-// Constants
-// =============================================================================
-
-/**
- * Target U-values for envelope renovation measures (W/m²K).
- * These represent typical "deep renovation" targets.
- *
- * TODO: Consider making these country-specific based on national regulations.
- */
 const U_VALUE_TARGETS: Partial<Record<RenovationMeasureId, number>> = {
   "wall-insulation": 0.25,
   "roof-insulation": 0.2,
@@ -60,9 +36,6 @@ const U_VALUE_TARGETS: Partial<Record<RenovationMeasureId, number>> = {
   windows: 1.4,
 };
 
-/**
- * Mapping from HRA measure IDs to ECM API element names.
- */
 const MEASURE_TO_ELEMENT: Partial<Record<RenovationMeasureId, string>> = {
   "wall-insulation": "wall",
   "roof-insulation": "roof",
@@ -70,30 +43,16 @@ const MEASURE_TO_ELEMENT: Partial<Record<RenovationMeasureId, string>> = {
   windows: "window",
 };
 
-/**
- * Envelope measure IDs that are supported by the ECM API.
- */
-const SUPPORTED_ENVELOPE_MEASURES: RenovationMeasureId[] = [
+const RANKABLE_MEASURE_PRIORITY: RenovationMeasureId[] = [
   "wall-insulation",
   "roof-insulation",
-  "floor-insulation",
   "windows",
+  "floor-insulation",
 ];
 
-/**
- * Default heat pump COP (coefficient of performance).
- */
-const DEFAULT_HEAT_PUMP_COP = 3.2;
-
-// =============================================================================
-// Service Implementation
-// =============================================================================
+const MAX_SUGGESTED_PACKAGES = 5;
 
 export class RenovationService implements IRenovationService {
-  // ---------------------------------------------------------------------------
-  // Measure Accessors
-  // ---------------------------------------------------------------------------
-
   getMeasures(): RenovationMeasure[] {
     return RENOVATION_MEASURES;
   }
@@ -112,124 +71,94 @@ export class RenovationService implements IRenovationService {
     return RENOVATION_MEASURES.filter((m) => m.isSupported);
   }
 
+  getRankableMeasures(): RenovationMeasure[] {
+    return RANKABLE_MEASURE_PRIORITY.map((id) => this.getMeasure(id)).filter(
+      (measure): measure is RenovationMeasure => measure !== undefined,
+    );
+  }
+
   getCategories() {
     return MEASURE_CATEGORIES;
   }
 
-  // ---------------------------------------------------------------------------
-  // Scenario Evaluation
-  // ---------------------------------------------------------------------------
+  suggestPackages(
+    selectedMeasures: RenovationMeasureId[],
+  ): RenovationPackage[] {
+    const selectedRankableMeasures = RANKABLE_MEASURE_PRIORITY.filter((id) =>
+      selectedMeasures.includes(id),
+    );
+
+    const packages: RenovationPackage[] = [];
+
+    for (const measureId of selectedRankableMeasures) {
+      packages.push(this.createPackage([measureId]));
+    }
+
+    if (selectedRankableMeasures.length >= 2) {
+      packages.push(this.createPackage(selectedRankableMeasures));
+    }
+
+    return dedupePackages(packages).slice(0, MAX_SUGGESTED_PACKAGES);
+  }
 
   async evaluateScenarios(
     building: BuildingInfo,
     estimation: EstimationResult,
-    selectedMeasures: RenovationMeasureId[],
+    packages: RenovationPackage[],
   ): Promise<RenovationScenario[]> {
-    // Filter to supported envelope measures only
-    const envelopeMeasures = selectedMeasures.filter((m) =>
-      SUPPORTED_ENVELOPE_MEASURES.includes(m),
-    );
+    const baselineScenario = this.buildBaselineScenario(estimation);
 
-    const useHeatPump = selectedMeasures.includes("air-water-heat-pump");
-
-    if (envelopeMeasures.length === 0 && !useHeatPump) {
-      // No supported measures selected - return baseline only
-      return [this.buildBaselineScenario(estimation)];
+    if (packages.length === 0) {
+      return [baselineScenario];
     }
 
-    // Use archetype matched during baseline estimation (Step 1)
     if (!estimation.archetype) {
       throw new Error("Missing archetype on baseline estimation result");
     }
 
-    const archetype = estimation.archetype;
+    const packageScenarios = await Promise.all(
+      packages.map((pkg) =>
+        this.evaluatePackageScenario(building, estimation, pkg),
+      ),
+    );
 
-    // Map envelope measures to API elements (heat pump is handled separately)
-    const elements = envelopeMeasures
-      .map((m) => MEASURE_TO_ELEMENT[m])
-      .filter((e): e is string => e !== undefined)
-      .join(",");
+    return [baselineScenario, ...packageScenarios];
+  }
 
-    // Build common measure parameters shared by both archetype and custom-building modes
-    const commonParams: Partial<ECMCustomBuildingParams & ECMArchetypeParams> =
-      {
-        ...(elements && { scenario_elements: elements }),
-      };
+  private createPackage(measureIds: RenovationMeasureId[]): RenovationPackage {
+    const sortedMeasureIds = RANKABLE_MEASURE_PRIORITY.filter((id) =>
+      measureIds.includes(id),
+    );
 
-    if (envelopeMeasures.includes("wall-insulation")) {
-      commonParams.u_wall = U_VALUE_TARGETS["wall-insulation"];
-    }
-    if (envelopeMeasures.includes("roof-insulation")) {
-      commonParams.u_roof = U_VALUE_TARGETS["roof-insulation"];
-    }
-    if (envelopeMeasures.includes("floor-insulation")) {
-      commonParams.u_slab = U_VALUE_TARGETS["floor-insulation"];
-    }
-    if (envelopeMeasures.includes("windows")) {
-      commonParams.u_window = U_VALUE_TARGETS["windows"];
-    }
-    if (useHeatPump) {
-      commonParams.use_heat_pump = true;
-      commonParams.heat_pump_cop = DEFAULT_HEAT_PUMP_COP;
-    }
+    return {
+      id: `package-${sortedMeasureIds.join("-")}`,
+      label:
+        sortedMeasureIds.length === 1
+          ? (this.getMeasure(sortedMeasureIds[0])?.name ?? sortedMeasureIds[0])
+          : "Envelope package",
+      measureIds: sortedMeasureIds,
+    };
+  }
 
-    // Bug 2 fix: apply ECM to the modified BUI when present, so the savings delta is
-    // computed between comparable buildings (custom baseline vs. custom+ECM).
-    // Fall back to archetype mode when the building was not modified.
-    const ecmParams: ECMApplicationParams = estimation.modifiedBui
-      ? ({
-          bui: estimation.modifiedBui,
-          system: estimation.modifiedSystem,
-          ...commonParams,
-        } as ECMCustomBuildingParams)
-      : ({
-          category: archetype.category,
-          country: archetype.country,
-          name: archetype.name,
-          ...commonParams,
-        } as ECMArchetypeParams);
-
-    // Call ECM API (single-scenario mode)
+  private async evaluatePackageScenario(
+    building: BuildingInfo,
+    estimation: EstimationResult,
+    renovationPackage: RenovationPackage,
+  ): Promise<RenovationScenario> {
+    const ecmParams = this.buildECMParams(estimation, renovationPackage);
     const ecmResponse = await forecasting.simulateECM(ecmParams);
-
-    // Extract renovated scenario
-    // In single-scenario mode, the array contains one scenario corresponding to the requested elements
     const renovatedScenario = ecmResponse.scenarios[0];
 
-    if (!renovatedScenario) {
-      throw new Error("ECM API did not return a renovated scenario");
+    if (!renovatedScenario?.results?.hourly_building) {
+      throw new Error("ECM API did not return a valid renovated scenario");
     }
 
-    // Validate response structure
-    if (!renovatedScenario.results) {
-      throw new Error(
-        "ECM API response missing 'results' field. Response: " +
-          JSON.stringify(renovatedScenario),
-      );
-    }
-
-    if (!renovatedScenario.results.hourly_building) {
-      throw new Error(
-        "ECM API response missing 'results.hourly_building' field. Response: " +
-          JSON.stringify(renovatedScenario.results),
-      );
-    }
-
-    // Transform columnar format (ECM API) to row format for processing
-    // ECM API returns: { Q_HC: [1,2,3], Q_H: [...] }
-    // We need: [ {Q_HC:1, Q_H:...}, {Q_HC:2, ...}, ... ]
     const hourlyRecords = transformColumnarToRowFormat(
       renovatedScenario.results.hourly_building,
     );
-
-    // Calculate renovated HVAC energy from hourly data
     const renovatedTotals = calculateAnnualTotals(hourlyRecords);
     const renovatedHvacEnergy = renovatedTotals.Q_HC_total;
 
-    // Scale by floor area ratio (archetype vs user building).
-    // Use the archetype area stored during baseline estimation to ensure consistent scaling.
-    // archetypeFloorArea reflects the area actually simulated: the original archetype area
-    // for unmodified buildings, or the modified floor area for buildings with floor-area edits.
     const userArea = building.floorArea || DEFAULT_FLOOR_AREA;
     if (
       estimation.archetypeFloorArea === undefined ||
@@ -240,41 +169,87 @@ export class RenovationService implements IRenovationService {
           `archetypeFloorArea=${estimation.archetypeFloorArea}`,
       );
     }
-    const archetypeArea = estimation.archetypeFloorArea;
-    const areaScaleFactor = userArea / archetypeArea;
 
+    const areaScaleFactor = userArea / estimation.archetypeFloorArea;
     const scaledRenovatedHvac = renovatedHvacEnergy * areaScaleFactor;
     const renovatedIntensity = scaledRenovatedHvac / userArea;
 
-    // Build response scenarios
-    const currentScenario = this.buildBaselineScenario(estimation);
-
-    const renovatedScenarioResult: RenovationScenario = {
-      id: "renovated" as ScenarioId,
-      label: "After Renovation",
+    return {
+      id: renovationPackage.id,
+      packageId: renovationPackage.id,
+      label: renovationPackage.label,
       epcClass: getEPCClass(renovatedIntensity),
       annualEnergyNeeds: Math.round(scaledRenovatedHvac),
       annualEnergyCost: Math.round(
         estimateAnnualHvacEnergyCost(scaledRenovatedHvac),
       ),
       heatingCoolingNeeds: Math.round(scaledRenovatedHvac),
-      comfortIndex: Math.min(100, estimation.comfortIndex + 5),
+      comfortIndex: Math.min(
+        100,
+        estimation.comfortIndex + renovationPackage.measureIds.length * 2,
+      ),
       flexibilityIndex: estimation.flexibilityIndex,
-      measures: selectedMeasures
-        .filter(
-          (m) => envelopeMeasures.includes(m) || m === "air-water-heat-pump",
-        )
-        .map((m) => this.getMeasure(m)?.name || m),
+      measureIds: renovationPackage.measureIds,
+      measures: renovationPackage.measureIds.map(
+        (measureId) => this.getMeasure(measureId)?.name ?? measureId,
+      ),
     };
+  }
 
-    return [currentScenario, renovatedScenarioResult];
+  private buildECMParams(
+    estimation: EstimationResult,
+    renovationPackage: RenovationPackage,
+  ): ECMApplicationParams {
+    const elements = renovationPackage.measureIds
+      .map((measureId) => MEASURE_TO_ELEMENT[measureId])
+      .filter((element): element is string => element !== undefined)
+      .join(",");
+
+    const commonParams: Partial<ECMCustomBuildingParams & ECMArchetypeParams> =
+      {
+        scenario_elements: elements,
+      };
+
+    for (const measureId of renovationPackage.measureIds) {
+      const target = U_VALUE_TARGETS[measureId];
+      if (target === undefined) {
+        continue;
+      }
+
+      if (measureId === "wall-insulation") {
+        commonParams.u_wall = target;
+      }
+      if (measureId === "roof-insulation") {
+        commonParams.u_roof = target;
+      }
+      if (measureId === "floor-insulation") {
+        commonParams.u_slab = target;
+      }
+      if (measureId === "windows") {
+        commonParams.u_window = target;
+      }
+    }
+
+    return estimation.modifiedBui
+      ? ({
+          bui: estimation.modifiedBui,
+          system: estimation.modifiedSystem,
+          ...commonParams,
+        } as ECMCustomBuildingParams)
+      : ({
+          category: estimation.archetype?.category,
+          country: estimation.archetype?.country,
+          name: estimation.archetype?.name,
+          ...commonParams,
+        } as ECMArchetypeParams);
   }
 
   private buildBaselineScenario(
     estimation: EstimationResult,
   ): RenovationScenario {
     return {
-      id: "current" as ScenarioId,
+      id: "current",
+      packageId: null,
       label: "Current Status",
       epcClass: estimation.estimatedEPC,
       annualEnergyNeeds: estimation.annualEnergyNeeds,
@@ -282,7 +257,21 @@ export class RenovationService implements IRenovationService {
       heatingCoolingNeeds: estimation.heatingCoolingNeeds,
       flexibilityIndex: estimation.flexibilityIndex,
       comfortIndex: estimation.comfortIndex,
+      measureIds: [],
       measures: [],
     };
   }
+}
+
+function dedupePackages(packages: RenovationPackage[]): RenovationPackage[] {
+  const seen = new Set<string>();
+
+  return packages.filter((pkg) => {
+    if (seen.has(pkg.id)) {
+      return false;
+    }
+
+    seen.add(pkg.id);
+    return true;
+  });
 }
