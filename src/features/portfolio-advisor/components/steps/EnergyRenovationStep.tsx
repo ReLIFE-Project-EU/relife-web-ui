@@ -38,6 +38,7 @@ import type { RenovationMeasureId } from "../../../../types/renovation";
 import type { RenovationMeasure } from "../../../../services/types";
 import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
 import { usePortfolioAdvisorServices } from "../../hooks/usePortfolioAdvisorServices";
+import { getPortfolioMeasureStatus } from "../../utils/measureSelection";
 import { BuildingMeasuresTable } from "../BuildingMeasuresTable";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -211,12 +212,32 @@ export function EnergyRenovationStep() {
   const { renovation } = usePortfolioAdvisorServices();
 
   const selectedMeasures = state.renovation.selectedMeasures;
+  const rankableMeasures = renovation
+    .getRankableMeasures()
+    .map((measure) => measure.id);
+  const isRankableMeasure = (measureId: RenovationMeasureId) =>
+    rankableMeasures.includes(measureId);
   const unsupportedSelected = selectedMeasures.filter(
     (m) => !renovation.getMeasure(m)?.isSupported,
   );
-  const hasSupportedMeasure = selectedMeasures.some(
-    (m) => renovation.getMeasure(m)?.isSupported,
+  const nonRankableSelected = selectedMeasures.filter(
+    (measureId) =>
+      renovation.getMeasure(measureId)?.isSupported &&
+      !isRankableMeasure(measureId),
   );
+  const costFieldsValid =
+    state.renovation.estimatedCapex !== null &&
+    state.renovation.estimatedMaintenanceCost !== null;
+  const {
+    buildingsWithoutMeasures,
+    buildingsWithoutRankableMeasures,
+    hasValidSelections,
+  } = getPortfolioMeasureStatus(
+    state.buildings,
+    selectedMeasures,
+    rankableMeasures,
+  );
+  const canProceed = costFieldsValid && hasValidSelections;
 
   const categorizedMeasures = renovation.getCategories().map((cat) => ({
     cat,
@@ -230,10 +251,6 @@ export function EnergyRenovationStep() {
   const handlePrevious = () => {
     dispatch({ type: "SET_STEP", step: 0 });
   };
-
-  const costFieldsValid =
-    state.renovation.estimatedCapex !== null &&
-    state.renovation.estimatedMaintenanceCost !== null;
 
   // CAPEX sanity check: warn when the global CAPEX is low relative to the
   // average floor area of the buildings that will actually use it (i.e. those
@@ -254,7 +271,7 @@ export function EnergyRenovationStep() {
       : { warning: false, message: "" };
 
   const handleNext = () => {
-    if (selectedMeasures.length > 0 && hasSupportedMeasure && costFieldsValid) {
+    if (canProceed) {
       dispatch({ type: "SET_STEP", step: 2 });
     }
   };
@@ -317,8 +334,68 @@ export function EnergyRenovationStep() {
               .map((m) => renovation.getMeasure(m)?.name)
               .join(", ")}
           </Text>
-          . Only envelope measures (wall, roof, floor, windows) and heat pump
-          will be simulated at this time.
+          . These measures are currently excluded from portfolio analysis.
+        </Alert>
+      )}
+
+      <Alert
+        color={nonRankableSelected.length > 0 ? "yellow" : "blue"}
+        icon={<IconInfoCircle size={16} />}
+        title="Current Analysis Scope"
+      >
+        Portfolio analysis currently evaluates envelope measures only: wall,
+        roof, floor, and windows.
+        {nonRankableSelected.length > 0 && (
+          <>
+            {" "}
+            The following supported measures are visible in the UI but excluded
+            from the current analysis path:{" "}
+            <Text span fw={700}>
+              {nonRankableSelected
+                .map((measureId) => renovation.getMeasure(measureId)?.name)
+                .join(", ")}
+            </Text>
+            .
+          </>
+        )}
+      </Alert>
+
+      {buildingsWithoutRankableMeasures.length > 0 && (
+        <Alert
+          color="red"
+          icon={<IconInfoCircle size={16} />}
+          title="At least one envelope measure is required"
+        >
+          The current portfolio analysis flow cannot proceed until each building
+          has at least one envelope measure in its effective selection. Affected
+          buildings:{" "}
+          <Text span fw={700}>
+            {buildingsWithoutRankableMeasures
+              .slice(0, 5)
+              .map(({ name }) => name)
+              .join(", ")}
+            {buildingsWithoutRankableMeasures.length > 5 ? ", ..." : ""}
+          </Text>
+          .
+        </Alert>
+      )}
+
+      {buildingsWithoutMeasures.length > 0 && (
+        <Alert
+          color="red"
+          icon={<IconInfoCircle size={16} />}
+          title="Each building needs a measure selection"
+        >
+          The current portfolio analysis flow cannot proceed while some
+          buildings have no effective renovation measures. Affected buildings:{" "}
+          <Text span fw={700}>
+            {buildingsWithoutMeasures
+              .slice(0, 5)
+              .map(({ name }) => name)
+              .join(", ")}
+            {buildingsWithoutMeasures.length > 5 ? ", ..." : ""}
+          </Text>
+          .
         </Alert>
       )}
 
@@ -426,7 +503,7 @@ export function EnergyRenovationStep() {
         totalSteps={4}
         onPrevious={handlePrevious}
         onNext={handleNext}
-        primaryDisabled={!hasSupportedMeasure || !costFieldsValid}
+        primaryDisabled={!canProceed}
       />
     </Stack>
   );

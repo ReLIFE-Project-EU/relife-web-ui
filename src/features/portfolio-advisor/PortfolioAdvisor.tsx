@@ -24,6 +24,8 @@ import { useSyncGlobalLoading } from "../../contexts/global-loading";
 import { PortfolioAdvisorProvider } from "./context/PortfolioAdvisorContext";
 import { PortfolioAdvisorServiceProvider } from "./context/ServiceContext";
 import { usePortfolioAdvisor } from "./hooks/usePortfolioAdvisor";
+import { usePortfolioAdvisorServices } from "./hooks/usePortfolioAdvisorServices";
+import { getPortfolioMeasureStatus } from "./utils/measureSelection";
 import {
   BuildingPortfolioStep,
   EnergyRenovationStep,
@@ -37,6 +39,20 @@ import {
  */
 function PortfolioAdvisorWizard() {
   const { state, dispatch } = usePortfolioAdvisor();
+  const { renovation } = usePortfolioAdvisorServices();
+
+  const rankableMeasures = renovation
+    .getRankableMeasures()
+    .map((measure) => measure.id);
+  const costFieldsValid =
+    state.renovation.estimatedCapex !== null &&
+    state.renovation.estimatedMaintenanceCost !== null;
+  const { hasValidSelections } = getPortfolioMeasureStatus(
+    state.buildings,
+    state.renovation.selectedMeasures,
+    rankableMeasures,
+  );
+  const canAccessFinancing = costFieldsValid && hasValidSelections;
 
   // Sync local loading states to the global loading overlay
   useSyncGlobalLoading(state.isEstimating, "PortfolioAdvisor.estimate");
@@ -62,7 +78,7 @@ function PortfolioAdvisorWizard() {
       case 1:
         return state.buildings.length > 0;
       case 2:
-        return state.renovation.selectedMeasures.length > 0;
+        return canAccessFinancing;
       case 3:
         return Object.keys(state.buildingResults).length > 0;
       default:

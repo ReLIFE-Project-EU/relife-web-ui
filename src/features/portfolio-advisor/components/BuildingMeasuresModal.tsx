@@ -5,6 +5,7 @@
 
 import { useState } from "react";
 import {
+  Alert,
   Box,
   Button,
   Checkbox,
@@ -44,6 +45,17 @@ function ModalContent({
   const initialMeasures = building?.selectedMeasures ?? [...globalMeasures];
   const [localMeasures, setLocalMeasures] =
     useState<RenovationMeasureId[]>(initialMeasures);
+  const rankableMeasures = renovation
+    .getRankableMeasures()
+    .map((measure) => measure.id);
+  const localNonRankableMeasures = localMeasures.filter(
+    (measureId) =>
+      renovation.getMeasure(measureId)?.isSupported &&
+      !rankableMeasures.includes(measureId),
+  );
+  const hasRankableMeasure = localMeasures.some((measureId) =>
+    rankableMeasures.includes(measureId),
+  );
 
   const handleToggle = (measureId: RenovationMeasureId) => {
     setLocalMeasures((prev) =>
@@ -81,6 +93,27 @@ function ModalContent({
         portfolio-level selection.
       </Text>
 
+      <Alert
+        color={localNonRankableMeasures.length > 0 ? "yellow" : "blue"}
+        mb="lg"
+      >
+        This workflow currently analyzes envelope measures only: wall, roof,
+        floor, and windows.
+        {localNonRankableMeasures.length > 0 && (
+          <>
+            {" "}
+            The following selected measures are excluded from the current
+            analysis:{" "}
+            <Text span fw={700}>
+              {localNonRankableMeasures
+                .map((measureId) => renovation.getMeasure(measureId)?.name)
+                .join(", ")}
+            </Text>
+            .
+          </>
+        )}
+      </Alert>
+
       <Stack gap="md">
         {categorizedMeasures.map(({ cat, measures }) => (
           <Box key={cat.id}>
@@ -117,7 +150,10 @@ function ModalContent({
           <Button variant="default" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={localMeasures.length === 0}>
+          <Button
+            onClick={handleSave}
+            disabled={localMeasures.length === 0 || !hasRankableMeasure}
+          >
             Save
           </Button>
         </Group>
