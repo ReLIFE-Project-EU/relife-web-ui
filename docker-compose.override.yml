@@ -1,0 +1,12 @@
+services:
+  financial:
+    environment:
+      ROOT_PATH: /api/financial
+
+  forecasting:
+    environment:
+      ROOT_PATH: /api/forecasting
+
+  technical:
+    environment:
+      ROOT_PATH: /api/technical
