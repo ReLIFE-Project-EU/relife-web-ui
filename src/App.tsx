@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { CountryDetectorDemo } from "./routes/CountryDetectorDemo";
 import { Forecasting } from "./routes/Forecasting";
 import { Home } from "./routes/Home";
 import { HomeAssistantLanding } from "./routes/HomeAssistantLanding";
@@ -16,6 +17,7 @@ function App() {
       <Routes>
         {/* Home - Tool Selector */}
         <Route path="/" element={<Home />} />
+        <Route path="/country-detector-demo" element={<CountryDetectorDemo />} />
 
         {/* Group 1: Strategy Explorer (Policymakers, Researchers) */}
         <Route
