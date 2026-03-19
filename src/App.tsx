@@ -17,7 +17,10 @@ function App() {
       <Routes>
         {/* Home - Tool Selector */}
         <Route path="/" element={<Home />} />
-        <Route path="/country-detector-demo" element={<CountryDetectorDemo />} />
+        <Route
+          path="/country-detector-demo"
+          element={<CountryDetectorDemo />}
+        />
 
         {/* Group 1: Strategy Explorer (Policymakers, Researchers) */}
         <Route

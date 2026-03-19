@@ -7,27 +7,25 @@ import {
 
 describe("europeanCountryDetector", () => {
   test("detects representative EU-27 locations", () => {
-    expect(
-      detectEuropeanCountryCode({ lat: 40.4168, lng: -3.7038 }),
-    ).toBe("ES");
-    expect(
-      detectEuropeanCountryCode({ lat: 48.2082, lng: 16.3738 }),
-    ).toBe("AT");
-    expect(
-      detectEuropeanCountryCode({ lat: 35.1856, lng: 33.3823 }),
-    ).toBe("CY");
-    expect(
-      detectEuropeanCountryCode({ lat: 35.8989, lng: 14.5146 }),
-    ).toBe("MT");
-    expect(
-      detectEuropeanCountryCode({ lat: 37.9838, lng: 23.7275 }),
-    ).toBe("GR");
+    expect(detectEuropeanCountryCode({ lat: 40.4168, lng: -3.7038 })).toBe(
+      "ES",
+    );
+    expect(detectEuropeanCountryCode({ lat: 48.2082, lng: 16.3738 })).toBe(
+      "AT",
+    );
+    expect(detectEuropeanCountryCode({ lat: 35.1856, lng: 33.3823 })).toBe(
+      "CY",
+    );
+    expect(detectEuropeanCountryCode({ lat: 35.8989, lng: 14.5146 })).toBe(
+      "MT",
+    );
+    expect(detectEuropeanCountryCode({ lat: 37.9838, lng: 23.7275 })).toBe(
+      "GR",
+    );
   });
 
   test("returns null for out-of-scope or non-land coordinates", () => {
-    expect(
-      detectEuropeanCountryCode({ lat: 47.3769, lng: 8.5417 }),
-    ).toBeNull();
+    expect(detectEuropeanCountryCode({ lat: 47.3769, lng: 8.5417 })).toBeNull();
     expect(detectEuropeanCountryCode({ lat: 56.2, lng: 3.1 })).toBeNull();
   });
 
