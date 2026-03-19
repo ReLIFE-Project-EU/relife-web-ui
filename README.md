@@ -38,8 +38,12 @@ sequenceDiagram
     HRA->>FCAST: listArchetypes / getArchetypeDetails
     FCAST-->>HRA: Archetype metadata for matching
     alt Modified archetype
+      HRA->>FCAST: validateCustomBuilding
+      FCAST-->>HRA: Checked building payload
       HRA->>FCAST: simulateCustomBuilding(archetype=false)
-      FCAST-->>HRA: Baseline simulation results
+      FCAST-->>HRA: Modified building simulation
+      HRA->>FCAST: simulateDirect(archetype=true)
+      FCAST-->>HRA: Reference simulation results
     else Default archetype
       HRA->>FCAST: simulateDirect(archetype=true)
       FCAST-->>HRA: Baseline simulation results
@@ -52,8 +56,10 @@ sequenceDiagram
     FIN-->>HRA: ARV and risk indicators
     HRA-->>UI: Render scenarios and financial outputs
 
-    UI->>HRA: Run persona ranking with local MockMCDAService
-    HRA->>HRA: Technical API is not called in this flow
+    UI->>HRA: Run persona ranking
+    HRA->>TECH: runTopsis(persona + scenario KPIs)
+    TECH-->>HRA: Ranked scenarios with closeness scores
+    HRA->>HRA: Technical integration is partial - TOPSIS only, some KPIs are placeholders
     HRA-->>UI: Render ranked recommendations and scenario comparison
     HRA->>HRA: ECM supports wall, roof, floor, windows, air-water heat pump
 ```
@@ -70,35 +76,37 @@ flowchart LR
 
     Financial["FINANCIAL API REAL<br/>---<br/>POST /financial/arv<br/>POST /financial/risk-assessment<br/>---<br/>Private output level<br/>Returns ARV + risk metrics<br/>NPV, IRR, ROI, PBP, DPP<br/>Cash flow visualization data"]
 
-    Technical["TECHNICAL API STUB - NOT CALLED<br/>---<br/>Endpoints exist in src/api/technical.ts<br/>No HRA runtime invocation<br/>Ranking runs in local mock service"]
+    Technical["TECHNICAL API PARTIAL<br/>---<br/>POST /technical/mcda/topsis<br/>---<br/>Ranks evaluated packages by persona profile<br/>NOTE: TOPSIS is live, but several non-envelope KPIs are placeholder values"]
 
-    Output["HOME ASSISTANT RESULTS UI<br/>---<br/>Shows EPC and scenario comparisons<br/>Shows ARV and risk charts/metrics<br/>Shows ranking from local MockMCDAService"]
+    Output["HOME ASSISTANT RESULTS UI<br/>---<br/>Shows EPC and scenario comparisons<br/>Shows ARV and risk charts/metrics<br/>Shows ranking returned by TechnicalMCDAService"]
 
     UserInput --> Forecasting
     DB --> Forecasting
     UserInput --> Financial
     DB --> Financial
+    UserInput --> Technical
     Forecasting --> Financial
     Forecasting --> Output
     Financial --> Output
-    Forecasting -. planned-only .-> Technical
-    Financial -. planned-only .-> Technical
-    Technical -. not-executed .-> Output
+    Forecasting --> Technical
+    Financial --> Technical
+    Technical --> Output
 
     style UserInput fill:#f0f0f0
     style DB fill:#d4edda
     style Forecasting fill:#cfe2ff,stroke:#4c6ef5
     style Financial fill:#fff3cd,stroke:#a37f00
-    style Technical fill:#f8d7da,stroke:#666,stroke-dasharray: 5 5
+    style Technical fill:#f8d7da,stroke:#b02a37
     style Output fill:#d1ecf1
 ```
 
 **Implementation status**
 
 - Real Forecasting + Financial integrations are wired through `src/services/BuildingService.ts`, `src/services/EnergyService.ts`, `src/services/RenovationService.ts`, and `src/services/FinancialService.ts`.
-- Technical API is not invoked in the HRA runtime path; ranking uses `src/services/mock/MockMCDAService.ts` (local TOPSIS) instead of `src/api/technical.ts`.
-- Renovation simulation is partial: `src/services/RenovationService.ts` sends envelope measures (wall, roof, floor, windows) and air-water heat pump to `forecasting.simulateECM(...)`; condensing boiler, PV, and solar thermal are not yet supported by the API path.
-- This means energy and financial outputs are backend-backed, while ranking and non-envelope technical effects are local/mock behavior.
+- Technical ranking is partially live: `src/features/home-assistant/context/ServiceContext.tsx` wires `src/services/TechnicalMCDAService.ts`, and `src/features/home-assistant/components/results/DecisionSupport.tsx` calls the Technical API on demand from the results step.
+- The Technical integration is still partial because only `POST /technical/mcda/topsis` is used; KPI assembly in `src/services/TechnicalMCDAService.ts` sends placeholder values for several non-envelope criteria while the live mapping is still being expanded.
+- Renovation simulation is partial: `src/services/RenovationService.ts` can send envelope targets and heat-pump flags to `forecasting.simulateECM(...)`, but the current ranked comparison workflow in `src/features/home-assistant/components/steps/EnergyRenovationStep.tsx` only packages envelope measures.
+- This means energy and financial outputs are backend-backed, and the technical ranking is backend-assisted but still incomplete in KPI coverage.
 - The flow diagram above shows the current implementation; compare with the [design flow](docs/hra-tool-design.md#sequential-flow) to identify deviations.
 
 ### Portfolio Renovation Advisor
