@@ -46,6 +46,7 @@ const mockBuildingService = {
   getAvailablePeriods: vi.fn(),
   countMatchingArchetypes: vi.fn(),
   getDefaultsForCountry: vi.fn(),
+  detectCountryFromCoords: vi.fn(),
 } as unknown as IBuildingService;
 
 // ── Test data ───────────────────────────────────────────────────────────────
@@ -54,6 +55,7 @@ const archetypeList = [
   { category: "SFH", country: "Greece", name: "GR_SFH_1961_1980" },
   { category: "SFH", country: "Italy", name: "IT_SFH_1961_1980" },
   { category: "MFH", country: "Greece", name: "GR_MFH_1961_1980" },
+  { category: "SFH", country: "Czechia", name: "CZ_SFH_1961_1980" },
 ];
 
 const stubSimulationResponse = {
@@ -298,6 +300,24 @@ describe("EnergyService", () => {
       }),
     );
     expect(result).toBeDefined();
+  });
+
+  test("findMatchingArchetype normalizes country aliases before exact matching", async () => {
+    const czechBuilding: BuildingInfo = {
+      ...unmodifiedBuilding,
+      country: "Czech Republic",
+      selectedArchetype: undefined,
+    };
+
+    await service.estimateEPC(czechBuilding);
+
+    expect(mockSimulateDirect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        country: "Czechia",
+        category: "SFH",
+        name: "CZ_SFH_1961_1980",
+      }),
+    );
   });
 
   test("findMatchingArchetype throws ArchetypeNotAvailableError when no match at all", async () => {

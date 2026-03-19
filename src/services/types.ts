@@ -44,6 +44,23 @@ export interface SelectOption {
   label: string;
 }
 
+export type PeriodAvailabilityScope = "local" | "fallback";
+
+export type PeriodAvailabilityReason =
+  | "normalized-country-alias"
+  | "no-local-archetypes"
+  | "no-local-periods"
+  | null;
+
+export interface PeriodAvailabilityResult {
+  periods: string[];
+  recommendedPeriod: string | null;
+  detectedCountry: string | null;
+  sourceCountry: string | null;
+  scope: PeriodAvailabilityScope;
+  reason: PeriodAvailabilityReason;
+}
+
 export interface BuildingOptions {
   countries: SelectOption[];
   buildingTypes: SelectOption[];
@@ -54,6 +71,39 @@ export interface BuildingOptions {
   coolingTechnologies: SelectOption[];
   hotWaterTechnologies: SelectOption[];
   glazingTechnologies: SelectOption[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Archetype Matching Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type MatchQuality = "excellent" | "good" | "approximate";
+
+export interface ArchetypeScoreBreakdown {
+  countryScore: number;
+  periodScore: number;
+  geoScore: number;
+  total: number;
+}
+
+export interface ArchetypeMatchAlternative {
+  archetype: import("../types/forecasting").ArchetypeInfo;
+  matchQuality: MatchQuality;
+  score: number;
+}
+
+/**
+ * Rich result from archetype matching, providing transparency
+ * about why a particular archetype was selected.
+ */
+export interface ArchetypeMatchResult {
+  archetype: import("../types/forecasting").ArchetypeInfo;
+  detectedCountry: string | null;
+  matchQuality: MatchQuality;
+  periodRelaxed: boolean;
+  score: number;
+  scoreBreakdown: ArchetypeScoreBreakdown;
+  alternatives: ArchetypeMatchAlternative[];
 }
 
 export interface IBuildingService {
@@ -72,14 +122,14 @@ export interface IBuildingService {
   ): Promise<import("../types/forecasting").ArchetypeInfo[]>;
 
   /**
-   * Find best matching archetype based on user selections
-   * Uses distance-based matching across ALL countries
+   * Find best matching archetype based on user selections.
+   * Returns rich match result with score breakdown and alternatives.
    */
   findMatchingArchetype(
     category: string,
     period?: string | null,
     coords?: { lat: number; lng: number } | null,
-  ): Promise<import("../types/forecasting").ArchetypeInfo | null>;
+  ): Promise<ArchetypeMatchResult | null>;
 
   /**
    * Get available building categories based on coordinates
@@ -89,14 +139,22 @@ export interface IBuildingService {
   ): Promise<string[]>;
 
   /**
-   * Get available construction periods for a category
+   * Get available construction periods for a category.
+   * When country is provided, returns only periods available in that country.
    */
-  getAvailablePeriods(category: string): Promise<string[]>;
+  getAvailablePeriods(
+    category: string,
+    country?: string,
+  ): Promise<PeriodAvailabilityResult>;
 
   /**
    * Count matching archetypes for given criteria
    */
-  countMatchingArchetypes(category?: string, period?: string): Promise<number>;
+  countMatchingArchetypes(
+    category?: string,
+    period?: string,
+    country?: string,
+  ): Promise<number>;
 
   /**
    * Get full archetype details including BUI and System payloads
@@ -109,6 +167,11 @@ export interface IBuildingService {
    * Get default building values for a specific country (deprecated)
    */
   getDefaultsForCountry(country: string): Partial<BuildingInfo>;
+
+  /**
+   * Detect country from coordinates using bundled offline EU polygons.
+   */
+  detectCountryFromCoords(coords: { lat: number; lng: number }): string | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

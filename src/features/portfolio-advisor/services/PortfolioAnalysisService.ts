@@ -223,7 +223,11 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       buildingType: b.propertyType,
       constructionPeriod: b.constructionPeriod,
       selectedArchetype: b.archetypeName
-        ? { name: b.archetypeName, category: b.category, country: b.country }
+        ? {
+            name: b.archetypeName,
+            category: b.category,
+            country: b.archetypeCountry ?? b.country,
+          }
         : undefined,
       isModified: !!hasModifications,
       modifications: hasModifications ? b.modifications : undefined,

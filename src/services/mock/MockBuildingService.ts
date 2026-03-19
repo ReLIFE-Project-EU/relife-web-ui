@@ -6,7 +6,11 @@
 import type { ArchetypeInfo } from "../../types/forecasting";
 import type { ArchetypeDetails } from "../../types/archetype";
 import type { BuildingInfo } from "../../types/renovation";
-import type { BuildingOptions, IBuildingService } from "../types";
+import type {
+  ArchetypeMatchResult,
+  BuildingOptions,
+  IBuildingService,
+} from "../types";
 import {
   BUILDING_TYPES,
   CLIMATE_ZONES,
@@ -42,7 +46,11 @@ export class MockBuildingService implements IBuildingService {
     return [];
   }
 
-  async findMatchingArchetype(): Promise<ArchetypeInfo | null> {
+  async findMatchingArchetype(): Promise<ArchetypeMatchResult | null> {
+    return null;
+  }
+
+  detectCountryFromCoords(): string | null {
     return null;
   }
 
@@ -51,9 +59,17 @@ export class MockBuildingService implements IBuildingService {
     return options.buildingTypes.map((opt) => opt.value);
   }
 
-  async getAvailablePeriods(): Promise<string[]> {
+  async getAvailablePeriods() {
     const options = await this.getOptions();
-    return options.constructionPeriods.map((opt) => opt.value);
+    const periods = options.constructionPeriods.map((opt) => opt.value);
+    return {
+      periods,
+      recommendedPeriod: periods[0] ?? null,
+      detectedCountry: null,
+      sourceCountry: null,
+      scope: "local" as const,
+      reason: null,
+    };
   }
 
   async countMatchingArchetypes(): Promise<number> {

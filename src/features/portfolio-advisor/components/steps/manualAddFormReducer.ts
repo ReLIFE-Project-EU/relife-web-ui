@@ -12,6 +12,11 @@ export interface ManualAddFormState {
   loadingArchetype: boolean;
   availableArchetypes: ArchetypeDetails[];
   selectedArchetypeName: string | null;
+  matchResultMeta: {
+    matchQuality: string;
+    periodRelaxed: boolean;
+    detectedCountry: string | null;
+  } | null;
   modFloorArea: number | string;
   modNumberOfFloors: number | string;
   modFloorHeight: number | string;
@@ -35,6 +40,7 @@ export const initialFormState: ManualAddFormState = {
   loadingArchetype: false,
   availableArchetypes: [],
   selectedArchetypeName: null,
+  matchResultMeta: null,
   modFloorArea: "",
   modNumberOfFloors: "",
   modFloorHeight: "",
@@ -56,6 +62,11 @@ export type ManualAddFormAction =
       type: "SET_ARCHETYPE_RESULTS";
       matched: ArchetypeDetails;
       available: ArchetypeDetails[];
+      matchResultMeta: {
+        matchQuality: string;
+        periodRelaxed: boolean;
+        detectedCountry: string | null;
+      } | null;
     }
   | { type: "CLEAR_ARCHETYPE" }
   | { type: "SET_LOADING_ARCHETYPE"; loading: boolean }
@@ -74,6 +85,7 @@ export function manualAddFormReducer(
         matchedArchetype: action.matched,
         selectedArchetypeName: action.matched.name,
         availableArchetypes: action.available,
+        matchResultMeta: action.matchResultMeta,
         loadingArchetype: false,
       };
     case "CLEAR_ARCHETYPE":
@@ -82,6 +94,7 @@ export function manualAddFormReducer(
         matchedArchetype: null,
         availableArchetypes: [],
         selectedArchetypeName: null,
+        matchResultMeta: null,
       };
     case "SET_LOADING_ARCHETYPE":
       return { ...state, loadingArchetype: action.loading };

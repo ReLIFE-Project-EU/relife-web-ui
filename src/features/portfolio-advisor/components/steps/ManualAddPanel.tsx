@@ -5,6 +5,7 @@
 
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Card,
@@ -29,14 +30,20 @@ import {
   IconInfoCircle,
   IconPlus,
 } from "@tabler/icons-react";
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { checkAreaArchetypeMismatch } from "../../../../utils/inputSanityChecks";
 import {
   countryFlag,
   countryNameToCode,
   formatArchetypeName,
 } from "../../../../utils/archetypeLabels";
+import { getCountryDisplayName } from "../../../../utils/countries";
 import type { BuildingModifications } from "../../../../types/archetype";
+import type { PeriodAvailabilityResult } from "../../../../services/types";
+import {
+  constructionPeriodsEqual,
+  normalizeConstructionPeriod,
+} from "../../../../utils/apiMappings";
 import { usePortfolioAdvisorServices } from "../../hooks/usePortfolioAdvisorServices";
 import type { PRABuilding } from "../../context/types";
 import { initialFormState, manualAddFormReducer } from "./manualAddFormReducer";
@@ -74,6 +81,29 @@ function getApartmentArchetypeCategory(categories: string[]): string {
   );
 }
 
+function buildPeriodFallbackMessage(
+  result: PeriodAvailabilityResult | null,
+  category: string | null,
+): string | null {
+  if (!result || result.scope !== "fallback" || !category) {
+    return null;
+  }
+
+  const country = result.detectedCountry ?? "your country";
+  const sourceCountry =
+    result.sourceCountry && result.sourceCountry !== result.detectedCountry
+      ? ` from ${result.sourceCountry}`
+      : "";
+  const recommendedPeriod =
+    result.recommendedPeriod ?? "the closest available period";
+
+  if (result.reason === "no-local-periods") {
+    return `No ${category} archetypes in ${country} match the selected construction period. ${recommendedPeriod} was preselected using the closest available reference archetype${sourceCountry}. You can continue, but this fallback may not be the optimal match.`;
+  }
+
+  return `No ${category} archetypes are currently available in ${country}. ${recommendedPeriod} was preselected from the wider European archetype catalog${sourceCountry}. You can continue, but this fallback may not be the optimal match.`;
+}
+
 export function ManualAddPanel({
   onAdd,
 }: {
@@ -86,9 +116,12 @@ export function ManualAddPanel({
   );
   const [categories, setCategories] = useState<string[]>([]);
   const [availablePeriods, setAvailablePeriods] = useState<string[]>([]);
+  const [periodAvailability, setPeriodAvailability] =
+    useState<PeriodAvailabilityResult | null>(null);
   const [modificationsOpened, { toggle: toggleModifications }] =
     useDisclosure(false);
   const [showManualCoords, setShowManualCoords] = useState(false);
+  const periodRequestIdRef = useRef(0);
 
   const {
     name,
@@ -114,30 +147,67 @@ export function ManualAddPanel({
 
   // Load building categories
   useEffect(() => {
+    const coords =
+      typeof debouncedLat === "number" && typeof debouncedLng === "number"
+        ? { lat: debouncedLat, lng: debouncedLng }
+        : undefined;
     buildingService
-      .getAvailableCategories()
+      .getAvailableCategories(coords)
       .then(setCategories)
       .catch(() => {});
-  }, [buildingService]);
+  }, [buildingService, debouncedLat, debouncedLng]);
 
   // Load available construction periods when category changes
   useEffect(() => {
-    if (!category) return;
+    const requestId = ++periodRequestIdRef.current;
+    if (!category) {
+      return;
+    }
+    const detectedCountry =
+      typeof debouncedLat === "number" && typeof debouncedLng === "number"
+        ? buildingService.detectCountryFromCoords({
+            lat: debouncedLat,
+            lng: debouncedLng,
+          })
+        : undefined;
     buildingService
-      .getAvailablePeriods(category)
-      .then((periods) => {
-        setAvailablePeriods(periods);
-        // Clear selected period if it's no longer available
-        if (constructionPeriod && !periods.includes(constructionPeriod)) {
+      .getAvailablePeriods(category, detectedCountry ?? undefined)
+      .then((result) => {
+        if (requestId !== periodRequestIdRef.current) return;
+        setAvailablePeriods(result.periods);
+        setPeriodAvailability(result);
+        const currentPeriod = normalizeConstructionPeriod(constructionPeriod);
+        const shouldReplacePeriod =
+          !currentPeriod ||
+          !result.periods.some((period) =>
+            constructionPeriodsEqual(period, currentPeriod),
+          );
+        if (
+          shouldReplacePeriod &&
+          result.recommendedPeriod &&
+          !constructionPeriodsEqual(
+            constructionPeriod,
+            result.recommendedPeriod,
+          )
+        ) {
           dispatch({
             type: "SET_FIELD",
             field: "constructionPeriod",
-            value: null,
+            value: result.recommendedPeriod,
           });
         }
       })
-      .catch(() => {});
-  }, [buildingService, category, constructionPeriod]);
+      .catch(() => {
+        if (requestId !== periodRequestIdRef.current) return;
+        setPeriodAvailability(null);
+      });
+  }, [
+    buildingService,
+    category,
+    constructionPeriod,
+    debouncedLat,
+    debouncedLng,
+  ]);
 
   // Auto-match archetype when category + period + coordinates are set
   useEffect(() => {
@@ -160,14 +230,15 @@ export function ManualAddPanel({
         lat: debouncedLat,
         lng: debouncedLng,
       })
-      .then(async (matched) => {
+      .then(async (matchResult) => {
         if (controller.signal.aborted) return;
-        if (!matched) {
+        if (!matchResult) {
           dispatch({ type: "CLEAR_ARCHETYPE" });
           dispatch({ type: "SET_LOADING_ARCHETYPE", loading: false });
           return;
         }
 
+        const matched = matchResult.archetype;
         const details = await buildingService.getArchetypeDetails({
           category: matched.category,
           country: matched.country,
@@ -178,9 +249,7 @@ export function ManualAddPanel({
         const allArchetypes = await buildingService.getArchetypes();
         if (controller.signal.aborted) return;
 
-        const filtered = allArchetypes.filter(
-          (a) => a.country === matched.country && a.category === category,
-        );
+        const filtered = allArchetypes.filter((a) => a.category === category);
         const detailsList = await Promise.all(
           filtered.map((a) =>
             buildingService.getArchetypeDetails({
@@ -196,6 +265,11 @@ export function ManualAddPanel({
           type: "SET_ARCHETYPE_RESULTS",
           matched: details,
           available: detailsList,
+          matchResultMeta: {
+            matchQuality: matchResult.matchQuality,
+            periodRelaxed: matchResult.periodRelaxed,
+            detectedCountry: matchResult.detectedCountry,
+          },
         });
       })
       .catch(() => {
@@ -214,7 +288,8 @@ export function ManualAddPanel({
     debouncedLng,
   ]);
 
-  // When user changes archetype manually
+  // When user changes archetype manually, clear stale match metadata so the
+  // badge and period warning don't describe the previous auto-match.
   useEffect(() => {
     if (!selectedArchetypeName) return;
     const selected = availableArchetypes.find(
@@ -225,6 +300,11 @@ export function ManualAddPanel({
         type: "SET_FIELD",
         field: "matchedArchetype",
         value: selected,
+      });
+      dispatch({
+        type: "SET_FIELD",
+        field: "matchResultMeta",
+        value: null,
       });
     }
   }, [selectedArchetypeName, availableArchetypes]);
@@ -307,7 +387,12 @@ export function ManualAddPanel({
       name: name.trim(),
       source: "manual",
       category: category!,
-      country: matchedArchetype.country,
+      country:
+        activePeriodAvailability?.detectedCountry ??
+        formState.matchResultMeta?.detectedCountry ??
+        getCountryDisplayName(matchedArchetype.country) ??
+        matchedArchetype.country,
+      archetypeCountry: matchedArchetype.country,
       archetypeName: matchedArchetype.name,
       archetypeFloorArea: matchedArchetype.floorArea,
       modifications:
@@ -363,6 +448,12 @@ export function ManualAddPanel({
   const occupancyFields = MODIFICATION_FIELDS.filter(
     (f) => f.group === "occupancy",
   );
+  const visibleAvailablePeriods = category ? availablePeriods : [];
+  const activePeriodAvailability = category ? periodAvailability : null;
+  const periodFallbackMessage = buildPeriodFallbackMessage(
+    activePeriodAvailability,
+    category,
+  );
 
   return (
     <Card withBorder radius="md" p="lg">
@@ -392,12 +483,27 @@ export function ManualAddPanel({
             <TextInput
               label="Country"
               placeholder="Auto-detected from coordinates"
-              value={matchedArchetype?.country ?? ""}
+              value={
+                getCountryDisplayName(
+                  activePeriodAvailability?.detectedCountry ??
+                    formState.matchResultMeta?.detectedCountry ??
+                    matchedArchetype?.country,
+                ) ?? ""
+              }
               readOnly
               variant="filled"
               leftSection={(() => {
-                const code = matchedArchetype?.country
-                  ? countryNameToCode(matchedArchetype.country)
+                const displayCountry =
+                  getCountryDisplayName(
+                    activePeriodAvailability?.detectedCountry ??
+                      formState.matchResultMeta?.detectedCountry ??
+                      matchedArchetype?.country,
+                  ) ??
+                  activePeriodAvailability?.detectedCountry ??
+                  formState.matchResultMeta?.detectedCountry ??
+                  matchedArchetype?.country;
+                const code = displayCountry
+                  ? countryNameToCode(displayCountry)
                   : undefined;
                 return code ? (
                   <Text size="sm">{countryFlag(code)}</Text>
@@ -434,12 +540,23 @@ export function ManualAddPanel({
           </Alert>
         )}
 
+        {periodFallbackMessage && (
+          <Alert
+            icon={<IconAlertTriangle size={16} />}
+            color="yellow"
+            variant="light"
+            p="xs"
+          >
+            <Text size="sm">{periodFallbackMessage}</Text>
+          </Alert>
+        )}
+
         <Grid>
           <Grid.Col span={6}>
             <Select
               label="Construction Period"
               placeholder="Select period"
-              data={availablePeriods}
+              data={visibleAvailablePeriods}
               value={constructionPeriod}
               onChange={(val) =>
                 dispatch({
@@ -561,8 +678,10 @@ export function ManualAddPanel({
                 defines thermal characteristics, HVAC systems, and construction
                 details used in energy simulation. Your building has been
                 matched to the closest available archetype based on coordinates,
-                category, and construction period. The country is automatically
-                detected from the matched archetype.
+                category, and construction period. The building country is
+                detected from the selected coordinates; if no local archetype is
+                available, the closest fallback archetype is used and explained
+                below.
               </Text>
             </Alert>
 
@@ -574,7 +693,45 @@ export function ManualAddPanel({
                 <Text size="sm" fw={500}>
                   {formatArchetypeName(matchedArchetype.name)}
                 </Text>
+                {formState.matchResultMeta?.matchQuality === "excellent" && (
+                  <Badge color="green" variant="light" size="sm">
+                    Excellent match
+                  </Badge>
+                )}
+                {formState.matchResultMeta?.matchQuality === "good" && (
+                  <Badge color="blue" variant="light" size="sm">
+                    Good match
+                  </Badge>
+                )}
+                {formState.matchResultMeta?.matchQuality === "approximate" && (
+                  <Badge color="yellow" variant="light" size="sm">
+                    Approximate match
+                  </Badge>
+                )}
               </Group>
+
+              {formState.matchResultMeta?.periodRelaxed && (
+                <Alert
+                  icon={<IconAlertTriangle size={16} />}
+                  color="yellow"
+                  variant="light"
+                  mb="xs"
+                >
+                  <Text size="sm">
+                    No <strong>{category}</strong> archetypes
+                    {formState.matchResultMeta.detectedCountry
+                      ? ` from ${formState.matchResultMeta.detectedCountry}`
+                      : ""}{" "}
+                    match the period <strong>{constructionPeriod}</strong>.
+                    Showing the closest available match from{" "}
+                    <strong>
+                      {getCountryDisplayName(matchedArchetype.country) ??
+                        matchedArchetype.country}
+                    </strong>
+                    .
+                  </Text>
+                </Alert>
+              )}
 
               <SimpleGrid cols={2} spacing="xs">
                 <div>
@@ -642,10 +799,14 @@ export function ManualAddPanel({
                 <Select
                   label="Change archetype"
                   placeholder="Select different archetype"
-                  data={availableArchetypes.map((a) => ({
-                    value: a.name,
-                    label: formatArchetypeName(a.name),
-                  }))}
+                  data={availableArchetypes.map((a) => {
+                    const code = countryNameToCode(a.country);
+                    const flag = code ? countryFlag(code) : "";
+                    return {
+                      value: a.name,
+                      label: `${flag ? `${flag} ` : ""}${formatArchetypeName(a.name)}`,
+                    };
+                  })}
                   value={selectedArchetypeName}
                   onChange={(val) =>
                     dispatch({

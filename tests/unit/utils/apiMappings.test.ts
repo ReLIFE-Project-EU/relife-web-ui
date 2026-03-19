@@ -1,11 +1,13 @@
 import { describe, test, expect } from "vitest";
 import {
+  constructionPeriodsEqual,
   toAPIPropertyType,
   fromAPIPropertyType,
   toAPIEnergyClass,
   fromAPIEnergyClass,
   deriveConstructionYear,
   deriveConstructionPeriod,
+  normalizeConstructionPeriod,
   type APIPropertyType,
   type APIEnergyClass,
 } from "../../../src/utils/apiMappings";
@@ -123,6 +125,10 @@ describe("apiMappings", () => {
       expect(deriveConstructionYear("1946-1969")).toBe(1958);
     });
 
+    test("normalizes period punctuation before computing midpoint", () => {
+      expect(deriveConstructionYear("1946–1969")).toBe(1958);
+    });
+
     test.each([
       ["pre-1945", 1930],
       ["post-2010", 2018],
@@ -149,6 +155,23 @@ describe("apiMappings", () => {
       [2011, "post-2010"],
     ] as const)("boundary: year %i → '%s'", (year, expected) => {
       expect(deriveConstructionPeriod(year)).toBe(expected);
+    });
+  });
+
+  describe("normalizeConstructionPeriod", () => {
+    test.each([
+      ["1946–1969", "1946-1969"],
+      [" 1946 - 1969 ", "1946-1969"],
+      ["Pre-1945", "pre-1945"],
+      ["post 2010", "post-2010"],
+    ] as const)("normalizes %s → %s", (input, expected) => {
+      expect(normalizeConstructionPeriod(input)).toBe(expected);
+    });
+  });
+
+  describe("constructionPeriodsEqual", () => {
+    test("treats hyphen and en dash as equal", () => {
+      expect(constructionPeriodsEqual("1946-1969", "1946–1969")).toBe(true);
     });
   });
 });

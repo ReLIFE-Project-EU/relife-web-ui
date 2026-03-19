@@ -25,6 +25,7 @@ import {
 import { LocationMap } from "./LocationMap";
 import type { ArchetypeInfo } from "../../../../types/forecasting";
 import { extractConstructionPeriod } from "../../../../utils/archetypeModifier";
+import { constructionPeriodsEqual } from "../../../../utils/apiMappings";
 
 // Import Leaflet CSS
 import "leaflet/dist/leaflet.css";
@@ -47,9 +48,9 @@ export function LocationInputs() {
       }
 
       if (state.building.constructionPeriod) {
-        return (
-          extractConstructionPeriod(archetype.name) ===
-          state.building.constructionPeriod
+        return constructionPeriodsEqual(
+          extractConstructionPeriod(archetype.name),
+          state.building.constructionPeriod,
         );
       }
 

@@ -35,6 +35,8 @@ import {
   applyAllModifications,
   validateModifications,
 } from "../utils/archetypeModifier";
+import { countryNamesEqual, normalizeCountryName } from "../utils/countries";
+import { normalizeConstructionPeriod } from "../utils/apiMappings";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Custom Error Types
@@ -88,7 +90,7 @@ const CLIMATE_REGIONS: Record<string, string[]> = {
   mediterranean: ["Greece", "Italy", "Spain", "Portugal"],
   central: ["Germany", "Austria", "Netherlands", "Belgium", "France"],
   northern: ["Finland", "Sweden", "Norway", "Denmark"],
-  eastern: ["Poland", "Czech Republic", "Hungary", "Romania"],
+  eastern: ["Poland", "Czechia", "Hungary", "Romania"],
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -119,7 +121,11 @@ function calculateComfortIndex(building: BuildingInfo): number {
     "1945-1970": -10,
     "pre-1945": -15,
   };
-  comfort += periodBonus[building.constructionPeriod] || 0;
+  const normalizedPeriod = normalizeConstructionPeriod(
+    building.constructionPeriod,
+  );
+  comfort +=
+    (normalizedPeriod ? periodBonus[normalizedPeriod] : undefined) || 0;
 
   if (building.heatingTechnology.includes("heat-pump")) {
     comfort += 5;
@@ -154,7 +160,11 @@ function calculateFlexibilityIndex(building: BuildingInfo): number {
     "1945-1970": -5,
     "pre-1945": -10,
   };
-  flexibility += periodBonus[building.constructionPeriod] || 0;
+  const normalizedPeriod = normalizeConstructionPeriod(
+    building.constructionPeriod,
+  );
+  flexibility +=
+    (normalizedPeriod ? periodBonus[normalizedPeriod] : undefined) || 0;
 
   return Math.max(0, Math.min(100, flexibility));
 }
@@ -163,8 +173,9 @@ function calculateFlexibilityIndex(building: BuildingInfo): number {
  * Get the climate region for a country
  */
 function getClimateRegion(country: string): string | null {
+  const normalizedCountry = normalizeCountryName(country) ?? country;
   for (const [region, countries] of Object.entries(CLIMATE_REGIONS)) {
-    if (countries.includes(country)) {
+    if (countries.includes(normalizedCountry)) {
       return region;
     }
   }
@@ -229,7 +240,7 @@ export class EnergyService implements IEnergyService {
       (a) =>
         a.name === selected.name &&
         a.category === selected.category &&
-        a.country === selected.country,
+        countryNamesEqual(a.country, selected.country),
     );
     if (match) return match;
 
@@ -260,18 +271,22 @@ export class EnergyService implements IEnergyService {
     building: BuildingInfo,
   ): Promise<ArchetypeInfo> {
     const archetypes = await this.getArchetypes();
-    const { country, buildingType } = building;
+    const { buildingType } = building;
+    const country = normalizeCountryName(building.country) ?? building.country;
 
     // Priority 1: Exact match (country + category)
     const exactMatch = archetypes.find(
-      (a) => a.country === country && a.category === buildingType,
+      (a) =>
+        countryNamesEqual(a.country, country) && a.category === buildingType,
     );
     if (exactMatch) {
       return exactMatch;
     }
 
     // Priority 2: Same country, any category
-    const countryMatch = archetypes.find((a) => a.country === country);
+    const countryMatch = archetypes.find((a) =>
+      countryNamesEqual(a.country, country),
+    );
     if (countryMatch) {
       console.warn(
         `No exact archetype match for ${country}/${buildingType}, ` +
@@ -286,7 +301,9 @@ export class EnergyService implements IEnergyService {
       const regionCountries = CLIMATE_REGIONS[userRegion];
       const regionMatch = archetypes.find(
         (a) =>
-          regionCountries.includes(a.country) && a.category === buildingType,
+          regionCountries.some((regionCountry) =>
+            countryNamesEqual(regionCountry, a.country),
+          ) && a.category === buildingType,
       );
       if (regionMatch) {
         console.warn(
@@ -297,7 +314,9 @@ export class EnergyService implements IEnergyService {
 
       // Any match in region
       const anyRegionMatch = archetypes.find((a) =>
-        regionCountries.includes(a.country),
+        regionCountries.some((regionCountry) =>
+          countryNamesEqual(regionCountry, a.country),
+        ),
       );
       if (anyRegionMatch) {
         console.warn(

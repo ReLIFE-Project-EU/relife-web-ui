@@ -13,7 +13,13 @@ import {
   Text,
 } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { PeriodAvailabilityResult } from "../../../../services/types";
+import {
+  constructionPeriodsEqual,
+  normalizeConstructionPeriod,
+} from "../../../../utils/apiMappings";
+import { buildPeriodFallbackMessage } from "./archetypeUiMessaging";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 
@@ -23,9 +29,12 @@ export function BuildingTypeInputs() {
 
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [availablePeriods, setAvailablePeriods] = useState<string[]>([]);
+  const [periodAvailability, setPeriodAvailability] =
+    useState<PeriodAvailabilityResult | null>(null);
   const [archetypeCount, setArchetypeCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
   const [showInfoAlert, setShowInfoAlert] = useState(true);
+  const periodRequestIdRef = useRef(0);
 
   const hasCoordinates =
     state.building.lat !== null && state.building.lng !== null;
@@ -69,39 +78,67 @@ export function BuildingTypeInputs() {
     state.building.buildingType,
   ]);
 
-  // Load available periods when building type changes
+  // Load available periods when building type or coordinates change.
+  // Filters by detected country so users only see periods available locally.
   useEffect(() => {
     const loadPeriods = async () => {
+      const requestId = ++periodRequestIdRef.current;
       if (!state.building.buildingType) {
         setAvailablePeriods([]);
+        setPeriodAvailability(null);
         return;
       }
 
       try {
-        const periods = await building.getAvailablePeriods(
-          state.building.buildingType,
-        );
-        setAvailablePeriods(periods);
+        const detectedCountry = hasCoordinates
+          ? building.detectCountryFromCoords({
+              lat: state.building.lat!,
+              lng: state.building.lng!,
+            })
+          : undefined;
 
-        // Clear construction period if no longer available
+        const result = await building.getAvailablePeriods(
+          state.building.buildingType,
+          detectedCountry ?? undefined,
+        );
+        if (requestId !== periodRequestIdRef.current) return;
+        setAvailablePeriods(result.periods);
+        setPeriodAvailability(result);
+
+        const currentPeriod = normalizeConstructionPeriod(
+          state.building.constructionPeriod,
+        );
+        const shouldReplacePeriod =
+          !currentPeriod ||
+          !result.periods.some((period) =>
+            constructionPeriodsEqual(period, currentPeriod),
+          );
         if (
-          state.building.constructionPeriod &&
-          !periods.includes(state.building.constructionPeriod)
+          shouldReplacePeriod &&
+          result.recommendedPeriod &&
+          !constructionPeriodsEqual(
+            state.building.constructionPeriod,
+            result.recommendedPeriod,
+          )
         ) {
           dispatch({
             type: "UPDATE_BUILDING",
             field: "constructionPeriod",
-            value: "",
+            value: result.recommendedPeriod,
           });
         }
       } catch (error) {
         console.error("Failed to load periods:", error);
+        setPeriodAvailability(null);
       }
     };
 
     loadPeriods();
   }, [
     state.building.buildingType,
+    state.building.lat,
+    state.building.lng,
+    hasCoordinates,
     building,
     dispatch,
     state.building.constructionPeriod,
@@ -114,6 +151,9 @@ export function BuildingTypeInputs() {
         const count = await building.countMatchingArchetypes(
           state.building.buildingType || undefined,
           state.building.constructionPeriod || undefined,
+          periodAvailability?.scope === "local"
+            ? (periodAvailability.detectedCountry ?? undefined)
+            : undefined,
         );
         setArchetypeCount(count);
       } catch (error) {
@@ -126,7 +166,13 @@ export function BuildingTypeInputs() {
     state.building.buildingType,
     state.building.constructionPeriod,
     building,
+    periodAvailability,
   ]);
+
+  const periodFallbackMessage = buildPeriodFallbackMessage(
+    periodAvailability,
+    state.building.buildingType,
+  );
 
   return (
     <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
@@ -148,6 +194,17 @@ export function BuildingTypeInputs() {
             database. Options shown are filtered based on what's available near
             your coordinates.
           </Text>
+        </Alert>
+      )}
+
+      {periodFallbackMessage && (
+        <Alert
+          variant="light"
+          color="yellow"
+          icon={<IconInfoCircle size={16} />}
+          style={{ gridColumn: "1 / -1" }}
+        >
+          <Text size="sm">{periodFallbackMessage}</Text>
         </Alert>
       )}
 
@@ -208,8 +265,11 @@ export function BuildingTypeInputs() {
               </Text>
               {state.building.buildingType && archetypeCount > 0 && (
                 <Badge size="sm" variant="light" color="blue">
-                  {archetypeCount} archetype{archetypeCount !== 1 ? "s" : ""}{" "}
-                  available
+                  {archetypeCount}{" "}
+                  {periodAvailability?.scope === "fallback"
+                    ? "fallback archetype"
+                    : "local archetype"}
+                  {archetypeCount !== 1 ? "s" : ""} available
                 </Badge>
               )}
             </Group>

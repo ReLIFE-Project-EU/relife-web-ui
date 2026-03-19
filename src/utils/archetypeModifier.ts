@@ -373,6 +373,27 @@ function calculateTotalWallArea(bui: BuildingPayload): number {
 export function extractConstructionPeriod(
   archetypeName: string,
 ): string | null {
+  const parts = archetypeName.split("_");
+  if (parts.length < 2) {
+    return null;
+  }
+
+  const periodParts = parts.slice(-2);
+  if (periodParts[0] === "0" && /^\d{4}$/.test(periodParts[1])) {
+    return `pre-${periodParts[1]}`;
+  }
+
+  if (/^\d{4}$/.test(periodParts[0]) && /^\d{4}$/.test(periodParts[1])) {
+    return `${periodParts[0]}-${periodParts[1]}`;
+  }
+
+  if (
+    /^\d{4}$/.test(periodParts[0]) &&
+    periodParts[1].toLowerCase() === "now"
+  ) {
+    return `${periodParts[0]}-present`;
+  }
+
   const match = archetypeName.match(/(\d{4})_(\d{4})/);
   return match ? `${match[1]}-${match[2]}` : null;
 }

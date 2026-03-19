@@ -8,6 +8,10 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import { Box } from "@mantine/core";
 import { useEffect, useMemo } from "react";
+import {
+  getCountryDisplayName,
+  getCountryReferenceLocation,
+} from "../../../../utils/countries";
 
 import iconUrl from "leaflet/dist/images/marker-icon.png";
 import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
@@ -37,45 +41,6 @@ const archetypeIcon = new L.Icon({
   iconAnchor: [12, 12],
   popupAnchor: [0, -12],
 });
-
-/**
- * Reference locations for archetype countries (capital cities).
- * Mirrors the workaround in BuildingService — backend BUI coordinates are
- * incorrect (all report Greece), so we use capitals instead.
- */
-const ARCHETYPE_REFERENCE_LOCATIONS: Record<
-  string,
-  { lat: number; lng: number }
-> = {
-  Greece: { lat: 37.98, lng: 23.73 },
-  Italy: { lat: 41.9, lng: 12.5 },
-  Austria: { lat: 48.21, lng: 16.37 },
-  Belgium: { lat: 50.85, lng: 4.35 },
-  Bulgaria: { lat: 42.7, lng: 23.32 },
-  Croatia: { lat: 45.81, lng: 15.98 },
-  Cyprus: { lat: 35.17, lng: 33.36 },
-  "Czech Republic": { lat: 50.08, lng: 14.44 },
-  Czechia: { lat: 50.08, lng: 14.44 },
-  Denmark: { lat: 55.68, lng: 12.57 },
-  Estonia: { lat: 59.44, lng: 24.75 },
-  Finland: { lat: 60.17, lng: 24.94 },
-  France: { lat: 48.86, lng: 2.35 },
-  Germany: { lat: 52.52, lng: 13.41 },
-  Hungary: { lat: 47.5, lng: 19.04 },
-  Ireland: { lat: 53.33, lng: -6.26 },
-  Latvia: { lat: 56.95, lng: 24.11 },
-  Lithuania: { lat: 54.69, lng: 25.28 },
-  Luxembourg: { lat: 49.61, lng: 6.13 },
-  Malta: { lat: 35.9, lng: 14.51 },
-  Netherlands: { lat: 52.37, lng: 4.89 },
-  Poland: { lat: 52.23, lng: 21.01 },
-  Portugal: { lat: 38.72, lng: -9.14 },
-  Romania: { lat: 44.43, lng: 26.1 },
-  Slovakia: { lat: 48.15, lng: 17.11 },
-  Slovenia: { lat: 46.06, lng: 14.51 },
-  Spain: { lat: 40.42, lng: -3.7 },
-  Sweden: { lat: 59.33, lng: 18.07 },
-};
 
 /** Fits the map viewport to both markers whenever positions change. */
 function FitBounds({
@@ -113,9 +78,11 @@ export function ArchetypeLocationMap({
   userLng,
   archetypeCountry,
 }: ArchetypeLocationMapProps) {
-  const refLocation = ARCHETYPE_REFERENCE_LOCATIONS[archetypeCountry];
+  const refLocation = getCountryReferenceLocation(archetypeCountry);
   const archetypeLat = refLocation?.lat ?? userLat;
   const archetypeLng = refLocation?.lng ?? userLng;
+  const displayCountry =
+    getCountryDisplayName(archetypeCountry) ?? archetypeCountry;
 
   const initialBounds = useMemo(
     () =>
@@ -156,7 +123,7 @@ export function ArchetypeLocationMap({
           <Popup>Your building</Popup>
         </Marker>
         <Marker position={[archetypeLat, archetypeLng]} icon={archetypeIcon}>
-          <Popup>Archetype reference ({archetypeCountry})</Popup>
+          <Popup>Archetype reference ({displayCountry})</Popup>
         </Marker>
       </MapContainer>
     </Box>
