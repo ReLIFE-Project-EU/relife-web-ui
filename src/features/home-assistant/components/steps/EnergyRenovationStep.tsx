@@ -79,14 +79,14 @@ export function EnergyRenovationStep() {
       );
 
       // Calculate financial results for all scenarios
-      const financialResults = await financial.calculateForAllScenarios(
+      const financialResults = await financial.calculateForAllScenarios({
         scenarios,
-        state.funding,
+        fundingOptions: state.funding,
         floorArea,
-        state.estimation,
-        state.packageFinancialInputs,
-        state.building,
-      );
+        currentEstimation: state.estimation,
+        packageFinancialInputs: state.packageFinancialInputs,
+        building: state.building,
+      });
 
       dispatch({
         type: "SET_EVALUATION_RESULTS",

@@ -10,6 +10,7 @@ import {
   Card,
   Collapse,
   Group,
+  Loader,
   Select,
   Stack,
   Text,
@@ -23,9 +24,12 @@ import {
   IconChevronUp,
   IconDownload,
   IconFileSpreadsheet,
+  IconLogin,
   IconUpload,
 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
+import { signInWithKeycloak, supabase } from "../../../../auth";
+import { useSupabaseSession } from "../../../../hooks/useAuth";
 import { portfolioApi } from "../../../portfolio-manager/api/portfolioApi";
 import { fileApi } from "../../../portfolio-manager/api/fileApi";
 import type {
@@ -40,6 +44,7 @@ export function CSVImportPanel({
 }: {
   onImport: (buildings: PRABuilding[]) => void;
 }) {
+  const { session, loading: isSessionLoading } = useSupabaseSession();
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [files, setFiles] = useState<PortfolioFile[]>([]);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(
@@ -53,6 +58,16 @@ export function CSVImportPanel({
 
   // Load portfolios
   useEffect(() => {
+    if (isSessionLoading) {
+      return;
+    }
+
+    if (!session) {
+      setPortfolios([]);
+      setPortfolioError(null);
+      return;
+    }
+
     portfolioApi
       .list()
       .then(setPortfolios)
@@ -61,10 +76,16 @@ export function CSVImportPanel({
           e instanceof Error ? e.message : "Failed to load portfolios",
         ),
       );
-  }, []);
+  }, [isSessionLoading, session]);
 
   // Load files when portfolio changes
   useEffect(() => {
+    if (!session) {
+      setFiles([]);
+      setSelectedFileId(null);
+      return;
+    }
+
     if (!selectedPortfolioId) {
       setFiles([]);
       setSelectedFileId(null);
@@ -77,7 +98,7 @@ export function CSVImportPanel({
         setSelectedFileId(null);
       })
       .catch(() => setFiles([]));
-  }, [selectedPortfolioId]);
+  }, [selectedPortfolioId, session]);
 
   const handleImport = async () => {
     if (!selectedFileId) return;
@@ -122,6 +143,27 @@ export function CSVImportPanel({
 
       <Collapse in={opened}>
         <Stack gap="sm" mt="md">
+          {isSessionLoading && <Loader size="sm" />}
+
+          {!isSessionLoading && !session && (
+            <Alert color="blue" icon={<IconAlertCircle size={16} />}>
+              <Stack gap="xs">
+                <Text size="sm">
+                  Sign in to import a CSV from your saved portfolios.
+                </Text>
+                <Group>
+                  <Button
+                    size="xs"
+                    leftSection={<IconLogin size={14} />}
+                    onClick={() => signInWithKeycloak({ supabase })}
+                  >
+                    Sign in with SSO
+                  </Button>
+                </Group>
+              </Stack>
+            </Alert>
+          )}
+
           {portfolioError && (
             <Alert color="yellow" icon={<IconAlertCircle size={16} />}>
               {portfolioError}
@@ -135,6 +177,7 @@ export function CSVImportPanel({
               data={portfolios.map((p) => ({ value: p.id, label: p.name }))}
               value={selectedPortfolioId}
               onChange={setSelectedPortfolioId}
+              disabled={!session || isSessionLoading}
               clearable
             />
 
@@ -147,7 +190,12 @@ export function CSVImportPanel({
               }))}
               value={selectedFileId}
               onChange={setSelectedFileId}
-              disabled={!selectedPortfolioId || files.length === 0}
+              disabled={
+                !session ||
+                isSessionLoading ||
+                !selectedPortfolioId ||
+                files.length === 0
+              }
               clearable
             />
 
@@ -155,7 +203,7 @@ export function CSVImportPanel({
               leftSection={<IconUpload size={16} />}
               onClick={handleImport}
               loading={loading}
-              disabled={!selectedFileId}
+              disabled={!session || isSessionLoading || !selectedFileId}
             >
               Import
             </Button>

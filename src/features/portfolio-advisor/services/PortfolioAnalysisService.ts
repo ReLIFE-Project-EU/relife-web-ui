@@ -18,13 +18,15 @@ import type {
 } from "../../../types/renovation";
 import { deriveConstructionYear } from "../../../utils/apiMappings";
 import { PRA_CONCURRENCY_LIMIT } from "../constants";
-import type { FinancingScheme } from "../constants";
 import type {
   BuildingAnalysisResult,
   PRABuilding,
   PRAFinancialResults,
 } from "../context/types";
-import type { IPortfolioAnalysisService } from "./types";
+import type {
+  IPortfolioAnalysisService,
+  PortfolioAnalysisRequest,
+} from "./types";
 
 export class PortfolioAnalysisService implements IPortfolioAnalysisService {
   private readonly energy: IEnergyService;
@@ -42,15 +44,19 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
   }
 
   async analyzePortfolio(
-    buildings: PRABuilding[],
-    selectedMeasures: RenovationMeasureId[],
-    _financingScheme: FinancingScheme,
-    funding: FundingOptions,
-    projectLifetime: number,
-    onProgress: (completed: number, total: number, current: string) => void,
-    globalCapex?: number | null,
-    globalMaintenanceCost?: number | null,
+    request: PortfolioAnalysisRequest,
   ): Promise<Record<string, BuildingAnalysisResult>> {
+    const {
+      buildings,
+      selectedMeasures,
+      financingScheme,
+      funding,
+      projectLifetime,
+      onProgress,
+      globalCapex,
+      globalMaintenanceCost,
+    } = request;
+    void financingScheme;
     const results: Record<string, BuildingAnalysisResult> = {};
     let completed = 0;
 
@@ -152,19 +158,19 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     const maintenanceCost =
       building.annualMaintenanceCost ?? globalMaintenanceCost ?? null;
 
-    const financialResults = await this.financial.calculateForAllScenarios(
+    const financialResults = await this.financial.calculateForAllScenarios({
       scenarios,
-      funding,
-      building.floorArea,
-      estimation,
-      {
+      fundingOptions: funding,
+      floorArea: building.floorArea,
+      currentEstimation: estimation,
+      packageFinancialInputs: {
         renovated: {
           capex,
           annualMaintenanceCost: maintenanceCost,
         },
       },
-      buildingInfo,
-    );
+      building: buildingInfo,
+    });
 
     // Enhance results with professional-level data if available
     const renovatedResults = financialResults["renovated"];

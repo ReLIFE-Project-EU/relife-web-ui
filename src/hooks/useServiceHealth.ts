@@ -19,7 +19,6 @@ export const useServiceHealth = (autoRefresh?: number) => {
   });
 
   const checkServices = async () => {
-    console.debug("[useServiceHealth] Starting service health check");
     setStatus((prev) => ({ ...prev, isLoading: true, error: null }));
 
     const results = await Promise.allSettled([
@@ -27,12 +26,6 @@ export const useServiceHealth = (autoRefresh?: number) => {
       technical.health(),
       forecasting.health(),
     ]);
-
-    console.debug("[useServiceHealth] Health check results:", {
-      financial: results[0].status,
-      technical: results[1].status,
-      forecasting: results[2].status,
-    });
 
     const newStatus = {
       financial: results[0].status === "fulfilled",
@@ -44,7 +37,6 @@ export const useServiceHealth = (autoRefresh?: number) => {
         : null,
     };
 
-    console.debug("[useServiceHealth] Updated status:", newStatus);
     setStatus(newStatus);
   };
 

@@ -27,6 +27,7 @@ import {
   getReferenceLocationForCountry,
 } from "../constants/archetypeLocations";
 import type { BuildingInfo } from "../types/renovation";
+import { COUNTRY_DEFAULTS } from "./mock/data/buildingOptions";
 import type {
   ArchetypeMatchAlternative,
   ArchetypeMatchResult,
@@ -36,7 +37,11 @@ import type {
   MatchQuality,
   PeriodAvailabilityResult,
 } from "./types";
-import { countryNamesEqual, normalizeCountryName } from "../utils/countries";
+import {
+  countryNamesEqual,
+  getCountryCode,
+  normalizeCountryName,
+} from "../utils/countries";
 
 // Scoring weights for archetype matching
 const W_COUNTRY = 100;
@@ -590,11 +595,12 @@ export class BuildingService implements IBuildingService {
   }
 
   /**
-   * Get default building values for a country (deprecated)
-   * Returns empty object since archetypes provide all defaults
+   * Get default building values for a country (deprecated).
+   * Kept for older UI flows that still request legacy defaults.
    */
-  getDefaultsForCountry(): Partial<BuildingInfo> {
-    return {};
+  getDefaultsForCountry(country: string): Partial<BuildingInfo> {
+    const countryCode = getCountryCode(country);
+    return countryCode ? (COUNTRY_DEFAULTS[countryCode] ?? {}) : {};
   }
 
   /**

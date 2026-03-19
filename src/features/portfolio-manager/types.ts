@@ -86,3 +86,28 @@ export interface StorageQuotaRow {
   max_bytes: number;
   updated_at: string;
 }
+
+export type PortfolioApiErrorCode =
+  | "auth"
+  | "validation"
+  | "storage"
+  | "database"
+  | "quota"
+  | "unknown";
+
+export class PortfolioApiError extends Error {
+  readonly code: PortfolioApiErrorCode;
+  readonly cause?: unknown;
+
+  constructor(
+    message: string,
+    code: PortfolioApiErrorCode,
+    options?: { cause?: unknown },
+  ) {
+    super(message);
+    this.name = "PortfolioApiError";
+    this.code = code;
+    this.cause = options?.cause;
+    Object.setPrototypeOf(this, PortfolioApiError.prototype);
+  }
+}

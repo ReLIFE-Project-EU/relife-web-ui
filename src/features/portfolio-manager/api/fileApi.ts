@@ -4,13 +4,18 @@
 
 import { supabase } from "../../../auth";
 import { FILE_UPLOAD_CONFIG, STORAGE_BUCKET } from "../constants";
-import type { PortfolioFile, PortfolioFileRow } from "../types";
+import {
+  PortfolioApiError,
+  type PortfolioFile,
+  type PortfolioFileRow,
+} from "../types";
 import {
   requireAuthenticatedUser,
   buildStoragePath,
   getISOTimestamp,
 } from "../utils";
 import { quotaApi } from "./quotaApi";
+import { wrapPortfolioApiError } from "./errors";
 
 /**
  * Transform database row to PortfolioFile interface
@@ -34,17 +39,31 @@ export const fileApi = {
    * Defense-in-depth: scopes by user_id to prevent unauthorized access.
    */
   async listByPortfolio(portfolioId: string): Promise<PortfolioFile[]> {
-    const user = await requireAuthenticatedUser();
+    try {
+      const user = await requireAuthenticatedUser();
 
-    const { data, error } = await supabase
-      .from("portfolio_files")
-      .select("*")
-      .eq("portfolio_id", portfolioId)
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("portfolio_files")
+        .select("*")
+        .eq("portfolio_id", portfolioId)
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
 
-    if (error) throw error;
-    return (data as PortfolioFileRow[]).map(toPortfolioFile);
+      if (error) {
+        throw wrapPortfolioApiError(
+          "Failed to load portfolio files.",
+          "database",
+          error,
+        );
+      }
+      return (data as PortfolioFileRow[]).map(toPortfolioFile);
+    } catch (error) {
+      throw wrapPortfolioApiError(
+        "Failed to load portfolio files.",
+        "database",
+        error,
+      );
+    }
   },
 
   /**
@@ -52,82 +71,105 @@ export const fileApi = {
    * Uses sanitized filename to prevent path traversal attacks.
    */
   async upload(portfolioId: string, file: File): Promise<PortfolioFile> {
-    const user = await requireAuthenticatedUser();
+    try {
+      const user = await requireAuthenticatedUser();
 
-    // Validate file type
-    if (
-      !FILE_UPLOAD_CONFIG.ALLOWED_MIME_TYPES.includes(
-        file.type as (typeof FILE_UPLOAD_CONFIG.ALLOWED_MIME_TYPES)[number],
-      )
-    ) {
-      throw new Error(`File type not allowed: ${file.type}`);
+      if (
+        !FILE_UPLOAD_CONFIG.ALLOWED_MIME_TYPES.includes(
+          file.type as (typeof FILE_UPLOAD_CONFIG.ALLOWED_MIME_TYPES)[number],
+        )
+      ) {
+        throw new PortfolioApiError(
+          `File type not allowed: ${file.type}`,
+          "validation",
+        );
+      }
+
+      if (file.size > FILE_UPLOAD_CONFIG.MAX_FILE_SIZE) {
+        throw new PortfolioApiError(
+          "File exceeds maximum size of 50MB",
+          "validation",
+        );
+      }
+
+      const hasQuota = await quotaApi.checkUploadAllowed(file.size);
+      if (!hasQuota) {
+        throw new PortfolioApiError("Storage quota exceeded", "quota");
+      }
+
+      const fileId = crypto.randomUUID();
+      const storagePath = buildStoragePath(
+        user.id,
+        portfolioId,
+        fileId,
+        file.name,
+      );
+
+      const { error: uploadError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(storagePath, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw wrapPortfolioApiError(
+          "Failed to upload file to storage.",
+          "storage",
+          uploadError,
+        );
+      }
+
+      const { data, error: dbError } = await supabase
+        .from("portfolio_files")
+        .insert({
+          portfolio_id: portfolioId,
+          user_id: user.id,
+          original_filename: file.name,
+          storage_path: storagePath,
+          mime_type: file.type,
+          file_size: file.size,
+        })
+        .select()
+        .single();
+
+      if (dbError) {
+        await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
+        throw wrapPortfolioApiError(
+          "Failed to save uploaded file metadata.",
+          "database",
+          dbError,
+        );
+      }
+
+      return toPortfolioFile(data as PortfolioFileRow);
+    } catch (error) {
+      throw wrapPortfolioApiError("Failed to upload file.", "storage", error);
     }
-
-    // Validate file size
-    if (file.size > FILE_UPLOAD_CONFIG.MAX_FILE_SIZE) {
-      throw new Error("File exceeds maximum size of 50MB");
-    }
-
-    // Check quota
-    const hasQuota = await quotaApi.checkUploadAllowed(file.size);
-    if (!hasQuota) {
-      throw new Error("Storage quota exceeded");
-    }
-
-    // Generate unique storage path with sanitized filename
-    const fileId = crypto.randomUUID();
-    const storagePath = buildStoragePath(
-      user.id,
-      portfolioId,
-      fileId,
-      file.name,
-    );
-
-    // Upload to storage
-    const { error: uploadError } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .upload(storagePath, file, {
-        cacheControl: "3600",
-        upsert: false,
-      });
-
-    if (uploadError) throw uploadError;
-
-    // Create database record
-    const { data, error: dbError } = await supabase
-      .from("portfolio_files")
-      .insert({
-        portfolio_id: portfolioId,
-        user_id: user.id,
-        original_filename: file.name,
-        storage_path: storagePath,
-        mime_type: file.type,
-        file_size: file.size,
-      })
-      .select()
-      .single();
-
-    if (dbError) {
-      // Rollback storage upload on DB failure
-      await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
-      throw dbError;
-    }
-
-    return toPortfolioFile(data as PortfolioFileRow);
   },
 
   /**
    * Download a file
    */
   async download(file: PortfolioFile): Promise<Blob> {
-    await requireAuthenticatedUser();
+    try {
+      await requireAuthenticatedUser();
 
-    const { data, error } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .download(file.storagePath);
+      const { data, error } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .download(file.storagePath);
 
-    if (error) throw error;
-    return data;
+      if (error) {
+        throw wrapPortfolioApiError(
+          "Failed to download file.",
+          "storage",
+          error,
+        );
+      }
+      return data;
+    } catch (error) {
+      throw wrapPortfolioApiError("Failed to download file.", "storage", error);
+    }
   },
 
   /**
@@ -135,23 +177,37 @@ export const fileApi = {
    * Defense-in-depth: scopes by user_id to prevent unauthorized access.
    */
   async delete(file: PortfolioFile): Promise<void> {
-    const user = await requireAuthenticatedUser();
+    try {
+      const user = await requireAuthenticatedUser();
 
-    // Delete from storage
-    const { error: storageError } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .remove([file.storagePath]);
+      const { error: storageError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .remove([file.storagePath]);
 
-    if (storageError) throw storageError;
+      if (storageError) {
+        throw wrapPortfolioApiError(
+          "Failed to delete file from storage.",
+          "storage",
+          storageError,
+        );
+      }
 
-    // Delete database record (scoped by user)
-    const { error: dbError } = await supabase
-      .from("portfolio_files")
-      .delete()
-      .eq("id", file.id)
-      .eq("user_id", user.id);
+      const { error: dbError } = await supabase
+        .from("portfolio_files")
+        .delete()
+        .eq("id", file.id)
+        .eq("user_id", user.id);
 
-    if (dbError) throw dbError;
+      if (dbError) {
+        throw wrapPortfolioApiError(
+          "Failed to delete file metadata.",
+          "database",
+          dbError,
+        );
+      }
+    } catch (error) {
+      throw wrapPortfolioApiError("Failed to delete file.", "database", error);
+    }
   },
 
   /**
@@ -159,18 +215,28 @@ export const fileApi = {
    * Defense-in-depth: scopes by user_id to prevent unauthorized access.
    */
   async rename(fileId: string, newFilename: string): Promise<void> {
-    const user = await requireAuthenticatedUser();
+    try {
+      const user = await requireAuthenticatedUser();
 
-    const { error } = await supabase
-      .from("portfolio_files")
-      .update({
-        original_filename: newFilename,
-        updated_at: getISOTimestamp(),
-      })
-      .eq("id", fileId)
-      .eq("user_id", user.id);
+      const { error } = await supabase
+        .from("portfolio_files")
+        .update({
+          original_filename: newFilename,
+          updated_at: getISOTimestamp(),
+        })
+        .eq("id", fileId)
+        .eq("user_id", user.id);
 
-    if (error) throw error;
+      if (error) {
+        throw wrapPortfolioApiError(
+          "Failed to rename file.",
+          "database",
+          error,
+        );
+      }
+    } catch (error) {
+      throw wrapPortfolioApiError("Failed to rename file.", "database", error);
+    }
   },
 
   /**
@@ -178,40 +244,58 @@ export const fileApi = {
    * Defense-in-depth: scopes by user_id to prevent unauthorized access.
    */
   async move(fileId: string, toPortfolioId: string): Promise<void> {
-    const user = await requireAuthenticatedUser();
+    try {
+      const user = await requireAuthenticatedUser();
 
-    // Get current file info (scoped by user)
-    const { data: file, error: fetchError } = await supabase
-      .from("portfolio_files")
-      .select("*")
-      .eq("id", fileId)
-      .eq("user_id", user.id)
-      .single();
+      const { data: file, error: fetchError } = await supabase
+        .from("portfolio_files")
+        .select("*")
+        .eq("id", fileId)
+        .eq("user_id", user.id)
+        .single();
 
-    if (fetchError) throw fetchError;
+      if (fetchError) {
+        throw wrapPortfolioApiError(
+          "Failed to load file before moving it.",
+          "database",
+          fetchError,
+        );
+      }
 
-    // Calculate new storage path
-    const filename = file.storage_path.split("/").pop();
-    const newStoragePath = `${user.id}/${toPortfolioId}/${filename}`;
+      const filename = file.storage_path.split("/").pop();
+      const newStoragePath = `${user.id}/${toPortfolioId}/${filename}`;
 
-    // Move file in storage
-    const { error: moveError } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .move(file.storage_path, newStoragePath);
+      const { error: moveError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .move(file.storage_path, newStoragePath);
 
-    if (moveError) throw moveError;
+      if (moveError) {
+        throw wrapPortfolioApiError(
+          "Failed to move file in storage.",
+          "storage",
+          moveError,
+        );
+      }
 
-    // Update database record (scoped by user)
-    const { error: updateError } = await supabase
-      .from("portfolio_files")
-      .update({
-        portfolio_id: toPortfolioId,
-        storage_path: newStoragePath,
-        updated_at: getISOTimestamp(),
-      })
-      .eq("id", fileId)
-      .eq("user_id", user.id);
+      const { error: updateError } = await supabase
+        .from("portfolio_files")
+        .update({
+          portfolio_id: toPortfolioId,
+          storage_path: newStoragePath,
+          updated_at: getISOTimestamp(),
+        })
+        .eq("id", fileId)
+        .eq("user_id", user.id);
 
-    if (updateError) throw updateError;
+      if (updateError) {
+        throw wrapPortfolioApiError(
+          "Failed to update moved file metadata.",
+          "database",
+          updateError,
+        );
+      }
+    } catch (error) {
+      throw wrapPortfolioApiError("Failed to move file.", "database", error);
+    }
   },
 };

@@ -33,6 +33,7 @@ import {
 import { applyFundingReduction } from "../utils/financialCalculations";
 import type {
   ARVRequest,
+  CalculateFinancialScenariosRequest,
   IFinancialService,
   RiskAssessmentRequest,
   RiskAssessmentResponse,
@@ -135,13 +136,10 @@ export class FinancialService implements IFinancialService {
 
   /**
    * Calculate financial results for all scenarios
-   * @param scenarios Array of renovation scenarios to evaluate
-   * @param fundingOptions Funding/loan configuration
-   * @param floorArea Building floor area in m²
-   * @param currentEstimation Current building energy estimation
-   * @param packageFinancialInputs Package-scoped CAPEX and annual maintenance cost keyed by scenario/package id
-   * @param building Building information for ARV calculation
    */
+  async calculateForAllScenarios(
+    request: CalculateFinancialScenariosRequest,
+  ): Promise<Record<ScenarioId, FinancialResults>>;
   async calculateForAllScenarios(
     scenarios: RenovationScenario[],
     fundingOptions: FundingOptions,
@@ -149,21 +147,50 @@ export class FinancialService implements IFinancialService {
     currentEstimation: EstimationResult,
     packageFinancialInputs: PackageFinancialInputsById,
     building: BuildingInfo,
+  ): Promise<Record<ScenarioId, FinancialResults>>;
+  async calculateForAllScenarios(
+    requestOrScenarios:
+      | CalculateFinancialScenariosRequest
+      | RenovationScenario[],
+    fundingOptions?: FundingOptions,
+    floorArea?: number,
+    currentEstimation?: EstimationResult,
+    packageFinancialInputs?: PackageFinancialInputsById,
+    building?: BuildingInfo,
   ): Promise<Record<ScenarioId, FinancialResults>> {
+    const {
+      scenarios,
+      fundingOptions: resolvedFundingOptions,
+      floorArea: resolvedFloorArea,
+      currentEstimation: resolvedCurrentEstimation,
+      packageFinancialInputs: resolvedPackageFinancialInputs,
+      building: resolvedBuilding,
+    } = Array.isArray(requestOrScenarios)
+      ? {
+          scenarios: requestOrScenarios,
+          fundingOptions: fundingOptions!,
+          floorArea: floorArea!,
+          currentEstimation: currentEstimation!,
+          packageFinancialInputs: packageFinancialInputs!,
+          building: building!,
+        }
+      : requestOrScenarios;
     const results: Record<string, FinancialResults> = {};
 
     for (const scenario of scenarios) {
       if (scenario.id === "current") {
         // Current scenario: no renovation, just current ARV
         const arvRequest: ARVRequest = {
-          lat: building.lat ?? 0,
-          lng: building.lng ?? 0,
-          floor_area: floorArea,
-          construction_year: building.constructionYear ?? 1990,
-          number_of_floors: building.numberOfFloors ?? 1,
-          floor_number: building.floorNumber,
-          property_type: toAPIPropertyType(building.buildingType),
-          energy_class: toAPIEnergyClass(currentEstimation.estimatedEPC),
+          lat: resolvedBuilding.lat ?? 0,
+          lng: resolvedBuilding.lng ?? 0,
+          floor_area: resolvedFloorArea,
+          construction_year: resolvedBuilding.constructionYear ?? 1990,
+          number_of_floors: resolvedBuilding.numberOfFloors ?? 1,
+          floor_number: resolvedBuilding.floorNumber,
+          property_type: toAPIPropertyType(resolvedBuilding.buildingType),
+          energy_class: toAPIEnergyClass(
+            resolvedCurrentEstimation.estimatedEPC,
+          ),
           renovated_last_5_years: false, // Current state, not recently renovated
         };
         const arvResult = await this.calculateARV(arvRequest);
@@ -180,7 +207,7 @@ export class FinancialService implements IFinancialService {
         continue;
       }
 
-      const packageInput = packageFinancialInputs[scenario.id];
+      const packageInput = resolvedPackageFinancialInputs[scenario.id];
       if (
         !packageInput ||
         packageInput.capex === null ||
@@ -201,36 +228,37 @@ export class FinancialService implements IFinancialService {
       const annualMaintenanceCost = packageInput.annualMaintenanceCost;
       const { effectiveCost, loanAmount } = applyFundingReduction(
         renovationCost,
-        fundingOptions,
+        resolvedFundingOptions,
       );
 
       // Calculate loan term based on financing type
       const loanTerm =
-        fundingOptions.financingType === "loan"
-          ? fundingOptions.loan.duration
+        resolvedFundingOptions.financingType === "loan"
+          ? resolvedFundingOptions.loan.duration
           : 0;
 
       // ARV Request for renovated scenario
       const arvRequest: ARVRequest = {
-        lat: building.lat ?? 0,
-        lng: building.lng ?? 0,
-        floor_area: floorArea,
-        construction_year: building.constructionYear ?? 1990,
-        number_of_floors: building.numberOfFloors ?? 1,
-        floor_number: building.floorNumber,
-        property_type: toAPIPropertyType(building.buildingType),
+        lat: resolvedBuilding.lat ?? 0,
+        lng: resolvedBuilding.lng ?? 0,
+        floor_area: resolvedFloorArea,
+        construction_year: resolvedBuilding.constructionYear ?? 1990,
+        number_of_floors: resolvedBuilding.numberOfFloors ?? 1,
+        floor_number: resolvedBuilding.floorNumber,
+        property_type: toAPIPropertyType(resolvedBuilding.buildingType),
         energy_class: toAPIEnergyClass(scenario.epcClass),
-        renovated_last_5_years: building.renovatedLast5Years,
+        renovated_last_5_years: resolvedBuilding.renovatedLast5Years,
       };
 
       const annualEnergySavingsKWh = Math.max(
         0,
-        currentEstimation.annualEnergyNeeds - (scenario.annualEnergyNeeds ?? 0),
+        resolvedCurrentEstimation.annualEnergyNeeds -
+          (scenario.annualEnergyNeeds ?? 0),
       ); // values are already in kWh/year
 
       const riskRequest: RiskAssessmentRequest = {
         annual_energy_savings: Math.round(annualEnergySavingsKWh),
-        project_lifetime: building.projectLifetime,
+        project_lifetime: resolvedBuilding.projectLifetime,
         output_level: this.outputLevel,
         capex: effectiveCost,
         annual_maintenance_cost: annualMaintenanceCost,

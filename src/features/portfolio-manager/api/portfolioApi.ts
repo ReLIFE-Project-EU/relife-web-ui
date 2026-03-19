@@ -6,6 +6,7 @@ import { supabase } from "../../../auth";
 import { STORAGE_BUCKET } from "../constants";
 import type { Portfolio, PortfolioRow } from "../types";
 import { requireAuthenticatedUser, getISOTimestamp } from "../utils";
+import { wrapPortfolioApiError } from "./errors";
 
 /**
  * Transform database row to Portfolio interface
@@ -27,53 +28,81 @@ export const portfolioApi = {
    * Defense-in-depth: filters by user_id even though RLS should handle this.
    */
   async list(): Promise<Portfolio[]> {
-    const user = await requireAuthenticatedUser();
+    try {
+      const user = await requireAuthenticatedUser();
 
-    const { data, error } = await supabase
-      .from("portfolios")
-      .select(
-        `
-        id,
-        name,
-        description,
-        created_at,
-        updated_at,
-        portfolio_files(count)
-      `,
-      )
-      .eq("user_id", user.id)
-      .order("name");
+      const { data, error } = await supabase
+        .from("portfolios")
+        .select(
+          `
+          id,
+          name,
+          description,
+          created_at,
+          updated_at,
+          portfolio_files(count)
+        `,
+        )
+        .eq("user_id", user.id)
+        .order("name");
 
-    if (error) throw error;
-    return (data as PortfolioRow[]).map(toPortfolio);
+      if (error) {
+        throw wrapPortfolioApiError(
+          "Failed to load portfolios.",
+          "database",
+          error,
+        );
+      }
+      return (data as PortfolioRow[]).map(toPortfolio);
+    } catch (error) {
+      throw wrapPortfolioApiError(
+        "Failed to load portfolios.",
+        "database",
+        error,
+      );
+    }
   },
 
   /**
    * Create a new portfolio
    */
   async create(name: string, description?: string): Promise<Portfolio> {
-    const user = await requireAuthenticatedUser();
+    try {
+      const user = await requireAuthenticatedUser();
 
-    const { data, error } = await supabase
-      .from("portfolios")
-      .insert({
-        user_id: user.id,
-        name,
-        description: description ?? null,
-      })
-      .select()
-      .single();
+      const { data, error } = await supabase
+        .from("portfolios")
+        .insert({
+          user_id: user.id,
+          name,
+          description: description ?? null,
+        })
+        .select()
+        .single();
 
-    if (error) throw error;
+      if (error) {
+        throw wrapPortfolioApiError(
+          "Failed to create portfolio.",
+          "database",
+          error,
+        );
+      }
 
-    return {
-      id: data.id,
-      name: data.name,
-      description: data.description,
-      fileCount: 0,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-    };
+      return {
+        id: data.id,
+        name: data.name,
+        description: data.description,
+        fileCount: 0,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      };
+    } catch (error) {
+      throw wrapPortfolioApiError(
+        "Failed to create portfolio.",
+        "database",
+        error,
+      );
+    }
   },
 
   /**
@@ -81,15 +110,29 @@ export const portfolioApi = {
    * Defense-in-depth: scopes by user_id to prevent unauthorized access.
    */
   async rename(id: string, name: string): Promise<void> {
-    const user = await requireAuthenticatedUser();
+    try {
+      const user = await requireAuthenticatedUser();
 
-    const { error } = await supabase
-      .from("portfolios")
-      .update({ name, updated_at: getISOTimestamp() })
-      .eq("id", id)
-      .eq("user_id", user.id);
+      const { error } = await supabase
+        .from("portfolios")
+        .update({ name, updated_at: getISOTimestamp() })
+        .eq("id", id)
+        .eq("user_id", user.id);
 
-    if (error) throw error;
+      if (error) {
+        throw wrapPortfolioApiError(
+          "Failed to rename portfolio.",
+          "database",
+          error,
+        );
+      }
+    } catch (error) {
+      throw wrapPortfolioApiError(
+        "Failed to rename portfolio.",
+        "database",
+        error,
+      );
+    }
   },
 
   /**
@@ -100,15 +143,29 @@ export const portfolioApi = {
     id: string,
     description: string | null,
   ): Promise<void> {
-    const user = await requireAuthenticatedUser();
+    try {
+      const user = await requireAuthenticatedUser();
 
-    const { error } = await supabase
-      .from("portfolios")
-      .update({ description, updated_at: getISOTimestamp() })
-      .eq("id", id)
-      .eq("user_id", user.id);
+      const { error } = await supabase
+        .from("portfolios")
+        .update({ description, updated_at: getISOTimestamp() })
+        .eq("id", id)
+        .eq("user_id", user.id);
 
-    if (error) throw error;
+      if (error) {
+        throw wrapPortfolioApiError(
+          "Failed to update portfolio description.",
+          "database",
+          error,
+        );
+      }
+    } catch (error) {
+      throw wrapPortfolioApiError(
+        "Failed to update portfolio description.",
+        "database",
+        error,
+      );
+    }
   },
 
   /**
@@ -116,34 +173,54 @@ export const portfolioApi = {
    * Defense-in-depth: scopes by user_id to prevent unauthorized access.
    */
   async delete(id: string): Promise<void> {
-    const user = await requireAuthenticatedUser();
+    try {
+      const user = await requireAuthenticatedUser();
 
-    // First, get all files in the portfolio (scoped by user)
-    const { data: files } = await supabase
-      .from("portfolio_files")
-      .select("storage_path")
-      .eq("portfolio_id", id)
-      .eq("user_id", user.id);
+      // First, get all files in the portfolio (scoped by user)
+      const { data: files, error: filesError } = await supabase
+        .from("portfolio_files")
+        .select("storage_path")
+        .eq("portfolio_id", id)
+        .eq("user_id", user.id);
 
-    // Delete files from storage if any exist
-    if (files && files.length > 0) {
-      const { error: storageError } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .remove(files.map((f) => f.storage_path));
-
-      if (storageError) {
-        console.error("Failed to delete storage files:", storageError);
-        // Continue with portfolio deletion - files table will cascade delete
+      if (filesError) {
+        throw wrapPortfolioApiError(
+          "Failed to load portfolio files before deletion.",
+          "database",
+          filesError,
+        );
       }
+
+      // Delete files from storage if any exist
+      if (files && files.length > 0) {
+        const { error: storageError } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .remove(files.map((f) => f.storage_path));
+
+        if (storageError) {
+          console.error("Failed to delete storage files:", storageError);
+        }
+      }
+
+      const { error } = await supabase
+        .from("portfolios")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", user.id);
+
+      if (error) {
+        throw wrapPortfolioApiError(
+          "Failed to delete portfolio.",
+          "database",
+          error,
+        );
+      }
+    } catch (error) {
+      throw wrapPortfolioApiError(
+        "Failed to delete portfolio.",
+        "database",
+        error,
+      );
     }
-
-    // Delete the portfolio (cascade deletes file records)
-    const { error } = await supabase
-      .from("portfolios")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", user.id);
-
-    if (error) throw error;
   },
 };

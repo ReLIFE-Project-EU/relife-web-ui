@@ -3,10 +3,11 @@
  */
 
 import { useCallback, useContext } from "react";
-import { fileApi, quotaApi } from "../api";
+import { fileApi } from "../api";
 import { PortfolioContext } from "../context/PortfolioContextDefinition";
 import type { PortfolioFile } from "../types";
 import { normalizeErrorMessage, getISOTimestamp } from "../utils";
+import { refreshPortfolioQuota } from "./quotaRefresh";
 
 export function useFileUpload() {
   const context = useContext(PortfolioContext);
@@ -160,12 +161,7 @@ export function useFileUpload() {
    * Refresh quota after operations
    */
   const refreshQuota = useCallback(async () => {
-    try {
-      const quota = await quotaApi.get();
-      dispatch({ type: "SET_QUOTA", quota });
-    } catch (err) {
-      console.error("Failed to refresh quota:", err);
-    }
+    await refreshPortfolioQuota(dispatch);
   }, [dispatch]);
 
   /**

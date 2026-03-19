@@ -164,7 +164,8 @@ export interface IBuildingService {
   ): Promise<import("../types/archetype").ArchetypeDetails>;
 
   /**
-   * Get default building values for a specific country (deprecated)
+   * Legacy helper for country defaults used by older forms.
+   * Accepts an ISO country code or display name.
    */
   getDefaultsForCountry(country: string): Partial<BuildingInfo>;
 
@@ -352,6 +353,15 @@ export interface RiskAssessmentResponse {
   cashFlowData?: CashFlowData;
 }
 
+export interface CalculateFinancialScenariosRequest {
+  scenarios: RenovationScenario[];
+  fundingOptions: FundingOptions;
+  floorArea: number;
+  currentEstimation: EstimationResult;
+  packageFinancialInputs: PackageFinancialInputsById;
+  building: BuildingInfo;
+}
+
 export interface IFinancialService {
   /**
    * Calculate After Renovation Value (ARV)
@@ -368,13 +378,10 @@ export interface IFinancialService {
   /**
    * Calculate financial results for all scenarios
    * Uses calculateARV and assessRisk internally
-   * @param scenarios Array of renovation scenarios to evaluate
-   * @param fundingOptions Funding/loan configuration
-   * @param floorArea Building floor area in m²
-   * @param currentEstimation Current building energy estimation
-   * @param packageFinancialInputs Package-scoped CAPEX and annual maintenance cost keyed by scenario/package id
-   * @param building Building information for ARV calculation
    */
+  calculateForAllScenarios(
+    request: CalculateFinancialScenariosRequest,
+  ): Promise<Record<ScenarioId, FinancialResults>>;
   calculateForAllScenarios(
     scenarios: RenovationScenario[],
     fundingOptions: FundingOptions,

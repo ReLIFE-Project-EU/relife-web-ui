@@ -15,6 +15,10 @@ import type {
 // Re-export for convenience
 export { MODIFICATION_CONSTRAINTS } from "../types/archetype";
 
+function clonePayload<T>(payload: T): T {
+  return structuredClone(payload);
+}
+
 // ============================================================================
 // Validation
 // ============================================================================
@@ -175,7 +179,7 @@ export function applyFloorAreaModification(
 ): BuildingPayload {
   const originalArea = bui.building.net_floor_area;
   const scaleFactor = newFloorArea / originalArea;
-  const modified = JSON.parse(JSON.stringify(bui)) as BuildingPayload;
+  const modified = clonePayload(bui);
 
   modified.building.net_floor_area = newFloorArea;
   modified.building_surface = modified.building_surface.map((surface) => ({
@@ -193,7 +197,7 @@ export function applyGeometryModification(
   numberOfFloors?: number,
   floorHeight?: number,
 ): BuildingPayload {
-  const modified = JSON.parse(JSON.stringify(bui)) as BuildingPayload;
+  const modified = clonePayload(bui);
 
   const originalTotalHeight = bui.building.n_floors * bui.building.height;
   const newTotalHeight =
@@ -228,7 +232,7 @@ export function applyThermalModification(
   roofU?: number,
   windowU?: number,
 ): BuildingPayload {
-  const modified = JSON.parse(JSON.stringify(bui)) as BuildingPayload;
+  const modified = clonePayload(bui);
 
   modified.building_surface = modified.building_surface.map((surface) => {
     const newSurface = { ...surface };
@@ -262,7 +266,7 @@ export function applySetpointModification(
   heatingSetpoint?: number,
   coolingSetpoint?: number,
 ): BuildingPayload {
-  const modified = JSON.parse(JSON.stringify(bui)) as BuildingPayload;
+  const modified = clonePayload(bui);
 
   if (heatingSetpoint !== undefined) {
     modified.building_parameters.temperature_setpoints.heating_setpoint =
@@ -285,9 +289,7 @@ export function applyAllModifications(
   archetypeDetails: ArchetypeDetails,
   modifications: BuildingModifications,
 ): { bui: BuildingPayload; system: SystemPayload } {
-  let modifiedBui = JSON.parse(
-    JSON.stringify(archetypeDetails.bui),
-  ) as BuildingPayload;
+  let modifiedBui = clonePayload(archetypeDetails.bui);
 
   if (modifications.floorArea !== undefined) {
     modifiedBui = applyFloorAreaModification(
@@ -331,9 +333,7 @@ export function applyAllModifications(
     );
   }
 
-  const modifiedSystem = JSON.parse(
-    JSON.stringify(archetypeDetails.system),
-  ) as SystemPayload;
+  const modifiedSystem = clonePayload(archetypeDetails.system);
 
   return {
     bui: modifiedBui,

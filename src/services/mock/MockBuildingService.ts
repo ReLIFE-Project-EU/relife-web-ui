@@ -6,10 +6,12 @@
 import type { ArchetypeInfo } from "../../types/forecasting";
 import type { ArchetypeDetails } from "../../types/archetype";
 import type { BuildingInfo } from "../../types/renovation";
+import { getCountryCode } from "../../utils/countries";
 import type {
   ArchetypeMatchResult,
   BuildingOptions,
   IBuildingService,
+  PeriodAvailabilityResult,
 } from "../types";
 import {
   BUILDING_TYPES,
@@ -42,24 +44,45 @@ export class MockBuildingService implements IBuildingService {
     };
   }
 
-  async getArchetypes(): Promise<ArchetypeInfo[]> {
+  async getArchetypes(
+    country?: string,
+    category?: string,
+  ): Promise<ArchetypeInfo[]> {
+    void country;
+    void category;
     return [];
   }
 
-  async findMatchingArchetype(): Promise<ArchetypeMatchResult | null> {
+  async findMatchingArchetype(
+    category: string,
+    period?: string | null,
+    coords?: { lat: number; lng: number } | null,
+  ): Promise<ArchetypeMatchResult | null> {
+    void category;
+    void period;
+    void coords;
     return null;
   }
 
-  detectCountryFromCoords(): string | null {
+  detectCountryFromCoords(coords: { lat: number; lng: number }): string | null {
+    void coords;
     return null;
   }
 
-  async getAvailableCategories(): Promise<string[]> {
+  async getAvailableCategories(
+    coords?: { lat: number; lng: number } | null,
+  ): Promise<string[]> {
+    void coords;
     const options = await this.getOptions();
     return options.buildingTypes.map((opt) => opt.value);
   }
 
-  async getAvailablePeriods() {
+  async getAvailablePeriods(
+    category: string,
+    country?: string,
+  ): Promise<PeriodAvailabilityResult> {
+    void category;
+    void country;
     const options = await this.getOptions();
     const periods = options.constructionPeriods.map((opt) => opt.value);
     return {
@@ -72,11 +95,21 @@ export class MockBuildingService implements IBuildingService {
     };
   }
 
-  async countMatchingArchetypes(): Promise<number> {
+  async countMatchingArchetypes(
+    category?: string,
+    period?: string,
+    country?: string,
+  ): Promise<number> {
+    void category;
+    void period;
+    void country;
     return 0;
   }
 
-  async getArchetypeDetails(): Promise<ArchetypeDetails> {
+  async getArchetypeDetails(
+    archetype: ArchetypeInfo,
+  ): Promise<ArchetypeDetails> {
+    void archetype;
     throw new Error("Mock service does not support archetype details");
   }
 
@@ -89,7 +122,8 @@ export class MockBuildingService implements IBuildingService {
   }
 
   getDefaultsForCountry(country: string): Partial<BuildingInfo> {
-    return COUNTRY_DEFAULTS[country] || {};
+    const countryCode = getCountryCode(country);
+    return countryCode ? (COUNTRY_DEFAULTS[countryCode] ?? {}) : {};
   }
 }
 

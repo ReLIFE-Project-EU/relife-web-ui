@@ -16,16 +16,20 @@ import type {
 import type { FinancingScheme } from "../constants";
 import type { BuildingAnalysisResult, PRABuilding } from "../context/types";
 
+export interface PortfolioAnalysisRequest {
+  buildings: PRABuilding[];
+  selectedMeasures: RenovationMeasureId[];
+  financingScheme: FinancingScheme;
+  funding: FundingOptions;
+  projectLifetime: number;
+  onProgress: (completed: number, total: number, current: string) => void;
+  globalCapex?: number | null;
+  globalMaintenanceCost?: number | null;
+}
+
 export interface IPortfolioAnalysisService {
   analyzePortfolio(
-    buildings: PRABuilding[],
-    selectedMeasures: RenovationMeasureId[],
-    financingScheme: FinancingScheme,
-    funding: FundingOptions,
-    projectLifetime: number,
-    onProgress: (completed: number, total: number, current: string) => void,
-    globalCapex?: number | null,
-    globalMaintenanceCost?: number | null,
+    request: PortfolioAnalysisRequest,
   ): Promise<Record<string, BuildingAnalysisResult>>;
 }
 
