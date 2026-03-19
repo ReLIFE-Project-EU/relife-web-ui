@@ -54,16 +54,14 @@ import type {
   MatchQuality,
 } from "../../../../services/types";
 import {
+  buildArchetypeSelectionLabels,
   countryFlag,
   countryNameToCode,
-  formatArchetypeName,
+  getArchetypeSelectionLabel,
 } from "../../../../utils/archetypeLabels";
 import { validateModifications } from "../../../../utils/archetypeModifier";
 import { checkAreaArchetypeMismatch } from "../../../../utils/inputSanityChecks";
-import {
-  getCountryDisplayName,
-  normalizeCountryName,
-} from "../../../../utils/countries";
+import { normalizeCountryName } from "../../../../utils/countries";
 import {
   formatArea,
   formatDecimal,
@@ -384,6 +382,12 @@ function ArchetypeSummary({
   const appliedFloorArea = appliedModifications?.floorArea;
   const appliedNumberOfFloors = appliedModifications?.numberOfFloors;
   const appliedFloorHeight = appliedModifications?.floorHeight;
+  const alternativeArchetypes = matchResult
+    ? [details, ...matchResult.alternatives.map((alt) => alt.archetype)]
+    : [details];
+  const archetypeSelectionLabels = buildArchetypeSelectionLabels(
+    alternativeArchetypes,
+  );
 
   const previewSummary = buildAppliedChanges(details, draft, isApartment);
   const validationResult = validateModifications(
@@ -408,14 +412,12 @@ function ArchetypeSummary({
             <Text size="sm" c="dimmed">
               {(() => {
                 const code = countryNameToCode(details.country);
-                const formattedName = formatArchetypeName(details.name);
-                if (!code) return formattedName;
-                const displayCountry =
-                  getCountryDisplayName(details.country) ?? details.country;
-                if (formattedName.startsWith(displayCountry)) {
-                  return `${countryFlag(code)} ${formattedName}`;
-                }
-                return `${countryFlag(code)} ${displayCountry} · ${formattedName}`;
+                const label = getArchetypeSelectionLabel(
+                  details,
+                  archetypeSelectionLabels,
+                );
+                if (!code) return label;
+                return `${countryFlag(code)} ${label}`;
               })()}
             </Text>
           </Stack>
@@ -560,7 +562,10 @@ function ArchetypeSummary({
                 {matchResult.alternatives.map((alt) => {
                   const code = countryNameToCode(alt.archetype.country);
                   const flag = code ? countryFlag(code) : "";
-                  const label = formatArchetypeName(alt.archetype.name);
+                  const label = getArchetypeSelectionLabel(
+                    alt.archetype,
+                    archetypeSelectionLabels,
+                  );
                   return (
                     <Group
                       key={`${alt.archetype.country}-${alt.archetype.name}`}

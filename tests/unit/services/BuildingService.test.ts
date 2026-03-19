@@ -277,6 +277,32 @@ describe("BuildingService", () => {
     expect(italyResult.recommendedPeriod).toBe("1961-1980");
   });
 
+  test("getAvailablePeriods sorts local periods chronologically", async () => {
+    mockListArchetypes.mockResolvedValue([
+      { category: "SFH", country: "Austria", name: "AT_SFH_1971_1990" },
+      { category: "SFH", country: "Austria", name: "SFH_0_1945" },
+      { category: "SFH", country: "Austria", name: "AT_SFH_1946_1969" },
+    ]);
+
+    const result = await service.getAvailablePeriods("SFH", "Austria");
+
+    expect(result.periods).toEqual(["pre-1945", "1946-1969", "1971-1990"]);
+    expect(result.scope).toBe("local");
+  });
+
+  test("getAvailablePeriods sorts fallback periods chronologically", async () => {
+    mockListArchetypes.mockResolvedValue([
+      { category: "SFH", country: "Austria", name: "AT_SFH_1971_1990" },
+      { category: "SFH", country: "Austria", name: "SFH_0_1945" },
+      { category: "SFH", country: "Belgium", name: "BE_SFH_1946_1969" },
+    ]);
+
+    const result = await service.getAvailablePeriods("SFH", "Portugal");
+
+    expect(result.periods).toEqual(["pre-1945", "1946-1969", "1971-1990"]);
+    expect(result.scope).toBe("fallback");
+  });
+
   test("getAvailablePeriods normalizes country aliases", async () => {
     mockListArchetypes.mockResolvedValue(archetypeList);
 

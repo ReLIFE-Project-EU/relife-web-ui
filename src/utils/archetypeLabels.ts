@@ -4,6 +4,8 @@ import {
   getCountryDisplayNameByCode,
   getCountryFlag,
 } from "./countries";
+import { compareConstructionPeriods } from "./apiMappings";
+import { extractConstructionPeriod } from "./archetypeModifier";
 
 /**
  * Human-readable archetype label formatting.
@@ -93,4 +95,96 @@ export function formatArchetypeName(name: string): string {
   }
 
   return name;
+}
+
+export function formatArchetypeSelectionLabel(
+  country: string,
+  name: string,
+): string {
+  const displayCountry = getCountryDisplayName(country) ?? country;
+  const formattedName = formatArchetypeName(name);
+
+  if (formattedName.startsWith(displayCountry)) {
+    return formattedName;
+  }
+
+  return `${displayCountry} · ${formattedName}`;
+}
+
+function getArchetypeSelectionIdentity(archetype: {
+  country: string;
+  name: string;
+}): string {
+  return `${archetype.country}:${archetype.name}`;
+}
+
+export function buildArchetypeSelectionLabels<
+  T extends { country: string; name: string },
+>(archetypes: T[]): Map<string, string> {
+  const labelCounts = new Map<string, number>();
+
+  archetypes.forEach((archetype) => {
+    const label = formatArchetypeSelectionLabel(
+      archetype.country,
+      archetype.name,
+    );
+    labelCounts.set(label, (labelCounts.get(label) ?? 0) + 1);
+  });
+
+  return new Map(
+    archetypes.map((archetype) => {
+      const label = formatArchetypeSelectionLabel(
+        archetype.country,
+        archetype.name,
+      );
+      const resolvedLabel =
+        (labelCounts.get(label) ?? 0) > 1
+          ? `${label} (${archetype.name})`
+          : label;
+
+      return [getArchetypeSelectionIdentity(archetype), resolvedLabel];
+    }),
+  );
+}
+
+export function getArchetypeSelectionLabel(
+  archetype: { country: string; name: string },
+  labels?: Map<string, string>,
+): string {
+  return (
+    labels?.get(getArchetypeSelectionIdentity(archetype)) ??
+    formatArchetypeSelectionLabel(archetype.country, archetype.name)
+  );
+}
+
+export function compareArchetypesForSelection(
+  left: { country: string; name: string },
+  right: { country: string; name: string },
+): number {
+  const leftCountry = getCountryDisplayName(left.country) ?? left.country;
+  const rightCountry = getCountryDisplayName(right.country) ?? right.country;
+  const countryComparison = leftCountry.localeCompare(rightCountry);
+
+  if (countryComparison !== 0) {
+    return countryComparison;
+  }
+
+  const periodComparison = compareConstructionPeriods(
+    extractConstructionPeriod(left.name),
+    extractConstructionPeriod(right.name),
+  );
+  if (periodComparison !== 0) {
+    return periodComparison;
+  }
+
+  const labelComparison = formatArchetypeSelectionLabel(
+    left.country,
+    left.name,
+  ).localeCompare(formatArchetypeSelectionLabel(right.country, right.name));
+
+  if (labelComparison !== 0) {
+    return labelComparison;
+  }
+
+  return left.name.localeCompare(right.name);
 }

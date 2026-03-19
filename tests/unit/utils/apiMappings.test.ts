@@ -1,5 +1,6 @@
 import { describe, test, expect } from "vitest";
 import {
+  compareConstructionPeriods,
   constructionPeriodsEqual,
   toAPIPropertyType,
   fromAPIPropertyType,
@@ -172,6 +173,20 @@ describe("apiMappings", () => {
   describe("constructionPeriodsEqual", () => {
     test("treats hyphen and en dash as equal", () => {
       expect(constructionPeriodsEqual("1946-1969", "1946–1969")).toBe(true);
+    });
+  });
+
+  describe("compareConstructionPeriods", () => {
+    test("sorts pre-1945 before later ranges", () => {
+      const sorted = ["1971-1990", "pre-1945", "1946-1969"].sort(
+        compareConstructionPeriods,
+      );
+
+      expect(sorted).toEqual(["pre-1945", "1946-1969", "1971-1990"]);
+    });
+
+    test("treats normalized equivalent periods as equal for sorting", () => {
+      expect(compareConstructionPeriods("1946-1969", "1946–1969")).toBe(0);
     });
   });
 });

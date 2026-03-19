@@ -33,9 +33,11 @@ import {
 import { useEffect, useReducer, useRef, useState } from "react";
 import { checkAreaArchetypeMismatch } from "../../../../utils/inputSanityChecks";
 import {
+  buildArchetypeSelectionLabels,
+  compareArchetypesForSelection,
   countryFlag,
   countryNameToCode,
-  formatArchetypeName,
+  getArchetypeSelectionLabel,
 } from "../../../../utils/archetypeLabels";
 import { getCountryDisplayName } from "../../../../utils/countries";
 import type { BuildingModifications } from "../../../../types/archetype";
@@ -454,6 +456,12 @@ export function ManualAddPanel({
     activePeriodAvailability,
     category,
   );
+  const sortedAvailableArchetypes = [...availableArchetypes].sort(
+    compareArchetypesForSelection,
+  );
+  const archetypeSelectionLabels = buildArchetypeSelectionLabels(
+    sortedAvailableArchetypes,
+  );
 
   return (
     <Card withBorder radius="md" p="lg">
@@ -691,7 +699,10 @@ export function ManualAddPanel({
                   <IconHome size={20} />
                 </ThemeIcon>
                 <Text size="sm" fw={500}>
-                  {formatArchetypeName(matchedArchetype.name)}
+                  {getArchetypeSelectionLabel(
+                    matchedArchetype,
+                    archetypeSelectionLabels,
+                  )}
                 </Text>
                 {formState.matchResultMeta?.matchQuality === "excellent" && (
                   <Badge color="green" variant="light" size="sm">
@@ -799,12 +810,12 @@ export function ManualAddPanel({
                 <Select
                   label="Change archetype"
                   placeholder="Select different archetype"
-                  data={availableArchetypes.map((a) => {
+                  data={sortedAvailableArchetypes.map((a) => {
                     const code = countryNameToCode(a.country);
                     const flag = code ? countryFlag(code) : "";
                     return {
                       value: a.name,
-                      label: `${flag ? `${flag} ` : ""}${formatArchetypeName(a.name)}`,
+                      label: `${flag ? `${flag} ` : ""}${getArchetypeSelectionLabel(a, archetypeSelectionLabels)}`,
                     };
                   })}
                   value={selectedArchetypeName}
@@ -818,6 +829,8 @@ export function ManualAddPanel({
                   }
                   mt="sm"
                   size="xs"
+                  searchable
+                  nothingFoundMessage="No archetypes match your search"
                 />
               )}
             </Card>

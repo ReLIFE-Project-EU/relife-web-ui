@@ -16,6 +16,7 @@ import {
   extractConstructionPeriod,
 } from "../utils/archetypeModifier";
 import {
+  compareConstructionPeriods,
   constructionPeriodsEqual,
   deriveConstructionYear,
   normalizeConstructionPeriod,
@@ -59,7 +60,7 @@ export class BuildingService implements IBuildingService {
       }
     });
 
-    return Array.from(periods).sort();
+    return Array.from(periods).sort(compareConstructionPeriods);
   }
 
   private getRecommendedArchetype(
@@ -151,7 +152,7 @@ export class BuildingService implements IBuildingService {
       if (period) periodSet.add(period);
     });
     const constructionPeriods = Array.from(periodSet)
-      .sort()
+      .sort(compareConstructionPeriods)
       .map((period) => ({
         value: period,
         label: period,

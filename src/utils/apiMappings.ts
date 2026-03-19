@@ -215,6 +215,35 @@ export function constructionPeriodsEqual(
   return normalizedLeft === normalizedRight;
 }
 
+export function compareConstructionPeriods(
+  left?: string | null,
+  right?: string | null,
+): number {
+  const normalizedLeft = normalizeConstructionPeriod(left);
+  const normalizedRight = normalizeConstructionPeriod(right);
+
+  if (!normalizedLeft && !normalizedRight) {
+    return 0;
+  }
+
+  if (!normalizedLeft) {
+    return 1;
+  }
+
+  if (!normalizedRight) {
+    return -1;
+  }
+
+  const yearDifference =
+    deriveConstructionYear(normalizedLeft) -
+    deriveConstructionYear(normalizedRight);
+  if (yearDifference !== 0) {
+    return yearDifference;
+  }
+
+  return normalizedLeft.localeCompare(normalizedRight);
+}
+
 /**
  * Derive construction year from period string.
  * Handles both API-mapping periods ("1945-1970", "pre-1945") and
