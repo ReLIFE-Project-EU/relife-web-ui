@@ -179,4 +179,55 @@ describe("homeAssistantReducer package financial inputs", () => {
     expect(state.financialResults).toEqual({});
     expect(state.mcdaRanking).toBeNull();
   });
+
+  test("updating upfront incentive invalidates prior financial results", () => {
+    const state = homeAssistantReducer(
+      {
+        ...initialState,
+        financialResults: {
+          "package-wall-insulation": {
+            arv: null,
+            riskAssessment: null,
+            capitalExpenditure: 10_000,
+            returnOnInvestment: 0,
+            paybackTime: 0,
+            netPresentValue: 0,
+            afterRenovationValue: 0,
+          },
+        },
+        mcdaRanking: [
+          { scenarioId: "package-wall-insulation", rank: 1, score: 1 },
+        ],
+      },
+      {
+        type: "UPDATE_INCENTIVE",
+        field: "upfrontPercentage",
+        value: 15,
+      },
+    );
+
+    expect(state.funding.incentives.upfrontPercentage).toBe(15);
+    expect(state.financialResults).toEqual({});
+    expect(state.mcdaRanking).toBeNull();
+  });
+
+  test("updating lifetime incentive amount stores the new value", () => {
+    const state = homeAssistantReducer(initialState, {
+      type: "UPDATE_INCENTIVE",
+      field: "lifetimeAmount",
+      value: 1200,
+    });
+
+    expect(state.funding.incentives.lifetimeAmount).toBe(1200);
+  });
+
+  test("updating lifetime incentive years stores the new value", () => {
+    const state = homeAssistantReducer(initialState, {
+      type: "UPDATE_INCENTIVE",
+      field: "lifetimeYears",
+      value: 8,
+    });
+
+    expect(state.funding.incentives.lifetimeYears).toBe(8);
+  });
 });

@@ -203,11 +203,22 @@ export interface LoanDetails {
   interestRate: number;
 }
 
+export interface IncentiveDetails {
+  /** Upfront incentive as a percentage of CAPEX (0-100). */
+  upfrontPercentage: number;
+  /** Annual OPEX reduction in euros per year. */
+  lifetimeAmount: number;
+  /** Duration of the annual OPEX reduction in years. */
+  lifetimeYears: number;
+}
+
 export interface FundingOptions {
   /** The chosen financing type */
   financingType: FinancingType;
   /** Loan details (only relevant when financingType is "loan") */
   loan: LoanDetails;
+  /** Backend-native incentive inputs shared across tools. */
+  incentives: IncentiveDetails;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

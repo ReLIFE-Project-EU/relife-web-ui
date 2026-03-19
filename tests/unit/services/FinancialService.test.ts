@@ -88,6 +88,11 @@ const mockEstimation = {
 const mockFundingOptions: FundingOptions = {
   financingType: "self-funded",
   loan: { percentage: 0, duration: 0, interestRate: 0 },
+  incentives: {
+    upfrontPercentage: 0,
+    lifetimeAmount: 0,
+    lifetimeYears: 0,
+  },
 };
 
 const renovatedScenario = {
@@ -266,6 +271,11 @@ describe("FinancialService", () => {
     const fundedOptions: FundingOptions = {
       financingType: "loan",
       loan: { percentage: 50, duration: 12, interestRate: 0.04 },
+      incentives: {
+        upfrontPercentage: 0,
+        lifetimeAmount: 0,
+        lifetimeYears: 0,
+      },
     };
 
     await service.calculateForAllScenarios(
@@ -289,6 +299,67 @@ describe("FinancialService", () => {
       expect.objectContaining({
         capex: 18000,
         loan_amount: 9000,
+      }),
+    );
+  });
+
+  test("forwards incentive fields and sanitizes invalid lifetime incentives", async () => {
+    const service = new FinancialService();
+    const fundedOptions: FundingOptions = {
+      financingType: "loan",
+      loan: { percentage: 50, duration: 12, interestRate: 0.04 },
+      incentives: {
+        upfrontPercentage: 20,
+        lifetimeAmount: 1200,
+        lifetimeYears: 0,
+      },
+    };
+
+    await service.calculateForAllScenarios(
+      [renovatedScenario],
+      fundedOptions,
+      100,
+      mockEstimation,
+      packageFinancialInputs,
+      mockBuilding,
+    );
+
+    expect(mockAssessRisk).toHaveBeenCalledWith(
+      expect.objectContaining({
+        capex: 10000,
+        loan_amount: 4000,
+        upfront_incentive_percentage: 20,
+        lifetime_incentive_amount: 0,
+        lifetime_incentive_years: 0,
+      }),
+    );
+  });
+
+  test("clamps lifetime incentive duration to project lifetime", async () => {
+    const service = new FinancialService();
+    const fundedOptions: FundingOptions = {
+      financingType: "self-funded",
+      loan: { percentage: 0, duration: 0, interestRate: 0 },
+      incentives: {
+        upfrontPercentage: 0,
+        lifetimeAmount: 900,
+        lifetimeYears: 30,
+      },
+    };
+
+    await service.calculateForAllScenarios(
+      [renovatedScenario],
+      fundedOptions,
+      100,
+      mockEstimation,
+      packageFinancialInputs,
+      mockBuilding,
+    );
+
+    expect(mockAssessRisk).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lifetime_incentive_amount: 900,
+        lifetime_incentive_years: 20,
       }),
     );
   });

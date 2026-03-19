@@ -130,12 +130,39 @@ export function applyFundingReduction(
 } {
   // CAPEX is always the total renovation cost
   const effectiveCost = totalCost;
+  const upfrontIncentivePercentage =
+    fundingOptions.incentives.upfrontPercentage / 100;
+  const postIncentiveCost = Math.max(
+    0,
+    totalCost * (1 - upfrontIncentivePercentage),
+  );
 
   // Loan amount depends on financing type
   const loanAmount =
     fundingOptions.financingType === "loan"
-      ? totalCost * (fundingOptions.loan.percentage / 100)
+      ? postIncentiveCost * (fundingOptions.loan.percentage / 100)
       : 0;
 
   return { effectiveCost, loanAmount };
+}
+
+export function sanitizeLifetimeIncentives(
+  lifetimeAmount: number,
+  lifetimeYears: number,
+  projectLifetime: number,
+): {
+  lifetimeAmount: number;
+  lifetimeYears: number;
+} {
+  if (lifetimeAmount <= 0 || lifetimeYears <= 0) {
+    return {
+      lifetimeAmount: 0,
+      lifetimeYears: 0,
+    };
+  }
+
+  return {
+    lifetimeAmount,
+    lifetimeYears: Math.min(lifetimeYears, projectLifetime),
+  };
 }

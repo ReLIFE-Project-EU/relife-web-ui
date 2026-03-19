@@ -30,7 +30,10 @@ import {
   type APIEnergyClass,
   type OutputLevel,
 } from "../utils/apiMappings";
-import { applyFundingReduction } from "../utils/financialCalculations";
+import {
+  applyFundingReduction,
+  sanitizeLifetimeIncentives,
+} from "../utils/financialCalculations";
 import type {
   ARVRequest,
   CalculateFinancialScenariosRequest,
@@ -84,6 +87,9 @@ export class FinancialService implements IFinancialService {
       indicators: request.indicators,
       loan_amount: request.loan_amount ?? 0,
       loan_term: request.loan_term ?? 0,
+      upfront_incentive_percentage: request.upfront_incentive_percentage,
+      lifetime_incentive_amount: request.lifetime_incentive_amount,
+      lifetime_incentive_years: request.lifetime_incentive_years,
       capex: request.capex,
       annual_maintenance_cost: request.annual_maintenance_cost,
       include_visualizations: request.include_visualizations,
@@ -230,6 +236,11 @@ export class FinancialService implements IFinancialService {
         renovationCost,
         resolvedFundingOptions,
       );
+      const { lifetimeAmount, lifetimeYears } = sanitizeLifetimeIncentives(
+        resolvedFundingOptions.incentives.lifetimeAmount,
+        resolvedFundingOptions.incentives.lifetimeYears,
+        resolvedBuilding.projectLifetime,
+      );
 
       // Calculate loan term based on financing type
       const loanTerm =
@@ -264,6 +275,10 @@ export class FinancialService implements IFinancialService {
         annual_maintenance_cost: annualMaintenanceCost,
         loan_amount: loanAmount,
         loan_term: loanTerm,
+        upfront_incentive_percentage:
+          resolvedFundingOptions.incentives.upfrontPercentage,
+        lifetime_incentive_amount: lifetimeAmount,
+        lifetime_incentive_years: lifetimeYears,
       };
 
       // The risk-assessment endpoint requires annual_energy_savings > 0.

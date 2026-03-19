@@ -19,6 +19,7 @@ import type {
   FinancialResults,
   FinancingType,
   FundingOptions,
+  IncentiveDetails,
   LoanDetails,
   MCDARankingResult,
   PackageFinancialInput,
@@ -41,6 +42,7 @@ export type {
   FinancialScenario,
   FinancingType,
   FundingOptions,
+  IncentiveDetails,
   LoanDetails,
   MCDARankingResult,
   PackageId,
@@ -131,6 +133,7 @@ export type HomeAssistantAction =
   // Funding options
   | { type: "SET_FINANCING_TYPE"; financingType: FinancingType }
   | { type: "UPDATE_LOAN"; field: keyof LoanDetails; value: number }
+  | { type: "UPDATE_INCENTIVE"; field: keyof IncentiveDetails; value: number }
 
   // Evaluation
   | { type: "START_EVALUATION" }

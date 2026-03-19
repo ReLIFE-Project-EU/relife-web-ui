@@ -81,6 +81,19 @@ export function FinancialDataSection() {
   } else {
     enabledFunding.push("Self-funded");
   }
+  if (funding.incentives.upfrontPercentage > 0) {
+    enabledFunding.push(
+      `Upfront incentive ${formatPercent(funding.incentives.upfrontPercentage)}`,
+    );
+  }
+  if (
+    funding.incentives.lifetimeAmount > 0 &&
+    funding.incentives.lifetimeYears > 0
+  ) {
+    enabledFunding.push(
+      `Lifetime incentive ${formatCurrency(funding.incentives.lifetimeAmount)}/year for ${funding.incentives.lifetimeYears} years`,
+    );
+  }
 
   const selectedResult =
     selectedScenario && financialResults[selectedScenario.id]

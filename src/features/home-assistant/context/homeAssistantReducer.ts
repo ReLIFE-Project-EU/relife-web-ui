@@ -76,6 +76,11 @@ const initialFunding: FundingOptions = {
     duration: 10, // 10 years
     interestRate: 0.05, // 5% annual rate
   },
+  incentives: {
+    upfrontPercentage: 0,
+    lifetimeAmount: 0,
+    lifetimeYears: 0,
+  },
 };
 
 export const initialState: HomeAssistantState = {
@@ -326,6 +331,20 @@ export function homeAssistantReducer(
           ...state.funding,
           loan: {
             ...state.funding.loan,
+            [action.field]: action.value,
+          },
+        },
+        ...clearedFinancialResults,
+      };
+    }
+
+    case "UPDATE_INCENTIVE": {
+      return {
+        ...state,
+        funding: {
+          ...state.funding,
+          incentives: {
+            ...state.funding.incentives,
             [action.field]: action.value,
           },
         },

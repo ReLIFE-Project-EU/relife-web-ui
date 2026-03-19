@@ -63,6 +63,15 @@ export interface RiskAssessmentRequest {
   /** Loan repayment term in years. Required if loan_amount > 0. */
   loan_term?: number;
 
+  /** Upfront capital incentive as a percentage of CAPEX (0-100). */
+  upfront_incentive_percentage?: number;
+
+  /** Annual OPEX reduction in euros per year. */
+  lifetime_incentive_amount?: number;
+
+  /** Duration of the annual OPEX reduction in years. */
+  lifetime_incentive_years?: number;
+
   /** Output detail level. Determines response complexity. */
   output_level: OutputLevel;
 

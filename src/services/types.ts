@@ -329,6 +329,9 @@ export interface RiskAssessmentRequest {
   indicators?: string[]; // Default: ["IRR", "NPV", "PBP", "DPP", "ROI"]
   loan_amount?: number; // Default: 0
   loan_term?: number; // Default: 0 (years)
+  upfront_incentive_percentage?: number; // 0-100
+  lifetime_incentive_amount?: number; // EUR/year
+  lifetime_incentive_years?: number; // years
   // Backend fallback is planned but not currently available in the live service.
   // HRA supplies these explicitly for now.
   capex?: number;
