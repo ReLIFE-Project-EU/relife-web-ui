@@ -277,11 +277,20 @@ export class FinancialService implements IFinancialService {
         renovated_last_5_years: resolvedBuilding.renovatedLast5Years,
       };
 
-      // Phase 3 uses one transparent frontend assumption across HRA scenarios:
-      // annual_energy_savings = baseline deliveredTotal - scenario deliveredTotal.
-      // If the required UNI totals are missing for a scenario, skip the
-      // detailed risk/cash-flow path instead of silently falling back to a
-      // different savings semantic.
+      // Canonical HRA semantic for POST /financial/risk-assessment:
+      // annual_energy_savings = max(0, baseline deliveredTotal - scenario deliveredTotal)
+      //
+      // This is saved HVAC system energy in kWh/year from Forecasting/UNI,
+      // already scaled to the user's floor area. It is intentionally NOT:
+      // - thermal-needs savings (Q_H/Q_C)
+      // - a direct EUR saving
+      //
+      // System measures such as condensing boiler or heat pump can therefore
+      // produce financial savings even when the building's thermal needs stay
+      // broadly unchanged, because the HVAC system delivers the same comfort
+      // with less input energy. If the required UNI totals are missing for a
+      // scenario, skip the detailed risk/cash-flow path instead of silently
+      // falling back to a different savings semantic.
       const canUseDeliveredEnergy =
         USE_SIMULATED_DELIVERED_ENERGY_FOR_FINANCE &&
         resolvedCurrentEstimation.deliveredTotal !== undefined &&

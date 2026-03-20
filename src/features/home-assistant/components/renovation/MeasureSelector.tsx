@@ -42,11 +42,11 @@ export function MeasureSelector() {
         icon={<IconInfoCircle size={16} />}
         mb="lg"
       >
-        Select one or more renovation measures to evaluate. Envelope measures
-        can be grouped into packages for ranking. System upgrades, such as a
-        condensing boiler or heat pump, can be compared on their own or bundled
-        with the selected envelope measures. Package-level cost inputs are
-        configured in the suggested options section below.
+        Select one or more measures to compare. Envelope measures can be grouped
+        into packages and ranked later. Heat pump and condensing boiler options
+        can also be compared, on their own or with envelope measures, but they
+        are not included in that ranking. You will enter package costs in the
+        next section.
       </Alert>
 
       <Stack gap="xl">

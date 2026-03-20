@@ -10,11 +10,7 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import {
-  IconAlertTriangle,
-  IconCurrencyEuro,
-  IconInfoCircle,
-} from "@tabler/icons-react";
+import { IconAlertTriangle, IconCurrencyEuro } from "@tabler/icons-react";
 import { PACKAGE_SELECTION_MAX } from "../../constants";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
@@ -40,15 +36,14 @@ export function PackageSelector() {
         in that ranking.
       </Text>
 
-      <Alert variant="light" color="yellow" icon={<IconInfoCircle size={16} />}>
-        CAPEX backend fallback is planned but not available yet. For now, each
-        selected package requires its own CAPEX and annual maintenance values.
-        The pre-filled defaults are starting estimates that you should adjust to
-        match your project.
-      </Alert>
+      <Text size="sm" c="dimmed">
+        Each selected package currently needs its own CAPEX and annual
+        maintenance values. The pre-filled defaults are starting estimates that
+        you should adjust to match your project.
+      </Text>
 
       {selectionLimitReached && (
-        <Alert variant="light" color="blue" icon={<IconInfoCircle size={16} />}>
+        <Alert variant="light" color="blue">
           You can compare up to {PACKAGE_SELECTION_MAX} packages at once.
           Deselect one package to choose another.
         </Alert>

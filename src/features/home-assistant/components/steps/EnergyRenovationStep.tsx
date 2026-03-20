@@ -175,17 +175,6 @@ export function EnergyRenovationStep() {
         </Alert>
       )}
 
-      <Alert
-        color="blue"
-        icon={<IconInfoCircle size={16} />}
-        title="Ranked comparison scope"
-      >
-        The current ranking workflow still compares envelope measures only:
-        wall, roof, floor, and windows. Heat pump and condensing boiler can be
-        evaluated on their own or combined with selected envelope measures, but
-        they are not included in Technical API ranking.
-      </Alert>
-
       {suggestedPackages.length > 0 ? (
         <PackageSelector />
       ) : selectedMeasures.length > 0 ? (

@@ -87,13 +87,9 @@ export function EPCDisplay() {
             variant="light"
           >
             <Text size="sm">
-              Both values are shown in <strong>kWh/year</strong>, but they mean
-              different things. <strong>Building thermal needs</strong> are the
-              yearly heating and cooling your home requires to stay comfortable.{" "}
-              <strong>System energy consumption</strong> is the yearly
-              electricity or fuel the HVAC system needs to deliver that comfort,
-              so it can be higher or lower depending on the system type and
-              efficiency.
+              <strong>Building thermal needs</strong> show how much heating and
+              cooling the home needs. <strong>System energy consumption</strong>{" "}
+              shows the electricity or fuel needed to deliver it.
             </Text>
           </Alert>
 
@@ -102,7 +98,7 @@ export function EPCDisplay() {
               label={
                 <MetricLabel
                   label="Building thermal needs"
-                  description="Annual heating and cooling needed for comfort. This comes from the building simulation and is not the same as the system's electricity or fuel use."
+                  description="Annual heating and cooling needed for comfort. This comes from the building simulation, not from the HVAC system."
                 />
               }
               value={formatEnergyPerYear(estimation.annualEnergyNeeds)}
@@ -111,7 +107,7 @@ export function EPCDisplay() {
               label={
                 <MetricLabel
                   label="Estimated system energy consumption"
-                  description="Annual electricity or fuel use from the backend UNI/TS 11300 system simulation, scaled to your home's area. It can differ from thermal needs because HVAC systems are not perfectly efficient."
+                  description="Annual electricity or fuel use from the backend UNI/TS 11300 system simulation, scaled to your home's area. Envelope measures lower it by reducing heating/cooling needs. Boiler and heat-pump measures lower it by meeting those needs more efficiently."
                 />
               }
               value={
@@ -136,10 +132,10 @@ export function EPCDisplay() {
             </Text>
           )}
           <Text size="xs" c="dimmed">
-            Thermal-needs cost is a frontend convenience estimate based on a
-            flat tariff of {formatCurrencyDecimal(ENERGY_PRICE_EUR_PER_KWH)}
-            /kWh. System energy consumption is shown in kWh/year only because
-            its real cost depends on fuel and electricity prices.
+            This cost is a simple estimate based on{" "}
+            {formatCurrencyDecimal(ENERGY_PRICE_EUR_PER_KWH)}
+            /kWh and your home&apos;s thermal needs. It is not your expected
+            bill.
           </Text>
         </Stack>
       </Card>

@@ -77,8 +77,8 @@ export function EnergyMixDisplay() {
           <Text size="xs">
             These figures are <strong>ideal thermal loads</strong> from the
             building energy simulation — the energy the building needs to
-            maintain comfort. Actual energy consumption will be higher and
-            depends on your heating and cooling system efficiency. See Energy
+            maintain comfort. Actual system energy consumption depends on the
+            heating and cooling system, so it can be higher or lower. See Energy
             Overview above for system consumption when it is available.
           </Text>
         </Alert>

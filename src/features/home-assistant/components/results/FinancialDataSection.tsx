@@ -157,13 +157,13 @@ export function FinancialDataSection() {
           </Box>
         </Group>
 
-        <Alert color="blue" variant="light" icon={<IconInfoCircle size={16} />}>
-          Financial results in this view are indicative estimates based on
-          simulated energy use before and after renovation. They are intended to
-          help compare options and may differ from actual bills or final
-          investment outcomes. For scenarios that include system upgrades,
-          EPC-related property value effects are not recalculated yet.
-        </Alert>
+        <Text size="sm" c="dimmed">
+          Financial results are based on <strong>saved system energy</strong>:
+          current system consumption minus renovated consumption. Envelope
+          measures reduce demand, while boiler and heat-pump measures reduce the
+          energy needed to meet that demand. The Financial API converts the
+          saved kWh/year to EUR using its own assumptions.
+        </Text>
 
         {/* Comparison-first summary */}
         {renovationScenarios.length > 1 && (
@@ -260,7 +260,7 @@ export function FinancialDataSection() {
               {selectedResult.riskAssessment?.pointForecasts
                 .MonthlyAvgSavings !== undefined && (
                 <FinancialMetricCard
-                  label="Monthly Savings"
+                  label="Monthly Cash Benefit"
                   metricType="MonthlyAvgSavings"
                   value={
                     selectedResult.riskAssessment.pointForecasts
@@ -352,10 +352,8 @@ export function FinancialDataSection() {
                   icon={<IconInfoCircle size={16} />}
                   radius="sm"
                 >
-                  Green bars are yearly savings; red bars are yearly costs (loan
-                  + upkeep). The dark line shows how far ahead or behind you are
-                  each year. Dashed markers point to loan payoff and, when it
-                  happens, the first year the project pays for itself.
+                  Green bars show yearly benefit from saved energy; red bars
+                  show yearly costs. The dark line shows the running total.
                 </Alert>
                 {cashFlowData.breakeven_year === null && (
                   <Card withBorder radius="sm" p="sm" bg="red.0">
@@ -398,10 +396,8 @@ export function FinancialDataSection() {
                     yet.
                   </Text>
                   <Text size="xs" c="dimmed">
-                    In this view, financial results are estimated from simulated
-                    system energy savings. If that estimate is missing or not
-                    positive for this scenario, detailed cash flow results may
-                    not be available.
+                    Detailed cash flow is only shown when the backend returns a
+                    usable delivered-energy comparison with positive savings.
                   </Text>
                 </Stack>
               </Card>
@@ -589,7 +585,7 @@ function ScenarioComparisonTable({
       formatter: (value) => (value === undefined ? "-" : formatYears(value)),
     },
     {
-      label: "Monthly Savings",
+      label: "Monthly Cash Benefit",
       getValue: (fr: FinancialResults) =>
         fr.riskAssessment?.pointForecasts.MonthlyAvgSavings,
       formatter: (v: number | undefined) =>

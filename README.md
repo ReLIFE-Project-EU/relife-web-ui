@@ -115,6 +115,14 @@ flowchart LR
 - This means energy and financial outputs are backend-backed, and the technical ranking is backend-assisted but still incomplete in KPI coverage.
 - The flow diagram above shows the current implementation; compare with the [design flow](docs/hra-tool-design.md#sequential-flow) to identify deviations.
 
+#### Current HRA Energy-Savings Semantic
+
+- `annual_energy_savings = max(0, baseline delivered system energy - renovated delivered system energy)`
+- The values come from Forecasting/UNI outputs and are scaled to the user's floor area.
+- This is system-energy savings, not thermal-needs savings and not the frontend flat-tariff estimate.
+- Boiler and heat-pump upgrades can therefore improve financial results even when thermal needs change little.
+- The Financial API converts saved kWh to EUR using its own assumptions, so HRA should present EUR outputs as indicative comparison values.
+
 ### Portfolio Renovation Advisor
 
 #### Sequence Diagram

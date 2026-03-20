@@ -157,7 +157,7 @@ export function ScenarioComparison() {
                 label={
                   <MetricLabel
                     label="Annual building thermal needs"
-                    description="The yearly heating and cooling your home needs to stay comfortable. This comes from the building simulation, not from the HVAC system's electricity or fuel use."
+                    description="The yearly heating and cooling your home needs to stay comfortable. This comes from the building simulation, not from the HVAC system."
                   />
                 }
                 baseValue={
@@ -192,7 +192,7 @@ export function ScenarioComparison() {
                 label={
                   <MetricLabel
                     label="Estimated system energy consumption"
-                    description="The yearly electricity or fuel the HVAC system needs to meet the building's thermal needs. It comes from the backend UNI/TS 11300 simulation when available."
+                    description="The yearly electricity or fuel the HVAC system needs to meet the building's thermal needs. HRA uses this for financial savings when available."
                   />
                 }
                 baseValue={currentScenario?.deliveredTotal}
