@@ -384,10 +384,19 @@ export function FinancialDataSection() {
               </Card>
             ) : (
               <Card withBorder radius="md" p="md">
-                <Text size="sm" c="dimmed">
-                  Cash flow data is not available for {selectedScenario.label}{" "}
-                  yet.
-                </Text>
+                <Stack gap="xs">
+                  <Text size="sm" c="dimmed">
+                    Cash flow data is not available for {selectedScenario.label}{" "}
+                    yet.
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    This can happen for system-only upgrades, such as a
+                    condensing boiler. They can lower energy use without
+                    changing the building&apos;s heating and cooling needs. Right
+                    now, detailed cash-flow results are only available when
+                    those needs change.
+                  </Text>
+                </Stack>
               </Card>
             )}
           </Stack>

@@ -10,6 +10,10 @@ import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 import { MeasureCard } from "./MeasureCard";
 
+function isMeasureSupportedInHRA(measureId: RenovationMeasureId): boolean {
+  return measureId === "condensing-boiler";
+}
+
 export function MeasureSelector() {
   const { state, dispatch } = useHomeAssistant();
   const { renovation } = useHomeAssistantServices();
@@ -36,10 +40,10 @@ export function MeasureSelector() {
         icon={<IconInfoCircle size={16} />}
         mb="lg"
       >
-        Select one or more renovation measures to evaluate. Cost estimates and
-        energy savings will be calculated based on your building
-        characteristics. Package-level cost inputs are configured in the
-        suggested packages section below.
+        Select one or more renovation measures to evaluate. Envelope measures
+        can be grouped into packages for ranking, while the condensing boiler
+        is evaluated as a direct system-upgrade option. Package-level cost
+        inputs are configured in the suggested options section below.
       </Alert>
 
       <Stack gap="xl">
@@ -59,10 +63,17 @@ export function MeasureSelector() {
                 {measures.map((measure) => (
                   <MeasureCard
                     key={measure.id}
-                    measure={measure}
+                    measure={
+                      isMeasureSupportedInHRA(measure.id)
+                        ? { ...measure, isSupported: true }
+                        : measure
+                    }
                     isSelected={selectedMeasures.includes(measure.id)}
                     onToggle={handleToggleMeasure}
-                    disabled={!measure.isSupported}
+                    disabled={
+                      !measure.isSupported &&
+                      !isMeasureSupportedInHRA(measure.id)
+                    }
                   />
                 ))}
               </SimpleGrid>

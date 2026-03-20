@@ -17,6 +17,10 @@ import {
 } from "../renovation";
 import { ErrorAlert, StepNavigation } from "../shared";
 
+function isMeasureSupportedInHRA(measureId: string): boolean {
+  return measureId === "condensing-boiler";
+}
+
 export function EnergyRenovationStep() {
   const { state, dispatch } = useHomeAssistant();
   const { financial, renovation } = useHomeAssistantServices();
@@ -29,7 +33,7 @@ export function EnergyRenovationStep() {
 
   // Identify unsupported measures that are selected (if any)
   const unsupportedSelected = selectedMeasures.filter(
-    (m) => !renovation.getMeasure(m)?.isSupported,
+    (m) => !renovation.getMeasure(m)?.isSupported && !isMeasureSupportedInHRA(m),
   );
 
   const canEvaluate = areSelectedPackagesReady(
@@ -173,17 +177,18 @@ export function EnergyRenovationStep() {
         icon={<IconInfoCircle size={16} />}
         title="Ranked comparison scope"
       >
-        The current comparison workflow evaluates and ranks envelope measures
-        only: wall, roof, floor, and windows.
+        The current ranking workflow still compares envelope measures only:
+        wall, roof, floor, and windows. Condensing boiler can now be evaluated
+        as a direct system scenario, but it is not included in Technical API
+        ranking.
       </Alert>
 
       {suggestedPackages.length > 0 ? (
         <PackageSelector />
       ) : selectedMeasures.length > 0 ? (
         <Alert color="yellow" icon={<IconInfoCircle size={16} />}>
-          No rankable envelope packages are available from the current
-          selection. Select at least one envelope measure to evaluate and rank
-          renovation packages.
+          No evaluation options are available from the current selection. Select
+          at least one envelope measure or the condensing boiler to continue.
         </Alert>
       ) : null}
 

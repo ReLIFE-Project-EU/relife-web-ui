@@ -4,15 +4,18 @@
  */
 
 import {
+  ActionIcon,
   Badge,
   Box,
   Card,
+  HoverCard,
   ScrollArea,
   Stack,
   Table,
   Text,
   Title,
 } from "@mantine/core";
+import { IconInfoCircle } from "@tabler/icons-react";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import type { RenovationScenario } from "../../context/types";
 import {
@@ -122,7 +125,12 @@ export function ScenarioComparison() {
 
               {/* Energy Needs Row */}
               <MetricRow
-                label="Annual building thermal needs"
+                label={
+                  <MetricLabel
+                    label="Annual building thermal needs"
+                    description="The yearly heating and cooling your home needs to stay comfortable. This comes from the building simulation, not from the HVAC system's electricity or fuel use."
+                  />
+                }
                 baseValue={
                   currentScenario?.annualEnergyNeeds ||
                   estimation.annualEnergyNeeds
@@ -135,7 +143,12 @@ export function ScenarioComparison() {
 
               {/* Energy Cost Row */}
               <MetricRow
-                label="Estimated cost of thermal needs"
+                label={
+                  <MetricLabel
+                    label="Estimated cost of thermal needs"
+                    description="A simple frontend estimate based on thermal needs and a flat tariff. This is not the same as your utility bill or the Financial API results."
+                  />
+                }
                 baseValue={
                   currentScenario?.annualEnergyCost ||
                   estimation.annualEnergyCost
@@ -147,7 +160,12 @@ export function ScenarioComparison() {
               />
 
               <OptionalMetricRow
-                label="Estimated system energy consumption"
+                label={
+                  <MetricLabel
+                    label="Estimated system energy consumption"
+                    description="The yearly electricity or fuel the HVAC system needs to meet the building's thermal needs. It comes from the backend UNI/TS 11300 simulation when available."
+                  />
+                }
                 baseValue={currentScenario?.deliveredTotal}
                 scenarios={renovationScenarios}
                 getValue={(s) => s.deliveredTotal}
@@ -156,7 +174,12 @@ export function ScenarioComparison() {
               />
 
               <OptionalMetricRow
-                label="Estimated cost of system energy consumption"
+                label={
+                  <MetricLabel
+                    label="Estimated cost of system energy consumption"
+                    description="A frontend estimate based on the displayed system energy consumption and a flat tariff. This helps comparison, but it is not a full financial assessment."
+                  />
+                }
                 baseValue={currentScenario?.deliveredEnergyCost}
                 scenarios={renovationScenarios}
                 getValue={(s) => s.deliveredEnergyCost}
@@ -201,7 +224,7 @@ export function ScenarioComparison() {
 }
 
 interface OptionalMetricRowProps {
-  label: string;
+  label: React.ReactNode;
   baseValue: number | undefined;
   scenarios: RenovationScenario[];
   getValue: (scenario: RenovationScenario) => number | undefined;
@@ -270,7 +293,7 @@ function MissingValueBadge() {
 }
 
 interface MetricRowProps {
-  label: string;
+  label: React.ReactNode;
   baseValue: number;
   scenarios: RenovationScenario[];
   getValue: (scenario: RenovationScenario) => number;
@@ -306,5 +329,36 @@ function MetricRow({
         );
       })}
     </Table.Tr>
+  );
+}
+
+function MetricLabel({
+  label,
+  description,
+}: {
+  label: string;
+  description: string;
+}) {
+  return (
+    <HoverCard width={260} shadow="md" position="top-start" withArrow>
+      <HoverCard.Target>
+        <ActionIcon.Group>
+          <Text span inherit>
+            {label}
+          </Text>
+          <ActionIcon
+            variant="subtle"
+            size="sm"
+            color="gray"
+            aria-label={`Explain ${label.toLowerCase()}`}
+          >
+            <IconInfoCircle size={14} />
+          </ActionIcon>
+        </ActionIcon.Group>
+      </HoverCard.Target>
+      <HoverCard.Dropdown>
+        <Text size="xs">{description}</Text>
+      </HoverCard.Dropdown>
+    </HoverCard>
   );
 }

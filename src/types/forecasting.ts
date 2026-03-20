@@ -286,6 +286,10 @@ interface ECMBaseParams {
   use_heat_pump?: boolean;
   /** Heat pump COP (coefficient of performance), default 3.2 */
   heat_pump_cop?: number;
+  /** Optional UNI/TS 11300 generation override. */
+  uni_generation_mode?: "default" | "condensing_boiler";
+  /** Optional UNI/TS 11300 eta_generation override. */
+  uni_eta_generation?: number;
   /** Include baseline scenario in response (omit/false for single-scenario mode) */
   include_baseline?: boolean;
 }

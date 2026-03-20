@@ -78,6 +78,14 @@ export class MockRenovationService implements IRenovationService {
       });
     }
 
+    if (selectedMeasures.includes("condensing-boiler")) {
+      packages.push({
+        id: "scenario-condensing-boiler",
+        label: "Condensing Boiler",
+        measureIds: ["condensing-boiler"],
+      });
+    }
+
     return packages;
   }
 

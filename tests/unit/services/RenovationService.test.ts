@@ -47,6 +47,13 @@ vi.mock("../../../src/services/mock/data/renovationMeasures", () => ({
       category: "systems",
       isSupported: false,
     },
+    {
+      id: "condensing-boiler",
+      name: "Condensing Boiler",
+      description: "",
+      category: "systems",
+      isSupported: false,
+    },
   ],
   MEASURE_CATEGORIES: [],
 }));
@@ -160,6 +167,26 @@ describe("RenovationService", () => {
     ]);
   });
 
+  test("suggestPackages adds a direct condensing-boiler scenario without changing envelope packages", () => {
+    const packages = service.suggestPackages([
+      "wall-insulation",
+      "condensing-boiler",
+    ]);
+
+    expect(packages).toEqual([
+      {
+        id: "package-wall-insulation",
+        label: "Wall Insulation",
+        measureIds: ["wall-insulation"],
+      },
+      {
+        id: "scenario-condensing-boiler",
+        label: "Condensing Boiler",
+        measureIds: ["condensing-boiler"],
+      },
+    ]);
+  });
+
   test("evaluateScenarios returns baseline plus one scenario per selected package", async () => {
     const packages = service.suggestPackages([
       "wall-insulation",
@@ -215,5 +242,58 @@ describe("RenovationService", () => {
     expect(scenarios[1]?.deliveredTotal).toBe(1250);
     expect(scenarios[1]?.deliveredEnergyCost).toBe(313);
     expect(scenarios[1]?.primaryEnergy).toBe(1800);
+  });
+
+  test("evaluateScenarios handles condensing-boiler system scenarios without relying on envelope elements", async () => {
+    mockSimulateECM.mockResolvedValueOnce({
+      scenarios: [
+        {
+          scenario_id: "baseline",
+          elements: [],
+          results: {
+            hourly_building: {
+              Q_HC: Array(8760).fill(100),
+            },
+          },
+        },
+        {
+          scenario_id: "condensing_boiler",
+          elements: [],
+          results: {
+            hourly_building: {
+              Q_HC: Array(8760).fill(100),
+            },
+            primary_energy_uni11300: {
+              summary: {
+                E_delivered_thermal_kWh: 900,
+                E_delivered_electric_total_kWh: 100,
+                EP_total_kWh: 1400,
+              },
+            },
+          },
+        },
+      ],
+    });
+
+    const scenarios = await service.evaluateScenarios(mockBuilding, mockEstimation, [
+      {
+        id: "scenario-condensing-boiler",
+        label: "Condensing Boiler",
+        measureIds: ["condensing-boiler"],
+      },
+    ]);
+
+    expect(mockSimulateECM).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: "SFH",
+        country: "Greece",
+        name: "GR_SFH_1961_1980",
+        include_baseline: true,
+        uni_generation_mode: "condensing_boiler",
+      }),
+    );
+    expect(scenarios[1]?.label).toBe("Condensing Boiler");
+    expect(scenarios[1]?.deliveredTotal).toBe(1000);
+    expect(scenarios[1]?.primaryEnergy).toBe(1400);
   });
 });

@@ -53,6 +53,7 @@ const RANKABLE_MEASURE_PRIORITY: RenovationMeasureId[] = [
 ];
 
 const MAX_SUGGESTED_PACKAGES = 5;
+const DIRECT_SYSTEM_SCENARIOS: RenovationMeasureId[] = ["condensing-boiler"];
 
 export class RenovationService implements IRenovationService {
   getMeasures(): RenovationMeasure[] {
@@ -100,6 +101,12 @@ export class RenovationService implements IRenovationService {
       packages.push(this.createPackage(selectedRankableMeasures));
     }
 
+    for (const measureId of DIRECT_SYSTEM_SCENARIOS) {
+      if (selectedMeasures.includes(measureId)) {
+        packages.push(this.createDirectScenario(measureId));
+      }
+    }
+
     return dedupePackages(packages).slice(0, MAX_SUGGESTED_PACKAGES);
   }
 
@@ -139,6 +146,14 @@ export class RenovationService implements IRenovationService {
           ? (this.getMeasure(sortedMeasureIds[0])?.name ?? sortedMeasureIds[0])
           : "Envelope package",
       measureIds: sortedMeasureIds,
+    };
+  }
+
+  private createDirectScenario(measureId: RenovationMeasureId): RenovationPackage {
+    return {
+      id: `scenario-${measureId}`,
+      label: this.getMeasure(measureId)?.name ?? measureId,
+      measureIds: [measureId],
     };
   }
 
@@ -233,11 +248,18 @@ export class RenovationService implements IRenovationService {
       .join(",");
 
     const commonParams: Partial<ECMCustomBuildingParams & ECMArchetypeParams> =
-      {
-        scenario_elements: elements,
-      };
+      {};
+
+    if (elements) {
+      commonParams.scenario_elements = elements;
+    }
 
     for (const measureId of renovationPackage.measureIds) {
+      if (measureId === "condensing-boiler") {
+        commonParams.uni_generation_mode = "condensing_boiler";
+        commonParams.include_baseline = true;
+      }
+
       const target = U_VALUE_TARGETS[measureId];
       if (target === undefined) {
         continue;
@@ -313,25 +335,25 @@ export class RenovationService implements IRenovationService {
         ),
     );
 
-    const exactElementMatch = scenarios.find((scenario) => {
-      const scenarioElements = new Set(scenario.elements ?? []);
-      if (scenarioElements.size !== expectedElements.size) {
-        return false;
+    if (expectedElements.size > 0) {
+      const exactElementMatch = scenarios.find((scenario) => {
+        const scenarioElements = new Set(scenario.elements ?? []);
+        if (scenarioElements.size !== expectedElements.size) {
+          return false;
+        }
+
+        return [...expectedElements].every((element) =>
+          scenarioElements.has(element),
+        );
+      });
+
+      if (exactElementMatch) {
+        return exactElementMatch;
       }
-
-      return [...expectedElements].every((element) =>
-        scenarioElements.has(element),
-      );
-    });
-
-    if (exactElementMatch) {
-      return exactElementMatch;
     }
 
     const nonBaselineScenario = scenarios.find(
-      (scenario) =>
-        scenario.scenario_id !== "baseline" &&
-        (scenario.elements?.length ?? 0) > 0,
+      (scenario) => scenario.scenario_id !== "baseline",
     );
 
     return nonBaselineScenario ?? scenarios[scenarios.length - 1];

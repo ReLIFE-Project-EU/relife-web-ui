@@ -31,11 +31,12 @@ export function PackageSelector() {
 
   return (
     <Stack gap="sm">
-      <Title order={5}>Suggested Packages</Title>
+      <Title order={5}>Suggested Evaluation Options</Title>
       <Text size="sm" c="dimmed">
-        Select up to {PACKAGE_SELECTION_MAX} envelope packages to evaluate.
-        Financial ranking becomes available once at least two packages have been
-        evaluated.
+        Select up to {PACKAGE_SELECTION_MAX} renovation options to compare.
+        Insulation and window packages can also be ranked later based on your
+        priorities. System upgrades, such as a condensing boiler, can be
+        compared here but are not included in that ranking.
       </Text>
 
       <Alert variant="light" color="yellow" icon={<IconInfoCircle size={16} />}>

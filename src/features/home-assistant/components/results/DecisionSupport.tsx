@@ -23,7 +23,7 @@ import { getRankColor, getRankLabel } from "../../utils/colorUtils";
 
 export function DecisionSupport() {
   const { state, dispatch } = useHomeAssistant();
-  const { mcda } = useHomeAssistantServices();
+  const { mcda, renovation } = useHomeAssistantServices();
   const {
     scenarios,
     financialResults,
@@ -32,8 +32,15 @@ export function DecisionSupport() {
     isRanking,
   } = state;
 
+  const currentScenario = scenarios.find((scenario) => scenario.id === "current");
+  const rankableMeasureIds = new Set(
+    renovation.getRankableMeasures().map((measure) => measure.id),
+  );
   const renovationScenarios = scenarios.filter((s) => s.id !== "current");
-  const canRank = renovationScenarios.length >= 2;
+  const rankableRenovationScenarios = renovationScenarios.filter((scenario) =>
+    scenario.measureIds.every((measureId) => rankableMeasureIds.has(measureId)),
+  );
+  const canRank = rankableRenovationScenarios.length >= 2 && currentScenario;
 
   // Get available personas from service
   const personas = mcda.getPersonas();
@@ -57,8 +64,12 @@ export function DecisionSupport() {
     dispatch({ type: "START_RANKING" });
 
     try {
+      if (!currentScenario) {
+        throw new Error("Missing baseline scenario for ranking");
+      }
+
       const ranking = await mcda.rank(
-        scenarios,
+        [currentScenario, ...rankableRenovationScenarios],
         financialResults,
         selectedPersona,
       );
@@ -92,9 +103,10 @@ export function DecisionSupport() {
 
         <Alert variant="light" color="blue" icon={<IconInfoCircle size={16} />}>
           Select a profile that matches your priorities. The ranking uses the
-          Technical API over the evaluated envelope packages. Some criteria
-          currently use placeholder values while the live integration is still
-          being expanded.
+          Technical API over the evaluated envelope packages only. Direct system
+          scenarios, such as condensing boiler, are shown in the comparison but
+          excluded from ranking. Some criteria currently use placeholder values
+          while the live integration is still being expanded.
         </Alert>
 
         {/* Persona Selection */}
@@ -136,7 +148,7 @@ export function DecisionSupport() {
 
         {!canRank && (
           <Alert color="yellow" icon={<IconInfoCircle size={16} />}>
-            At least two evaluated renovation packages are required to run the
+            At least two evaluated envelope packages are required to run the
             ranking.
           </Alert>
         )}
@@ -214,7 +226,7 @@ export function DecisionSupport() {
           <Text size="sm" c="dimmed" ta="center" py="md">
             {canRank
               ? 'Select a profile and click "Run" to see personalized ranking'
-              : "Evaluate more than one package to enable ranking"}
+              : "Evaluate more than one envelope package to enable ranking"}
           </Text>
         )}
       </Stack>
