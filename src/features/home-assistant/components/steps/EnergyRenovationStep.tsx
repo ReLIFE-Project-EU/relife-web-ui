@@ -18,7 +18,9 @@ import {
 import { ErrorAlert, StepNavigation } from "../shared";
 
 function isMeasureSupportedInHRA(measureId: string): boolean {
-  return measureId === "condensing-boiler";
+  return (
+    measureId === "condensing-boiler" || measureId === "air-water-heat-pump"
+  );
 }
 
 export function EnergyRenovationStep() {
@@ -33,7 +35,8 @@ export function EnergyRenovationStep() {
 
   // Identify unsupported measures that are selected (if any)
   const unsupportedSelected = selectedMeasures.filter(
-    (m) => !renovation.getMeasure(m)?.isSupported && !isMeasureSupportedInHRA(m),
+    (m) =>
+      !renovation.getMeasure(m)?.isSupported && !isMeasureSupportedInHRA(m),
   );
 
   const canEvaluate = areSelectedPackagesReady(
@@ -178,9 +181,9 @@ export function EnergyRenovationStep() {
         title="Ranked comparison scope"
       >
         The current ranking workflow still compares envelope measures only:
-        wall, roof, floor, and windows. Condensing boiler can now be evaluated
-        as a direct system scenario, but it is not included in Technical API
-        ranking.
+        wall, roof, floor, and windows. Heat pump and condensing boiler can be
+        evaluated on their own or combined with selected envelope measures, but
+        they are not included in Technical API ranking.
       </Alert>
 
       {suggestedPackages.length > 0 ? (
@@ -188,7 +191,8 @@ export function EnergyRenovationStep() {
       ) : selectedMeasures.length > 0 ? (
         <Alert color="yellow" icon={<IconInfoCircle size={16} />}>
           No evaluation options are available from the current selection. Select
-          at least one envelope measure or the condensing boiler to continue.
+          at least one envelope measure, a supported system upgrade, or a
+          combination of both to continue.
         </Alert>
       ) : null}
 

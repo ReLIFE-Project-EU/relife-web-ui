@@ -110,11 +110,16 @@ export function extractUniTotals(
     return undefined;
   }
 
+  const heatPumpApplied =
+    uniResults.heat_pump_applied === true ||
+    summary.heat_pump_cop !== undefined;
   const deliveredElectricTotal =
     summary.E_delivered_electric_total_kWh ??
     (summary.E_delivered_electric_heat_kWh ?? 0) +
       (summary.E_delivered_electric_cool_kWh ?? 0);
-  const deliveredThermal = summary.E_delivered_thermal_kWh ?? 0;
+  const deliveredThermal = heatPumpApplied
+    ? 0
+    : (summary.E_delivered_thermal_kWh ?? 0);
   const primaryEnergy = summary.EP_total_kWh;
   const deliveredTotal = deliveredThermal + deliveredElectricTotal;
 

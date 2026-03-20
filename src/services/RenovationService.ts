@@ -1,6 +1,7 @@
 /**
  * Renovation Service - Forecasting API implementation for HRA/PRA package
- * evaluation. The current comparison workflow is envelope-only.
+ * evaluation. HRA supports envelope, system-only, and selected mixed
+ * envelope + system comparisons while Technical ranking remains envelope-only.
  */
 
 import { forecasting } from "../api";
@@ -52,8 +53,14 @@ const RANKABLE_MEASURE_PRIORITY: RenovationMeasureId[] = [
   "floor-insulation",
 ];
 
-const MAX_SUGGESTED_PACKAGES = 5;
-const DIRECT_SYSTEM_SCENARIOS: RenovationMeasureId[] = ["condensing-boiler"];
+const SUPPORTED_SYSTEM_SCENARIOS: RenovationMeasureId[] = [
+  "condensing-boiler",
+  "air-water-heat-pump",
+];
+const DEFAULT_HEAT_PUMP_COP = 3.2;
+// Current supported suggestion space:
+// 4 envelope singles + 1 combined envelope + 2 system-only + 2 mixed = 9.
+const MAX_SUGGESTED_PACKAGES = 9;
 
 export class RenovationService implements IRenovationService {
   getMeasures(): RenovationMeasure[] {
@@ -90,6 +97,9 @@ export class RenovationService implements IRenovationService {
     const selectedRankableMeasures = RANKABLE_MEASURE_PRIORITY.filter((id) =>
       selectedMeasures.includes(id),
     );
+    const selectedSystemMeasures = SUPPORTED_SYSTEM_SCENARIOS.filter((id) =>
+      selectedMeasures.includes(id),
+    );
 
     const packages: RenovationPackage[] = [];
 
@@ -101,9 +111,17 @@ export class RenovationService implements IRenovationService {
       packages.push(this.createPackage(selectedRankableMeasures));
     }
 
-    for (const measureId of DIRECT_SYSTEM_SCENARIOS) {
+    for (const measureId of selectedSystemMeasures) {
       if (selectedMeasures.includes(measureId)) {
         packages.push(this.createDirectScenario(measureId));
+      }
+    }
+
+    if (selectedRankableMeasures.length > 0) {
+      for (const systemMeasureId of selectedSystemMeasures) {
+        packages.push(
+          this.createMixedPackage(selectedRankableMeasures, systemMeasureId),
+        );
       }
     }
 
@@ -149,11 +167,36 @@ export class RenovationService implements IRenovationService {
     };
   }
 
-  private createDirectScenario(measureId: RenovationMeasureId): RenovationPackage {
+  private createDirectScenario(
+    measureId: RenovationMeasureId,
+  ): RenovationPackage {
     return {
       id: `scenario-${measureId}`,
       label: this.getMeasure(measureId)?.name ?? measureId,
       measureIds: [measureId],
+    };
+  }
+
+  private createMixedPackage(
+    envelopeMeasureIds: RenovationMeasureId[],
+    systemMeasureId: RenovationMeasureId,
+  ): RenovationPackage {
+    const orderedEnvelopeMeasureIds = RANKABLE_MEASURE_PRIORITY.filter((id) =>
+      envelopeMeasureIds.includes(id),
+    );
+    const measureIds = [...orderedEnvelopeMeasureIds, systemMeasureId];
+    const envelopeLabel =
+      orderedEnvelopeMeasureIds.length === 1
+        ? (this.getMeasure(orderedEnvelopeMeasureIds[0])?.name ??
+          orderedEnvelopeMeasureIds[0])
+        : "Envelope package";
+    const systemLabel =
+      this.getMeasure(systemMeasureId)?.name ?? systemMeasureId;
+
+    return {
+      id: `package-${measureIds.join("-")}`,
+      label: `${envelopeLabel} + ${systemLabel}`,
+      measureIds,
     };
   }
 
@@ -194,6 +237,11 @@ export class RenovationService implements IRenovationService {
     const scaledRenovatedHvac = renovatedHvacEnergy * areaScaleFactor;
     const uniTotals = extractUniTotals(
       renovatedScenario.results.primary_energy_uni11300,
+      {
+        allowHeatPump: renovationPackage.measureIds.includes(
+          "air-water-heat-pump",
+        ),
+      },
     );
     const scaledDeliveredTotal =
       uniTotals !== undefined
@@ -257,6 +305,11 @@ export class RenovationService implements IRenovationService {
     for (const measureId of renovationPackage.measureIds) {
       if (measureId === "condensing-boiler") {
         commonParams.uni_generation_mode = "condensing_boiler";
+        commonParams.include_baseline = true;
+      }
+      if (measureId === "air-water-heat-pump") {
+        commonParams.use_heat_pump = true;
+        commonParams.heat_pump_cop = DEFAULT_HEAT_PUMP_COP;
         commonParams.include_baseline = true;
       }
 

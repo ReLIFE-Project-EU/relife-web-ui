@@ -11,7 +11,9 @@ import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 import { MeasureCard } from "./MeasureCard";
 
 function isMeasureSupportedInHRA(measureId: RenovationMeasureId): boolean {
-  return measureId === "condensing-boiler";
+  return (
+    measureId === "condensing-boiler" || measureId === "air-water-heat-pump"
+  );
 }
 
 export function MeasureSelector() {
@@ -41,9 +43,10 @@ export function MeasureSelector() {
         mb="lg"
       >
         Select one or more renovation measures to evaluate. Envelope measures
-        can be grouped into packages for ranking, while the condensing boiler
-        is evaluated as a direct system-upgrade option. Package-level cost
-        inputs are configured in the suggested options section below.
+        can be grouped into packages for ranking. System upgrades, such as a
+        condensing boiler or heat pump, can be compared on their own or bundled
+        with the selected envelope measures. Package-level cost inputs are
+        configured in the suggested options section below.
       </Alert>
 
       <Stack gap="xl">

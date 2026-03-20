@@ -141,12 +141,8 @@ describe("RenovationService", () => {
     service = new RenovationService();
   });
 
-  test("suggestPackages includes only envelope measures and adds a combined package", () => {
-    const packages = service.suggestPackages([
-      "air-water-heat-pump",
-      "wall-insulation",
-      "windows",
-    ]);
+  test("suggestPackages keeps envelope package suggestions unchanged when only envelope measures are selected", () => {
+    const packages = service.suggestPackages(["wall-insulation", "windows"]);
 
     expect(packages).toEqual([
       {
@@ -167,7 +163,7 @@ describe("RenovationService", () => {
     ]);
   });
 
-  test("suggestPackages adds a direct condensing-boiler scenario without changing envelope packages", () => {
+  test("suggestPackages adds direct and mixed condensing-boiler scenarios", () => {
     const packages = service.suggestPackages([
       "wall-insulation",
       "condensing-boiler",
@@ -183,6 +179,47 @@ describe("RenovationService", () => {
         id: "scenario-condensing-boiler",
         label: "Condensing Boiler",
         measureIds: ["condensing-boiler"],
+      },
+      {
+        id: "package-wall-insulation-condensing-boiler",
+        label: "Wall Insulation + Condensing Boiler",
+        measureIds: ["wall-insulation", "condensing-boiler"],
+      },
+    ]);
+  });
+
+  test("suggestPackages adds direct and mixed heat-pump scenarios", () => {
+    const packages = service.suggestPackages([
+      "wall-insulation",
+      "windows",
+      "air-water-heat-pump",
+    ]);
+
+    expect(packages).toEqual([
+      {
+        id: "package-wall-insulation",
+        label: "Wall Insulation",
+        measureIds: ["wall-insulation"],
+      },
+      {
+        id: "package-windows",
+        label: "Window Replacement",
+        measureIds: ["windows"],
+      },
+      {
+        id: "package-wall-insulation-windows",
+        label: "Envelope package",
+        measureIds: ["wall-insulation", "windows"],
+      },
+      {
+        id: "scenario-air-water-heat-pump",
+        label: "Heat Pump",
+        measureIds: ["air-water-heat-pump"],
+      },
+      {
+        id: "package-wall-insulation-windows-air-water-heat-pump",
+        label: "Envelope package + Heat Pump",
+        measureIds: ["wall-insulation", "windows", "air-water-heat-pump"],
       },
     ]);
   });
@@ -275,13 +312,17 @@ describe("RenovationService", () => {
       ],
     });
 
-    const scenarios = await service.evaluateScenarios(mockBuilding, mockEstimation, [
-      {
-        id: "scenario-condensing-boiler",
-        label: "Condensing Boiler",
-        measureIds: ["condensing-boiler"],
-      },
-    ]);
+    const scenarios = await service.evaluateScenarios(
+      mockBuilding,
+      mockEstimation,
+      [
+        {
+          id: "scenario-condensing-boiler",
+          label: "Condensing Boiler",
+          measureIds: ["condensing-boiler"],
+        },
+      ],
+    );
 
     expect(mockSimulateECM).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -295,5 +336,65 @@ describe("RenovationService", () => {
     expect(scenarios[1]?.label).toBe("Condensing Boiler");
     expect(scenarios[1]?.deliveredTotal).toBe(1000);
     expect(scenarios[1]?.primaryEnergy).toBe(1400);
+  });
+
+  test("evaluateScenarios enables heat-pump UNI totals for mixed scenarios", async () => {
+    mockSimulateECM.mockResolvedValueOnce({
+      scenarios: [
+        {
+          scenario_id: "baseline",
+          elements: [],
+          results: {
+            hourly_building: {
+              Q_HC: Array(8760).fill(100),
+            },
+          },
+        },
+        {
+          scenario_id: "wall+heat_pump",
+          elements: ["wall"],
+          results: {
+            hourly_building: {
+              Q_HC: Array(8760).fill(80),
+            },
+            primary_energy_uni11300: {
+              heat_pump_applied: true,
+              summary: {
+                E_delivered_electric_total_kWh: 850,
+                EP_total_kWh: 1200,
+                heat_pump_cop: 3.2,
+              },
+            },
+          },
+        },
+      ],
+    });
+
+    const scenarios = await service.evaluateScenarios(
+      mockBuilding,
+      mockEstimation,
+      [
+        {
+          id: "package-wall-insulation-air-water-heat-pump",
+          label: "Wall Insulation + Heat Pump",
+          measureIds: ["wall-insulation", "air-water-heat-pump"],
+        },
+      ],
+    );
+
+    expect(mockSimulateECM).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: "SFH",
+        country: "Greece",
+        name: "GR_SFH_1961_1980",
+        scenario_elements: "wall",
+        u_wall: 0.25,
+        use_heat_pump: true,
+        heat_pump_cop: 3.2,
+        include_baseline: true,
+      }),
+    );
+    expect(scenarios[1]?.deliveredTotal).toBe(850);
+    expect(scenarios[1]?.primaryEnergy).toBe(1200);
   });
 });

@@ -89,11 +89,11 @@ export function EPCDisplay() {
             <Text size="sm">
               Both values are shown in <strong>kWh/year</strong>, but they mean
               different things. <strong>Building thermal needs</strong> are the
-              yearly heating and cooling your home requires to stay
-              comfortable. <strong>System energy consumption</strong> is the
-              yearly electricity or fuel the HVAC system needs to deliver that
-              comfort, so it can be higher or lower depending on the system
-              type and efficiency.
+              yearly heating and cooling your home requires to stay comfortable.{" "}
+              <strong>System energy consumption</strong> is the yearly
+              electricity or fuel the HVAC system needs to deliver that comfort,
+              so it can be higher or lower depending on the system type and
+              efficiency.
             </Text>
           </Alert>
 

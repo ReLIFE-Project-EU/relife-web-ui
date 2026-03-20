@@ -3,7 +3,16 @@
  * Main wizard container with Mantine Stepper for the Home Renovation Assistant.
  */
 
-import { Box, Button, Container, Group, Stack, Stepper, Text, Title } from "@mantine/core";
+import {
+  Box,
+  Button,
+  Container,
+  Group,
+  Stack,
+  Stepper,
+  Text,
+  Title,
+} from "@mantine/core";
 import {
   IconHome,
   IconBolt,

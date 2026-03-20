@@ -24,6 +24,7 @@ import {
   Table,
   Text,
   Title,
+  Tooltip,
   UnstyledButton,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
@@ -130,9 +131,24 @@ export function FinancialDataSection() {
             marginTop: -16,
           }}
         >
-          <Title order={4} c="white">
-            Financial Overview
-          </Title>
+          <Group gap="xs" align="center">
+            <Title order={4} c="white">
+              Financial Overview
+            </Title>
+            <Tooltip
+              label="These financial results are estimated in the app using simulated delivered-energy savings from the forecasting results. They are meant to compare options and may differ from actual utility-bill savings."
+              multiline
+              withArrow
+              w={320}
+            >
+              <Box
+                component="span"
+                style={{ display: "inline-flex", cursor: "help" }}
+              >
+                <IconInfoCircle size={16} color="white" />
+              </Box>
+            </Tooltip>
+          </Group>
         </Box>
 
         {/* Funding Options Display */}
@@ -181,7 +197,7 @@ export function FinancialDataSection() {
         {!hasAnyFinancialResults && (
           <Alert color="yellow" title="Financial results unavailable">
             No package-level financial details are available for the evaluated
-            packages yet.
+            packages on the current simulated energy-savings basis.
           </Alert>
         )}
 
@@ -390,11 +406,10 @@ export function FinancialDataSection() {
                     yet.
                   </Text>
                   <Text size="xs" c="dimmed">
-                    This can happen for system-only upgrades, such as a
-                    condensing boiler. They can lower energy use without
-                    changing the building&apos;s heating and cooling needs. Right
-                    now, detailed cash-flow results are only available when
-                    those needs change.
+                    In this view, financial results are estimated from simulated
+                    system energy savings. If that estimate is missing or not
+                    positive for this scenario, detailed cash flow results may
+                    not be available.
                   </Text>
                 </Stack>
               </Card>

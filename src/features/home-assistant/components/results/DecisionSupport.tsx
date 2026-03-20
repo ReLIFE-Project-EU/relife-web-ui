@@ -32,7 +32,9 @@ export function DecisionSupport() {
     isRanking,
   } = state;
 
-  const currentScenario = scenarios.find((scenario) => scenario.id === "current");
+  const currentScenario = scenarios.find(
+    (scenario) => scenario.id === "current",
+  );
   const rankableMeasureIds = new Set(
     renovation.getRankableMeasures().map((measure) => measure.id),
   );
@@ -103,10 +105,11 @@ export function DecisionSupport() {
 
         <Alert variant="light" color="blue" icon={<IconInfoCircle size={16} />}>
           Select a profile that matches your priorities. The ranking uses the
-          Technical API over the evaluated envelope packages only. Direct system
-          scenarios, such as condensing boiler, are shown in the comparison but
-          excluded from ranking. Some criteria currently use placeholder values
-          while the live integration is still being expanded.
+          Technical API over the evaluated envelope packages only. System
+          upgrades and mixed envelope + system scenarios are shown in the
+          comparison, but they are excluded from ranking. Some criteria
+          currently use placeholder values while the live integration is still
+          being expanded.
         </Alert>
 
         {/* Persona Selection */}

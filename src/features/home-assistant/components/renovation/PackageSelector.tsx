@@ -35,8 +35,9 @@ export function PackageSelector() {
       <Text size="sm" c="dimmed">
         Select up to {PACKAGE_SELECTION_MAX} renovation options to compare.
         Insulation and window packages can also be ranked later based on your
-        priorities. System upgrades, such as a condensing boiler, can be
-        compared here but are not included in that ranking.
+        priorities. System upgrades can be compared on their own or bundled with
+        the selected envelope measures, but only envelope packages are included
+        in that ranking.
       </Text>
 
       <Alert variant="light" color="yellow" icon={<IconInfoCircle size={16} />}>

@@ -42,7 +42,7 @@ import type {
   RiskAssessmentResponse,
 } from "./types";
 
-const USE_DELIVERED_ENERGY_FOR_FINANCE_PHASE1 = false;
+const USE_SIMULATED_DELIVERED_ENERGY_FOR_FINANCE = true;
 
 export class FinancialService implements IFinancialService {
   private readonly outputLevel: OutputLevel;
@@ -263,20 +263,22 @@ export class FinancialService implements IFinancialService {
         renovated_last_5_years: resolvedBuilding.renovatedLast5Years,
       };
 
-      // Phase 1 keeps finance on thermal-needs savings unless a deliberate
-      // rollout decision confirms UNI totals are comparable across the
-      // baseline `/simulate` path and the renovation `/ecm_application` path.
+      // Phase 3 uses one transparent frontend assumption across HRA scenarios:
+      // annual_energy_savings = baseline deliveredTotal - scenario deliveredTotal.
+      // If the required UNI totals are missing for a scenario, skip the
+      // detailed risk/cash-flow path instead of silently falling back to a
+      // different savings semantic.
       const canUseDeliveredEnergy =
-        USE_DELIVERED_ENERGY_FOR_FINANCE_PHASE1 &&
+        USE_SIMULATED_DELIVERED_ENERGY_FOR_FINANCE &&
         resolvedCurrentEstimation.deliveredTotal !== undefined &&
         scenario.deliveredTotal !== undefined;
-      const annualEnergySavingsKWh = Math.max(
-        0,
-        canUseDeliveredEnergy
-          ? resolvedCurrentEstimation.deliveredTotal! - scenario.deliveredTotal!
-          : resolvedCurrentEstimation.annualEnergyNeeds -
-              (scenario.annualEnergyNeeds ?? 0),
-      ); // values are already in kWh/year
+      const annualEnergySavingsKWh = canUseDeliveredEnergy
+        ? Math.max(
+            0,
+            resolvedCurrentEstimation.deliveredTotal! -
+              scenario.deliveredTotal!,
+          )
+        : 0;
 
       const riskRequest: RiskAssessmentRequest = {
         annual_energy_savings: Math.round(annualEnergySavingsKWh),

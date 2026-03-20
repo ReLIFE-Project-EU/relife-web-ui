@@ -200,11 +200,11 @@ describe("FinancialService", () => {
     );
 
     expect(mockAssessRisk).toHaveBeenCalledWith(
-      expect.objectContaining({ annual_energy_savings: 10000 }),
+      expect.objectContaining({ annual_energy_savings: 4000 }),
     );
   });
 
-  test("finance keeps thermal-needs savings while delivered-energy gate is disabled", async () => {
+  test("finance uses delivered-energy savings consistently for envelope scenarios", async () => {
     const service = new FinancialService();
 
     await service.calculateForAllScenarios(
@@ -217,16 +217,52 @@ describe("FinancialService", () => {
     );
 
     expect(mockAssessRisk).toHaveBeenCalledWith(
-      expect.objectContaining({ annual_energy_savings: 10000 }),
+      expect.objectContaining({ annual_energy_savings: 4000 }),
     );
   });
 
-  test("negative savings clamped to 0 and risk assessment skipped", async () => {
+  test("system-only scenarios can trigger risk assessment from delivered-energy savings", async () => {
+    const service = new FinancialService();
+
+    const systemOnlyScenario: RenovationScenario = {
+      ...renovatedScenario,
+      id: "scenario-condensing-boiler",
+      packageId: "scenario-condensing-boiler",
+      label: "Condensing Boiler",
+      annualEnergyNeeds: 15000,
+      heatingCoolingNeeds: 15000,
+      deliveredTotal: 9000,
+      deliveredEnergyCost: 2250,
+      primaryEnergy: 13000,
+      measureIds: ["condensing-boiler"],
+      measures: ["Condensing Boiler"],
+    };
+
+    await service.calculateForAllScenarios(
+      [systemOnlyScenario],
+      mockFundingOptions,
+      100,
+      mockEstimation,
+      {
+        "scenario-condensing-boiler": {
+          capex: 10000,
+          annualMaintenanceCost: 300,
+        },
+      },
+      mockBuilding,
+    );
+
+    expect(mockAssessRisk).toHaveBeenCalledWith(
+      expect.objectContaining({ annual_energy_savings: 2000 }),
+    );
+  });
+
+  test("negative delivered-energy savings are clamped to 0 and risk assessment is skipped", async () => {
     const service = new FinancialService();
 
     const highEnergyScenario: RenovationScenario = {
       ...renovatedScenario,
-      annualEnergyNeeds: 20000,
+      deliveredTotal: 12000,
     };
 
     const results = await service.calculateForAllScenarios(
@@ -240,6 +276,29 @@ describe("FinancialService", () => {
           annualMaintenanceCost: 300,
         },
       },
+      mockBuilding,
+    );
+
+    expect(mockAssessRisk).not.toHaveBeenCalled();
+    expect(results["renovated"].riskAssessment).toBeNull();
+  });
+
+  test("missing delivered totals skip detailed finance instead of falling back to thermal needs", async () => {
+    const service = new FinancialService();
+
+    const scenarioWithoutDelivered: RenovationScenario = {
+      ...renovatedScenario,
+      deliveredTotal: undefined,
+      deliveredEnergyCost: undefined,
+      primaryEnergy: undefined,
+    };
+
+    const results = await service.calculateForAllScenarios(
+      [scenarioWithoutDelivered],
+      mockFundingOptions,
+      100,
+      mockEstimation,
+      packageFinancialInputs,
       mockBuilding,
     );
 
