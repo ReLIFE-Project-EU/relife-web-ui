@@ -98,6 +98,12 @@ export interface EstimationResult {
   // Named "Consumption" to distinguish it from savings, which are computed in FinancialService
   // by subtracting the renovated scenario's annualEnergyNeeds from this value.
   annualEnergyConsumption: number; // kWh/year
+  /** UNI/TS 11300 combined HVAC delivered energy, when available. */
+  deliveredTotal?: number;
+  /** Frontend flat-tariff estimate derived from deliveredTotal, when available. */
+  deliveredEnergyCost?: number;
+  /** UNI/TS 11300 total primary energy, when available. */
+  primaryEnergy?: number;
 
   /**
    * Notices returned during validation of a modified archetype.
@@ -116,6 +122,9 @@ export interface EstimationResult {
     heatingCoolingNeeds: number;
     flexibilityIndex: number;
     comfortIndex: number;
+    deliveredTotal?: number;
+    deliveredEnergyCost?: number;
+    primaryEnergy?: number;
   };
 
   /**
@@ -252,6 +261,9 @@ export interface RenovationScenario {
   annualEnergyNeeds: number; // kWh/year (HVAC demand, API-derived)
   annualEnergyCost: number; // EUR/year (derived from annualEnergyNeeds using ENERGY_PRICE_EUR_PER_KWH)
   heatingCoolingNeeds: number; // kWh/year (HVAC demand, API-derived)
+  deliveredTotal?: number; // kWh/year (UNI/TS 11300 delivered energy, when available)
+  deliveredEnergyCost?: number; // EUR/year estimate derived from deliveredTotal
+  primaryEnergy?: number; // kWh/year (UNI/TS 11300 primary energy, when available)
   flexibilityIndex: number;
   comfortIndex: number;
   packageId: string | null;

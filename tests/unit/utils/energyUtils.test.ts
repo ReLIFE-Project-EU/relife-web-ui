@@ -5,11 +5,13 @@ import {
   estimateAnnualHvacEnergyCost,
   transformColumnarToRowFormat,
   calculateAnnualTotals,
+  extractUniTotals,
 } from "../../../src/services/energyUtils";
 
 import type {
   HourlyBuildingRecord,
   HourlyBuildingColumnar,
+  UNI11300Results,
 } from "../../../src/types/forecasting";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -139,5 +141,38 @@ describe("estimateAnnualHvacEnergyCost", () => {
 
   test("uses custom price when provided", () => {
     expect(estimateAnnualHvacEnergyCost(1000, 0.3)).toBeCloseTo(300, 2);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// extractUniTotals
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("extractUniTotals", () => {
+  test("projects delivered and primary totals from backend UNI results", () => {
+    const uniResults: UNI11300Results = {
+      summary: {
+        E_delivered_thermal_kWh: 1000,
+        E_delivered_electric_total_kWh: 250,
+        EP_total_kWh: 1800,
+      },
+    };
+
+    expect(extractUniTotals(uniResults)).toEqual({
+      deliveredTotal: 1250,
+      primaryEnergy: 1800,
+    });
+  });
+
+  test("rejects heat-pump-adjusted results by default", () => {
+    const uniResults: UNI11300Results = {
+      heat_pump_applied: true,
+      summary: {
+        E_delivered_electric_total_kWh: 900,
+        EP_total_kWh: 1800,
+      },
+    };
+
+    expect(extractUniTotals(uniResults)).toBeUndefined();
   });
 });

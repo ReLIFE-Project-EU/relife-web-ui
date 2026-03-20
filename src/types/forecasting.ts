@@ -78,6 +78,7 @@ export interface SimulationValidation {
  */
 export interface SimulationResults {
   hourly_building: HourlyBuildingRecord[];
+  primary_energy_uni11300?: UNI11300Results;
 }
 
 /**
@@ -162,6 +163,31 @@ export interface EPCResponse {
 }
 
 // ============================================================================
+// UNI/TS 11300 Result Types
+// ============================================================================
+
+export interface UNI11300Summary {
+  Q_ideal_heat_kWh?: number;
+  Q_ideal_cool_kWh?: number;
+  E_delivered_thermal_kWh?: number;
+  E_delivered_electric_heat_kWh?: number;
+  E_delivered_electric_cool_kWh?: number;
+  E_delivered_electric_total_kWh?: number;
+  EP_heat_total_kWh?: number;
+  EP_cool_total_kWh?: number;
+  EP_total_kWh?: number;
+  heat_pump_cop?: number;
+}
+
+export interface UNI11300Results {
+  input_unit?: string;
+  ideal_unit?: string;
+  n_hours?: number;
+  summary?: UNI11300Summary;
+  heat_pump_applied?: boolean;
+}
+
+// ============================================================================
 // ECM Application Types (POST /ecm_application)
 // ============================================================================
 
@@ -202,6 +228,8 @@ export interface ECMScenario {
     hourly_building: HourlyBuildingColumnar;
     /** Annual aggregated results */
     annual_building: Record<string, unknown>[];
+    /** UNI/TS 11300 delivered and primary energy results */
+    primary_energy_uni11300?: UNI11300Results;
   };
 }
 

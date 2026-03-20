@@ -106,7 +106,7 @@ export function ReferenceAdjustedComparisonCard({
             <Table.Tr>
               <Table.Td>
                 <Text size="sm" c="dimmed">
-                  Annual HVAC energy
+                  Annual building thermal needs
                 </Text>
               </Table.Td>
               <Table.Td>
@@ -130,7 +130,7 @@ export function ReferenceAdjustedComparisonCard({
             <Table.Tr>
               <Table.Td>
                 <Text size="sm" c="dimmed">
-                  Annual HVAC cost
+                  Estimated cost of thermal needs
                 </Text>
               </Table.Td>
               <Table.Td>
@@ -179,7 +179,8 @@ export function ReferenceAdjustedComparisonCard({
         <Text size="sm" c="dimmed">
           We started from a standard building profile similar to yours, applied
           your specific details, ran an energy simulation, and calculated the
-          results shown above.
+          results shown above. Cost figures here are frontend estimates based on
+          thermal needs, not utility bills.
         </Text>
       </Stack>
     </Card>

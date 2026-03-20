@@ -7,6 +7,7 @@ import { forecasting } from "../api";
 import type {
   ECMApplicationParams,
   ECMArchetypeParams,
+  ECMScenario,
   ECMCustomBuildingParams,
 } from "../types/forecasting";
 import type {
@@ -20,6 +21,7 @@ import {
   DEFAULT_FLOOR_AREA,
   calculateAnnualTotals,
   estimateAnnualHvacEnergyCost,
+  extractUniTotals,
   getEPCClass,
   transformColumnarToRowFormat,
 } from "./energyUtils";
@@ -147,7 +149,10 @@ export class RenovationService implements IRenovationService {
   ): Promise<RenovationScenario> {
     const ecmParams = this.buildECMParams(estimation, renovationPackage);
     const ecmResponse = await forecasting.simulateECM(ecmParams);
-    const renovatedScenario = ecmResponse.scenarios[0];
+    const renovatedScenario = this.selectScenarioForPackage(
+      ecmResponse.scenarios,
+      renovationPackage,
+    );
 
     if (!renovatedScenario?.results?.hourly_building) {
       throw new Error("ECM API did not return a valid renovated scenario");
@@ -172,6 +177,17 @@ export class RenovationService implements IRenovationService {
 
     const areaScaleFactor = userArea / estimation.archetypeFloorArea;
     const scaledRenovatedHvac = renovatedHvacEnergy * areaScaleFactor;
+    const uniTotals = extractUniTotals(
+      renovatedScenario.results.primary_energy_uni11300,
+    );
+    const scaledDeliveredTotal =
+      uniTotals !== undefined
+        ? uniTotals.deliveredTotal * areaScaleFactor
+        : undefined;
+    const scaledPrimaryEnergy =
+      uniTotals !== undefined
+        ? uniTotals.primaryEnergy * areaScaleFactor
+        : undefined;
     const renovatedIntensity = scaledRenovatedHvac / userArea;
 
     return {
@@ -184,6 +200,17 @@ export class RenovationService implements IRenovationService {
         estimateAnnualHvacEnergyCost(scaledRenovatedHvac),
       ),
       heatingCoolingNeeds: Math.round(scaledRenovatedHvac),
+      ...(scaledDeliveredTotal !== undefined
+        ? {
+            deliveredTotal: Math.round(scaledDeliveredTotal),
+            deliveredEnergyCost: Math.round(
+              estimateAnnualHvacEnergyCost(scaledDeliveredTotal),
+            ),
+          }
+        : {}),
+      ...(scaledPrimaryEnergy !== undefined
+        ? { primaryEnergy: Math.round(scaledPrimaryEnergy) }
+        : {}),
       comfortIndex: Math.min(
         100,
         estimation.comfortIndex + renovationPackage.measureIds.length * 2,
@@ -255,11 +282,59 @@ export class RenovationService implements IRenovationService {
       annualEnergyNeeds: estimation.annualEnergyNeeds,
       annualEnergyCost: estimation.annualEnergyCost,
       heatingCoolingNeeds: estimation.heatingCoolingNeeds,
+      deliveredTotal: estimation.deliveredTotal,
+      deliveredEnergyCost: estimation.deliveredEnergyCost,
+      primaryEnergy: estimation.primaryEnergy,
       flexibilityIndex: estimation.flexibilityIndex,
       comfortIndex: estimation.comfortIndex,
       measureIds: [],
       measures: [],
     };
+  }
+
+  private selectScenarioForPackage(
+    scenarios: ECMScenario[],
+    renovationPackage: RenovationPackage,
+  ): ECMScenario | undefined {
+    if (scenarios.length === 0) {
+      return undefined;
+    }
+
+    if (scenarios.length === 1) {
+      return scenarios[0];
+    }
+
+    const expectedElements = new Set(
+      renovationPackage.measureIds
+        .map((measureId) => MEASURE_TO_ELEMENT[measureId])
+        .filter(
+          (element): element is NonNullable<ECMScenario["elements"]>[number] =>
+            element !== undefined,
+        ),
+    );
+
+    const exactElementMatch = scenarios.find((scenario) => {
+      const scenarioElements = new Set(scenario.elements ?? []);
+      if (scenarioElements.size !== expectedElements.size) {
+        return false;
+      }
+
+      return [...expectedElements].every((element) =>
+        scenarioElements.has(element),
+      );
+    });
+
+    if (exactElementMatch) {
+      return exactElementMatch;
+    }
+
+    const nonBaselineScenario = scenarios.find(
+      (scenario) =>
+        scenario.scenario_id !== "baseline" &&
+        (scenario.elements?.length ?? 0) > 0,
+    );
+
+    return nonBaselineScenario ?? scenarios[scenarios.length - 1];
   }
 }
 

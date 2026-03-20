@@ -88,6 +88,9 @@ const mockEstimation: EstimationResult = {
   flexibilityIndex: 50,
   comfortIndex: 70,
   annualEnergyConsumption: 15000,
+  deliveredTotal: 17000,
+  deliveredEnergyCost: 4250,
+  primaryEnergy: 22000,
   archetypeFloorArea: 100,
   archetype: { category: "SFH", country: "Greece", name: "GR_SFH_1961_1980" },
 };
@@ -95,9 +98,27 @@ const mockEstimation: EstimationResult = {
 const stubECMResponse = {
   scenarios: [
     {
+      scenario_id: "baseline",
+      elements: [],
       results: {
         hourly_building: {
           Q_HC: Array(8760).fill(100),
+        },
+      },
+    },
+    {
+      scenario_id: "wall",
+      elements: ["wall"],
+      results: {
+        hourly_building: {
+          Q_HC: Array(8760).fill(100),
+        },
+        primary_energy_uni11300: {
+          summary: {
+            E_delivered_thermal_kWh: 1000,
+            E_delivered_electric_total_kWh: 250,
+            EP_total_kWh: 1800,
+          },
         },
       },
     },
@@ -175,5 +196,24 @@ describe("RenovationService", () => {
     await service.evaluateScenarios(mockBuilding, mockEstimation, packages);
 
     expect(mockSimulateECM).toHaveBeenCalledTimes(packages.length);
+  });
+
+  test("evaluateScenarios selects the matching non-baseline scenario and maps UNI totals", async () => {
+    const scenarios = await service.evaluateScenarios(
+      mockBuilding,
+      mockEstimation,
+      [
+        {
+          id: "package-wall-insulation",
+          label: "Wall Insulation",
+          measureIds: ["wall-insulation"],
+        },
+      ],
+    );
+
+    expect(scenarios[0]?.deliveredTotal).toBe(17000);
+    expect(scenarios[1]?.deliveredTotal).toBe(1250);
+    expect(scenarios[1]?.deliveredEnergyCost).toBe(313);
+    expect(scenarios[1]?.primaryEnergy).toBe(1800);
   });
 });

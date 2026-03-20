@@ -42,6 +42,8 @@ import type {
   RiskAssessmentResponse,
 } from "./types";
 
+const USE_DELIVERED_ENERGY_FOR_FINANCE_PHASE1 = false;
+
 export class FinancialService implements IFinancialService {
   private readonly outputLevel: OutputLevel;
 
@@ -261,10 +263,19 @@ export class FinancialService implements IFinancialService {
         renovated_last_5_years: resolvedBuilding.renovatedLast5Years,
       };
 
+      // Phase 1 keeps finance on thermal-needs savings unless a deliberate
+      // rollout decision confirms UNI totals are comparable across the
+      // baseline `/simulate` path and the renovation `/ecm_application` path.
+      const canUseDeliveredEnergy =
+        USE_DELIVERED_ENERGY_FOR_FINANCE_PHASE1 &&
+        resolvedCurrentEstimation.deliveredTotal !== undefined &&
+        scenario.deliveredTotal !== undefined;
       const annualEnergySavingsKWh = Math.max(
         0,
-        resolvedCurrentEstimation.annualEnergyNeeds -
-          (scenario.annualEnergyNeeds ?? 0),
+        canUseDeliveredEnergy
+          ? resolvedCurrentEstimation.deliveredTotal! - scenario.deliveredTotal!
+          : resolvedCurrentEstimation.annualEnergyNeeds -
+              (scenario.annualEnergyNeeds ?? 0),
       ); // values are already in kWh/year
 
       const riskRequest: RiskAssessmentRequest = {

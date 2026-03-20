@@ -28,6 +28,7 @@ import {
   DEFAULT_FLOOR_AREA,
   calculateAnnualTotals,
   estimateAnnualHvacEnergyCost,
+  extractUniTotals,
   getEPCClass,
 } from "./energyUtils";
 import type { IEnergyService, IBuildingService } from "./types";
@@ -386,6 +387,17 @@ export class EnergyService implements IEnergyService {
     const annualEnergyNeeds = scaledHvacTotal;
     const annualEnergyCost = estimateAnnualHvacEnergyCost(annualEnergyNeeds);
     const estimatedEPC = getEPCClass(energyIntensity);
+    const uniTotals = extractUniTotals(
+      simulationResponse.results.primary_energy_uni11300,
+    );
+    const scaledDeliveredTotal =
+      uniTotals !== undefined
+        ? uniTotals.deliveredTotal * areaScaleFactor
+        : undefined;
+    const scaledPrimaryEnergy =
+      uniTotals !== undefined
+        ? uniTotals.primaryEnergy * areaScaleFactor
+        : undefined;
 
     const comfortIndex = calculateComfortIndex(building);
     const flexibilityIndex = calculateFlexibilityIndex(building);
@@ -400,6 +412,17 @@ export class EnergyService implements IEnergyService {
       flexibilityIndex: Math.round(flexibilityIndex),
       comfortIndex: Math.round(comfortIndex),
       annualEnergyConsumption: Math.round(annualEnergyNeeds),
+      ...(scaledDeliveredTotal !== undefined
+        ? {
+            deliveredTotal: Math.round(scaledDeliveredTotal),
+            deliveredEnergyCost: Math.round(
+              estimateAnnualHvacEnergyCost(scaledDeliveredTotal),
+            ),
+          }
+        : {}),
+      ...(scaledPrimaryEnergy !== undefined
+        ? { primaryEnergy: Math.round(scaledPrimaryEnergy) }
+        : {}),
       archetypeFloorArea: archetypeArea,
       archetype: {
         category: archetype.category,
@@ -516,6 +539,9 @@ export class EnergyService implements IEnergyService {
             heatingCoolingNeeds: referenceEstimation.heatingCoolingNeeds,
             flexibilityIndex: referenceEstimation.flexibilityIndex,
             comfortIndex: referenceEstimation.comfortIndex,
+            deliveredTotal: referenceEstimation.deliveredTotal,
+            deliveredEnergyCost: referenceEstimation.deliveredEnergyCost,
+            primaryEnergy: referenceEstimation.primaryEnergy,
           },
         });
       } catch (error) {

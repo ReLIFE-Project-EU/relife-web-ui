@@ -82,6 +82,9 @@ const mockEstimation = {
   flexibilityIndex: 50,
   comfortIndex: 70,
   annualEnergyConsumption: 15000,
+  deliveredTotal: 11000,
+  deliveredEnergyCost: 2750,
+  primaryEnergy: 16500,
   archetypeFloorArea: 100,
 } as EstimationResult;
 
@@ -103,6 +106,9 @@ const renovatedScenario = {
   annualEnergyNeeds: 5000,
   annualEnergyCost: 1250,
   heatingCoolingNeeds: 5000,
+  deliveredTotal: 7000,
+  deliveredEnergyCost: 1750,
+  primaryEnergy: 9600,
   flexibilityIndex: 55,
   comfortIndex: 75,
   measureIds: ["wall-insulation"],
@@ -117,6 +123,9 @@ const secondScenario = {
   annualEnergyNeeds: 4000,
   annualEnergyCost: 1000,
   heatingCoolingNeeds: 4000,
+  deliveredTotal: 6500,
+  deliveredEnergyCost: 1625,
+  primaryEnergy: 9100,
   measureIds: ["windows"],
   measures: ["Window Replacement"],
 } as RenovationScenario;
@@ -179,6 +188,23 @@ describe("FinancialService", () => {
   });
 
   test("risk assessment savings = max(0, round(baseline - renovated))", async () => {
+    const service = new FinancialService();
+
+    await service.calculateForAllScenarios(
+      [renovatedScenario],
+      mockFundingOptions,
+      100,
+      mockEstimation,
+      packageFinancialInputs,
+      mockBuilding,
+    );
+
+    expect(mockAssessRisk).toHaveBeenCalledWith(
+      expect.objectContaining({ annual_energy_savings: 10000 }),
+    );
+  });
+
+  test("finance keeps thermal-needs savings while delivered-energy gate is disabled", async () => {
     const service = new FinancialService();
 
     await service.calculateForAllScenarios(

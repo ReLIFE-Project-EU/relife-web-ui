@@ -70,6 +70,13 @@ const stubSimulationResponse = {
       Q_H: 200,
       Q_C: 100,
     }),
+    primary_energy_uni11300: {
+      summary: {
+        E_delivered_thermal_kWh: 1200,
+        E_delivered_electric_total_kWh: 300,
+        EP_total_kWh: 2100,
+      },
+    },
   },
 };
 
@@ -254,6 +261,15 @@ describe("EnergyService", () => {
         weatherSource: "pvgis",
       }),
     );
+  });
+
+  test("estimateEPC exposes UNI delivered and primary energy when available", async () => {
+    const estimation = await service.estimateEPC(unmodifiedBuilding);
+
+    expect(estimation.deliveredTotal).toBe(1500);
+    expect(estimation.deliveredEnergyCost).toBe(375);
+    expect(estimation.primaryEnergy).toBe(2100);
+    expect(estimation.annualEnergyNeeds).toBe(2628);
   });
 
   test("modified path sends validated BUI to simulateCustomBuilding", async () => {

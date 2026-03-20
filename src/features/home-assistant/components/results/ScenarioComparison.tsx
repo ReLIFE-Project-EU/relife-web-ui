@@ -4,6 +4,7 @@
  */
 
 import {
+  Badge,
   Box,
   Card,
   ScrollArea,
@@ -121,7 +122,7 @@ export function ScenarioComparison() {
 
               {/* Energy Needs Row */}
               <MetricRow
-                label="Annual HVAC Energy Needs"
+                label="Annual building thermal needs"
                 baseValue={
                   currentScenario?.annualEnergyNeeds ||
                   estimation.annualEnergyNeeds
@@ -134,13 +135,31 @@ export function ScenarioComparison() {
 
               {/* Energy Cost Row */}
               <MetricRow
-                label="Cost of Annual HVAC Energy Needs"
+                label="Estimated cost of thermal needs"
                 baseValue={
                   currentScenario?.annualEnergyCost ||
                   estimation.annualEnergyCost
                 }
                 scenarios={renovationScenarios}
                 getValue={(s) => s.annualEnergyCost}
+                formatter={formatCurrency}
+                lowerIsBetter
+              />
+
+              <OptionalMetricRow
+                label="Estimated system energy consumption"
+                baseValue={currentScenario?.deliveredTotal}
+                scenarios={renovationScenarios}
+                getValue={(s) => s.deliveredTotal}
+                formatter={formatEnergyPerYear}
+                lowerIsBetter
+              />
+
+              <OptionalMetricRow
+                label="Estimated cost of system energy consumption"
+                baseValue={currentScenario?.deliveredEnergyCost}
+                scenarios={renovationScenarios}
+                getValue={(s) => s.deliveredEnergyCost}
                 formatter={formatCurrency}
                 lowerIsBetter
               />
@@ -173,11 +192,80 @@ export function ScenarioComparison() {
           </Table>
         </ScrollArea>
         <Text size="xs" c="dimmed">
-          Cost values use a frontend flat tariff of{" "}
+          Cost values are frontend estimates based on a flat tariff of{" "}
           {formatCurrencyDecimal(ENERGY_PRICE_EUR_PER_KWH)}/kWh.
         </Text>
       </Stack>
     </Card>
+  );
+}
+
+interface OptionalMetricRowProps {
+  label: string;
+  baseValue: number | undefined;
+  scenarios: RenovationScenario[];
+  getValue: (scenario: RenovationScenario) => number | undefined;
+  formatter: (value: number) => string;
+  lowerIsBetter: boolean;
+}
+
+function OptionalMetricRow({
+  label,
+  baseValue,
+  scenarios,
+  getValue,
+  formatter,
+  lowerIsBetter,
+}: OptionalMetricRowProps) {
+  const anyValuePresent =
+    baseValue !== undefined ||
+    scenarios.some((scenario) => getValue(scenario) !== undefined);
+
+  if (!anyValuePresent) {
+    return null;
+  }
+
+  return (
+    <Table.Tr>
+      <Table.Td fw={500}>{label}</Table.Td>
+      <Table.Td style={{ textAlign: "center" }}>
+        {baseValue !== undefined ? (
+          <Text size="sm">{formatter(baseValue)}</Text>
+        ) : (
+          <MissingValueBadge />
+        )}
+      </Table.Td>
+      {scenarios.map((scenario) => {
+        const value = getValue(scenario);
+        const delta =
+          value !== undefined && baseValue !== undefined
+            ? calculatePercentChange(baseValue, value)
+            : undefined;
+
+        return (
+          <Table.Td key={scenario.id} style={{ textAlign: "center" }}>
+            <Stack gap={4} align="center">
+              {value !== undefined ? (
+                <Text size="sm">{formatter(value)}</Text>
+              ) : (
+                <MissingValueBadge />
+              )}
+              {delta !== undefined ? (
+                <DeltaBadge delta={delta} higherIsBetter={!lowerIsBetter} />
+              ) : null}
+            </Stack>
+          </Table.Td>
+        );
+      })}
+    </Table.Tr>
+  );
+}
+
+function MissingValueBadge() {
+  return (
+    <Badge variant="light" color="gray">
+      Not available
+    </Badge>
   );
 }
 
