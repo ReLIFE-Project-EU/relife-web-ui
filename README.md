@@ -18,6 +18,12 @@ npm run build
 npm run preview
 ```
 
+### Backend service sources and API contracts
+
+The three platform services (financial, forecasting, technical) are developed in separate repositories. For local builds that compile those images, clone them under `external-services/` (this path is gitignored). Use `task fetch-sources` (see [`Taskfile.yml`](./Taskfile.yml)) with the appropriate repo refs.
+
+JSON OpenAPI files under `api-specs/` are **snapshots only** and may not match real behavior. When integrating or changing API clients, verify against the service code or a running stack; see [`AGENTS.md`](./AGENTS.md) (section **API specifications (OpenAPI)**).
+
 ## Renovation Tools Architecture
 
 The ReLIFE Web UI implements three renovation tools with different implementation maturity levels. The diagrams below document current runtime behavior (not target design), including where services are real, mocked, partial, or not wired yet.

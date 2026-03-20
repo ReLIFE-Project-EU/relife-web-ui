@@ -13,6 +13,8 @@ description: >
 Guides the complete workflow for contributing a bug fix to one of the three upstream
 ReLIFE backend service repositories from the Web UI developer's perspective.
 
+**Contract truth**: Confirm behavior in the service codebase under `external-services/` (handlers, models, validation). Checked-in OpenAPI under `api-specs/` in the Web UI repo is not sufficient on its own—it is often incomplete or stale relative to the running service.
+
 ## Scope
 
 The three service repositories are already checked out under `external-services/`
