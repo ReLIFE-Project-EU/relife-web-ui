@@ -255,6 +255,9 @@ describe("FinancialService", () => {
     expect(mockAssessRisk).toHaveBeenCalledWith(
       expect.objectContaining({ annual_energy_savings: 2000 }),
     );
+    expect(mockCalculateARV).toHaveBeenCalledWith(
+      expect.objectContaining({ energy_class: "\u0394" }),
+    );
   });
 
   test("negative delivered-energy savings are clamped to 0 and risk assessment is skipped", async () => {

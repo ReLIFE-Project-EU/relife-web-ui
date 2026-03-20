@@ -127,14 +127,6 @@ export function EPCDisplay() {
               label="Estimated cost of thermal needs"
               value={formatCurrency(estimation.annualEnergyCost)}
             />
-            <MetricCard
-              label="Estimated cost of system energy consumption"
-              value={
-                estimation.deliveredEnergyCost !== undefined
-                  ? formatCurrency(estimation.deliveredEnergyCost)
-                  : "Not available"
-              }
-            />
           </SimpleGrid>
 
           {!hasDeliveredConsumption && (
@@ -144,8 +136,10 @@ export function EPCDisplay() {
             </Text>
           )}
           <Text size="xs" c="dimmed">
-            Cost estimates are frontend convenience values based on a flat
-            tariff of {formatCurrencyDecimal(ENERGY_PRICE_EUR_PER_KWH)}/kWh.
+            Thermal-needs cost is a frontend convenience estimate based on a
+            flat tariff of {formatCurrencyDecimal(ENERGY_PRICE_EUR_PER_KWH)}
+            /kWh. System energy consumption is shown in kWh/year only because
+            its real cost depends on fuel and electricity prices.
           </Text>
         </Stack>
       </Card>

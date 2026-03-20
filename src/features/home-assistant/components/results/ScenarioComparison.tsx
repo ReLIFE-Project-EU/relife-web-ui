@@ -42,6 +42,12 @@ export function ScenarioComparison() {
 
   const computeIntensity = (annualEnergyNeeds: number) =>
     floorArea && floorArea > 0 ? annualEnergyNeeds / floorArea : undefined;
+  const scenarioIncludesSystemMeasure = (scenario: RenovationScenario) =>
+    scenario.measureIds.some(
+      (measureId) =>
+        measureId === "condensing-boiler" ||
+        measureId === "air-water-heat-pump",
+    );
 
   return (
     <Card withBorder radius="md" p="lg">
@@ -73,7 +79,12 @@ export function ScenarioComparison() {
             <Table.Tbody>
               {/* EPC Row */}
               <Table.Tr>
-                <Table.Td fw={500}>EPC Rank</Table.Td>
+                <Table.Td fw={500}>
+                  <MetricLabel
+                    label="Estimated EPC"
+                    description="Shown for the current home and envelope-only scenarios. Scenarios with system upgrades can lower energy use, but EPC is not recalculated here to avoid mixing different meanings."
+                  />
+                </Table.Td>
                 <Table.Td style={{ textAlign: "center" }}>
                   {(() => {
                     const epc =
@@ -100,6 +111,24 @@ export function ScenarioComparison() {
                   })()}
                 </Table.Td>
                 {renovationScenarios.map((scenario) => {
+                  if (scenarioIncludesSystemMeasure(scenario)) {
+                    return (
+                      <Table.Td
+                        key={scenario.id}
+                        style={{ textAlign: "center" }}
+                      >
+                        <Stack gap={4} align="center">
+                          <Badge color="gray" variant="light">
+                            Not shown
+                          </Badge>
+                          <Text size="xs" c="dimmed">
+                            Includes a system upgrade
+                          </Text>
+                        </Stack>
+                      </Table.Td>
+                    );
+                  }
+
                   const intensity = computeIntensity(
                     scenario.annualEnergyNeeds,
                   );
@@ -173,20 +202,6 @@ export function ScenarioComparison() {
                 lowerIsBetter
               />
 
-              <OptionalMetricRow
-                label={
-                  <MetricLabel
-                    label="Estimated cost of system energy consumption"
-                    description="A frontend estimate based on the displayed system energy consumption and a flat tariff. This helps comparison, but it is not a full financial assessment."
-                  />
-                }
-                baseValue={currentScenario?.deliveredEnergyCost}
-                scenarios={renovationScenarios}
-                getValue={(s) => s.deliveredEnergyCost}
-                formatter={formatCurrency}
-                lowerIsBetter
-              />
-
               {/* Flexibility Index Row */}
               <MetricRow
                 label="Flexibility Index (0–100)"
@@ -215,8 +230,10 @@ export function ScenarioComparison() {
           </Table>
         </ScrollArea>
         <Text size="xs" c="dimmed">
-          Cost values are frontend estimates based on a flat tariff of{" "}
-          {formatCurrencyDecimal(ENERGY_PRICE_EUR_PER_KWH)}/kWh.
+          Thermal-needs cost values are frontend estimates based on a flat
+          tariff of {formatCurrencyDecimal(ENERGY_PRICE_EUR_PER_KWH)}/kWh.
+          System energy consumption is shown in kWh/year only because its real
+          cost depends on fuel and electricity prices.
         </Text>
       </Stack>
     </Card>

@@ -24,7 +24,6 @@ import {
   Table,
   Text,
   Title,
-  Tooltip,
   UnstyledButton,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
@@ -131,24 +130,9 @@ export function FinancialDataSection() {
             marginTop: -16,
           }}
         >
-          <Group gap="xs" align="center">
-            <Title order={4} c="white">
-              Financial Overview
-            </Title>
-            <Tooltip
-              label="These financial results are estimated in the app using simulated delivered-energy savings from the forecasting results. They are meant to compare options and may differ from actual utility-bill savings."
-              multiline
-              withArrow
-              w={320}
-            >
-              <Box
-                component="span"
-                style={{ display: "inline-flex", cursor: "help" }}
-              >
-                <IconInfoCircle size={16} color="white" />
-              </Box>
-            </Tooltip>
-          </Group>
+          <Title order={4} c="white">
+            Financial Overview
+          </Title>
         </Box>
 
         {/* Funding Options Display */}
@@ -172,6 +156,14 @@ export function FinancialDataSection() {
             </Group>
           </Box>
         </Group>
+
+        <Alert color="blue" variant="light" icon={<IconInfoCircle size={16} />}>
+          Financial results in this view are indicative estimates based on
+          simulated energy use before and after renovation. They are intended to
+          help compare options and may differ from actual bills or final
+          investment outcomes. For scenarios that include system upgrades,
+          EPC-related property value effects are not recalculated yet.
+        </Alert>
 
         {/* Comparison-first summary */}
         {renovationScenarios.length > 1 && (

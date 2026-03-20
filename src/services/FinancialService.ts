@@ -44,6 +44,13 @@ import type {
 
 const USE_SIMULATED_DELIVERED_ENERGY_FOR_FINANCE = true;
 
+function scenarioIncludesSystemMeasure(scenario: RenovationScenario): boolean {
+  return scenario.measureIds.some(
+    (measureId) =>
+      measureId === "condensing-boiler" || measureId === "air-water-heat-pump",
+  );
+}
+
 export class FinancialService implements IFinancialService {
   private readonly outputLevel: OutputLevel;
 
@@ -250,6 +257,13 @@ export class FinancialService implements IFinancialService {
           ? resolvedFundingOptions.loan.duration
           : 0;
 
+      // Keep ARV conservative for scenarios that include a system measure.
+      // Those scenarios may improve modeled consumption without producing a
+      // directly comparable EPC uplift in the current HRA flow.
+      const arvEnergyClass = scenarioIncludesSystemMeasure(scenario)
+        ? toAPIEnergyClass(resolvedCurrentEstimation.estimatedEPC)
+        : toAPIEnergyClass(scenario.epcClass);
+
       // ARV Request for renovated scenario
       const arvRequest: ARVRequest = {
         lat: resolvedBuilding.lat ?? 0,
@@ -259,7 +273,7 @@ export class FinancialService implements IFinancialService {
         number_of_floors: resolvedBuilding.numberOfFloors ?? 1,
         floor_number: resolvedBuilding.floorNumber,
         property_type: toAPIPropertyType(resolvedBuilding.buildingType),
-        energy_class: toAPIEnergyClass(scenario.epcClass),
+        energy_class: arvEnergyClass,
         renovated_last_5_years: resolvedBuilding.renovatedLast5Years,
       };
 
