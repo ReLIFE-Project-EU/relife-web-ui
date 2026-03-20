@@ -43,6 +43,7 @@ import {
   IconMapPin,
   IconRuler,
   IconStack2,
+  IconX,
 } from "@tabler/icons-react";
 import type { ArchetypeInfo } from "../../../../types/forecasting";
 import type {
@@ -348,6 +349,7 @@ function ArchetypeSummary({
   isSelected,
   isModified,
   onUseReference,
+  onClearAccepted,
   draft,
   setDraft,
   onApplyAdjustments,
@@ -361,6 +363,7 @@ function ArchetypeSummary({
   isSelected: boolean;
   isModified: boolean;
   onUseReference: () => void;
+  onClearAccepted?: () => void;
   draft: DraftState;
   setDraft: Dispatch<SetStateAction<DraftState | null>>;
   onApplyAdjustments: () => void;
@@ -544,6 +547,19 @@ function ArchetypeSummary({
             {adjustmentsOpen ? "Hide adjustments" : "Adjust to my home"}
           </Button>
         </Group>
+
+        {isSelected && onClearAccepted ? (
+          <Button
+            variant="subtle"
+            color="gray"
+            size="sm"
+            leftSection={<IconX size={16} />}
+            onClick={onClearAccepted}
+            fullWidth
+          >
+            Discard accepted reference home
+          </Button>
+        ) : null}
 
         {matchResult && matchResult.alternatives.length > 0 ? (
           <>
@@ -1112,6 +1128,7 @@ export function ArchetypeSelector() {
         isSelected={Boolean(isCurrentSelectionValid)}
         isModified={Boolean(state.building.isModified)}
         onUseReference={handleUseReference}
+        onClearAccepted={() => dispatch({ type: "CLEAR_ACCEPTED_ARCHETYPE" })}
         draft={draft}
         setDraft={setDraft}
         onApplyAdjustments={handleApplyAdjustments}

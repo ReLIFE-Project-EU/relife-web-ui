@@ -3,22 +3,16 @@
  * Main wizard container with Mantine Stepper for the Home Renovation Assistant.
  */
 
-import {
-  Container,
-  Stepper,
-  Title,
-  Text,
-  Stack,
-  Button,
-  Group,
-} from "@mantine/core";
+import { Box, Button, Container, Group, Stack, Stepper, Text, Title } from "@mantine/core";
 import {
   IconHome,
   IconBolt,
   IconChartBar,
   IconRefresh,
 } from "@tabler/icons-react";
+import { useRef } from "react";
 import { useSyncGlobalLoading } from "../../contexts/global-loading";
+import { useWizardStepScroll } from "../../hooks/useWizardStepScroll";
 import { HomeAssistantProvider } from "./context/HomeAssistantContext";
 import { HomeAssistantServiceProvider } from "./context/ServiceContext";
 import { useHomeAssistant } from "./hooks/useHomeAssistant";
@@ -34,11 +28,13 @@ import {
  */
 function HomeAssistantWizard() {
   const { state, dispatch } = useHomeAssistant();
+  const topRef = useRef<HTMLDivElement | null>(null);
 
   // Sync local loading states to the global loading overlay
   useSyncGlobalLoading(state.isEstimating, "HomeAssistant.estimate");
   useSyncGlobalLoading(state.isEvaluating, "HomeAssistant.evaluate");
   useSyncGlobalLoading(state.isRanking, "HomeAssistant.rank");
+  useWizardStepScroll(state.currentStep, topRef);
 
   const handleStepClick = (step: number) => {
     // Only allow going back to previous steps or staying on current
@@ -92,8 +88,7 @@ function HomeAssistantWizard() {
             </Button>
           )}
         </Group>
-
-        {/* Stepper */}
+        <Box ref={topRef} aria-hidden style={{ scrollMarginTop: 96 }} />
         <Stepper
           active={state.currentStep}
           onStepClick={handleStepClick}

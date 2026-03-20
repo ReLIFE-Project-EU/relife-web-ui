@@ -199,6 +199,21 @@ export function homeAssistantReducer(
         estimation: null,
       };
 
+    case "CLEAR_ACCEPTED_ARCHETYPE":
+      return {
+        ...state,
+        building: {
+          ...state.building,
+          selectedArchetype: undefined,
+          isModified: false,
+          modifications: undefined,
+          floorArea: null,
+          numberOfFloors: null,
+          apartmentLocation: undefined,
+          floorNumber: null,
+        },
+      };
+
     // ─────────────────────────────────────────────────────────────────────────
     // Estimation
     // ─────────────────────────────────────────────────────────────────────────

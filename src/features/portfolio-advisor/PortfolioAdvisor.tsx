@@ -4,14 +4,15 @@
  */
 
 import {
-  Container,
-  Stepper,
-  Title,
-  Text,
-  Stack,
+  Box,
   Button,
+  Container,
   Group,
   Progress,
+  Stack,
+  Stepper,
+  Text,
+  Title,
 } from "@mantine/core";
 import {
   IconBuilding,
@@ -20,7 +21,9 @@ import {
   IconChartBar,
   IconRefresh,
 } from "@tabler/icons-react";
+import { useRef } from "react";
 import { useSyncGlobalLoading } from "../../contexts/global-loading";
+import { useWizardStepScroll } from "../../hooks/useWizardStepScroll";
 import { PortfolioAdvisorProvider } from "./context/PortfolioAdvisorContext";
 import { PortfolioAdvisorServiceProvider } from "./context/ServiceContext";
 import { usePortfolioAdvisor } from "./hooks/usePortfolioAdvisor";
@@ -40,6 +43,7 @@ import {
 function PortfolioAdvisorWizard() {
   const { state, dispatch } = usePortfolioAdvisor();
   const { renovation } = usePortfolioAdvisorServices();
+  const topRef = useRef<HTMLDivElement | null>(null);
 
   const rankableMeasures = renovation
     .getRankableMeasures()
@@ -58,6 +62,7 @@ function PortfolioAdvisorWizard() {
   useSyncGlobalLoading(state.isEstimating, "PortfolioAdvisor.estimate");
   useSyncGlobalLoading(state.isEvaluating, "PortfolioAdvisor.evaluate");
   useSyncGlobalLoading(state.isRanking, "PortfolioAdvisor.rank");
+  useWizardStepScroll(state.currentStep, topRef);
 
   const handleStepClick = (step: number) => {
     // Only allow going back to previous steps or staying on current
@@ -127,7 +132,7 @@ function PortfolioAdvisorWizard() {
           <Progress value={progressPercent} size="sm" radius="md" animated />
         )}
 
-        {/* Stepper */}
+        <Box ref={topRef} aria-hidden style={{ scrollMarginTop: 96 }} />
         <Stepper
           active={state.currentStep}
           onStepClick={handleStepClick}

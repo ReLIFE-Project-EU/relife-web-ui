@@ -8,7 +8,10 @@ import {
   homeAssistantReducer,
   initialState,
 } from "../../../src/features/home-assistant/context/homeAssistantReducer";
-import type { RenovationPackage } from "../../../src/types/renovation";
+import type {
+  EstimationResult,
+  RenovationPackage,
+} from "../../../src/types/renovation";
 
 const packages: RenovationPackage[] = [
   {
@@ -229,5 +232,107 @@ describe("homeAssistantReducer package financial inputs", () => {
     });
 
     expect(state.funding.incentives.lifetimeYears).toBe(8);
+  });
+});
+
+const mockEstimation: EstimationResult = {
+  estimatedEPC: "C",
+  annualEnergyNeeds: 10_000,
+  annualEnergyCost: 2500,
+  heatingCoolingNeeds: 10_000,
+  heatingDemand: 8000,
+  coolingDemand: 500,
+  flexibilityIndex: 50,
+  comfortIndex: 60,
+  annualEnergyConsumption: 11_000,
+  archetypeFloorArea: 120,
+};
+
+describe("homeAssistantReducer CLEAR_ACCEPTED_ARCHETYPE", () => {
+  test("clears selected archetype, modifications, overrides, and apartment context", () => {
+    const state = {
+      ...initialState,
+      building: {
+        ...initialState.building,
+        lat: 48.8566,
+        lng: 2.3522,
+        country: "France",
+        buildingType: "Single Family House",
+        constructionPeriod: "1971-1990",
+        tentativeArchetype: {
+          name: "ref-a",
+          category: "Single Family House",
+          country: "France",
+        },
+        selectedArchetype: {
+          name: "ref-a",
+          category: "Single Family House",
+          country: "France",
+        },
+        isModified: true,
+        modifications: { floorArea: 130 },
+        floorArea: 130,
+        numberOfFloors: 3,
+        apartmentLocation: "middle",
+        floorNumber: 1,
+      },
+      estimation: mockEstimation,
+    };
+
+    const next = homeAssistantReducer(state, {
+      type: "CLEAR_ACCEPTED_ARCHETYPE",
+    });
+
+    expect(next.building.selectedArchetype).toBeUndefined();
+    expect(next.building.isModified).toBe(false);
+    expect(next.building.modifications).toBeUndefined();
+    expect(next.building.floorArea).toBeNull();
+    expect(next.building.numberOfFloors).toBeNull();
+    expect(next.building.apartmentLocation).toBeUndefined();
+    expect(next.building.floorNumber).toBeNull();
+  });
+
+  test("preserves coordinates, search fields, tentative archetype, and estimation", () => {
+    const state = {
+      ...initialState,
+      building: {
+        ...initialState.building,
+        lat: 48.8566,
+        lng: 2.3522,
+        country: "France",
+        buildingType: "Single Family House",
+        constructionPeriod: "1971-1990",
+        tentativeArchetype: {
+          name: "ref-a",
+          category: "Single Family House",
+          country: "France",
+        },
+        selectedArchetype: {
+          name: "ref-a",
+          category: "Single Family House",
+          country: "France",
+        },
+        isModified: false,
+        floorArea: 100,
+        numberOfFloors: 2,
+      },
+      estimation: mockEstimation,
+    };
+
+    const next = homeAssistantReducer(state, {
+      type: "CLEAR_ACCEPTED_ARCHETYPE",
+    });
+
+    expect(next.building.lat).toBe(48.8566);
+    expect(next.building.lng).toBe(2.3522);
+    expect(next.building.country).toBe("France");
+    expect(next.building.buildingType).toBe("Single Family House");
+    expect(next.building.constructionPeriod).toBe("1971-1990");
+    expect(next.building.tentativeArchetype).toEqual(
+      state.building.tentativeArchetype,
+    );
+    expect(next.building.floorArea).toBeNull();
+    expect(next.building.numberOfFloors).toBeNull();
+    expect(next.estimation).toEqual(mockEstimation);
   });
 });

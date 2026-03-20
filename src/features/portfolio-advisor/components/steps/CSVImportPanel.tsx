@@ -10,6 +10,7 @@ import {
   Card,
   Collapse,
   Group,
+  List,
   Loader,
   Select,
   Stack,
@@ -36,7 +37,9 @@ import type {
   Portfolio,
   PortfolioFile,
 } from "../../../portfolio-manager/types";
-import { parseCSV } from "../../services/csvParser";
+import { CONSTRUCTION_PERIODS } from "../../../../utils/apiMappings";
+import { CSV_OPTIONAL_COLUMNS, CSV_REQUIRED_COLUMNS } from "../../constants";
+import { CSV_VALID_MEASURE_IDS, parseCSV } from "../../services/csvParser";
 import type { PRABuilding } from "../../context/types";
 
 export function CSVImportPanel({
@@ -55,6 +58,7 @@ export function CSVImportPanel({
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [portfolioError, setPortfolioError] = useState<string | null>(null);
   const [opened, { toggle }] = useDisclosure(true);
+  const [formatHelpOpen, { toggle: toggleFormatHelp }] = useDisclosure(false);
 
   // Load portfolios
   useEffect(() => {
@@ -209,20 +213,120 @@ export function CSVImportPanel({
             </Button>
           </Group>
 
-          <Text size="xs" c="dimmed">
-            Not sure about the format?{" "}
-            <Anchor
-              href={`${import.meta.env.BASE_URL}portfolio_example.csv`}
-              download="portfolio_example.csv"
-              size="xs"
-              inline
+          <Stack gap="xs">
+            <UnstyledButton
+              type="button"
+              onClick={toggleFormatHelp}
+              style={{ width: "100%" }}
             >
-              <Group gap={4} component="span" display="inline-flex">
-                <IconDownload size={12} />
-                Download an example CSV
+              <Group gap={6} wrap="nowrap">
+                {formatHelpOpen ? (
+                  <IconChevronUp size={14} />
+                ) : (
+                  <IconChevronDown size={14} />
+                )}
+                <Text size="sm" c="blue" fw={500}>
+                  CSV column reference
+                </Text>
               </Group>
-            </Anchor>
-          </Text>
+            </UnstyledButton>
+
+            <Collapse in={formatHelpOpen}>
+              <Stack gap="sm">
+                <Text size="sm" c="dimmed">
+                  Header row column names are case-insensitive. Commas separate
+                  columns; wrap values in double quotes if they contain commas.
+                </Text>
+                <div>
+                  <Text size="sm" fw={600}>
+                    Required columns
+                  </Text>
+                  <List size="sm" mt={4} spacing={4}>
+                    {CSV_REQUIRED_COLUMNS.map((col) =>
+                      col === "construction_period" ? (
+                        <List.Item key={col}>
+                          <Text span fw={500} component="span">
+                            construction_period
+                          </Text>{" "}
+                          — use one of the accepted period labels below, a
+                          4-digit year (mapped to a period), or a{" "}
+                          <Text span fw={500} component="span">
+                            YYYY-YYYY
+                          </Text>{" "}
+                          range. Alternatively, include{" "}
+                          <Text span fw={500} component="span">
+                            construction_year
+                          </Text>{" "}
+                          (1800–2030) instead of this column.
+                        </List.Item>
+                      ) : (
+                        <List.Item key={col}>
+                          <Text span fw={500} component="span">
+                            {col}
+                          </Text>
+                        </List.Item>
+                      ),
+                    )}
+                  </List>
+                </div>
+                <div>
+                  <Text size="sm" fw={600}>
+                    Optional columns
+                  </Text>
+                  <List size="sm" mt={4} spacing={4}>
+                    {CSV_OPTIONAL_COLUMNS.map((col) =>
+                      col === "measures" ? (
+                        <List.Item key={col}>
+                          <Text span fw={500} component="span">
+                            measures
+                          </Text>{" "}
+                          — semicolon-separated renovation measure IDs (e.g.{" "}
+                          <Text span ff="monospace" size="xs" component="span">
+                            wall-insulation;windows;pv
+                          </Text>
+                          ). Accepted IDs: {CSV_VALID_MEASURE_IDS.join(", ")}.
+                        </List.Item>
+                      ) : (
+                        <List.Item key={col}>
+                          <Text span fw={500} component="span">
+                            {col}
+                          </Text>
+                        </List.Item>
+                      ),
+                    )}
+                  </List>
+                </div>
+                <div>
+                  <Text size="sm" fw={600}>
+                    Accepted construction_period labels
+                  </Text>
+                  <Text size="sm" c="dimmed" mt={4}>
+                    {CONSTRUCTION_PERIODS.join(", ")}. Custom{" "}
+                    <Text span ff="monospace" size="xs" component="span">
+                      YYYY-YYYY
+                    </Text>{" "}
+                    ranges are also accepted when valid. The downloadable sample
+                    file is a complete working example.
+                  </Text>
+                </div>
+              </Stack>
+            </Collapse>
+
+            <Text size="xs" c="dimmed">
+              Not sure about the format?{" "}
+              <Anchor
+                href={`${import.meta.env.BASE_URL}portfolio_example.csv`}
+                download="portfolio_example.csv"
+                size="xs"
+                inline
+              >
+                <Group gap={4} component="span" display="inline-flex">
+                  <IconDownload size={12} />
+                  Download an example CSV
+                </Group>
+              </Anchor>
+            </Text>
+          </Stack>
 
           {importErrors.length > 0 && (
             <Alert

@@ -16,7 +16,8 @@ import type { RenovationMeasureId } from "../../../types/renovation";
 
 const VALID_PERIODS = new Set(CONSTRUCTION_PERIODS);
 
-const VALID_MEASURE_IDS: ReadonlySet<string> = new Set<RenovationMeasureId>([
+/** Semicolon-delimited `measures` column: these IDs are accepted (lowercase in CSV). */
+export const CSV_VALID_MEASURE_IDS = [
   "wall-insulation",
   "roof-insulation",
   "floor-insulation",
@@ -25,7 +26,11 @@ const VALID_MEASURE_IDS: ReadonlySet<string> = new Set<RenovationMeasureId>([
   "condensing-boiler",
   "pv",
   "solar-thermal",
-]);
+] as const satisfies readonly RenovationMeasureId[];
+
+const VALID_MEASURE_IDS: ReadonlySet<string> = new Set<string>(
+  CSV_VALID_MEASURE_IDS,
+);
 
 export interface CSVParseResult {
   buildings: PRABuilding[];
