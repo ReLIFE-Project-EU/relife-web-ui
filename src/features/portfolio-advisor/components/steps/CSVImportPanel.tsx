@@ -5,30 +5,31 @@
 
 import {
   Alert,
-  Anchor,
   Button,
   Card,
   Collapse,
   Group,
-  List,
   Loader,
   Select,
   Stack,
   Text,
+  ThemeIcon,
   Title,
   UnstyledButton,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
   IconAlertCircle,
+  IconArrowRight,
   IconChevronDown,
   IconChevronUp,
-  IconDownload,
   IconFileSpreadsheet,
+  IconFolder,
   IconLogin,
   IconUpload,
 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { signInWithKeycloak, supabase } from "../../../../auth";
 import { useSupabaseSession } from "../../../../hooks/useAuth";
 import { portfolioApi } from "../../../portfolio-manager/api/portfolioApi";
@@ -37,9 +38,7 @@ import type {
   Portfolio,
   PortfolioFile,
 } from "../../../portfolio-manager/types";
-import { CONSTRUCTION_PERIODS } from "../../../../utils/apiMappings";
-import { CSV_OPTIONAL_COLUMNS, CSV_REQUIRED_COLUMNS } from "../../constants";
-import { CSV_VALID_MEASURE_IDS, parseCSV } from "../../services/csvParser";
+import { parseCSV } from "../../services/csvParser";
 import type { PRABuilding } from "../../context/types";
 
 export function CSVImportPanel({
@@ -58,9 +57,15 @@ export function CSVImportPanel({
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [portfolioError, setPortfolioError] = useState<string | null>(null);
   const [opened, { toggle }] = useDisclosure(true);
-  const [formatHelpOpen, { toggle: toggleFormatHelp }] = useDisclosure(false);
 
-  // Load portfolios
+  const portfolioUploadGuidance = !selectedPortfolioId
+    ? portfolios.length === 0
+      ? "No portfolios are available yet. Create one and upload a CSV in My Portfolios, then return here to import it."
+      : "CSV files are uploaded and documented in My Portfolios. After uploading there, return here and choose a portfolio and file to import."
+    : files.length === 0
+      ? "This portfolio does not have any uploaded files yet. Add a CSV in My Portfolios, then return here to import it."
+      : "Need a different file or CSV format guidance? Use My Portfolios, then come back here to import.";
+
   useEffect(() => {
     if (isSessionLoading) {
       return;
@@ -82,19 +87,13 @@ export function CSVImportPanel({
       );
   }, [isSessionLoading, session]);
 
-  // Load files when portfolio changes
   useEffect(() => {
-    if (!session) {
+    if (!session || !selectedPortfolioId) {
       setFiles([]);
       setSelectedFileId(null);
       return;
     }
 
-    if (!selectedPortfolioId) {
-      setFiles([]);
-      setSelectedFileId(null);
-      return;
-    }
     fileApi
       .listByPortfolio(selectedPortfolioId)
       .then((f) => {
@@ -174,159 +173,76 @@ export function CSVImportPanel({
             </Alert>
           )}
 
-          <Group grow align="end">
-            <Select
-              label="Portfolio"
-              placeholder="Choose a portfolio"
-              data={portfolios.map((p) => ({ value: p.id, label: p.name }))}
-              value={selectedPortfolioId}
-              onChange={setSelectedPortfolioId}
-              disabled={!session || isSessionLoading}
-              clearable
-            />
-
-            <Select
-              label="File"
-              placeholder="Choose a CSV file"
-              data={files.map((f) => ({
-                value: f.id,
-                label: f.originalFilename,
-              }))}
-              value={selectedFileId}
-              onChange={setSelectedFileId}
-              disabled={
-                !session ||
-                isSessionLoading ||
-                !selectedPortfolioId ||
-                files.length === 0
-              }
-              clearable
-            />
-
-            <Button
-              leftSection={<IconUpload size={16} />}
-              onClick={handleImport}
-              loading={loading}
-              disabled={!session || isSessionLoading || !selectedFileId}
+          {session && (
+            <Group
+              justify="space-between"
+              gap="sm"
+              align="flex-start"
+              wrap="wrap"
             >
-              Import
-            </Button>
-          </Group>
-
-          <Stack gap="xs">
-            <UnstyledButton
-              type="button"
-              onClick={toggleFormatHelp}
-              style={{ width: "100%" }}
-            >
-              <Group gap={6} wrap="nowrap">
-                {formatHelpOpen ? (
-                  <IconChevronUp size={14} />
-                ) : (
-                  <IconChevronDown size={14} />
-                )}
-                <Text size="sm" c="blue" fw={500}>
-                  CSV column reference
-                </Text>
+              <Group gap="sm" wrap="nowrap" style={{ flex: 1 }}>
+                <ThemeIcon variant="light" color="teal" radius="md">
+                  <IconFolder size={16} />
+                </ThemeIcon>
+                <div>
+                  <Text size="sm" fw={600}>
+                    Upload and get CSV support in My Portfolios
+                  </Text>
+                  <Text size="sm" c="dimmed">
+                    {portfolioUploadGuidance}
+                  </Text>
+                </div>
               </Group>
-            </UnstyledButton>
-
-            <Collapse in={formatHelpOpen}>
-              <Stack gap="sm">
-                <Text size="sm" c="dimmed">
-                  Header row column names are case-insensitive. Commas separate
-                  columns; wrap values in double quotes if they contain commas.
-                </Text>
-                <div>
-                  <Text size="sm" fw={600}>
-                    Required columns
-                  </Text>
-                  <List size="sm" mt={4} spacing={4}>
-                    {CSV_REQUIRED_COLUMNS.map((col) =>
-                      col === "construction_period" ? (
-                        <List.Item key={col}>
-                          <Text span fw={500} component="span">
-                            construction_period
-                          </Text>{" "}
-                          — use one of the accepted period labels below, a
-                          4-digit year (mapped to a period), or a{" "}
-                          <Text span fw={500} component="span">
-                            YYYY-YYYY
-                          </Text>{" "}
-                          range. Alternatively, include{" "}
-                          <Text span fw={500} component="span">
-                            construction_year
-                          </Text>{" "}
-                          (1800–2030) instead of this column.
-                        </List.Item>
-                      ) : (
-                        <List.Item key={col}>
-                          <Text span fw={500} component="span">
-                            {col}
-                          </Text>
-                        </List.Item>
-                      ),
-                    )}
-                  </List>
-                </div>
-                <div>
-                  <Text size="sm" fw={600}>
-                    Optional columns
-                  </Text>
-                  <List size="sm" mt={4} spacing={4}>
-                    {CSV_OPTIONAL_COLUMNS.map((col) =>
-                      col === "measures" ? (
-                        <List.Item key={col}>
-                          <Text span fw={500} component="span">
-                            measures
-                          </Text>{" "}
-                          — semicolon-separated renovation measure IDs (e.g.{" "}
-                          <Text span ff="monospace" size="xs" component="span">
-                            wall-insulation;windows;pv
-                          </Text>
-                          ). Accepted IDs: {CSV_VALID_MEASURE_IDS.join(", ")}.
-                        </List.Item>
-                      ) : (
-                        <List.Item key={col}>
-                          <Text span fw={500} component="span">
-                            {col}
-                          </Text>
-                        </List.Item>
-                      ),
-                    )}
-                  </List>
-                </div>
-                <div>
-                  <Text size="sm" fw={600}>
-                    Accepted construction_period labels
-                  </Text>
-                  <Text size="sm" c="dimmed" mt={4}>
-                    {CONSTRUCTION_PERIODS.join(", ")}. Custom{" "}
-                    <Text span ff="monospace" size="xs" component="span">
-                      YYYY-YYYY
-                    </Text>{" "}
-                    ranges are also accepted when valid. The downloadable sample
-                    file is a complete working example.
-                  </Text>
-                </div>
-              </Stack>
-            </Collapse>
-
-            <Text size="xs" c="dimmed">
-              Not sure about the format?{" "}
-              <Anchor
-                href={`${import.meta.env.BASE_URL}portfolio_example.csv`}
-                download="portfolio_example.csv"
+              <Button
+                component={Link}
+                to="/my-portfolios"
+                variant="subtle"
+                color="teal"
                 size="xs"
-                inline
+                rightSection={<IconArrowRight size={14} />}
               >
-                <Group gap={4} component="span" display="inline-flex">
-                  <IconDownload size={12} />
-                  Download an example CSV
-                </Group>
-              </Anchor>
-            </Text>
-          </Stack>
+                Open My Portfolios
+              </Button>
+            </Group>
+          )}
+
+          {session && (
+            <Group grow align="end">
+              <Select
+                label="Portfolio"
+                placeholder="Choose a portfolio"
+                data={portfolios.map((p) => ({ value: p.id, label: p.name }))}
+                value={selectedPortfolioId}
+                onChange={setSelectedPortfolioId}
+                disabled={isSessionLoading}
+                clearable
+              />
+
+              <Select
+                label="File"
+                placeholder="Choose a CSV file"
+                data={files.map((f) => ({
+                  value: f.id,
+                  label: f.originalFilename,
+                }))}
+                value={selectedFileId}
+                onChange={setSelectedFileId}
+                disabled={
+                  isSessionLoading || !selectedPortfolioId || files.length === 0
+                }
+                clearable
+              />
+
+              <Button
+                leftSection={<IconUpload size={16} />}
+                onClick={handleImport}
+                loading={loading}
+                disabled={isSessionLoading || !selectedFileId}
+              >
+                Import
+              </Button>
+            </Group>
+          )}
 
           {importErrors.length > 0 && (
             <Alert
