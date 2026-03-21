@@ -163,6 +163,28 @@ describe("RenovationService", () => {
     ]);
   });
 
+  test("getAnalysisEligibleMeasures includes envelope and supported system scenarios", () => {
+    expect(
+      service.getAnalysisEligibleMeasures().map((measure) => measure.id),
+    ).toEqual([
+      "wall-insulation",
+      "roof-insulation",
+      "windows",
+      "floor-insulation",
+      "condensing-boiler",
+      "air-water-heat-pump",
+    ]);
+  });
+
+  test("getRankableMeasures remains envelope-only", () => {
+    expect(service.getRankableMeasures().map((measure) => measure.id)).toEqual([
+      "wall-insulation",
+      "roof-insulation",
+      "windows",
+      "floor-insulation",
+    ]);
+  });
+
   test("suggestPackages adds direct and mixed condensing-boiler scenarios", () => {
     const packages = service.suggestPackages([
       "wall-insulation",

@@ -123,16 +123,25 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     const estimation = await this.energy.estimateEPC(buildingInfo);
 
     // Step 2: Evaluate renovation scenarios
-    const rankableMeasures = this.renovation
-      .getRankableMeasures()
-      .map((measure) => measure.id);
     const renovatedMeasures = selectedMeasures.filter((measureId) =>
-      rankableMeasures.includes(measureId),
+      this.renovation.isAnalysisEligibleMeasure(measureId),
     );
 
-    if (selectedMeasures.length > 0 && renovatedMeasures.length === 0) {
+    if (selectedMeasures.length === 0) {
       throw new Error(
-        "The current portfolio analysis flow requires at least one envelope measure. Selected non-envelope measures are visible in the UI but are not yet included in the analysis path.",
+        "Portfolio analysis requires at least one selected renovation measure per building.",
+      );
+    }
+
+    if (renovatedMeasures.length === 0) {
+      throw new Error(
+        "Portfolio analysis requires at least one analyzable measure per building. Supported measures are wall, roof, floor, windows, condensing boiler, and air-water heat pump.",
+      );
+    }
+
+    if (this.hasMultipleSystemMeasures(renovatedMeasures)) {
+      throw new Error(
+        "Portfolio analysis currently supports at most one system upgrade per building. Select either condensing boiler or air-water heat pump, not both.",
       );
     }
 
@@ -210,6 +219,20 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       scenarios,
       financialResults: praFinancialResults,
     };
+  }
+
+  private hasMultipleSystemMeasures(
+    measureIds: RenovationMeasureId[],
+  ): boolean {
+    const systemMeasureIds: RenovationMeasureId[] = [
+      "condensing-boiler",
+      "air-water-heat-pump",
+    ];
+
+    return (
+      measureIds.filter((measureId) => systemMeasureIds.includes(measureId))
+        .length > 1
+    );
   }
 
   /**

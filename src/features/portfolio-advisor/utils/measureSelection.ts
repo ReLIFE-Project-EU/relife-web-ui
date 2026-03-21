@@ -9,16 +9,16 @@ export interface EffectiveBuildingSelection {
 export interface PortfolioMeasureStatus {
   effectiveSelections: EffectiveBuildingSelection[];
   buildingsWithoutMeasures: EffectiveBuildingSelection[];
-  buildingsWithoutRankableMeasures: EffectiveBuildingSelection[];
+  buildingsWithoutAnalysisEligibleMeasures: EffectiveBuildingSelection[];
   hasValidSelections: boolean;
 }
 
 export function getPortfolioMeasureStatus(
   buildings: PRABuilding[],
   globalMeasures: RenovationMeasureId[],
-  rankableMeasureIds: RenovationMeasureId[],
+  analysisEligibleMeasureIds: RenovationMeasureId[],
 ): PortfolioMeasureStatus {
-  const rankableMeasureSet = new Set(rankableMeasureIds);
+  const analysisEligibleMeasureSet = new Set(analysisEligibleMeasureIds);
   const effectiveSelections = buildings.map((building) => ({
     name: building.name,
     measures: building.selectedMeasures ?? globalMeasures,
@@ -27,19 +27,19 @@ export function getPortfolioMeasureStatus(
   const buildingsWithoutMeasures = effectiveSelections.filter(
     ({ measures }) => measures.length === 0,
   );
-  const buildingsWithoutRankableMeasures = effectiveSelections.filter(
+  const buildingsWithoutAnalysisEligibleMeasures = effectiveSelections.filter(
     ({ measures }) =>
       measures.length > 0 &&
-      !measures.some((measureId) => rankableMeasureSet.has(measureId)),
+      !measures.some((measureId) => analysisEligibleMeasureSet.has(measureId)),
   );
 
   return {
     effectiveSelections,
     buildingsWithoutMeasures,
-    buildingsWithoutRankableMeasures,
+    buildingsWithoutAnalysisEligibleMeasures,
     hasValidSelections:
       effectiveSelections.length > 0 &&
       buildingsWithoutMeasures.length === 0 &&
-      buildingsWithoutRankableMeasures.length === 0,
+      buildingsWithoutAnalysisEligibleMeasures.length === 0,
   };
 }

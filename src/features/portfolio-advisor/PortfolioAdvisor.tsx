@@ -45,8 +45,8 @@ function PortfolioAdvisorWizard() {
   const { renovation } = usePortfolioAdvisorServices();
   const topRef = useRef<HTMLDivElement | null>(null);
 
-  const rankableMeasures = renovation
-    .getRankableMeasures()
+  const analysisEligibleMeasures = renovation
+    .getAnalysisEligibleMeasures()
     .map((measure) => measure.id);
   const costFieldsValid =
     state.renovation.estimatedCapex !== null &&
@@ -54,7 +54,7 @@ function PortfolioAdvisorWizard() {
   const { hasValidSelections } = getPortfolioMeasureStatus(
     state.buildings,
     state.renovation.selectedMeasures,
-    rankableMeasures,
+    analysisEligibleMeasures,
   );
   const canAccessFinancing = costFieldsValid && hasValidSelections;
 

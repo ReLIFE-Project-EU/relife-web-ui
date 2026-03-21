@@ -212,30 +212,33 @@ export function EnergyRenovationStep() {
   const { renovation } = usePortfolioAdvisorServices();
 
   const selectedMeasures = state.renovation.selectedMeasures;
+  const analysisEligibleMeasures = renovation
+    .getAnalysisEligibleMeasures()
+    .map((measure) => measure.id);
   const rankableMeasures = renovation
     .getRankableMeasures()
     .map((measure) => measure.id);
-  const isRankableMeasure = (measureId: RenovationMeasureId) =>
-    rankableMeasures.includes(measureId);
+  const isAnalysisEligibleMeasure = (measureId: RenovationMeasureId) =>
+    analysisEligibleMeasures.includes(measureId);
   const unsupportedSelected = selectedMeasures.filter(
-    (m) => !renovation.getMeasure(m)?.isSupported,
+    (measureId) => !isAnalysisEligibleMeasure(measureId),
   );
-  const nonRankableSelected = selectedMeasures.filter(
+  const analysisEligibleButNonRankableSelected = selectedMeasures.filter(
     (measureId) =>
-      renovation.getMeasure(measureId)?.isSupported &&
-      !isRankableMeasure(measureId),
+      isAnalysisEligibleMeasure(measureId) &&
+      !rankableMeasures.includes(measureId),
   );
   const costFieldsValid =
     state.renovation.estimatedCapex !== null &&
     state.renovation.estimatedMaintenanceCost !== null;
   const {
     buildingsWithoutMeasures,
-    buildingsWithoutRankableMeasures,
+    buildingsWithoutAnalysisEligibleMeasures,
     hasValidSelections,
   } = getPortfolioMeasureStatus(
     state.buildings,
     selectedMeasures,
-    rankableMeasures,
+    analysisEligibleMeasures,
   );
   const canProceed = costFieldsValid && hasValidSelections;
 
@@ -308,15 +311,24 @@ export function EnergyRenovationStep() {
               {cat.description}
             </Text>
             <SimpleGrid cols={{ base: 1, xs: 2, md: 4 }} spacing="sm">
-              {measures.map((measure) => (
-                <MeasureCard
-                  key={measure.id}
-                  measure={measure}
-                  selected={selectedMeasures.includes(measure.id)}
-                  onToggle={handleToggle}
-                  disabled={!measure.isSupported}
-                />
-              ))}
+              {measures.map((measure) => {
+                const isAnalysisEligible = isAnalysisEligibleMeasure(
+                  measure.id,
+                );
+                const displayMeasure = isAnalysisEligible
+                  ? { ...measure, isSupported: true }
+                  : measure;
+
+                return (
+                  <MeasureCard
+                    key={measure.id}
+                    measure={displayMeasure}
+                    selected={selectedMeasures.includes(measure.id)}
+                    onToggle={handleToggle}
+                    disabled={!isAnalysisEligible}
+                  />
+                );
+              })}
             </SimpleGrid>
           </Box>
         ))}
@@ -339,19 +351,22 @@ export function EnergyRenovationStep() {
       )}
 
       <Alert
-        color={nonRankableSelected.length > 0 ? "yellow" : "blue"}
+        color={
+          analysisEligibleButNonRankableSelected.length > 0 ? "yellow" : "blue"
+        }
         icon={<IconInfoCircle size={16} />}
         title="Current Analysis Scope"
       >
-        Portfolio analysis currently evaluates envelope measures only: wall,
-        roof, floor, and windows.
-        {nonRankableSelected.length > 0 && (
+        Portfolio analysis currently evaluates envelope and supported system
+        measures. System-only and mixed envelope + system scenarios are
+        analyzable, but only envelope scenarios participate in ranking.
+        {analysisEligibleButNonRankableSelected.length > 0 && (
           <>
             {" "}
-            The following supported measures are visible in the UI but excluded
-            from the current analysis path:{" "}
+            The following selected system measures will be analyzed and included
+            in the financial comparison, but not in ranking:{" "}
             <Text span fw={700}>
-              {nonRankableSelected
+              {analysisEligibleButNonRankableSelected
                 .map((measureId) => renovation.getMeasure(measureId)?.name)
                 .join(", ")}
             </Text>
@@ -360,21 +375,22 @@ export function EnergyRenovationStep() {
         )}
       </Alert>
 
-      {buildingsWithoutRankableMeasures.length > 0 && (
+      {buildingsWithoutAnalysisEligibleMeasures.length > 0 && (
         <Alert
           color="red"
           icon={<IconInfoCircle size={16} />}
-          title="At least one envelope measure is required"
+          title="At least one analyzable measure is required"
         >
           The current portfolio analysis flow cannot proceed until each building
-          has at least one envelope measure in its effective selection. Affected
-          buildings:{" "}
+          has at least one analyzable measure in its effective selection.
+          Supported measures are wall, roof, floor, windows, condensing boiler,
+          and air-water heat pump. Affected buildings:{" "}
           <Text span fw={700}>
-            {buildingsWithoutRankableMeasures
+            {buildingsWithoutAnalysisEligibleMeasures
               .slice(0, 5)
               .map(({ name }) => name)
               .join(", ")}
-            {buildingsWithoutRankableMeasures.length > 5 ? ", ..." : ""}
+            {buildingsWithoutAnalysisEligibleMeasures.length > 5 ? ", ..." : ""}
           </Text>
           .
         </Alert>

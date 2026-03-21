@@ -26,6 +26,15 @@ import {
   RENOVATION_MEASURES,
 } from "./data/renovationMeasures";
 
+const ANALYSIS_ELIGIBLE_MEASURE_IDS: RenovationMeasureId[] = [
+  "wall-insulation",
+  "roof-insulation",
+  "windows",
+  "floor-insulation",
+  "condensing-boiler",
+  "air-water-heat-pump",
+];
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Service Implementation
 // ─────────────────────────────────────────────────────────────────────────────
@@ -57,6 +66,16 @@ export class MockRenovationService implements IRenovationService {
     );
   }
 
+  getAnalysisEligibleMeasures(): RenovationMeasure[] {
+    return ANALYSIS_ELIGIBLE_MEASURE_IDS.map((measureId) =>
+      this.getMeasure(measureId),
+    ).filter((measure): measure is RenovationMeasure => measure !== undefined);
+  }
+
+  isAnalysisEligibleMeasure(measureId: RenovationMeasureId): boolean {
+    return ANALYSIS_ELIGIBLE_MEASURE_IDS.includes(measureId);
+  }
+
   suggestPackages(
     selectedMeasures: RenovationMeasureId[],
   ): RenovationPackage[] {
@@ -83,6 +102,36 @@ export class MockRenovationService implements IRenovationService {
         id: "scenario-condensing-boiler",
         label: "Condensing Boiler",
         measureIds: ["condensing-boiler"],
+      });
+    }
+
+    if (selectedMeasures.includes("air-water-heat-pump")) {
+      packages.push({
+        id: "scenario-air-water-heat-pump",
+        label: "Air-Water Heat Pump",
+        measureIds: ["air-water-heat-pump"],
+      });
+    }
+
+    if (
+      selectedRankableMeasures.length > 0 &&
+      selectedMeasures.includes("condensing-boiler")
+    ) {
+      packages.push({
+        id: `package-${selectedRankableMeasures.join("-")}-condensing-boiler`,
+        label: "Envelope package + Condensing Boiler",
+        measureIds: [...selectedRankableMeasures, "condensing-boiler"],
+      });
+    }
+
+    if (
+      selectedRankableMeasures.length > 0 &&
+      selectedMeasures.includes("air-water-heat-pump")
+    ) {
+      packages.push({
+        id: `package-${selectedRankableMeasures.join("-")}-air-water-heat-pump`,
+        label: "Envelope package + Air-Water Heat Pump",
+        measureIds: [...selectedRankableMeasures, "air-water-heat-pump"],
       });
     }
 

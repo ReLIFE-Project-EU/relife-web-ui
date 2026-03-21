@@ -17,12 +17,6 @@ import {
 } from "../renovation";
 import { ErrorAlert, StepNavigation } from "../shared";
 
-function isMeasureSupportedInHRA(measureId: string): boolean {
-  return (
-    measureId === "condensing-boiler" || measureId === "air-water-heat-pump"
-  );
-}
-
 export function EnergyRenovationStep() {
   const { state, dispatch } = useHomeAssistant();
   const { financial, renovation } = useHomeAssistantServices();
@@ -35,8 +29,7 @@ export function EnergyRenovationStep() {
 
   // Identify unsupported measures that are selected (if any)
   const unsupportedSelected = selectedMeasures.filter(
-    (m) =>
-      !renovation.getMeasure(m)?.isSupported && !isMeasureSupportedInHRA(m),
+    (measureId) => !renovation.isAnalysisEligibleMeasure(measureId),
   );
 
   const canEvaluate = areSelectedPackagesReady(

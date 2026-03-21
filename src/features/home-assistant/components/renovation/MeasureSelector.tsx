@@ -10,12 +10,6 @@ import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 import { MeasureCard } from "./MeasureCard";
 
-function isMeasureSupportedInHRA(measureId: RenovationMeasureId): boolean {
-  return (
-    measureId === "condensing-boiler" || measureId === "air-water-heat-pump"
-  );
-}
-
 export function MeasureSelector() {
   const { state, dispatch } = useHomeAssistant();
   const { renovation } = useHomeAssistantServices();
@@ -63,22 +57,23 @@ export function MeasureSelector() {
               </Text>
 
               <SimpleGrid cols={{ base: 1, xs: 2, md: 4 }} spacing="sm">
-                {measures.map((measure) => (
-                  <MeasureCard
-                    key={measure.id}
-                    measure={
-                      isMeasureSupportedInHRA(measure.id)
-                        ? { ...measure, isSupported: true }
-                        : measure
-                    }
-                    isSelected={selectedMeasures.includes(measure.id)}
-                    onToggle={handleToggleMeasure}
-                    disabled={
-                      !measure.isSupported &&
-                      !isMeasureSupportedInHRA(measure.id)
-                    }
-                  />
-                ))}
+                {measures.map((measure) => {
+                  const isAnalysisEligible =
+                    renovation.isAnalysisEligibleMeasure(measure.id);
+                  const displayMeasure = isAnalysisEligible
+                    ? { ...measure, isSupported: true }
+                    : measure;
+
+                  return (
+                    <MeasureCard
+                      key={measure.id}
+                      measure={displayMeasure}
+                      isSelected={selectedMeasures.includes(measure.id)}
+                      onToggle={handleToggleMeasure}
+                      disabled={!isAnalysisEligible}
+                    />
+                  );
+                })}
               </SimpleGrid>
             </Box>
           );

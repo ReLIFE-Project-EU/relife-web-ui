@@ -57,6 +57,10 @@ const SUPPORTED_SYSTEM_SCENARIOS: RenovationMeasureId[] = [
   "condensing-boiler",
   "air-water-heat-pump",
 ];
+const ANALYSIS_ELIGIBLE_MEASURES: RenovationMeasureId[] = [
+  ...RANKABLE_MEASURE_PRIORITY,
+  ...SUPPORTED_SYSTEM_SCENARIOS,
+];
 const DEFAULT_HEAT_PUMP_COP = 3.2;
 // Current supported suggestion space:
 // 4 envelope singles + 1 combined envelope + 2 system-only + 2 mixed = 9.
@@ -85,6 +89,16 @@ export class RenovationService implements IRenovationService {
     return RANKABLE_MEASURE_PRIORITY.map((id) => this.getMeasure(id)).filter(
       (measure): measure is RenovationMeasure => measure !== undefined,
     );
+  }
+
+  getAnalysisEligibleMeasures(): RenovationMeasure[] {
+    return ANALYSIS_ELIGIBLE_MEASURES.map((id) => this.getMeasure(id)).filter(
+      (measure): measure is RenovationMeasure => measure !== undefined,
+    );
+  }
+
+  isAnalysisEligibleMeasure(measureId: RenovationMeasureId): boolean {
+    return ANALYSIS_ELIGIBLE_MEASURES.includes(measureId);
   }
 
   getCategories() {

@@ -45,16 +45,22 @@ function ModalContent({
   const initialMeasures = building?.selectedMeasures ?? [...globalMeasures];
   const [localMeasures, setLocalMeasures] =
     useState<RenovationMeasureId[]>(initialMeasures);
+  const analysisEligibleMeasures = renovation
+    .getAnalysisEligibleMeasures()
+    .map((measure) => measure.id);
   const rankableMeasures = renovation
     .getRankableMeasures()
     .map((measure) => measure.id);
-  const localNonRankableMeasures = localMeasures.filter(
+  const localAnalysisEligibleButNonRankableMeasures = localMeasures.filter(
     (measureId) =>
-      renovation.getMeasure(measureId)?.isSupported &&
+      analysisEligibleMeasures.includes(measureId) &&
       !rankableMeasures.includes(measureId),
   );
-  const hasRankableMeasure = localMeasures.some((measureId) =>
-    rankableMeasures.includes(measureId),
+  const localUnsupportedMeasures = localMeasures.filter(
+    (measureId) => !analysisEligibleMeasures.includes(measureId),
+  );
+  const hasAnalysisEligibleMeasure = localMeasures.some((measureId) =>
+    analysisEligibleMeasures.includes(measureId),
   );
 
   const handleToggle = (measureId: RenovationMeasureId) => {
@@ -94,18 +100,36 @@ function ModalContent({
       </Text>
 
       <Alert
-        color={localNonRankableMeasures.length > 0 ? "yellow" : "blue"}
+        color={
+          localUnsupportedMeasures.length > 0 ||
+          localAnalysisEligibleButNonRankableMeasures.length > 0
+            ? "yellow"
+            : "blue"
+        }
         mb="lg"
       >
-        This workflow currently analyzes envelope measures only: wall, roof,
-        floor, and windows.
-        {localNonRankableMeasures.length > 0 && (
+        This workflow can analyze envelope measures plus condensing-boiler and
+        air-water heat-pump scenarios. Only envelope scenarios participate in
+        ranking.
+        {localAnalysisEligibleButNonRankableMeasures.length > 0 && (
           <>
             {" "}
-            The following selected measures are excluded from the current
-            analysis:{" "}
+            The following selected system measures will be analyzed, but
+            excluded from ranking:{" "}
             <Text span fw={700}>
-              {localNonRankableMeasures
+              {localAnalysisEligibleButNonRankableMeasures
+                .map((measureId) => renovation.getMeasure(measureId)?.name)
+                .join(", ")}
+            </Text>
+            .
+          </>
+        )}
+        {localUnsupportedMeasures.length > 0 && (
+          <>
+            {" "}
+            The following selected measures are still excluded from analysis:{" "}
+            <Text span fw={700}>
+              {localUnsupportedMeasures
                 .map((measureId) => renovation.getMeasure(measureId)?.name)
                 .join(", ")}
             </Text>
@@ -127,8 +151,12 @@ function ModalContent({
                   label={measure.name}
                   checked={localMeasures.includes(measure.id)}
                   onChange={() => handleToggle(measure.id)}
-                  disabled={!measure.isSupported}
-                  description={!measure.isSupported ? "Coming soon" : undefined}
+                  disabled={!analysisEligibleMeasures.includes(measure.id)}
+                  description={
+                    analysisEligibleMeasures.includes(measure.id)
+                      ? undefined
+                      : "Coming soon"
+                  }
                 />
               ))}
             </Stack>
@@ -152,7 +180,7 @@ function ModalContent({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={localMeasures.length === 0 || !hasRankableMeasure}
+            disabled={localMeasures.length === 0 || !hasAnalysisEligibleMeasure}
           >
             Save
           </Button>

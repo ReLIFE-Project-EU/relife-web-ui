@@ -29,6 +29,7 @@ import {
   calculatePercentChange,
   formatCurrency,
   formatDecimal,
+  formatEnergyPerYear,
 } from "../../../../utils/formatters";
 import { getEPCImprovement } from "../../../../utils/epcUtils";
 import { formatArchetypeName } from "../../../../utils/archetypeLabels";
@@ -230,6 +231,16 @@ const BuildingResultsTable = memo(function BuildingResultsTable({
   }>;
   results: Record<string, BuildingAnalysisResult>;
 }) {
+  const showDeliveredEnergyColumn = buildings.some((building) => {
+    const result = results[building.id];
+    const renovated = result?.scenarios?.find((s) => s.id === "renovated");
+
+    return (
+      result?.estimation?.deliveredTotal !== undefined ||
+      renovated?.deliveredTotal !== undefined
+    );
+  });
+
   return (
     <Card withBorder radius="md" p="lg">
       <Title order={4} mb="md">
@@ -260,6 +271,20 @@ const BuildingResultsTable = memo(function BuildingResultsTable({
                 <MetricExplainer metric="EnergyReduction" />
               </Group>
             </Table.Th>
+            {showDeliveredEnergyColumn && (
+              <Table.Th>
+                <Tooltip
+                  label="System energy is the delivered electricity or fuel the HVAC system needs to meet the building's thermal needs. Financial savings are based on reductions in this value when available."
+                  multiline
+                  w={320}
+                >
+                  <Group gap={4} wrap="nowrap" style={{ cursor: "help" }}>
+                    System Energy Change
+                    <IconInfoCircle size={14} />
+                  </Group>
+                </Tooltip>
+              </Table.Th>
+            )}
             <Table.Th>
               <Group gap={4} wrap="nowrap">
                 Net Present Value
@@ -310,6 +335,14 @@ const BuildingResultsTable = memo(function BuildingResultsTable({
               energyAfter !== undefined &&
               energyBefore > 0
                 ? calculatePercentChange(energyBefore, energyAfter)
+                : undefined;
+            const deliveredBefore = result.estimation?.deliveredTotal;
+            const deliveredAfter = renovated?.deliveredTotal;
+            const deliveredEnergyReduction =
+              deliveredBefore !== undefined &&
+              deliveredAfter !== undefined &&
+              deliveredBefore > 0
+                ? calculatePercentChange(deliveredBefore, deliveredAfter)
                 : undefined;
 
             const archetype = result.estimation?.archetype;
@@ -435,6 +468,29 @@ const BuildingResultsTable = memo(function BuildingResultsTable({
                     "-"
                   )}
                 </Table.Td>
+                {showDeliveredEnergyColumn && (
+                  <Table.Td>
+                    {deliveredAfter !== undefined ? (
+                      <Stack gap={4}>
+                        <Text size="sm">
+                          {formatEnergyPerYear(deliveredAfter)}
+                        </Text>
+                        {deliveredEnergyReduction !== undefined ? (
+                          <DeltaBadge
+                            delta={deliveredEnergyReduction}
+                            higherIsBetter={false}
+                          />
+                        ) : (
+                          <Text size="xs" c="dimmed">
+                            Baseline unavailable
+                          </Text>
+                        )}
+                      </Stack>
+                    ) : (
+                      "-"
+                    )}
+                  </Table.Td>
+                )}
                 <Table.Td>
                   {isSuccess && fr ? (
                     <Text size="sm" c={noSavings ? "dimmed" : undefined}>
@@ -510,6 +566,8 @@ export function ResultsStep() {
         <Text c="dimmed" size="sm">
           Below you&apos;ll find a summary of your portfolio&apos;s renovation
           economics and a per-building breakdown of key financial outcomes.
+          Thermal-needs reduction remains separate from system-energy savings,
+          which drive the financial analysis when available.
         </Text>
       </Box>
 
@@ -559,8 +617,19 @@ export function ResultsStep() {
               <Text span size="xs" fw={500} c="dimmed">
                 Energy reduction
               </Text>{" "}
-              — Calculated by the ReLIFE Platform as (after − before) / before.
-              Negative values indicate reduced consumption.
+              — Calculated from building thermal needs as (after − before) /
+              before. Negative values indicate lower modeled heating and cooling
+              needs.
+            </Text>
+          </List.Item>
+          <List.Item>
+            <Text size="xs" c="dimmed">
+              <Text span size="xs" fw={500} c="dimmed">
+                System energy consumption
+              </Text>{" "}
+              — When shown, this is the yearly electricity or fuel the HVAC
+              system needs to deliver comfort. Financial savings are based on
+              reductions in this value, not directly on thermal-needs reduction.
             </Text>
           </List.Item>
           <List.Item>

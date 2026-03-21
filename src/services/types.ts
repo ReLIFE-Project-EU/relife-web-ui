@@ -278,6 +278,18 @@ export interface IRenovationService {
   getRankableMeasures(): RenovationMeasure[];
 
   /**
+   * Get all measures that can currently participate in scenario analysis.
+   * This includes the rankable envelope set plus supported system scenarios
+   * that are comparable financially but not yet rankable.
+   */
+  getAnalysisEligibleMeasures(): RenovationMeasure[];
+
+  /**
+   * Check whether a measure can currently participate in scenario analysis.
+   */
+  isAnalysisEligibleMeasure(measureId: RenovationMeasureId): boolean;
+
+  /**
    * Get all measure categories with display info
    */
   getCategories(): MeasureCategoryInfo[];
