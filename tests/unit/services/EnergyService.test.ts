@@ -250,6 +250,26 @@ describe("EnergyService", () => {
     expect(mockSimulateDirect).toHaveBeenCalledOnce();
   });
 
+  test("identical archetype simulations reuse the in-flight request", async () => {
+    await Promise.all([
+      service.estimateEPC(unmodifiedBuilding),
+      service.estimateEPC(unmodifiedBuilding),
+    ]);
+
+    expect(mockSimulateDirect).toHaveBeenCalledOnce();
+  });
+
+  test("failed archetype simulations are evicted from cache", async () => {
+    mockSimulateDirect
+      .mockRejectedValueOnce(new TypeError("fetch failed"))
+      .mockResolvedValueOnce(stubSimulationResponse);
+
+    await expect(service.estimateEPC(unmodifiedBuilding)).rejects.toThrow();
+    await service.estimateEPC(unmodifiedBuilding);
+
+    expect(mockSimulateDirect).toHaveBeenCalledTimes(2);
+  });
+
   test("simulateDirect receives correct archetype params", async () => {
     await service.estimateEPC(unmodifiedBuilding);
 

@@ -65,6 +65,34 @@ const DEFAULT_HEAT_PUMP_COP = 3.2;
 // Current supported suggestion space:
 // 4 envelope singles + 1 combined envelope + 2 system-only + 2 mixed = 9.
 const MAX_SUGGESTED_PACKAGES = 9;
+const FORECASTING_SCENARIO_CONCURRENCY_LIMIT = 2;
+
+async function mapWithConcurrencyLimit<TItem, TResult>(
+  items: readonly TItem[],
+  limit: number,
+  mapper: (item: TItem) => Promise<TResult>,
+): Promise<TResult[]> {
+  const results = new Array<TResult>(items.length);
+  let nextIndex = 0;
+
+  async function runWorker(): Promise<void> {
+    while (true) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+
+      if (currentIndex >= items.length) {
+        return;
+      }
+
+      results[currentIndex] = await mapper(items[currentIndex]);
+    }
+  }
+
+  const workerCount = Math.min(limit, items.length);
+  await Promise.all(Array.from({ length: workerCount }, () => runWorker()));
+
+  return results;
+}
 
 export class RenovationService implements IRenovationService {
   getMeasures(): RenovationMeasure[] {
@@ -157,10 +185,10 @@ export class RenovationService implements IRenovationService {
       throw new Error("Missing archetype on baseline estimation result");
     }
 
-    const packageScenarios = await Promise.all(
-      packages.map((pkg) =>
-        this.evaluatePackageScenario(building, estimation, pkg),
-      ),
+    const packageScenarios = await mapWithConcurrencyLimit(
+      packages,
+      FORECASTING_SCENARIO_CONCURRENCY_LIMIT,
+      (pkg) => this.evaluatePackageScenario(building, estimation, pkg),
     );
 
     return [baselineScenario, ...packageScenarios];

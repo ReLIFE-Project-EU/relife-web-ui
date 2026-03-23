@@ -198,6 +198,10 @@ function getSimulationValidationNotes(
 
 export class EnergyService implements IEnergyService {
   private archetypesCache: ArchetypeInfo[] | null = null;
+  private readonly archetypeSimulationCache = new Map<
+    string,
+    Promise<SimulateDirectResponse>
+  >();
   private readonly buildingService: IBuildingService;
 
   constructor(buildingService: IBuildingService) {
@@ -227,6 +231,45 @@ export class EnergyService implements IEnergyService {
       }
       throw error;
     }
+  }
+
+  private getArchetypeSimulationCacheKey(params: {
+    category: string;
+    country: string;
+    name: string;
+    weatherSource?: "pvgis" | "epw";
+  }): string {
+    return [
+      params.category,
+      params.country,
+      params.name,
+      params.weatherSource ?? "pvgis",
+    ].join(":");
+  }
+
+  private simulateArchetype(params: {
+    category: string;
+    country: string;
+    name: string;
+    weatherSource?: "pvgis" | "epw";
+  }): Promise<SimulateDirectResponse> {
+    const cacheKey = this.getArchetypeSimulationCacheKey(params);
+    const cachedPromise = this.archetypeSimulationCache.get(cacheKey);
+
+    if (cachedPromise) {
+      return cachedPromise;
+    }
+
+    const simulationPromise = forecasting
+      .simulateDirect(params)
+      .catch((error: unknown) => {
+        this.archetypeSimulationCache.delete(cacheKey);
+        throw error;
+      });
+
+    this.archetypeSimulationCache.set(cacheKey, simulationPromise);
+
+    return simulationPromise;
   }
 
   /**
@@ -497,7 +540,7 @@ export class EnergyService implements IEnergyService {
             { bui: validatedBui, system: validatedSystem },
             "pvgis",
           ),
-          forecasting.simulateDirect({
+          this.simulateArchetype({
             category: archetype.category,
             country: archetype.country,
             name: archetype.name,
@@ -564,7 +607,7 @@ export class EnergyService implements IEnergyService {
         name: archetype.name,
       });
 
-      const simulationResponse = await forecasting.simulateDirect({
+      const simulationResponse = await this.simulateArchetype({
         category: archetype.category,
         country: archetype.country,
         name: archetype.name,

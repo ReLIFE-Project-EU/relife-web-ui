@@ -64,6 +64,17 @@ import type {
   EstimationResult,
 } from "../../../src/types/renovation";
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, resolve, reject };
+}
+
 const mockBuilding: BuildingInfo = {
   country: "Greece",
   lat: 37.98,
@@ -282,6 +293,65 @@ describe("RenovationService", () => {
     await service.evaluateScenarios(mockBuilding, mockEstimation, packages);
 
     expect(mockSimulateECM).toHaveBeenCalledTimes(packages.length);
+  });
+
+  test("evaluateScenarios limits forecasting concurrency to two requests", async () => {
+    const packages = service.suggestPackages([
+      "wall-insulation",
+      "roof-insulation",
+      "windows",
+    ]);
+    const deferredResponses = packages.map(() =>
+      createDeferred(stubECMResponse),
+    );
+    let responseIndex = 0;
+    let inFlight = 0;
+    let maxInFlight = 0;
+
+    mockSimulateECM.mockImplementation(() => {
+      const next = deferredResponses[responseIndex];
+      if (!next) {
+        throw new Error("No deferred response available");
+      }
+      responseIndex += 1;
+
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+
+      return next.promise.finally(() => {
+        inFlight -= 1;
+      });
+    });
+
+    const evaluationPromise = service.evaluateScenarios(
+      mockBuilding,
+      mockEstimation,
+      packages,
+    );
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(mockSimulateECM).toHaveBeenCalledTimes(2);
+    expect(maxInFlight).toBe(2);
+
+    for (const deferred of deferredResponses) {
+      deferred.resolve(stubECMResponse);
+      await Promise.resolve();
+      await Promise.resolve();
+    }
+
+    const scenarios = await evaluationPromise;
+
+    expect(mockSimulateECM).toHaveBeenCalledTimes(packages.length);
+    expect(scenarios.map((scenario) => scenario.id)).toEqual([
+      "current",
+      "package-wall-insulation",
+      "package-roof-insulation",
+      "package-windows",
+      "package-wall-insulation-roof-insulation-windows",
+    ]);
+    expect(maxInFlight).toBe(2);
   });
 
   test("evaluateScenarios selects the matching non-baseline scenario and maps UNI totals", async () => {

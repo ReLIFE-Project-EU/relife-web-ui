@@ -207,3 +207,14 @@ tasks:
       - task: local-services-git-context
       - task: up-local
       - npm run test:integration
+
+  test-forecasting-concurrency-smoke:
+    desc: "Run the reproducible local forecasting concurrency smoke test"
+    vars:
+      API_WORKERS: '{{.API_WORKERS | default "2"}}'
+      LOG_SINCE: 5m
+    cmds:
+      - defer: docker compose logs --since {{.LOG_SINCE}}
+      - task: local-services-git-context
+      - API_WORKERS={{.API_WORKERS}} docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build --wait
+      - npm run test:forecasting-concurrency-smoke
