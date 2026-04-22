@@ -8,6 +8,7 @@ import {
   homeAssistantReducer,
   initialState,
 } from "../../../src/features/home-assistant/context/homeAssistantReducer";
+import type { HomeAssistantState } from "../../../src/features/home-assistant/context/types";
 import type {
   EstimationResult,
   RenovationPackage,
@@ -250,7 +251,7 @@ const mockEstimation: EstimationResult = {
 
 describe("homeAssistantReducer CLEAR_ACCEPTED_ARCHETYPE", () => {
   test("clears selected archetype, modifications, overrides, and apartment context", () => {
-    const state = {
+    const state: HomeAssistantState = {
       ...initialState,
       building: {
         ...initialState.building,
@@ -293,7 +294,7 @@ describe("homeAssistantReducer CLEAR_ACCEPTED_ARCHETYPE", () => {
   });
 
   test("preserves coordinates, search fields, tentative archetype, and estimation", () => {
-    const state = {
+    const state: HomeAssistantState = {
       ...initialState,
       building: {
         ...initialState.building,

@@ -19,6 +19,7 @@
  * Output: A timestamped Markdown report in the repository root.
  */
 
+import { writeFileSync } from "fs";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import { BuildingService } from "../../src/services/BuildingService";
 import { EnergyService } from "../../src/services/EnergyService";
@@ -33,199 +34,13 @@ import type {
   FundingOptions,
   RenovationMeasureId,
 } from "../../src/types/renovation";
-import { writeFileSync } from "fs";
+import { getBaseURL, type HttpExchange } from "./helpers/api-client-mock";
 
-// ---------------------------------------------------------------------------
-// Shared State (module-level)
-// ---------------------------------------------------------------------------
+const httpHistory = vi.hoisted<HttpExchange[]>(() => []);
 
-// HTTP exchange recorder — shared between mock and tests
-const httpHistory: HttpExchange[] = [];
-
-// Get base URL and auth token from environment
-const getBaseURL = (): string =>
-  process.env.INTEGRATION_API_BASE ?? "http://localhost:8080/api";
-
-const getAuthToken = (): string => process.env.INTEGRATION_AUTH_TOKEN ?? "";
-
-// ---------------------------------------------------------------------------
-// Mock API Client to redirect HTTP calls + trace network traffic
-// ---------------------------------------------------------------------------
-
-/**
- * This module mock redirects all backend API calls to the integration test
- * backend (configured via INTEGRATION_API_BASE env var) and records all
- * HTTP exchanges for the final diagnostic report.
- */
 vi.mock("../../src/api/client", async (importOriginal) => {
-  const original =
-    (await importOriginal()) as typeof import("../../src/api/client");
-  const { APIError } = await import("../../src/types/common");
-
-  // Custom request function with tracing (matches real client signature)
-  const request = async <T>(
-    path: string,
-    options?: RequestInit,
-  ): Promise<T> => {
-    const base = getBaseURL();
-    const token = getAuthToken();
-
-    const url = `${base}${path}`;
-    const method = options?.method || "GET";
-
-    // Build headers
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      ...(options?.headers as Record<string, string>),
-    };
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-
-    // Execute request
-    const timestamp = new Date().toISOString();
-
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
-
-    const responseBody = await response.text();
-    const isJSON = response.headers
-      .get("content-type")
-      ?.includes("application/json");
-
-    const body =
-      isJSON && responseBody ? JSON.parse(responseBody) : responseBody;
-
-    // Record exchange
-    httpHistory.push({
-      request: {
-        method,
-        url,
-        headers,
-        body: options?.body
-          ? typeof options.body === "string"
-            ? JSON.parse(options.body as string)
-            : options.body
-          : undefined,
-        timestamp,
-      },
-      response: {
-        status: response.status,
-        body,
-      },
-    });
-
-    // Throw APIError for non-2xx
-    if (!response.ok) {
-      throw new APIError(
-        response.status,
-        response.statusText,
-        body as
-          | import("../../src/types/common").HTTPValidationError
-          | undefined,
-      );
-    }
-
-    return body as T;
-  };
-
-  // Custom uploadRequest for FormData endpoints
-  const uploadRequest = async <T>(
-    path: string,
-    formData: FormData,
-  ): Promise<T> => {
-    const base = getBaseURL();
-    const token = getAuthToken();
-
-    // For FormData, we typically send query params via URL
-    const url = `${base}${path}`;
-
-    const headers: Record<string, string> = {};
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-    // Note: Do NOT set Content-Type for FormData; browser sets it automatically with boundary
-
-    const timestamp = new Date().toISOString();
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers,
-      body: formData,
-    });
-
-    const responseBody = await response.text();
-    const isJSON = response.headers
-      .get("content-type")
-      ?.includes("application/json");
-
-    const body =
-      isJSON && responseBody ? JSON.parse(responseBody) : responseBody;
-
-    // Record exchange (FormData body cannot be logged directly)
-    httpHistory.push({
-      request: {
-        method: "POST",
-        url,
-        headers,
-        body: "[FormData]",
-        timestamp,
-      },
-      response: {
-        status: response.status,
-        body,
-      },
-    });
-
-    if (!response.ok) {
-      throw new APIError(
-        response.status,
-        response.statusText || `HTTP ${response.status} from POST ${path}`,
-        body as
-          | import("../../src/types/common").HTTPValidationError
-          | undefined,
-      );
-    }
-
-    return body as T;
-  };
-
-  // Custom downloadRequest (unused in this trace, but required by client)
-  const downloadRequest = async (
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _path: string,
-  ): Promise<Blob> => {
-    throw new Error("downloadRequest not implemented in trace mock");
-  };
-
-  // Factory function for API service clients (matches real client)
-  const createServiceApi = (serviceName: string) => {
-    return {
-      health: () => request(`/${serviceName}/health`),
-      whoami: () => request(`/${serviceName}/whoami`),
-      storage: {
-        list: () => request(`/${serviceName}/storage`),
-        upload: (file: File) => {
-          const formData = new FormData();
-          formData.append("file", file);
-          return uploadRequest(`/${serviceName}/storage`, formData);
-        },
-      },
-      readTable: (tableName: string) =>
-        request(`/${serviceName}/table/${encodeURIComponent(tableName)}`),
-      getUserProfile: () => request(`/${serviceName}/user-profile`),
-    };
-  };
-
-  return {
-    ...original,
-    request,
-    uploadRequest,
-    downloadRequest,
-    createServiceApi,
-  };
+  const { setupApiClientMock } = await import("./helpers/api-client-mock");
+  return setupApiClientMock(httpHistory, importOriginal);
 });
 
 // ---------------------------------------------------------------------------
@@ -245,7 +60,7 @@ const TEST_BUILDING: PRABuilding = {
   lat: 37.981,
   lng: 23.728,
   floorArea: 85,
-  constructionYear: 1985,
+  constructionPeriod: "1971-1990",
   numberOfFloors: 5,
   propertyType: "apartment", // Maps to buildingType via toBuildingInfo()
   floorNumber: 2,
@@ -270,24 +85,6 @@ const FUNDING: FundingOptions = {
 
 /** Project lifetime (years). */
 const PROJECT_LIFETIME = 20;
-
-// ---------------------------------------------------------------------------
-// HTTP Exchange Recording
-// ---------------------------------------------------------------------------
-
-interface HttpExchange {
-  request: {
-    method: string;
-    url: string;
-    headers: Record<string, string>;
-    body?: unknown;
-    timestamp: string;
-  };
-  response: {
-    status: number;
-    body: unknown;
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Report State
@@ -377,19 +174,18 @@ describe.sequential("PRA Trace", () => {
   // -------------------------------------------------------------------------
 
   test("Step 2: Run PRA analysis pipeline", async () => {
-    const results = await portfolioAnalysisService.analyzePortfolio(
-      [TEST_BUILDING],
-      SELECTED_MEASURES,
-      "equity", // FinancingScheme (unused internally, but required by signature)
-      FUNDING,
-      PROJECT_LIFETIME,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      (_completed, _total, _current) => {
+    const results = await portfolioAnalysisService.analyzePortfolio({
+      buildings: [TEST_BUILDING],
+      selectedMeasures: SELECTED_MEASURES,
+      financingScheme: "equity",
+      funding: FUNDING,
+      projectLifetime: PROJECT_LIFETIME,
+      onProgress: () => {
         // Progress callback — no-op for single building
       },
-      null, // globalCapex (not used — building.estimatedCapex takes precedence)
-      null, // globalMaintenanceCost (not used — building.annualMaintenanceCost takes precedence)
-    );
+      globalCapex: null, // not used — building.estimatedCapex takes precedence
+      globalMaintenanceCost: null, // not used — building.annualMaintenanceCost takes precedence
+    });
 
     analysisResult = results[TEST_BUILDING.id];
 
@@ -469,7 +265,7 @@ describe.sequential("PRA Trace", () => {
             ["Property type", TEST_BUILDING.propertyType],
             ["Category", TEST_BUILDING.category],
             ["Floor area", `${TEST_BUILDING.floorArea} m²`],
-            ["Construction year", String(TEST_BUILDING.constructionYear)],
+            ["Construction period", TEST_BUILDING.constructionPeriod],
             ["Number of floors", String(TEST_BUILDING.numberOfFloors)],
             ["Floor number", String(TEST_BUILDING.floorNumber ?? "_n/a_")],
             ["Estimated CAPEX", `${TEST_BUILDING.estimatedCapex} EUR`],

@@ -9,9 +9,14 @@ export default defineConfig({
     testTimeout: 120_000,
     hookTimeout: 30_000,
 
-    // Only include integration tests (trace utility has its own config)
+    // Only include integration tests (trace, smoke, and slow PV workflow tests have their own configs)
     include: ["tests/integration/**/*.test.ts"],
-    exclude: ["tests/integration/pra-trace.test.ts"],
+    exclude: [
+      "tests/integration/pra-trace.test.ts",
+      "tests/integration/forecasting-concurrency-smoke.test.ts",
+      "tests/integration/hra-service-pv-workflow.test.ts",
+      "tests/integration/pra-service-pv-workflow.test.ts",
+    ],
 
     // Sequential execution (no parallel tests; single worker)
     pool: "forks",

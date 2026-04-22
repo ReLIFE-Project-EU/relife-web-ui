@@ -11,7 +11,7 @@
 export const FALLBACK_ARCHETYPE = {
   category: "Single Family House",
   country: "Greece",
-  name: "SFH_Greece_1961_1980",
+  name: "SFH_Greece_1946_1969",
 };
 
 /**
@@ -87,3 +87,43 @@ export const ECM_PARAMS_ENVELOPE_HEAT_PUMP = {
  * Weather source (consistent with app code)
  */
 export const WEATHER_SOURCE = "pvgis";
+
+/**
+ * PV ECM parameters (PV-only, no envelope measures).
+ * String values match the URLSearchParams convention used by postQuery().
+ */
+export const PV_ECM_PARAMS = {
+  use_pv: "true",
+  pv_kwp: "10.0",
+  pv_tilt_deg: "30",
+  pv_azimuth_deg: "0",
+  pv_pvgis_loss_percent: "14",
+};
+
+/**
+ * PV + envelope ECM parameters (wall insulation + PV)
+ */
+export const PV_ENVELOPE_ECM_PARAMS = {
+  scenario_elements: "wall",
+  u_wall: "0.25",
+  use_pv: "true",
+  pv_kwp: "10.0",
+  pv_tilt_deg: "30",
+  pv_azimuth_deg: "0",
+  pv_pvgis_loss_percent: "14",
+};
+
+/**
+ * PV + envelope + system ECM parameters (wall + heat pump + PV)
+ */
+export const PV_ENVELOPE_SYSTEM_ECM_PARAMS = {
+  scenario_elements: "wall",
+  u_wall: "0.25",
+  use_pv: "true",
+  pv_kwp: "10.0",
+  pv_tilt_deg: "30",
+  pv_azimuth_deg: "0",
+  pv_pvgis_loss_percent: "14",
+  use_heat_pump: "true",
+  heat_pump_cop: "3.2",
+};

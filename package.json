@@ -8,10 +8,13 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "typecheck": "tsc -b",
+    "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
     "preview": "vite preview",
     "format": "prettier --write .",
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:integration:pv-workflows": "vitest run --config vitest.pv-workflows.config.ts",
     "test:forecasting-concurrency-smoke": "vitest run --config vitest.forecasting-smoke.config.ts",
     "trace:pra": "vitest run --config vitest.pra-trace.config.ts"
   },

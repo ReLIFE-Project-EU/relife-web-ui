@@ -417,7 +417,7 @@ describe("RenovationService", () => {
       "windows",
     ]);
     const deferredResponses = packages.map(() =>
-      createDeferred(stubECMResponse),
+      createDeferred<typeof stubECMResponse>(),
     );
     let responseIndex = 0;
     let inFlight = 0;

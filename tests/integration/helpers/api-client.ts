@@ -134,6 +134,23 @@ export async function post<T = unknown>(
 }
 
 /**
+ * POST request with all params encoded as URL query string (no body).
+ * Use this for endpoints that declare all inputs as FastAPI Query() params.
+ */
+export async function postQuery<T = unknown>(
+  path: string,
+  params: Record<string, unknown>,
+): Promise<APIResponse<T>> {
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null) {
+      searchParams.set(key, String(value));
+    }
+  }
+  return apiFetch<T>(`${path}?${searchParams.toString()}`, { method: "POST" });
+}
+
+/**
  * POST request with FormData (multipart/form-data)
  * Note: Content-Type header is omitted to let the browser set it with boundary
  */

@@ -25,6 +25,7 @@ const estimation: EstimationResult = {
   flexibilityIndex: 50,
   comfortIndex: 70,
   annualEnergyConsumption: 15000,
+  archetypeFloorArea: 100,
 };
 
 const scenarios: RenovationScenario[] = [
