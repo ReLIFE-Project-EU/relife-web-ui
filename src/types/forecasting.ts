@@ -185,6 +185,11 @@ export interface UNI11300Results {
   n_hours?: number;
   summary?: UNI11300Summary;
   heat_pump_applied?: boolean;
+  generation_mask?: {
+    applied_mode?: string;
+    requested_mode?: string;
+    mask_value?: number;
+  };
 }
 
 // ============================================================================
@@ -230,6 +235,22 @@ export interface ECMScenario {
     annual_building: Record<string, unknown>[];
     /** UNI/TS 11300 delivered and primary energy results */
     primary_energy_uni11300?: UNI11300Results;
+    /** Integrated PV + heat-pump electricity balance, when PV is enabled */
+    pv_hp?: {
+      hourly_results?: Record<string, unknown>[];
+      summary?: {
+        annual_kwh?: {
+          pv_generation?: number;
+          self_consumption?: number;
+          grid_import?: number;
+          grid_export?: number;
+        };
+        indicators?: {
+          self_consumption_rate?: number;
+          self_sufficiency_rate?: number;
+        };
+      };
+    } | null;
   };
 }
 
@@ -290,6 +311,22 @@ interface ECMBaseParams {
   uni_generation_mode?: "default" | "condensing_boiler";
   /** Optional UNI/TS 11300 eta_generation override. */
   uni_eta_generation?: number;
+  /** Enable integrated PV analysis */
+  use_pv?: boolean;
+  /** Installed PV power in kWp. Required when use_pv is true. */
+  pv_kwp?: number;
+  /** PV tilt in degrees */
+  pv_tilt_deg?: number;
+  /** PV azimuth in degrees, where 0 is south in the backend PVGIS convention */
+  pv_azimuth_deg?: number;
+  /** Use PVGIS hourly PV generation */
+  pv_use_pvgis?: boolean;
+  /** PVGIS loss percentage */
+  pv_pvgis_loss_percent?: number;
+  /** Optional fixed PVGIS year */
+  pv_pvgis_year?: number;
+  /** Fallback annual PV yield when PVGIS is disabled */
+  annual_pv_yield_kwh_per_kwp?: number;
   /** Include baseline scenario in response (omit/false for single-scenario mode) */
   include_baseline?: boolean;
 }

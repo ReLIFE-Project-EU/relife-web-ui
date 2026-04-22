@@ -11,6 +11,7 @@ const analysisEligibleMeasureIds: RenovationMeasureId[] = [
   "floor-insulation",
   "condensing-boiler",
   "air-water-heat-pump",
+  "pv",
 ];
 
 function createBuilding(
@@ -75,9 +76,20 @@ describe("getPortfolioMeasureStatus", () => {
     expect(status.buildingsWithoutMeasures).toHaveLength(1);
   });
 
-  test("rejects selections with no analyzable measures", () => {
+  test("accepts PV as an analyzable selection", () => {
     const status = getPortfolioMeasureStatus(
       [createBuilding("1", { selectedMeasures: ["pv"] })],
+      ["windows"],
+      analysisEligibleMeasureIds,
+    );
+
+    expect(status.hasValidSelections).toBe(true);
+    expect(status.buildingsWithoutAnalysisEligibleMeasures).toHaveLength(0);
+  });
+
+  test("rejects selections with no analyzable measures", () => {
+    const status = getPortfolioMeasureStatus(
+      [createBuilding("1", { selectedMeasures: ["solar-thermal"] })],
       ["windows"],
       analysisEligibleMeasureIds,
     );
@@ -86,7 +98,7 @@ describe("getPortfolioMeasureStatus", () => {
     expect(status.buildingsWithoutAnalysisEligibleMeasures).toEqual([
       {
         name: "Building 1",
-        measures: ["pv"],
+        measures: ["solar-thermal"],
       },
     ]);
   });

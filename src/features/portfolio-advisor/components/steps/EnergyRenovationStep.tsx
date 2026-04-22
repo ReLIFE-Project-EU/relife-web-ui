@@ -212,6 +212,9 @@ export function EnergyRenovationStep() {
   const { renovation } = usePortfolioAdvisorServices();
 
   const selectedMeasures = state.renovation.selectedMeasures;
+  const hasHeatPump = selectedMeasures.includes("air-water-heat-pump");
+  const hasBoiler = selectedMeasures.includes("condensing-boiler");
+  const hasPv = selectedMeasures.includes("pv");
   const analysisEligibleMeasures = renovation
     .getAnalysisEligibleMeasures()
     .map((measure) => measure.id);
@@ -315,24 +318,53 @@ export function EnergyRenovationStep() {
                 const isAnalysisEligible = isAnalysisEligibleMeasure(
                   measure.id,
                 );
+                const isSelected = selectedMeasures.includes(measure.id);
+                const mutuallyExclusiveDisabled =
+                  !isSelected &&
+                  ((measure.id === "condensing-boiler" && hasHeatPump) ||
+                    (measure.id === "air-water-heat-pump" && hasBoiler));
                 const displayMeasure = isAnalysisEligible
                   ? { ...measure, isSupported: true }
                   : measure;
 
                 return (
-                  <MeasureCard
+                  <Tooltip
                     key={measure.id}
-                    measure={displayMeasure}
-                    selected={selectedMeasures.includes(measure.id)}
-                    onToggle={handleToggle}
-                    disabled={!isAnalysisEligible}
-                  />
+                    label="Mutually exclusive with the selected heating system"
+                    disabled={!mutuallyExclusiveDisabled}
+                    multiline
+                  >
+                    <Box>
+                      <MeasureCard
+                        measure={displayMeasure}
+                        selected={isSelected}
+                        onToggle={handleToggle}
+                        disabled={
+                          !isAnalysisEligible || mutuallyExclusiveDisabled
+                        }
+                      />
+                    </Box>
+                  </Tooltip>
                 );
               })}
             </SimpleGrid>
           </Box>
         ))}
       </Card>
+
+      {hasPv && (
+        <Alert
+          variant="light"
+          color="blue"
+          icon={<IconInfoCircle size={16} />}
+          title="About PV assumptions"
+        >
+          PV output is estimated per building using standard assumptions:
+          south-facing, 30° tilt, 14% system losses, PVGIS weather. System size
+          is derived from each building&apos;s floor area. Real performance
+          depends on actual roof orientation, shading, and layout.
+        </Alert>
+      )}
 
       {unsupportedSelected.length > 0 && (
         <Alert
@@ -357,14 +389,14 @@ export function EnergyRenovationStep() {
         icon={<IconInfoCircle size={16} />}
         title="Current Analysis Scope"
       >
-        Portfolio analysis currently evaluates envelope and supported system
-        measures. System-only and mixed envelope + system scenarios are
+        Portfolio analysis currently evaluates envelope, supported system, and
+        photovoltaic measures. System-only, PV, and mixed scenarios are
         analyzable, but only envelope scenarios participate in ranking.
         {analysisEligibleButNonRankableSelected.length > 0 && (
           <>
             {" "}
-            The following selected system measures will be analyzed and included
-            in the financial comparison, but not in ranking:{" "}
+            The following selected non-envelope measures will be analyzed and
+            included in the financial comparison, but not in ranking:{" "}
             <Text span fw={700}>
               {analysisEligibleButNonRankableSelected
                 .map((measureId) => renovation.getMeasure(measureId)?.name)
@@ -384,7 +416,7 @@ export function EnergyRenovationStep() {
           The current portfolio analysis flow cannot proceed until each building
           has at least one analyzable measure in its effective selection.
           Supported measures are wall, roof, floor, windows, condensing boiler,
-          and air-water heat pump. Affected buildings:{" "}
+          air-water heat pump, and photovoltaic panels. Affected buildings:{" "}
           <Text span fw={700}>
             {buildingsWithoutAnalysisEligibleMeasures
               .slice(0, 5)

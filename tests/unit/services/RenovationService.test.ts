@@ -45,20 +45,31 @@ vi.mock("../../../src/services/mock/data/renovationMeasures", () => ({
       name: "Heat Pump",
       description: "",
       category: "systems",
-      isSupported: false,
+      isSupported: true,
     },
     {
       id: "condensing-boiler",
       name: "Condensing Boiler",
       description: "",
       category: "systems",
-      isSupported: false,
+      isSupported: true,
+    },
+    {
+      id: "pv",
+      name: "PV Panels",
+      description: "",
+      category: "renewable",
+      isSupported: true,
     },
   ],
   MEASURE_CATEGORIES: [],
 }));
 
 import { RenovationService } from "../../../src/services/RenovationService";
+import {
+  PV_DEFAULTS,
+  pvKwpFromFloorArea,
+} from "../../../src/services/pvConfig";
 import type {
   BuildingInfo,
   EstimationResult,
@@ -174,6 +185,16 @@ describe("RenovationService", () => {
     ]);
   });
 
+  test("suggestPackages returns one package for one envelope measure", () => {
+    expect(service.suggestPackages(["wall-insulation"])).toEqual([
+      {
+        id: "package-wall-insulation",
+        label: "Wall Insulation",
+        measureIds: ["wall-insulation"],
+      },
+    ]);
+  });
+
   test("getAnalysisEligibleMeasures includes envelope and supported system scenarios", () => {
     expect(
       service.getAnalysisEligibleMeasures().map((measure) => measure.id),
@@ -184,6 +205,7 @@ describe("RenovationService", () => {
       "floor-insulation",
       "condensing-boiler",
       "air-water-heat-pump",
+      "pv",
     ]);
   });
 
@@ -255,6 +277,99 @@ describe("RenovationService", () => {
         measureIds: ["wall-insulation", "windows", "air-water-heat-pump"],
       },
     ]);
+  });
+
+  test("suggestPackages keeps wall plus heat-pump suggestions to envelope, system, and mixed", () => {
+    const packages = service.suggestPackages([
+      "wall-insulation",
+      "air-water-heat-pump",
+    ]);
+
+    expect(packages).toEqual([
+      {
+        id: "package-wall-insulation",
+        label: "Wall Insulation",
+        measureIds: ["wall-insulation"],
+      },
+      {
+        id: "scenario-air-water-heat-pump",
+        label: "Heat Pump",
+        measureIds: ["air-water-heat-pump"],
+      },
+      {
+        id: "package-wall-insulation-air-water-heat-pump",
+        label: "Wall Insulation + Heat Pump",
+        measureIds: ["wall-insulation", "air-water-heat-pump"],
+      },
+    ]);
+  });
+
+  test("suggestPackages emits PV variants in a stable order", () => {
+    const packages = service.suggestPackages([
+      "wall-insulation",
+      "air-water-heat-pump",
+      "pv",
+    ]);
+
+    expect(packages).toEqual([
+      {
+        id: "package-wall-insulation",
+        label: "Wall Insulation",
+        measureIds: ["wall-insulation"],
+      },
+      {
+        id: "scenario-air-water-heat-pump",
+        label: "Heat Pump",
+        measureIds: ["air-water-heat-pump"],
+      },
+      {
+        id: "scenario-pv",
+        label: "PV Panels",
+        measureIds: ["pv"],
+      },
+      {
+        id: "package-wall-insulation-pv",
+        label: "Wall Insulation + PV Panels",
+        measureIds: ["wall-insulation", "pv"],
+      },
+      {
+        id: "package-wall-insulation-air-water-heat-pump",
+        label: "Wall Insulation + Heat Pump",
+        measureIds: ["wall-insulation", "air-water-heat-pump"],
+      },
+      {
+        id: "package-pv-air-water-heat-pump",
+        label: "PV Panels + Heat Pump",
+        measureIds: ["pv", "air-water-heat-pump"],
+      },
+      {
+        id: "package-wall-insulation-air-water-heat-pump-pv",
+        label: "Wall Insulation + Heat Pump + PV Panels",
+        measureIds: ["wall-insulation", "air-water-heat-pump", "pv"],
+      },
+    ]);
+  });
+
+  test("suggestPackages normalizes mutually exclusive system selections to heat pump", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const packages = service.suggestPackages([
+      "condensing-boiler",
+      "air-water-heat-pump",
+    ]);
+
+    expect(packages).toEqual([
+      {
+        id: "scenario-air-water-heat-pump",
+        label: "Heat Pump",
+        measureIds: ["air-water-heat-pump"],
+      },
+    ]);
+    expect(warnSpy).toHaveBeenCalledWith(
+      "Dropping 'condensing-boiler' because it is mutually exclusive with 'air-water-heat-pump'",
+    );
+
+    warnSpy.mockRestore();
   });
 
   test("evaluateScenarios returns baseline plus one scenario per selected package", async () => {
@@ -483,10 +598,155 @@ describe("RenovationService", () => {
         u_wall: 0.25,
         use_heat_pump: true,
         heat_pump_cop: 3.2,
-        include_baseline: true,
       }),
+    );
+    expect(mockSimulateECM.mock.calls[0]?.[0]).not.toHaveProperty(
+      "include_baseline",
     );
     expect(scenarios[1]?.deliveredTotal).toBe(850);
     expect(scenarios[1]?.primaryEnergy).toBe(1200);
+  });
+
+  test("evaluateScenarios sends PV params without scenario_elements for PV-only packages", async () => {
+    await service.evaluateScenarios(mockBuilding, mockEstimation, [
+      {
+        id: "scenario-pv",
+        label: "PV Panels",
+        measureIds: ["pv"],
+      },
+    ]);
+
+    expect(mockSimulateECM).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: "SFH",
+        country: "Greece",
+        name: "GR_SFH_1961_1980",
+        use_pv: true,
+        pv_kwp: pvKwpFromFloorArea(mockEstimation.archetypeFloorArea),
+        pv_tilt_deg: PV_DEFAULTS.tiltDeg,
+        pv_azimuth_deg: PV_DEFAULTS.azimuthDeg,
+        pv_use_pvgis: PV_DEFAULTS.usePvgis,
+        pv_pvgis_loss_percent: PV_DEFAULTS.pvgisLossPercent,
+        annual_pv_yield_kwh_per_kwp: PV_DEFAULTS.annualYieldKwhPerKwp,
+      }),
+    );
+    expect(mockSimulateECM.mock.calls[0]?.[0]).not.toHaveProperty(
+      "scenario_elements",
+    );
+    expect(mockSimulateECM.mock.calls[0]?.[0]).not.toHaveProperty(
+      "include_baseline",
+    );
+  });
+
+  test("evaluateScenarios sends envelope scenario_elements without pv", async () => {
+    await service.evaluateScenarios(mockBuilding, mockEstimation, [
+      {
+        id: "package-wall-insulation-pv",
+        label: "Wall Insulation + PV Panels",
+        measureIds: ["wall-insulation", "pv"],
+      },
+    ]);
+
+    expect(mockSimulateECM).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scenario_elements: "wall",
+        u_wall: 0.25,
+        use_pv: true,
+      }),
+    );
+  });
+
+  test("evaluateScenarios includes baseline only for pure generation changes", async () => {
+    await service.evaluateScenarios(mockBuilding, mockEstimation, [
+      {
+        id: "scenario-air-water-heat-pump",
+        label: "Heat Pump",
+        measureIds: ["air-water-heat-pump"],
+      },
+      {
+        id: "package-wall-insulation-air-water-heat-pump",
+        label: "Wall Insulation + Heat Pump",
+        measureIds: ["wall-insulation", "air-water-heat-pump"],
+      },
+      {
+        id: "package-pv-air-water-heat-pump",
+        label: "PV Panels + Heat Pump",
+        measureIds: ["pv", "air-water-heat-pump"],
+      },
+    ]);
+
+    expect(mockSimulateECM.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ include_baseline: true }),
+    );
+    expect(mockSimulateECM.mock.calls[1]?.[0]).not.toHaveProperty(
+      "include_baseline",
+    );
+    expect(mockSimulateECM.mock.calls[2]?.[0]).not.toHaveProperty(
+      "include_baseline",
+    );
+  });
+
+  test("evaluateScenarios rejects PV packages without a valid archetype floor area", async () => {
+    await expect(
+      service.evaluateScenarios(
+        mockBuilding,
+        { ...mockEstimation, archetypeFloorArea: 0 },
+        [
+          {
+            id: "scenario-pv",
+            label: "PV Panels",
+            measureIds: ["pv"],
+          },
+        ],
+      ),
+    ).rejects.toThrow("PV measure requires a valid archetype floor area");
+  });
+
+  test("evaluateScenarios credits PV self-consumption to delivered energy only", async () => {
+    mockSimulateECM.mockResolvedValueOnce({
+      scenarios: [
+        {
+          scenario_id: "wall",
+          elements: ["wall"],
+          results: {
+            hourly_building: {
+              Q_HC: Array(8760).fill(100),
+            },
+            primary_energy_uni11300: {
+              summary: {
+                E_delivered_thermal_kWh: 1500,
+                E_delivered_electric_total_kWh: 500,
+                EP_total_kWh: 3000,
+              },
+            },
+            pv_hp: {
+              summary: {
+                annual_kwh: {
+                  self_consumption: 1500,
+                },
+              },
+            },
+          },
+        },
+      ],
+    });
+
+    const scenarios = await service.evaluateScenarios(
+      mockBuilding,
+      mockEstimation,
+      [
+        {
+          id: "package-wall-insulation-pv",
+          label: "Wall Insulation + PV Panels",
+          measureIds: ["wall-insulation", "pv"],
+        },
+      ],
+    );
+
+    expect(scenarios[1]?.deliveredTotal).toBe(500);
+    expect(scenarios[1]?.deliveredEnergyCost).toBe(125);
+    expect(scenarios[1]?.primaryEnergy).toBe(3000);
+    expect(scenarios[1]?.annualEnergyNeeds).toBe(876);
+    expect(scenarios[1]?.heatingCoolingNeeds).toBe(876);
   });
 });

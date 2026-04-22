@@ -25,6 +25,7 @@ import {
   MEASURE_CATEGORIES,
   RENOVATION_MEASURES,
 } from "./data/renovationMeasures";
+import { normalizeSystemSelection } from "../measureNormalization";
 
 const ANALYSIS_ELIGIBLE_MEASURE_IDS: RenovationMeasureId[] = [
   "wall-insulation",
@@ -33,6 +34,7 @@ const ANALYSIS_ELIGIBLE_MEASURE_IDS: RenovationMeasureId[] = [
   "floor-insulation",
   "condensing-boiler",
   "air-water-heat-pump",
+  "pv",
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -79,9 +81,10 @@ export class MockRenovationService implements IRenovationService {
   suggestPackages(
     selectedMeasures: RenovationMeasureId[],
   ): RenovationPackage[] {
+    const normalizedMeasures = normalizeSystemSelection(selectedMeasures);
     const selectedRankableMeasures = this.getRankableMeasures()
       .map((measure) => measure.id)
-      .filter((measureId) => selectedMeasures.includes(measureId));
+      .filter((measureId) => normalizedMeasures.includes(measureId));
 
     const packages = selectedRankableMeasures.map((measureId) => ({
       id: `package-${measureId}`,
@@ -97,7 +100,7 @@ export class MockRenovationService implements IRenovationService {
       });
     }
 
-    if (selectedMeasures.includes("condensing-boiler")) {
+    if (normalizedMeasures.includes("condensing-boiler")) {
       packages.push({
         id: "scenario-condensing-boiler",
         label: "Condensing Boiler",
@@ -105,7 +108,7 @@ export class MockRenovationService implements IRenovationService {
       });
     }
 
-    if (selectedMeasures.includes("air-water-heat-pump")) {
+    if (normalizedMeasures.includes("air-water-heat-pump")) {
       packages.push({
         id: "scenario-air-water-heat-pump",
         label: "Air-Water Heat Pump",
@@ -113,9 +116,17 @@ export class MockRenovationService implements IRenovationService {
       });
     }
 
+    if (normalizedMeasures.includes("pv")) {
+      packages.push({
+        id: "scenario-pv",
+        label: "PV Panels",
+        measureIds: ["pv"],
+      });
+    }
+
     if (
       selectedRankableMeasures.length > 0 &&
-      selectedMeasures.includes("condensing-boiler")
+      normalizedMeasures.includes("condensing-boiler")
     ) {
       packages.push({
         id: `package-${selectedRankableMeasures.join("-")}-condensing-boiler`,
@@ -126,7 +137,7 @@ export class MockRenovationService implements IRenovationService {
 
     if (
       selectedRankableMeasures.length > 0 &&
-      selectedMeasures.includes("air-water-heat-pump")
+      normalizedMeasures.includes("air-water-heat-pump")
     ) {
       packages.push({
         id: `package-${selectedRankableMeasures.join("-")}-air-water-heat-pump`,

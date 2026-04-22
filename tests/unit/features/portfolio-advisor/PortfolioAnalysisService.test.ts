@@ -123,6 +123,7 @@ describe("PortfolioAnalysisService", () => {
           "floor-insulation",
           "condensing-boiler",
           "air-water-heat-pump",
+          "pv",
         ].includes(measureId),
     );
     mockEvaluateScenarios.mockResolvedValue(scenarios);
@@ -197,7 +198,9 @@ describe("PortfolioAnalysisService", () => {
     );
   });
 
-  test("multiple system selections fail before scenario evaluation", async () => {
+  test("multiple system selections normalize to heat pump before scenario evaluation", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
     const results = await service.analyzePortfolio({
       buildings: [createBuilding()],
       selectedMeasures: ["condensing-boiler", "air-water-heat-pump"],
@@ -209,18 +212,61 @@ describe("PortfolioAnalysisService", () => {
       globalMaintenanceCost: 500,
     });
 
-    expect(mockEvaluateScenarios).not.toHaveBeenCalled();
-    expect(mockCalculateForAllScenarios).not.toHaveBeenCalled();
+    expect(mockEvaluateScenarios).toHaveBeenCalledWith(
+      expect.any(Object),
+      estimation,
+      [
+        {
+          id: "renovated",
+          label: "After Renovation",
+          measureIds: ["air-water-heat-pump"],
+        },
+      ],
+    );
+    expect(mockCalculateForAllScenarios).toHaveBeenCalled();
     expect(results["building-1"]).toMatchObject({
-      status: "error",
+      status: "success",
     });
-    expect(results["building-1"].error).toContain("at most one system upgrade");
+    expect(warnSpy).toHaveBeenCalledWith(
+      "Dropping 'condensing-boiler' because it is mutually exclusive with 'air-water-heat-pump'",
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  test("PV selections produce the PRA renovated scenario", async () => {
+    const results = await service.analyzePortfolio({
+      buildings: [createBuilding()],
+      selectedMeasures: ["pv"],
+      financingScheme: "equity",
+      funding,
+      projectLifetime: 20,
+      onProgress: vi.fn(),
+      globalCapex: 12000,
+      globalMaintenanceCost: 500,
+    });
+
+    expect(mockEvaluateScenarios).toHaveBeenCalledWith(
+      expect.any(Object),
+      estimation,
+      [
+        {
+          id: "renovated",
+          label: "After Renovation",
+          measureIds: ["pv"],
+        },
+      ],
+    );
+    expect(mockCalculateForAllScenarios).toHaveBeenCalled();
+    expect(results["building-1"]).toMatchObject({
+      status: "success",
+    });
   });
 
   test("unsupported-only selections fail before scenario evaluation", async () => {
     const results = await service.analyzePortfolio({
       buildings: [createBuilding()],
-      selectedMeasures: ["pv"],
+      selectedMeasures: ["solar-thermal"],
       financingScheme: "equity",
       funding,
       projectLifetime: 20,

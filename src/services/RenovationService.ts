@@ -30,6 +30,8 @@ import {
   MEASURE_CATEGORIES,
   RENOVATION_MEASURES,
 } from "./mock/data/renovationMeasures";
+import { normalizeSystemSelection } from "./measureNormalization";
+import { PV_DEFAULTS, pvKwpFromFloorArea } from "./pvConfig";
 import type { IRenovationService, RenovationMeasure } from "./types";
 
 const U_VALUE_TARGETS: Partial<Record<RenovationMeasureId, number>> = {
@@ -57,14 +59,14 @@ const SUPPORTED_SYSTEM_SCENARIOS: RenovationMeasureId[] = [
   "condensing-boiler",
   "air-water-heat-pump",
 ];
+const PV_MEASURE_ID: RenovationMeasureId = "pv";
 const ANALYSIS_ELIGIBLE_MEASURES: RenovationMeasureId[] = [
   ...RANKABLE_MEASURE_PRIORITY,
   ...SUPPORTED_SYSTEM_SCENARIOS,
+  PV_MEASURE_ID,
 ];
 const DEFAULT_HEAT_PUMP_COP = 3.2;
-// Current supported suggestion space:
-// 4 envelope singles + 1 combined envelope + 2 system-only + 2 mixed = 9.
-const MAX_SUGGESTED_PACKAGES = 9;
+const MAX_SUGGESTED_PACKAGES = 14;
 const FORECASTING_SCENARIO_CONCURRENCY_LIMIT = 2;
 
 async function mapWithConcurrencyLimit<TItem, TResult>(
@@ -136,12 +138,14 @@ export class RenovationService implements IRenovationService {
   suggestPackages(
     selectedMeasures: RenovationMeasureId[],
   ): RenovationPackage[] {
+    const normalizedMeasures = normalizeSystemSelection(selectedMeasures);
     const selectedRankableMeasures = RANKABLE_MEASURE_PRIORITY.filter((id) =>
-      selectedMeasures.includes(id),
+      normalizedMeasures.includes(id),
     );
     const selectedSystemMeasures = SUPPORTED_SYSTEM_SCENARIOS.filter((id) =>
-      selectedMeasures.includes(id),
+      normalizedMeasures.includes(id),
     );
+    const hasPv = normalizedMeasures.includes(PV_MEASURE_ID);
 
     const packages: RenovationPackage[] = [];
 
@@ -154,15 +158,46 @@ export class RenovationService implements IRenovationService {
     }
 
     for (const measureId of selectedSystemMeasures) {
-      if (selectedMeasures.includes(measureId)) {
-        packages.push(this.createDirectScenario(measureId));
-      }
+      packages.push(this.createDirectScenario(measureId));
+    }
+
+    if (hasPv) {
+      packages.push(this.createDirectScenario(PV_MEASURE_ID));
+    }
+
+    if (hasPv && selectedRankableMeasures.length > 0) {
+      packages.push(
+        this.createCombinedPackage([
+          ...selectedRankableMeasures,
+          PV_MEASURE_ID,
+        ]),
+      );
     }
 
     if (selectedRankableMeasures.length > 0) {
       for (const systemMeasureId of selectedSystemMeasures) {
         packages.push(
           this.createMixedPackage(selectedRankableMeasures, systemMeasureId),
+        );
+      }
+    }
+
+    if (hasPv) {
+      for (const systemMeasureId of selectedSystemMeasures) {
+        packages.push(
+          this.createCombinedPackage([PV_MEASURE_ID, systemMeasureId]),
+        );
+      }
+    }
+
+    if (hasPv && selectedRankableMeasures.length > 0) {
+      for (const systemMeasureId of selectedSystemMeasures) {
+        packages.push(
+          this.createCombinedPackage([
+            ...selectedRankableMeasures,
+            systemMeasureId,
+            PV_MEASURE_ID,
+          ]),
         );
       }
     }
@@ -242,6 +277,18 @@ export class RenovationService implements IRenovationService {
     };
   }
 
+  private createCombinedPackage(
+    measureIds: RenovationMeasureId[],
+  ): RenovationPackage {
+    return {
+      id: `package-${measureIds.join("-")}`,
+      label: measureIds
+        .map((measureId) => this.getMeasure(measureId)?.name ?? measureId)
+        .join(" + "),
+      measureIds,
+    };
+  }
+
   private async evaluatePackageScenario(
     building: BuildingInfo,
     estimation: EstimationResult,
@@ -285,7 +332,7 @@ export class RenovationService implements IRenovationService {
         ),
       },
     );
-    const scaledDeliveredTotal =
+    let scaledDeliveredTotal =
       uniTotals !== undefined
         ? uniTotals.deliveredTotal * areaScaleFactor
         : undefined;
@@ -293,6 +340,18 @@ export class RenovationService implements IRenovationService {
       uniTotals !== undefined
         ? uniTotals.primaryEnergy * areaScaleFactor
         : undefined;
+    const selfConsumption =
+      renovatedScenario.results.pv_hp?.summary?.annual_kwh?.self_consumption;
+    if (
+      selfConsumption !== undefined &&
+      renovationPackage.measureIds.includes(PV_MEASURE_ID) &&
+      scaledDeliveredTotal !== undefined
+    ) {
+      const pvCreditKwh = selfConsumption * areaScaleFactor;
+      scaledDeliveredTotal = Math.max(0, scaledDeliveredTotal - pvCreditKwh);
+      // TODO(pv-primary): apply electricity primary factor before reducing primary energy.
+      // TODO(pv-kpis): surface PV generation, export, and self-consumption KPIs in results.
+    }
     const renovatedIntensity = scaledRenovatedHvac / userArea;
 
     return {
@@ -344,15 +403,42 @@ export class RenovationService implements IRenovationService {
       commonParams.scenario_elements = elements;
     }
 
+    const hasEnvelope = renovationPackage.measureIds.some(
+      (measureId) => MEASURE_TO_ELEMENT[measureId] !== undefined,
+    );
+    const hasPv = renovationPackage.measureIds.includes(PV_MEASURE_ID);
+    const hasGenerationChange =
+      renovationPackage.measureIds.includes("condensing-boiler") ||
+      renovationPackage.measureIds.includes("air-water-heat-pump");
+
+    if (hasPv) {
+      const pvKwp = pvKwpFromFloorArea(estimation.archetypeFloorArea);
+      if (pvKwp === null) {
+        throw new Error(
+          "PV measure requires a valid archetype floor area on the estimation",
+        );
+      }
+      commonParams.use_pv = true;
+      commonParams.pv_kwp = pvKwp;
+      commonParams.pv_tilt_deg = PV_DEFAULTS.tiltDeg;
+      commonParams.pv_azimuth_deg = PV_DEFAULTS.azimuthDeg;
+      commonParams.pv_use_pvgis = PV_DEFAULTS.usePvgis;
+      commonParams.pv_pvgis_loss_percent = PV_DEFAULTS.pvgisLossPercent;
+      commonParams.annual_pv_yield_kwh_per_kwp =
+        PV_DEFAULTS.annualYieldKwhPerKwp;
+    }
+
+    if (hasGenerationChange && !hasEnvelope && !hasPv) {
+      commonParams.include_baseline = true;
+    }
+
     for (const measureId of renovationPackage.measureIds) {
       if (measureId === "condensing-boiler") {
         commonParams.uni_generation_mode = "condensing_boiler";
-        commonParams.include_baseline = true;
       }
       if (measureId === "air-water-heat-pump") {
         commonParams.use_heat_pump = true;
         commonParams.heat_pump_cop = DEFAULT_HEAT_PUMP_COP;
-        commonParams.include_baseline = true;
       }
 
       const target = U_VALUE_TARGETS[measureId];

@@ -3,8 +3,17 @@
  * Displays renovation measures grouped by category with multi-select capability.
  */
 
-import { Alert, Box, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import {
+  Alert,
+  Box,
+  SimpleGrid,
+  Stack,
+  Text,
+  Title,
+  Tooltip,
+} from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
+import { pvKwpFromFloorArea } from "../../../../services/pvConfig";
 import type { RenovationMeasureId } from "../../context/types";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
@@ -16,6 +25,10 @@ export function MeasureSelector() {
 
   const categories = renovation.getCategories();
   const selectedMeasures = state.renovation.selectedMeasures;
+  const hasHeatPump = selectedMeasures.includes("air-water-heat-pump");
+  const hasBoiler = selectedMeasures.includes("condensing-boiler");
+  const hasPv = selectedMeasures.includes("pv");
+  const pvKwp = pvKwpFromFloorArea(state.building.floorArea);
 
   const handleToggleMeasure = (measureId: RenovationMeasureId) => {
     dispatch({ type: "TOGGLE_MEASURE", measureId });
@@ -60,18 +73,33 @@ export function MeasureSelector() {
                 {measures.map((measure) => {
                   const isAnalysisEligible =
                     renovation.isAnalysisEligibleMeasure(measure.id);
+                  const isSelected = selectedMeasures.includes(measure.id);
+                  const mutuallyExclusiveDisabled =
+                    !isSelected &&
+                    ((measure.id === "condensing-boiler" && hasHeatPump) ||
+                      (measure.id === "air-water-heat-pump" && hasBoiler));
                   const displayMeasure = isAnalysisEligible
                     ? { ...measure, isSupported: true }
                     : measure;
 
                   return (
-                    <MeasureCard
+                    <Tooltip
                       key={measure.id}
-                      measure={displayMeasure}
-                      isSelected={selectedMeasures.includes(measure.id)}
-                      onToggle={handleToggleMeasure}
-                      disabled={!isAnalysisEligible}
-                    />
+                      label="Mutually exclusive with the selected heating system"
+                      disabled={!mutuallyExclusiveDisabled}
+                      multiline
+                    >
+                      <Box>
+                        <MeasureCard
+                          measure={displayMeasure}
+                          isSelected={isSelected}
+                          onToggle={handleToggleMeasure}
+                          disabled={
+                            !isAnalysisEligible || mutuallyExclusiveDisabled
+                          }
+                        />
+                      </Box>
+                    </Tooltip>
                   );
                 })}
               </SimpleGrid>
@@ -79,6 +107,39 @@ export function MeasureSelector() {
           );
         })}
       </Stack>
+
+      {hasPv && (
+        <Alert
+          variant="light"
+          color="blue"
+          icon={<IconInfoCircle size={16} />}
+          mt="lg"
+          title="About PV assumptions"
+        >
+          {pvKwp !== null && state.building.floorArea !== null ? (
+            <>
+              PV output is estimated with standard assumptions: south-facing,
+              30° tilt, 14% system losses, PVGIS weather.{" "}
+              {/* The API uses archetype-basis sizing; this shows the user-equivalent size. */}
+              For a building of your size (~{state.building.floorArea} m²) this
+              corresponds to roughly{" "}
+              <Text span fw={700}>
+                {pvKwp.toFixed(1)} kWp
+              </Text>
+              . Actual performance depends on real roof orientation, shading,
+              and layout. Only self-consumption is currently credited in the
+              cost comparison; grid export and primary-energy impact are not yet
+              displayed.
+            </>
+          ) : (
+            <>
+              PV output is estimated with standard assumptions: south-facing,
+              30° tilt, 14% system losses, PVGIS weather. PV will be excluded
+              until a valid floor area is entered.
+            </>
+          )}
+        </Alert>
+      )}
 
       {/* Selection summary */}
       {selectedMeasures.length > 0 && (

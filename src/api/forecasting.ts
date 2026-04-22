@@ -196,6 +196,36 @@ export const forecasting = {
     if (params.uni_eta_generation !== undefined) {
       searchParams.set("uni_eta_generation", String(params.uni_eta_generation));
     }
+    if (params.use_pv) {
+      searchParams.set("use_pv", String(params.use_pv));
+      if (params.pv_kwp !== undefined) {
+        searchParams.set("pv_kwp", String(params.pv_kwp));
+      }
+      if (params.pv_tilt_deg !== undefined) {
+        searchParams.set("pv_tilt_deg", String(params.pv_tilt_deg));
+      }
+      if (params.pv_azimuth_deg !== undefined) {
+        searchParams.set("pv_azimuth_deg", String(params.pv_azimuth_deg));
+      }
+      if (params.pv_use_pvgis !== undefined) {
+        searchParams.set("pv_use_pvgis", String(params.pv_use_pvgis));
+      }
+      if (params.pv_pvgis_loss_percent !== undefined) {
+        searchParams.set(
+          "pv_pvgis_loss_percent",
+          String(params.pv_pvgis_loss_percent),
+        );
+      }
+      if (params.pv_pvgis_year !== undefined) {
+        searchParams.set("pv_pvgis_year", String(params.pv_pvgis_year));
+      }
+      if (params.annual_pv_yield_kwh_per_kwp !== undefined) {
+        searchParams.set(
+          "annual_pv_yield_kwh_per_kwp",
+          String(params.annual_pv_yield_kwh_per_kwp),
+        );
+      }
+    }
     if (params.include_baseline !== undefined) {
       searchParams.set("include_baseline", String(params.include_baseline));
     }

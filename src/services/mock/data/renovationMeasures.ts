@@ -94,7 +94,7 @@ const SYSTEM_MEASURES: RenovationMeasure[] = [
     description:
       "High-efficiency heat pump that extracts heat from outdoor air and transfers it to water for space heating and domestic hot water. Can also provide cooling in summer.",
     category: "systems",
-    isSupported: false,
+    isSupported: true,
   },
   {
     id: "condensing-boiler",
@@ -102,7 +102,7 @@ const SYSTEM_MEASURES: RenovationMeasure[] = [
     description:
       "Modern high-efficiency gas boiler that recovers heat from exhaust gases. Achieves efficiency ratings of 90-98%, significantly higher than traditional boilers.",
     category: "systems",
-    isSupported: false,
+    isSupported: true,
   },
 ];
 
@@ -117,7 +117,7 @@ const RENEWABLE_MEASURES: RenovationMeasure[] = [
     description:
       "Photovoltaic solar panels for electricity generation. Reduces reliance on grid electricity and can provide income through feed-in tariffs or self-consumption savings.",
     category: "renewable",
-    isSupported: false,
+    isSupported: true,
   },
   {
     id: "solar-thermal",

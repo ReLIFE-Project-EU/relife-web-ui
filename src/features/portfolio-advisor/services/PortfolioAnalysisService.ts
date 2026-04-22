@@ -10,6 +10,7 @@ import type {
   IFinancialService,
   IRenovationService,
 } from "../../../services/types";
+import { normalizeSystemSelection } from "../../../services/measureNormalization";
 import type {
   BuildingInfo,
   FundingOptions,
@@ -126,6 +127,8 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     const renovatedMeasures = selectedMeasures.filter((measureId) =>
       this.renovation.isAnalysisEligibleMeasure(measureId),
     );
+    const normalizedRenovatedMeasures =
+      normalizeSystemSelection(renovatedMeasures);
 
     if (selectedMeasures.length === 0) {
       throw new Error(
@@ -135,23 +138,17 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
 
     if (renovatedMeasures.length === 0) {
       throw new Error(
-        "Portfolio analysis requires at least one analyzable measure per building. Supported measures are wall, roof, floor, windows, condensing boiler, and air-water heat pump.",
-      );
-    }
-
-    if (this.hasMultipleSystemMeasures(renovatedMeasures)) {
-      throw new Error(
-        "Portfolio analysis currently supports at most one system upgrade per building. Select either condensing boiler or air-water heat pump, not both.",
+        "Portfolio analysis requires at least one analyzable measure per building. Supported measures are wall, roof, floor, windows, condensing boiler, air-water heat pump, and photovoltaic panels.",
       );
     }
 
     const packages: RenovationPackage[] =
-      renovatedMeasures.length > 0
+      normalizedRenovatedMeasures.length > 0
         ? [
             {
               id: "renovated",
               label: "After Renovation",
-              measureIds: renovatedMeasures,
+              measureIds: normalizedRenovatedMeasures,
             },
           ]
         : [];
@@ -219,20 +216,6 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       scenarios,
       financialResults: praFinancialResults,
     };
-  }
-
-  private hasMultipleSystemMeasures(
-    measureIds: RenovationMeasureId[],
-  ): boolean {
-    const systemMeasureIds: RenovationMeasureId[] = [
-      "condensing-boiler",
-      "air-water-heat-pump",
-    ];
-
-    return (
-      measureIds.filter((measureId) => systemMeasureIds.includes(measureId))
-        .length > 1
-    );
   }
 
   /**

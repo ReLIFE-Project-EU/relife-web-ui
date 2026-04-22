@@ -14,6 +14,7 @@ import {
   Stack,
   Text,
   Title,
+  Tooltip,
 } from "@mantine/core";
 import { IconArrowBackUp } from "@tabler/icons-react";
 import type { RenovationMeasureId } from "../../../types/renovation";
@@ -45,6 +46,8 @@ function ModalContent({
   const initialMeasures = building?.selectedMeasures ?? [...globalMeasures];
   const [localMeasures, setLocalMeasures] =
     useState<RenovationMeasureId[]>(initialMeasures);
+  const hasHeatPump = localMeasures.includes("air-water-heat-pump");
+  const hasBoiler = localMeasures.includes("condensing-boiler");
   const analysisEligibleMeasures = renovation
     .getAnalysisEligibleMeasures()
     .map((measure) => measure.id);
@@ -108,13 +111,13 @@ function ModalContent({
         }
         mb="lg"
       >
-        This workflow can analyze envelope measures plus condensing-boiler and
-        air-water heat-pump scenarios. Only envelope scenarios participate in
-        ranking.
+        This workflow can analyze envelope measures, condensing-boiler,
+        air-water heat-pump, and photovoltaic panels. Only envelope scenarios
+        participate in ranking.
         {localAnalysisEligibleButNonRankableMeasures.length > 0 && (
           <>
             {" "}
-            The following selected system measures will be analyzed, but
+            The following selected non-envelope measures will be analyzed, but
             excluded from ranking:{" "}
             <Text span fw={700}>
               {localAnalysisEligibleButNonRankableMeasures
@@ -145,20 +148,39 @@ function ModalContent({
               {cat.label}
             </Title>
             <Stack gap="xs">
-              {measures.map((measure) => (
-                <Checkbox
-                  key={measure.id}
-                  label={measure.name}
-                  checked={localMeasures.includes(measure.id)}
-                  onChange={() => handleToggle(measure.id)}
-                  disabled={!analysisEligibleMeasures.includes(measure.id)}
-                  description={
-                    analysisEligibleMeasures.includes(measure.id)
-                      ? undefined
-                      : "Coming soon"
-                  }
-                />
-              ))}
+              {measures.map((measure) => {
+                const isSelected = localMeasures.includes(measure.id);
+                const isAnalysisEligible = analysisEligibleMeasures.includes(
+                  measure.id,
+                );
+                const mutuallyExclusiveDisabled =
+                  !isSelected &&
+                  ((measure.id === "condensing-boiler" && hasHeatPump) ||
+                    (measure.id === "air-water-heat-pump" && hasBoiler));
+
+                return (
+                  <Tooltip
+                    key={measure.id}
+                    label="Mutually exclusive with the selected heating system"
+                    disabled={!mutuallyExclusiveDisabled}
+                    multiline
+                  >
+                    <Box>
+                      <Checkbox
+                        label={measure.name}
+                        checked={isSelected}
+                        onChange={() => handleToggle(measure.id)}
+                        disabled={
+                          !isAnalysisEligible || mutuallyExclusiveDisabled
+                        }
+                        description={
+                          isAnalysisEligible ? undefined : "Coming soon"
+                        }
+                      />
+                    </Box>
+                  </Tooltip>
+                );
+              })}
             </Stack>
           </Box>
         ))}
