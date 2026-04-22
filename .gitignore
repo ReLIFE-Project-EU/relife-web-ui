@@ -8,13 +8,12 @@
 .env.production.local
 
 .claude
-
 TEMP-*.md
 *-trace-*.md
 *.har
-
 .desloppify
 scorecard.png
+.omc
 
 # External services source code
 external-services/
