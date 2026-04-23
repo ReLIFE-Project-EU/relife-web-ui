@@ -174,31 +174,6 @@ export function ScenarioComparison() {
                 formatter={formatEnergyPerYear}
                 lowerIsBetter
               />
-
-              {/* Flexibility Index Row */}
-              <MetricRow
-                label={<MetricLabel conceptId="flexibility-index" />}
-                baseValue={
-                  currentScenario?.flexibilityIndex ||
-                  estimation.flexibilityIndex
-                }
-                scenarios={renovationScenarios}
-                getValue={(s) => s.flexibilityIndex}
-                formatter={(v) => v.toString()}
-                lowerIsBetter={false}
-              />
-
-              {/* Comfort Index Row */}
-              <MetricRow
-                label={<MetricLabel conceptId="comfort-index" />}
-                baseValue={
-                  currentScenario?.comfortIndex || estimation.comfortIndex
-                }
-                scenarios={renovationScenarios}
-                getValue={(s) => s.comfortIndex}
-                formatter={(v) => v.toString()}
-                lowerIsBetter={false}
-              />
             </Table.Tbody>
           </Table>
         </Table.ScrollContainer>
@@ -323,5 +298,5 @@ function MetricRow({
 }
 
 function MetricLabel({ conceptId }: { conceptId: ConceptId }) {
-  return <ConceptLabel conceptId={conceptId} descriptionVisible />;
+  return <ConceptLabel conceptId={conceptId} />;
 }

@@ -294,8 +294,6 @@ describe.sequential("PRA Trace", () => {
               "Heating/cooling needs",
               `${fmtNumber(estimation.heatingCoolingNeeds)} kWh`,
             ],
-            ["Comfort index", String(estimation.comfortIndex)],
-            ["Flexibility index", String(estimation.flexibilityIndex)],
             [
               "Archetype floor area",
               `${fmtNumber(estimation.archetypeFloorArea)} m²`,

@@ -70,6 +70,8 @@ D3.2 represents formal project requirements, but implementation realities may re
 
 ReLIFE user-facing concepts are centrally defined in [`src/constants/relifeConcepts.ts`](./src/constants/relifeConcepts.ts). UI code must reuse these entries for labels, descriptions, caveats, professional details, metric names, and measure effects so terminology stays consistent and user-friendly across HRA, PRA, and RSE. Do not redefine shared concept copy inline. Add a new concept only when strictly necessary and keep it concise.
 
+Use visible explanations sparingly. Visible text should introduce high-risk concepts or prevent likely misinterpretation; repeated labels, dense tables, and secondary metrics should use the shared concept label plus tooltip/popover detail instead of rendering explanatory sentences by default.
+
 ## Development Process
 
 This project prioritizes transparency, restraint, and verifiability over speed or comprehensiveness.

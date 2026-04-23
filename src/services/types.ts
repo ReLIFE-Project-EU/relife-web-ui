@@ -271,14 +271,13 @@ export interface IRenovationService {
   getSupportedMeasures(): RenovationMeasure[];
 
   /**
-   * Get all measures that can currently participate in ranked packages.
+   * Get envelope measures used for envelope package generation.
+   * Ranking itself is based on complete scenario data, not measure category.
    */
-  getRankableMeasures(): RenovationMeasure[];
+  getEnvelopePackageMeasures(): RenovationMeasure[];
 
   /**
    * Get all measures that can currently participate in scenario analysis.
-   * This includes the rankable envelope set plus supported system scenarios
-   * that are comparable financially but not yet rankable.
    */
   getAnalysisEligibleMeasures(): RenovationMeasure[];
 

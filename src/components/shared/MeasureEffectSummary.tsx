@@ -1,10 +1,10 @@
 import {
   Badge,
+  Box,
   Group,
   Pill,
   Stack,
   Text,
-  ThemeIcon,
   type MantineColor,
 } from "@mantine/core";
 import {
@@ -42,20 +42,24 @@ const effectStyle: Record<
 interface MeasureEffectSummaryProps {
   measureId: RenovationMeasureId;
   compact?: boolean;
+  showSummary?: boolean;
 }
 
 export function MeasureEffectSummary({
   measureId,
   compact = false,
+  showSummary = !compact,
 }: MeasureEffectSummaryProps) {
   const profile = measureEffectProfiles[measureId];
   const statements = [...profile.affects, ...profile.doesNotAffect];
 
   return (
     <Stack gap="xs">
-      <Text size="xs" c="dimmed">
-        {profile.summary}
-      </Text>
+      {showSummary ? (
+        <Text size="xs" c="dimmed">
+          {profile.summary}
+        </Text>
+      ) : null}
       <Pill.Group>
         {statements.map((statement) => (
           <EffectPill
@@ -78,12 +82,37 @@ function EffectPill({ statement }: { statement: MeasureEffectStatement }) {
   const Icon = style.icon;
 
   return (
-    <Pill size="sm">
-      <Group gap={4} wrap="nowrap">
-        <ThemeIcon size={14} radius="xl" color={style.color} variant="light">
+    <Pill
+      size="sm"
+      styles={{
+        label: {
+          display: "inline-flex",
+          alignItems: "center",
+          height: "100%",
+          lineHeight: 1,
+        },
+      }}
+    >
+      <Group gap={4} wrap="nowrap" align="center" style={{ height: "100%" }}>
+        <Box
+          component="span"
+          c={`${style.color}.6`}
+          bg={`${style.color}.0`}
+          style={{
+            alignItems: "center",
+            borderRadius: "50%",
+            display: "inline-flex",
+            flexShrink: 0,
+            height: 14,
+            justifyContent: "center",
+            width: 14,
+          }}
+        >
           <Icon size={10} />
-        </ThemeIcon>
-        <Text size="xs">{statement.label}</Text>
+        </Box>
+        <Text span size="xs" style={{ lineHeight: 1 }}>
+          {statement.label}
+        </Text>
       </Group>
     </Pill>
   );

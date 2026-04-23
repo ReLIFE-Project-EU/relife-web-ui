@@ -221,18 +221,10 @@ export function EnergyRenovationStep() {
   const analysisEligibleMeasures = renovation
     .getAnalysisEligibleMeasures()
     .map((measure) => measure.id);
-  const rankableMeasures = renovation
-    .getRankableMeasures()
-    .map((measure) => measure.id);
   const isAnalysisEligibleMeasure = (measureId: RenovationMeasureId) =>
     analysisEligibleMeasures.includes(measureId);
   const unsupportedSelected = selectedMeasures.filter(
     (measureId) => !isAnalysisEligibleMeasure(measureId),
-  );
-  const analysisEligibleButNonRankableSelected = selectedMeasures.filter(
-    (measureId) =>
-      isAnalysisEligibleMeasure(measureId) &&
-      !rankableMeasures.includes(measureId),
   );
   const costFieldsValid =
     state.renovation.estimatedCapex !== null &&
@@ -362,10 +354,9 @@ export function EnergyRenovationStep() {
           icon={<IconInfoCircle size={16} />}
           title="About PV assumptions"
         >
-          PV output is estimated per building using standard assumptions:
-          south-facing, 30° tilt, 14% system losses, PVGIS weather. System size
-          is derived from each building&apos;s floor area. Real performance
-          depends on actual roof orientation, shading, and layout.
+          We estimate solar production for each building from its floor area,
+          using a typical south-facing roof setup. Real output depends on roof
+          direction, shade, and available space.
         </Alert>
       )}
 
@@ -386,28 +377,13 @@ export function EnergyRenovationStep() {
       )}
 
       <Alert
-        color={
-          analysisEligibleButNonRankableSelected.length > 0 ? "yellow" : "blue"
-        }
+        color="blue"
         icon={<IconInfoCircle size={16} />}
         title="Current Analysis Scope"
       >
         Portfolio analysis currently evaluates envelope, supported system, and
-        photovoltaic measures. System-only, PV, and mixed scenarios are
-        analyzable, but only envelope scenarios participate in ranking.
-        {analysisEligibleButNonRankableSelected.length > 0 && (
-          <>
-            {" "}
-            The following selected non-envelope measures will be analyzed and
-            included in the financial comparison, but not in ranking:{" "}
-            <Text span fw={700}>
-              {analysisEligibleButNonRankableSelected
-                .map((measureId) => renovation.getMeasure(measureId)?.name)
-                .join(", ")}
-            </Text>
-            .
-          </>
-        )}
+        photovoltaic measures. Ranking readiness depends on complete technical
+        and financial data for each analyzed scenario.
       </Alert>
 
       {buildingsWithoutAnalysisEligibleMeasures.length > 0 && (

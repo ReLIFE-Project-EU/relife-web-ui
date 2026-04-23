@@ -17,7 +17,6 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { IconArrowBackUp } from "@tabler/icons-react";
-import { measureEffectProfiles } from "../../../constants/relifeConcepts";
 import type { RenovationMeasureId } from "../../../types/renovation";
 import type { PRABuilding } from "../context/types";
 import { usePortfolioAdvisorServices } from "../hooks/usePortfolioAdvisorServices";
@@ -52,14 +51,6 @@ function ModalContent({
   const analysisEligibleMeasures = renovation
     .getAnalysisEligibleMeasures()
     .map((measure) => measure.id);
-  const rankableMeasures = renovation
-    .getRankableMeasures()
-    .map((measure) => measure.id);
-  const localAnalysisEligibleButNonRankableMeasures = localMeasures.filter(
-    (measureId) =>
-      analysisEligibleMeasures.includes(measureId) &&
-      !rankableMeasures.includes(measureId),
-  );
   const localUnsupportedMeasures = localMeasures.filter(
     (measureId) => !analysisEligibleMeasures.includes(measureId),
   );
@@ -104,30 +95,11 @@ function ModalContent({
       </Text>
 
       <Alert
-        color={
-          localUnsupportedMeasures.length > 0 ||
-          localAnalysisEligibleButNonRankableMeasures.length > 0
-            ? "yellow"
-            : "blue"
-        }
+        color={localUnsupportedMeasures.length > 0 ? "yellow" : "blue"}
         mb="lg"
       >
         This workflow can analyze envelope measures, condensing-boiler,
-        air-water heat-pump, and photovoltaic panels. Only envelope scenarios
-        participate in ranking.
-        {localAnalysisEligibleButNonRankableMeasures.length > 0 && (
-          <>
-            {" "}
-            The following selected non-envelope measures will be analyzed, but
-            excluded from ranking:{" "}
-            <Text span fw={700}>
-              {localAnalysisEligibleButNonRankableMeasures
-                .map((measureId) => renovation.getMeasure(measureId)?.name)
-                .join(", ")}
-            </Text>
-            .
-          </>
-        )}
+        air-water heat-pump, and photovoltaic panels.
         {localUnsupportedMeasures.length > 0 && (
           <>
             {" "}
@@ -175,9 +147,7 @@ function ModalContent({
                           !isAnalysisEligible || mutuallyExclusiveDisabled
                         }
                         description={
-                          isAnalysisEligible
-                            ? measureEffectProfiles[measure.id].summary
-                            : "Coming soon"
+                          isAnalysisEligible ? undefined : "Coming soon"
                         }
                       />
                     </Box>

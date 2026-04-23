@@ -8,7 +8,7 @@ import { Alert, Box, Divider, Stack, Text, Title } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
-import { ComfortDisplay, EnergyMixDisplay, EPCDisplay } from "../energy";
+import { EnergyMixDisplay, EPCDisplay } from "../energy";
 import {
   FundingOptions,
   MeasureSelector,
@@ -141,9 +141,6 @@ export function EnergyRenovationStep() {
 
       {/* Energy Mix */}
       <EnergyMixDisplay />
-
-      {/* Comfort Indices */}
-      <ComfortDisplay />
 
       <Divider my="md" />
 

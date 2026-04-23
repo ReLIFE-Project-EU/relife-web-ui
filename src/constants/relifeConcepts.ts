@@ -6,8 +6,6 @@ export type ConceptId =
   | "estimated-epc"
   | "energy-intensity"
   | "estimated-thermal-needs-cost"
-  | "comfort-index"
-  | "flexibility-index"
   | "investment"
   | "npv"
   | "irr"
@@ -102,19 +100,6 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     description: "Flat-tariff estimate based on annual building thermal needs.",
     unit: "EUR/year",
     caveat: "This is not a utility bill and is not the Financial API result.",
-  },
-  "comfort-index": {
-    id: "comfort-index",
-    label: "Comfort index",
-    description: "Modeled indoor thermal comfort level on a 0 to 100 scale.",
-    unit: "0-100",
-  },
-  "flexibility-index": {
-    id: "flexibility-index",
-    label: "Flexibility index",
-    description:
-      "Estimated potential to shift or adapt energy demand on a 0 to 100 scale.",
-    unit: "0-100",
   },
   investment: {
     id: "investment",
@@ -267,13 +252,6 @@ const systemMeasureEffect = (
       description:
         "A more efficient system can use less electricity or fuel to meet the same thermal needs.",
     },
-    {
-      kind: "excluded",
-      conceptId: "ranking-score",
-      label: "Excluded from HRA ranking",
-      description:
-        "Current HRA recommendation ranking uses envelope scenarios only.",
-    },
   ],
   doesNotAffect: [
     {
@@ -331,13 +309,6 @@ export const measureEffectProfiles: Record<
         description:
           "Self-consumed PV can offset grid electricity use, especially when paired with electric systems.",
       },
-      {
-        kind: "excluded",
-        conceptId: "ranking-score",
-        label: "Excluded from HRA ranking",
-        description:
-          "Current HRA recommendation ranking uses envelope scenarios only.",
-      },
     ],
     doesNotAffect: [
       {
@@ -375,8 +346,6 @@ export const hraResultMetricConceptIds = [
   "annual-building-thermal-needs",
   "estimated-thermal-needs-cost",
   "system-energy-consumption",
-  "flexibility-index",
-  "comfort-index",
   "investment",
   "npv",
   "payback-period",

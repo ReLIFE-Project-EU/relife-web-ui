@@ -1,7 +1,8 @@
 /**
  * Renovation Service - Forecasting API implementation for HRA/PRA package
  * evaluation. HRA supports envelope, system-only, and selected mixed
- * envelope + system comparisons while Technical ranking remains envelope-only.
+ * envelope + system comparisons. Ranking eligibility is based on available
+ * MCDA inputs, not measure category.
  */
 
 import { forecasting } from "../api";
@@ -48,7 +49,7 @@ const MEASURE_TO_ELEMENT: Partial<Record<RenovationMeasureId, string>> = {
   windows: "window",
 };
 
-const RANKABLE_MEASURE_PRIORITY: RenovationMeasureId[] = [
+const ENVELOPE_PACKAGE_MEASURE_PRIORITY: RenovationMeasureId[] = [
   "wall-insulation",
   "roof-insulation",
   "windows",
@@ -61,7 +62,7 @@ const SUPPORTED_SYSTEM_SCENARIOS: RenovationMeasureId[] = [
 ];
 const PV_MEASURE_ID: RenovationMeasureId = "pv";
 const ANALYSIS_ELIGIBLE_MEASURES: RenovationMeasureId[] = [
-  ...RANKABLE_MEASURE_PRIORITY,
+  ...ENVELOPE_PACKAGE_MEASURE_PRIORITY,
   ...SUPPORTED_SYSTEM_SCENARIOS,
   PV_MEASURE_ID,
 ];
@@ -115,10 +116,10 @@ export class RenovationService implements IRenovationService {
     return RENOVATION_MEASURES.filter((m) => m.isSupported);
   }
 
-  getRankableMeasures(): RenovationMeasure[] {
-    return RANKABLE_MEASURE_PRIORITY.map((id) => this.getMeasure(id)).filter(
-      (measure): measure is RenovationMeasure => measure !== undefined,
-    );
+  getEnvelopePackageMeasures(): RenovationMeasure[] {
+    return ENVELOPE_PACKAGE_MEASURE_PRIORITY.map((id) =>
+      this.getMeasure(id),
+    ).filter((measure): measure is RenovationMeasure => measure !== undefined);
   }
 
   getAnalysisEligibleMeasures(): RenovationMeasure[] {
@@ -139,8 +140,8 @@ export class RenovationService implements IRenovationService {
     selectedMeasures: RenovationMeasureId[],
   ): RenovationPackage[] {
     const normalizedMeasures = normalizeSystemSelection(selectedMeasures);
-    const selectedRankableMeasures = RANKABLE_MEASURE_PRIORITY.filter((id) =>
-      normalizedMeasures.includes(id),
+    const selectedEnvelopeMeasures = ENVELOPE_PACKAGE_MEASURE_PRIORITY.filter(
+      (id) => normalizedMeasures.includes(id),
     );
     const selectedSystemMeasures = SUPPORTED_SYSTEM_SCENARIOS.filter((id) =>
       normalizedMeasures.includes(id),
@@ -149,12 +150,12 @@ export class RenovationService implements IRenovationService {
 
     const packages: RenovationPackage[] = [];
 
-    for (const measureId of selectedRankableMeasures) {
+    for (const measureId of selectedEnvelopeMeasures) {
       packages.push(this.createPackage([measureId]));
     }
 
-    if (selectedRankableMeasures.length >= 2) {
-      packages.push(this.createPackage(selectedRankableMeasures));
+    if (selectedEnvelopeMeasures.length >= 2) {
+      packages.push(this.createPackage(selectedEnvelopeMeasures));
     }
 
     for (const measureId of selectedSystemMeasures) {
@@ -165,19 +166,19 @@ export class RenovationService implements IRenovationService {
       packages.push(this.createDirectScenario(PV_MEASURE_ID));
     }
 
-    if (hasPv && selectedRankableMeasures.length > 0) {
+    if (hasPv && selectedEnvelopeMeasures.length > 0) {
       packages.push(
         this.createCombinedPackage([
-          ...selectedRankableMeasures,
+          ...selectedEnvelopeMeasures,
           PV_MEASURE_ID,
         ]),
       );
     }
 
-    if (selectedRankableMeasures.length > 0) {
+    if (selectedEnvelopeMeasures.length > 0) {
       for (const systemMeasureId of selectedSystemMeasures) {
         packages.push(
-          this.createMixedPackage(selectedRankableMeasures, systemMeasureId),
+          this.createMixedPackage(selectedEnvelopeMeasures, systemMeasureId),
         );
       }
     }
@@ -190,11 +191,11 @@ export class RenovationService implements IRenovationService {
       }
     }
 
-    if (hasPv && selectedRankableMeasures.length > 0) {
+    if (hasPv && selectedEnvelopeMeasures.length > 0) {
       for (const systemMeasureId of selectedSystemMeasures) {
         packages.push(
           this.createCombinedPackage([
-            ...selectedRankableMeasures,
+            ...selectedEnvelopeMeasures,
             systemMeasureId,
             PV_MEASURE_ID,
           ]),
@@ -230,7 +231,7 @@ export class RenovationService implements IRenovationService {
   }
 
   private createPackage(measureIds: RenovationMeasureId[]): RenovationPackage {
-    const sortedMeasureIds = RANKABLE_MEASURE_PRIORITY.filter((id) =>
+    const sortedMeasureIds = ENVELOPE_PACKAGE_MEASURE_PRIORITY.filter((id) =>
       measureIds.includes(id),
     );
 
@@ -258,8 +259,8 @@ export class RenovationService implements IRenovationService {
     envelopeMeasureIds: RenovationMeasureId[],
     systemMeasureId: RenovationMeasureId,
   ): RenovationPackage {
-    const orderedEnvelopeMeasureIds = RANKABLE_MEASURE_PRIORITY.filter((id) =>
-      envelopeMeasureIds.includes(id),
+    const orderedEnvelopeMeasureIds = ENVELOPE_PACKAGE_MEASURE_PRIORITY.filter(
+      (id) => envelopeMeasureIds.includes(id),
     );
     const measureIds = [...orderedEnvelopeMeasureIds, systemMeasureId];
     const envelopeLabel =

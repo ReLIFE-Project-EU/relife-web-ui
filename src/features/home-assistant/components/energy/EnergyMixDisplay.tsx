@@ -11,7 +11,6 @@
 import {
   Box,
   Card,
-  Fieldset,
   Group,
   SimpleGrid,
   Stack,
@@ -21,7 +20,6 @@ import {
 import { IconFlame, IconSnowflake } from "@tabler/icons-react";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { formatEnergyPerYear } from "../../utils/formatters";
-import { ConceptLabel } from "../shared";
 
 export function EnergyMixDisplay() {
   const { state } = useHomeAssistant();
@@ -48,14 +46,6 @@ export function EnergyMixDisplay() {
             Annual heating and cooling needs from the building simulation
           </Text>
         </Box>
-
-        <Fieldset legend="What this metric means">
-          <ConceptLabel
-            conceptId="annual-building-thermal-needs"
-            descriptionVisible
-            withExplainer={false}
-          />
-        </Fieldset>
 
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
           <DemandSection

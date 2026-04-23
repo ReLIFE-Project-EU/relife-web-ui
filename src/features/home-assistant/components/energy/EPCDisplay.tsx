@@ -81,7 +81,6 @@ export function EPCDisplay() {
             <ConceptMetricCard
               conceptId="annual-building-thermal-needs"
               value={formatEnergyPerYear(estimation.annualEnergyNeeds)}
-              descriptionVisible
             />
             <ConceptMetricCard
               conceptId="system-energy-consumption"
@@ -90,7 +89,6 @@ export function EPCDisplay() {
                   ? formatEnergyPerYear(estimation.deliveredTotal!)
                   : "Not available"
               }
-              descriptionVisible
             />
           </SimpleGrid>
 
@@ -98,7 +96,6 @@ export function EPCDisplay() {
             <ConceptMetricCard
               conceptId="estimated-thermal-needs-cost"
               value={formatCurrency(estimation.annualEnergyCost)}
-              descriptionVisible
             />
           </SimpleGrid>
 

@@ -37,8 +37,6 @@ describe("relifeConcepts ontology", () => {
       "system-energy-consumption",
       "energy-intensity",
       "estimated-thermal-needs-cost",
-      "comfort-index",
-      "flexibility-index",
       "investment",
       "npv",
       "payback-period",

@@ -43,19 +43,6 @@ export function MeasureSelector() {
         Select the renovation actions to include in your assessment
       </Text>
 
-      <Alert
-        variant="light"
-        color="blue"
-        icon={<IconInfoCircle size={16} />}
-        mb="lg"
-      >
-        Select one or more measures to compare. Envelope measures can be grouped
-        into packages and ranked later. Heat pump and condensing boiler options
-        can also be compared, on their own or with envelope measures, but they
-        are not included in that ranking. You will enter package costs in the
-        next section.
-      </Alert>
-
       <Stack gap="xl">
         {categories.map((category) => {
           const measures = renovation.getMeasuresByCategory(category.id);
@@ -118,24 +105,22 @@ export function MeasureSelector() {
         >
           {pvKwp !== null && state.building.floorArea !== null ? (
             <>
-              PV output is estimated with standard assumptions: south-facing,
-              30° tilt, 14% system losses, PVGIS weather.{" "}
+              We estimate solar production from your floor area using a typical
+              south-facing roof setup.{" "}
               {/* The API uses archetype-basis sizing; this shows the user-equivalent size. */}
-              For a building of your size (~{state.building.floorArea} m²) this
-              corresponds to roughly{" "}
-              <Text span fw={700}>
+              For your building, this is roughly{" "}
+              <Text span inherit fw={700}>
                 {pvKwp.toFixed(1)} kWp
               </Text>
-              . Actual performance depends on real roof orientation, shading,
-              and layout. Only self-consumption is currently credited in the
-              cost comparison; grid export and primary-energy impact are not yet
-              displayed.
+              . Real output depends on roof direction, shade, and available
+              space. The cost comparison currently counts self-consumed
+              electricity only.
             </>
           ) : (
             <>
-              PV output is estimated with standard assumptions: south-facing,
-              30° tilt, 14% system losses, PVGIS weather. PV will be excluded
-              until a valid floor area is entered.
+              We estimate solar production from floor area using a typical
+              south-facing roof setup. Enter a valid floor area to include PV in
+              the comparison.
             </>
           )}
         </Alert>

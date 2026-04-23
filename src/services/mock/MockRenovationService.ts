@@ -62,7 +62,7 @@ export class MockRenovationService implements IRenovationService {
     return RENOVATION_MEASURES.filter((m) => m.isSupported);
   }
 
-  getRankableMeasures(): RenovationMeasure[] {
+  getEnvelopePackageMeasures(): RenovationMeasure[] {
     return this.getSupportedMeasures().filter(
       (measure) => measure.category === "envelope",
     );
@@ -82,21 +82,21 @@ export class MockRenovationService implements IRenovationService {
     selectedMeasures: RenovationMeasureId[],
   ): RenovationPackage[] {
     const normalizedMeasures = normalizeSystemSelection(selectedMeasures);
-    const selectedRankableMeasures = this.getRankableMeasures()
+    const selectedEnvelopeMeasures = this.getEnvelopePackageMeasures()
       .map((measure) => measure.id)
       .filter((measureId) => normalizedMeasures.includes(measureId));
 
-    const packages = selectedRankableMeasures.map((measureId) => ({
+    const packages = selectedEnvelopeMeasures.map((measureId) => ({
       id: `package-${measureId}`,
       label: this.getMeasure(measureId)?.name ?? measureId,
       measureIds: [measureId],
     }));
 
-    if (selectedRankableMeasures.length >= 2) {
+    if (selectedEnvelopeMeasures.length >= 2) {
       packages.push({
-        id: `package-${selectedRankableMeasures.join("-")}`,
+        id: `package-${selectedEnvelopeMeasures.join("-")}`,
         label: "Envelope package",
-        measureIds: selectedRankableMeasures,
+        measureIds: selectedEnvelopeMeasures,
       });
     }
 
@@ -125,24 +125,24 @@ export class MockRenovationService implements IRenovationService {
     }
 
     if (
-      selectedRankableMeasures.length > 0 &&
+      selectedEnvelopeMeasures.length > 0 &&
       normalizedMeasures.includes("condensing-boiler")
     ) {
       packages.push({
-        id: `package-${selectedRankableMeasures.join("-")}-condensing-boiler`,
+        id: `package-${selectedEnvelopeMeasures.join("-")}-condensing-boiler`,
         label: "Envelope package + Condensing Boiler",
-        measureIds: [...selectedRankableMeasures, "condensing-boiler"],
+        measureIds: [...selectedEnvelopeMeasures, "condensing-boiler"],
       });
     }
 
     if (
-      selectedRankableMeasures.length > 0 &&
+      selectedEnvelopeMeasures.length > 0 &&
       normalizedMeasures.includes("air-water-heat-pump")
     ) {
       packages.push({
-        id: `package-${selectedRankableMeasures.join("-")}-air-water-heat-pump`,
+        id: `package-${selectedEnvelopeMeasures.join("-")}-air-water-heat-pump`,
         label: "Envelope package + Air-Water Heat Pump",
-        measureIds: [...selectedRankableMeasures, "air-water-heat-pump"],
+        measureIds: [...selectedEnvelopeMeasures, "air-water-heat-pump"],
       });
     }
 

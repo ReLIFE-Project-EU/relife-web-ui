@@ -211,8 +211,10 @@ describe("RenovationService", () => {
     ]);
   });
 
-  test("getRankableMeasures remains envelope-only", () => {
-    expect(service.getRankableMeasures().map((measure) => measure.id)).toEqual([
+  test("getEnvelopePackageMeasures returns envelope package seed measures", () => {
+    expect(
+      service.getEnvelopePackageMeasures().map((measure) => measure.id),
+    ).toEqual([
       "wall-insulation",
       "roof-insulation",
       "windows",

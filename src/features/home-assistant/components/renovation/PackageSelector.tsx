@@ -27,13 +27,9 @@ export function PackageSelector() {
 
   return (
     <Stack gap="sm">
-      <Title order={5}>Suggested Evaluation Options</Title>
+      <Title order={5}>Renovation options to compare</Title>
       <Text size="sm" c="dimmed">
-        Select up to {PACKAGE_SELECTION_MAX} renovation options to compare.
-        Insulation and window packages can also be ranked later based on your
-        priorities. System upgrades can be compared on their own or bundled with
-        the selected envelope measures, but only envelope packages are included
-        in that ranking.
+        Choose up to {PACKAGE_SELECTION_MAX} options for the results comparison.
       </Text>
 
       <Text size="sm" c="dimmed">

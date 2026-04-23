@@ -5,6 +5,7 @@
 
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Card,
@@ -50,6 +51,8 @@ export function DecisionSupport() {
   const rankableRenovationScenarios = rankingStatuses
     .filter((status) => status.eligible)
     .map((status) => status.scenario);
+  const readyCount = rankableRenovationScenarios.length;
+  const totalCount = rankingStatuses.length;
   const canRank = rankableRenovationScenarios.length >= 2 && !!currentScenario;
   const rankingByScenarioId = new Map(
     (mcdaRanking ?? []).map((result) => [result.scenarioId, result]),
@@ -112,8 +115,17 @@ export function DecisionSupport() {
               withExplainer={false}
             />
             <Text size="sm" c="dimmed">
-              Only packages with complete energy and cost data can be ranked.
+              Ranking includes options with complete energy and financial data.
+              Other options still appear in the comparison.
             </Text>
+            <Group gap="xs">
+              <Badge
+                color={readyCount >= 2 ? "green" : "yellow"}
+                variant="light"
+              >
+                {readyCount} of {totalCount} ready for ranking
+              </Badge>
+            </Group>
           </Stack>
         </Fieldset>
 
@@ -121,7 +133,6 @@ export function DecisionSupport() {
         <Stack gap="md">
           <Radio.Group
             label="Priority profile"
-            description="Choose what matters most before running the ranking."
             value={selectedPersona}
             onChange={handlePersonaChange}
           >
@@ -160,8 +171,8 @@ export function DecisionSupport() {
         {!canRank && (
           <Alert color="yellow" icon={<IconInfoCircle size={16} />}>
             {rankingStatuses.filter((s) => s.eligible).length === 0
-              ? "No packages are ready for ranking yet. Complete the energy evaluation for at least two packages to see recommendations."
-              : "Add one more package with complete data to see the ranking."}
+              ? "No options are ready for ranking yet. They are still available in the comparison."
+              : "Add one more option with complete data to run the ranking."}
           </Alert>
         )}
 
@@ -257,11 +268,11 @@ export function DecisionSupport() {
                           </Group>
                         ) : status.eligible ? (
                           <Text size="sm" c="green.7" mt={4}>
-                            Ready to rank - needs at least one more package
+                            Ready for ranking
                           </Text>
                         ) : (
                           <Text size="sm" c="dimmed" mt={4}>
-                            {status.reason}
+                            Not ranked: {formatRankingReason(status.reason)}
                           </Text>
                         )}
                       </Box>
@@ -283,4 +294,21 @@ export function DecisionSupport() {
       </Stack>
     </Card>
   );
+}
+
+function formatRankingReason(reason: string | null): string {
+  switch (reason) {
+    case "Financial data is missing":
+      return "financial results unavailable";
+    case "No energy savings calculated":
+      return "no savings calculated";
+    case "Maintenance cost data is missing":
+      return "yearly maintenance cost missing";
+    case "Energy data is incomplete":
+      return "system energy data incomplete";
+    case "Solar panel data is incomplete":
+      return "solar production data incomplete";
+    default:
+      return reason ?? "required data missing";
+  }
 }

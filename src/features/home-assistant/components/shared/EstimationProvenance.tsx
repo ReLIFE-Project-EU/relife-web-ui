@@ -148,27 +148,6 @@ export function ReferenceAdjustedComparisonCard({
                 />
               </Table.Td>
             </Table.Tr>
-
-            <Table.Tr>
-              <Table.Td>
-                <ConceptLabel conceptId="comfort-index" />
-              </Table.Td>
-              <Table.Td>
-                <Text size="sm" fw={500}>
-                  {reference.comfortIndex}
-                </Text>
-              </Table.Td>
-              <Table.Td>
-                <DeltaValue
-                  value={estimation.comfortIndex}
-                  delta={calculatePercentChange(
-                    reference.comfortIndex,
-                    estimation.comfortIndex,
-                  )}
-                  higherIsBetter
-                />
-              </Table.Td>
-            </Table.Tr>
           </Table.Tbody>
         </Table>
 

@@ -69,7 +69,7 @@ flowchart TD
 
     FIN2 --> G1
 
-    subgraph STEP6[6. Aggregate Results 
+    subgraph STEP6[6. Aggregate Results
     ]
         G1{Goal type?}:::decNode
         G1 -->|EE or Emission goal| G_EE[Scale per archetype: result_i × nᵢ  ← user-defined building count Sum across archetypes → portfolio totals]:::aggNode
@@ -110,4 +110,3 @@ flowchart TD
 ```
 
 ---
-

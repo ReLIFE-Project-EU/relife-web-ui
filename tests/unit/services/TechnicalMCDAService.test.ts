@@ -182,6 +182,26 @@ describe("TechnicalMCDAService helpers", () => {
   });
 
   test("getRankingScenarioStatuses explains missing ranking inputs", () => {
+    const heatPumpScenario: RenovationScenario = {
+      ...wallScenario,
+      id: "package-air-water-heat-pump",
+      packageId: "package-air-water-heat-pump",
+      label: "Air-Water Heat Pump",
+      measureIds: ["air-water-heat-pump"],
+      measures: ["Air-Water Heat Pump"],
+    };
+    const completePvScenario: RenovationScenario = {
+      ...wallScenario,
+      id: "package-pv",
+      packageId: "package-pv",
+      label: "PV Panels",
+      measureIds: ["pv"],
+      measures: ["PV Panels"],
+      pvGeneration: 4000,
+      pvSelfConsumption: 2600,
+      pvGridExport: 1400,
+      pvSelfSufficiencyRate: 0.35,
+    };
     const pvScenario: RenovationScenario = {
       ...wallScenario,
       id: "package-wall-insulation-pv",
@@ -192,9 +212,17 @@ describe("TechnicalMCDAService helpers", () => {
     };
 
     const statuses = getRankingScenarioStatuses(
-      [wallScenario, pvScenario, windowScenario],
+      [
+        wallScenario,
+        heatPumpScenario,
+        completePvScenario,
+        pvScenario,
+        windowScenario,
+      ],
       {
         [wallScenario.id]: wallFinancial,
+        [heatPumpScenario.id]: wallFinancial,
+        [completePvScenario.id]: wallFinancial,
         [pvScenario.id]: wallFinancial,
         [windowScenario.id]: {
           ...windowFinancial,
@@ -205,6 +233,14 @@ describe("TechnicalMCDAService helpers", () => {
 
     expect(statuses).toEqual([
       expect.objectContaining({ scenario: wallScenario, eligible: true }),
+      expect.objectContaining({
+        scenario: heatPumpScenario,
+        eligible: true,
+      }),
+      expect.objectContaining({
+        scenario: completePvScenario,
+        eligible: true,
+      }),
       expect.objectContaining({
         scenario: pvScenario,
         eligible: false,
