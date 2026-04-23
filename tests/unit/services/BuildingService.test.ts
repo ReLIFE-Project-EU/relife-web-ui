@@ -118,6 +118,7 @@ const archetypeList = [
   { category: "SFH", country: "Greece", name: "GR_SFH_1981_2000" },
   { category: "MFH", country: "Greece", name: "GR_MFH_1961_1980" },
   { category: "SFH", country: "Italy", name: "IT_SFH_1961_1980" },
+  { category: "SFH", country: "Czechia", name: "CZ_SFH_1961_1980" },
 ];
 
 describe("BuildingService", () => {
@@ -170,8 +171,201 @@ describe("BuildingService", () => {
     });
 
     expect(result).not.toBeNull();
-    expect(result!.country).toBe("Greece");
-    expect(result!.category).toBe("SFH");
+    expect(result!.archetype.country).toBe("Greece");
+    expect(result!.archetype.category).toBe("SFH");
+    expect(result!.detectedCountry).toBe("Greece");
+    expect(result!.matchQuality).toBeDefined();
+    expect(result!.alternatives.length).toBeGreaterThan(0);
+  });
+
+  test("findMatchingArchetype prioritizes same-country over geographic proximity", async () => {
+    mockListArchetypes.mockResolvedValue(archetypeList);
+
+    // Coords near Rome → should prefer Italian SFH even though Greek SFH
+    // may have a closer period match
+    const result = await service.findMatchingArchetype("SFH", "1961-1980", {
+      lat: 41.9,
+      lng: 12.5,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.archetype.country).toBe("Italy");
+    expect(result!.detectedCountry).toBe("Italy");
+    expect(result!.scoreBreakdown.countryScore).toBe(1.0);
+  });
+
+  test("detectCountryFromCoords returns null outside supported EU polygons", () => {
+    expect(
+      service.detectCountryFromCoords({
+        lat: 47.3769,
+        lng: 8.5417,
+      }),
+    ).toBeNull();
+  });
+
+  test("findMatchingArchetype treats hyphen and en dash as the same period", async () => {
+    mockListArchetypes.mockResolvedValue(archetypeList);
+
+    const result = await service.findMatchingArchetype("SFH", "1961–1980", {
+      lat: 37.98,
+      lng: 23.73,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.matchQuality).toBe("excellent");
+    expect(result!.periodRelaxed).toBe(false);
+  });
+
+  test("findMatchingArchetype reports periodRelaxed when no exact period match", async () => {
+    mockListArchetypes.mockResolvedValue(archetypeList);
+
+    // Request a period that doesn't exist for Italian SFH
+    const result = await service.findMatchingArchetype("SFH", "1981-2000", {
+      lat: 41.9,
+      lng: 12.5,
+    });
+
+    expect(result).not.toBeNull();
+    // Italian archetype only has 1961-1980, so period is relaxed
+    // but country still wins
+    expect(result!.archetype.country).toBe("Italy");
+    expect(result!.periodRelaxed).toBe(true);
+  });
+
+  test("findMatchingArchetype returns excellent quality for same country + exact period", async () => {
+    mockListArchetypes.mockResolvedValue(archetypeList);
+
+    const result = await service.findMatchingArchetype("SFH", "1961-1980", {
+      lat: 37.98,
+      lng: 23.73,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.matchQuality).toBe("excellent");
+    expect(result!.periodRelaxed).toBe(false);
+  });
+
+  test("getAvailablePeriods falls back to all-country periods when the requested country has no archetypes", async () => {
+    mockListArchetypes.mockResolvedValue(archetypeList);
+
+    // "Portugal" has no archetypes in the stub list — should fall back to all
+    // SFH periods across all countries (1961-1980 and 1981-2000)
+    const result = await service.getAvailablePeriods("SFH", "Portugal");
+
+    expect(result.periods).toContain("1961-1980");
+    expect(result.periods).toContain("1981-2000");
+    expect(result.periods.length).toBeGreaterThan(0);
+    expect(result.scope).toBe("fallback");
+    expect(result.reason).toBe("no-local-archetypes");
+    expect(result.recommendedPeriod).toBeTruthy();
+  });
+
+  test("getAvailablePeriods returns only local periods when country has archetypes", async () => {
+    mockListArchetypes.mockResolvedValue(archetypeList);
+
+    // Greece has both 1961-1980 and 1981-2000 SFH archetypes
+    const result = await service.getAvailablePeriods("SFH", "Greece");
+
+    expect(result.periods).toContain("1961-1980");
+    expect(result.periods).toContain("1981-2000");
+    expect(result.scope).toBe("local");
+
+    // Italy only has 1961-1980 SFH
+    const italyResult = await service.getAvailablePeriods("SFH", "Italy");
+    expect(italyResult.periods).toEqual(["1961-1980"]);
+    expect(italyResult.periods).not.toContain("1981-2000");
+    expect(italyResult.recommendedPeriod).toBe("1961-1980");
+  });
+
+  test("getAvailablePeriods sorts local periods chronologically", async () => {
+    mockListArchetypes.mockResolvedValue([
+      { category: "SFH", country: "Austria", name: "AT_SFH_1971_1990" },
+      { category: "SFH", country: "Austria", name: "SFH_0_1945" },
+      { category: "SFH", country: "Austria", name: "AT_SFH_1946_1969" },
+    ]);
+
+    const result = await service.getAvailablePeriods("SFH", "Austria");
+
+    expect(result.periods).toEqual(["pre-1945", "1946-1969", "1971-1990"]);
+    expect(result.scope).toBe("local");
+  });
+
+  test("getAvailablePeriods sorts fallback periods chronologically", async () => {
+    mockListArchetypes.mockResolvedValue([
+      { category: "SFH", country: "Austria", name: "AT_SFH_1971_1990" },
+      { category: "SFH", country: "Austria", name: "SFH_0_1945" },
+      { category: "SFH", country: "Belgium", name: "BE_SFH_1946_1969" },
+    ]);
+
+    const result = await service.getAvailablePeriods("SFH", "Portugal");
+
+    expect(result.periods).toEqual(["pre-1945", "1946-1969", "1971-1990"]);
+    expect(result.scope).toBe("fallback");
+  });
+
+  test("getAvailablePeriods normalizes country aliases", async () => {
+    mockListArchetypes.mockResolvedValue(archetypeList);
+
+    const result = await service.getAvailablePeriods("SFH", "Czech Republic");
+
+    expect(result.periods).toEqual(["1961-1980"]);
+    expect(result.detectedCountry).toBe("Czechia");
+    expect(result.reason).toBe("normalized-country-alias");
+    expect(result.scope).toBe("local");
+  });
+
+  test("countMatchingArchetypes normalizes country aliases", async () => {
+    mockListArchetypes.mockResolvedValue(archetypeList);
+
+    const count = await service.countMatchingArchetypes(
+      "SFH",
+      "1961-1980",
+      "Czech Republic",
+    );
+
+    expect(count).toBe(1);
+  });
+
+  test("countMatchingArchetypes treats hyphen and en dash as the same period", async () => {
+    mockListArchetypes.mockResolvedValue(archetypeList);
+
+    const count = await service.countMatchingArchetypes(
+      "SFH",
+      "1961–1980",
+      "Greece",
+    );
+
+    expect(count).toBe(1);
+  });
+
+  test("findMatchingArchetype gives partial period score for adjacent (non-exact) period", async () => {
+    mockListArchetypes.mockResolvedValue(archetypeList);
+
+    // Request 1981-2000 with Italian coords. Italy only has 1961-1980.
+    // The period score for IT_SFH_1961_1980 should be between 0 and 1
+    // (not exact but neighbouring), so periodRelaxed is true and
+    // the score breakdown still assigns a non-zero period score.
+    const result = await service.findMatchingArchetype("SFH", "1981-2000", {
+      lat: 41.9,
+      lng: 12.5,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.periodRelaxed).toBe(true);
+    expect(result!.scoreBreakdown.periodScore).toBeGreaterThan(0);
+    expect(result!.scoreBreakdown.periodScore).toBeLessThan(1);
+  });
+
+  test("findMatchingArchetype keeps working when country detection returns null", async () => {
+    mockListArchetypes.mockResolvedValue(archetypeList);
+
+    const result = await service.findMatchingArchetype("SFH", "1961-1980", {
+      lat: 47.3769,
+      lng: 8.5417,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.detectedCountry).toBeNull();
   });
 
   test("getOptions derives unique countries and categories", async () => {
@@ -180,7 +374,7 @@ describe("BuildingService", () => {
     const options = await service.getOptions();
 
     const countries = options.countries.map((c) => c.value);
-    expect(countries).toEqual(["Greece", "Italy"]);
+    expect(countries).toEqual(["Czechia", "Greece", "Italy"]);
 
     const categories = options.buildingTypes.map((t) => t.value);
     expect(categories).toContain("MFH");

@@ -9,6 +9,7 @@ import { useCallback, useState } from "react";
 import { FILE_UPLOAD_CONFIG } from "../../constants";
 import { useFileUpload } from "../../hooks/useFileUpload";
 import { useQuota } from "../../hooks/useQuota";
+import { CSVUploadHelp } from "./CSVUploadHelp";
 import { UploadProgress } from "./UploadProgress";
 
 export function FileUploader() {
@@ -51,6 +52,8 @@ export function FileUploader() {
 
   return (
     <Stack gap="sm">
+      <CSVUploadHelp />
+
       <Dropzone
         onDrop={handleDrop}
         onReject={handleReject}
@@ -69,7 +72,7 @@ export function FileUploader() {
               style={{
                 width: rem(52),
                 height: rem(52),
-                color: "var(--mantine-color-blue-6)",
+                color: "var(--mantine-color-teal-6)",
               }}
               stroke={1.5}
             />

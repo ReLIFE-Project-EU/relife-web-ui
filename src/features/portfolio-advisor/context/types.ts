@@ -27,7 +27,20 @@ export interface PRABuilding {
   name: string;
   source: "csv" | "manual";
   category: string;
+  /**
+   * Geographic country: where the building is physically located.
+   * Derived from coordinates (offline EU polygon lookup) or user input.
+   * May differ from archetypeCountry when the best-match archetype is
+   * from a different country than the building's actual location.
+   */
   country: string;
+  /**
+   * Country of the matched archetype, if different from the building's
+   * geographic country. Required for cross-country matches to correctly
+   * resolve the archetype in the forecasting API.
+   * Undefined when country and archetype country are the same.
+   */
+  archetypeCountry?: string;
   archetypeName?: string;
   modifications?: BuildingModifications;
   lat: number;

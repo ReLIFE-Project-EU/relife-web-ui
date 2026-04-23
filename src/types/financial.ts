@@ -45,10 +45,10 @@ export type EnergyClass = "Η" | "Ζ" | "Ε" | "Δ" | "Γ" | "Β" | "Β+" | "Α"
  * Runs 10,000 scenarios to assess financial risk and returns.
  */
 export interface RiskAssessmentRequest {
-  /** Capital expenditure in euros. Optional - falls back to dataset if not provided. */
+  /** Capital expenditure in euros. Backend fallback is planned but not available yet. */
   capex?: number;
 
-  /** Annual maintenance/operational cost in euros. Optional - falls back to dataset if not provided. */
+  /** Annual maintenance/operational cost in euros. Backend fallback is planned but not available yet. */
   annual_maintenance_cost?: number;
 
   /** Expected annual energy savings in kWh. Required - provided by energy simulation. */
@@ -62,6 +62,15 @@ export interface RiskAssessmentRequest {
 
   /** Loan repayment term in years. Required if loan_amount > 0. */
   loan_term?: number;
+
+  /** Upfront capital incentive as a percentage of CAPEX (0-100). */
+  upfront_incentive_percentage?: number;
+
+  /** Annual OPEX reduction in euros per year. */
+  lifetime_incentive_amount?: number;
+
+  /** Duration of the annual OPEX reduction in years. */
+  lifetime_incentive_years?: number;
 
   /** Output detail level. Determines response complexity. */
   output_level: OutputLevel;

@@ -14,6 +14,7 @@ export {
 } from "./EnergyService";
 export { FinancialService } from "./FinancialService";
 export { RenovationService } from "./RenovationService";
+export { TechnicalMCDAService } from "./TechnicalMCDAService";
 
 // Export mock implementations for use in tests
 export { mockBuildingService } from "./mock/MockBuildingService";

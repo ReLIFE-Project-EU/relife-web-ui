@@ -35,7 +35,8 @@ export function MeasuresList() {
             Energy Efficiency Measures
           </Title>
           <Text size="sm" c="dimmed">
-            Measures included in each renovation package
+            Measures included in each renovation package or direct system
+            scenario
           </Text>
         </Box>
 

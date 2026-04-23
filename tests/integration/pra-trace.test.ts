@@ -261,6 +261,11 @@ const SELECTED_MEASURES: RenovationMeasureId[] = ["wall-insulation"];
 const FUNDING: FundingOptions = {
   financingType: "self-funded",
   loan: { percentage: 0, duration: 0, interestRate: 0 },
+  incentives: {
+    upfrontPercentage: 0,
+    lifetimeAmount: 0,
+    lifetimeYears: 0,
+  },
 };
 
 /** Project lifetime (years). */

@@ -1,3 +1,12 @@
+import {
+  getCountryCode,
+  getCountryDisplayName,
+  getCountryDisplayNameByCode,
+  getCountryFlag,
+} from "./countries";
+import { compareConstructionPeriods } from "./apiMappings";
+import { extractConstructionPeriod } from "./archetypeModifier";
+
 /**
  * Human-readable archetype label formatting.
  *
@@ -12,52 +21,13 @@ const TYPE_CODES: Record<string, string> = {
   MFH: "Multi-Family House",
 };
 
-const COUNTRY_CODES: Record<string, string> = {
-  AT: "Austria",
-  BE: "Belgium",
-  BG: "Bulgaria",
-  CY: "Cyprus",
-  CZ: "Czech Republic",
-  DE: "Germany",
-  DK: "Denmark",
-  EE: "Estonia",
-  ES: "Spain",
-  FI: "Finland",
-  FR: "France",
-  GR: "Greece",
-  HR: "Croatia",
-  HU: "Hungary",
-  IE: "Ireland",
-  IT: "Italy",
-  LT: "Lithuania",
-  LU: "Luxembourg",
-  LV: "Latvia",
-  MT: "Malta",
-  NL: "Netherlands",
-  PL: "Poland",
-  PT: "Portugal",
-  RO: "Romania",
-  SE: "Sweden",
-  SI: "Slovenia",
-  SK: "Slovakia",
-};
-
-// Reverse lookup: "Greece" → "GR"
-const NAME_TO_CODE: Record<string, string> = Object.fromEntries(
-  Object.entries(COUNTRY_CODES).map(([code, name]) => [name, code]),
-);
-
 export function countryNameToCode(name: string): string | undefined {
-  return NAME_TO_CODE[name];
+  return getCountryCode(name);
 }
 
 // "GR" → "🇬🇷"
 export function countryFlag(isoCode: string): string {
-  const upper = isoCode.toUpperCase();
-  return (
-    String.fromCodePoint(0x1f1e6 + upper.codePointAt(0)! - 65) +
-    String.fromCodePoint(0x1f1e6 + upper.codePointAt(1)! - 65)
-  );
+  return getCountryFlag(isoCode) ?? "";
 }
 
 function formatPeriod(parts: string[]): string {
@@ -101,8 +71,9 @@ export function formatArchetypeName(name: string): string {
   const first = parts[0];
 
   // New format: {CC}_{TYPE}_{PERIOD}  e.g. "GR_SFH_1946_1969"
-  if (COUNTRY_CODES[first] && parts.length >= 2 && TYPE_CODES[parts[1]]) {
-    const country = COUNTRY_CODES[first];
+  const countryByCode = getCountryDisplayNameByCode(first);
+  if (countryByCode && parts.length >= 2 && TYPE_CODES[parts[1]]) {
+    const country = countryByCode;
     const type = TYPE_CODES[parts[1]];
     const period = formatPeriod(parts.slice(2));
     return [country, type, ...(period ? [period] : [])].join(" · ");
@@ -114,8 +85,9 @@ export function formatArchetypeName(name: string): string {
     const second = parts[1];
     // If second token is a country name (starts with uppercase letter, not a digit)
     if (/^[A-Z]/.test(second) && !/^\d/.test(second)) {
+      const country = getCountryDisplayName(second) ?? second;
       const period = formatPeriod(parts.slice(2));
-      return [second, type, ...(period ? [period] : [])].join(" · ");
+      return [country, type, ...(period ? [period] : [])].join(" · ");
     }
     // Legacy: {TYPE}_{PERIOD} (no country token)
     const period = formatPeriod(parts.slice(1));
@@ -123,4 +95,96 @@ export function formatArchetypeName(name: string): string {
   }
 
   return name;
+}
+
+export function formatArchetypeSelectionLabel(
+  country: string,
+  name: string,
+): string {
+  const displayCountry = getCountryDisplayName(country) ?? country;
+  const formattedName = formatArchetypeName(name);
+
+  if (formattedName.startsWith(displayCountry)) {
+    return formattedName;
+  }
+
+  return `${displayCountry} · ${formattedName}`;
+}
+
+function getArchetypeSelectionIdentity(archetype: {
+  country: string;
+  name: string;
+}): string {
+  return `${archetype.country}:${archetype.name}`;
+}
+
+export function buildArchetypeSelectionLabels<
+  T extends { country: string; name: string },
+>(archetypes: T[]): Map<string, string> {
+  const labelCounts = new Map<string, number>();
+
+  archetypes.forEach((archetype) => {
+    const label = formatArchetypeSelectionLabel(
+      archetype.country,
+      archetype.name,
+    );
+    labelCounts.set(label, (labelCounts.get(label) ?? 0) + 1);
+  });
+
+  return new Map(
+    archetypes.map((archetype) => {
+      const label = formatArchetypeSelectionLabel(
+        archetype.country,
+        archetype.name,
+      );
+      const resolvedLabel =
+        (labelCounts.get(label) ?? 0) > 1
+          ? `${label} (${archetype.name})`
+          : label;
+
+      return [getArchetypeSelectionIdentity(archetype), resolvedLabel];
+    }),
+  );
+}
+
+export function getArchetypeSelectionLabel(
+  archetype: { country: string; name: string },
+  labels?: Map<string, string>,
+): string {
+  return (
+    labels?.get(getArchetypeSelectionIdentity(archetype)) ??
+    formatArchetypeSelectionLabel(archetype.country, archetype.name)
+  );
+}
+
+export function compareArchetypesForSelection(
+  left: { country: string; name: string },
+  right: { country: string; name: string },
+): number {
+  const leftCountry = getCountryDisplayName(left.country) ?? left.country;
+  const rightCountry = getCountryDisplayName(right.country) ?? right.country;
+  const countryComparison = leftCountry.localeCompare(rightCountry);
+
+  if (countryComparison !== 0) {
+    return countryComparison;
+  }
+
+  const periodComparison = compareConstructionPeriods(
+    extractConstructionPeriod(left.name),
+    extractConstructionPeriod(right.name),
+  );
+  if (periodComparison !== 0) {
+    return periodComparison;
+  }
+
+  const labelComparison = formatArchetypeSelectionLabel(
+    left.country,
+    left.name,
+  ).localeCompare(formatArchetypeSelectionLabel(right.country, right.name));
+
+  if (labelComparison !== 0) {
+    return labelComparison;
+  }
+
+  return left.name.localeCompare(right.name);
 }

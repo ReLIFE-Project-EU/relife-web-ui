@@ -9,6 +9,7 @@
 import type {
   HourlyBuildingRecord,
   HourlyBuildingColumnar,
+  UNI11300Results,
 } from "../types/forecasting";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -44,6 +45,11 @@ export const ENERGY_PRICE_EUR_PER_KWH = 0.25;
  */
 export const DEFAULT_FLOOR_AREA = 100;
 
+export interface ExtractedUniTotals {
+  deliveredTotal: number;
+  primaryEnergy: number;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper Functions
 // ─────────────────────────────────────────────────────────────────────────────
@@ -73,6 +79,64 @@ export function estimateAnnualHvacEnergyCost(
   pricePerKwh: number = ENERGY_PRICE_EUR_PER_KWH,
 ): number {
   return annualHvacEnergyKwh * pricePerKwh;
+}
+
+/**
+ * Extract aggregate delivered and primary energy totals from the backend UNI summary.
+ *
+ * This is intentionally a thin projection of backend truth:
+ * - no scaling
+ * - no frontend-only recomputation beyond documented field fallback
+ * - no silent substitution with ISO thermal needs
+ */
+export function extractUniTotals(
+  uniResults: UNI11300Results | undefined,
+  options?: { allowHeatPump?: boolean },
+): ExtractedUniTotals | undefined {
+  if (!uniResults) {
+    return undefined;
+  }
+
+  const summary = uniResults.summary;
+  if (!summary) {
+    return undefined;
+  }
+
+  if (
+    !options?.allowHeatPump &&
+    (uniResults.heat_pump_applied === true ||
+      summary.heat_pump_cop !== undefined)
+  ) {
+    return undefined;
+  }
+
+  const heatPumpApplied =
+    uniResults.heat_pump_applied === true ||
+    summary.heat_pump_cop !== undefined;
+  const deliveredElectricTotal =
+    summary.E_delivered_electric_total_kWh ??
+    (summary.E_delivered_electric_heat_kWh ?? 0) +
+      (summary.E_delivered_electric_cool_kWh ?? 0);
+  const deliveredThermal = heatPumpApplied
+    ? 0
+    : (summary.E_delivered_thermal_kWh ?? 0);
+  const primaryEnergy = summary.EP_total_kWh;
+  const deliveredTotal = deliveredThermal + deliveredElectricTotal;
+
+  if (
+    !Number.isFinite(deliveredTotal) ||
+    deliveredTotal < 0 ||
+    primaryEnergy === undefined ||
+    !Number.isFinite(primaryEnergy) ||
+    primaryEnergy < 0
+  ) {
+    return undefined;
+  }
+
+  return {
+    deliveredTotal,
+    primaryEnergy,
+  };
 }
 
 /**

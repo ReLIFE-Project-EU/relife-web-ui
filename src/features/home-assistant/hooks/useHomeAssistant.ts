@@ -84,11 +84,6 @@ export function useSelectedFundingOption() {
   return state.selectedFundingOption;
 }
 
-export function useSelectedFinancialScenario() {
-  const { state } = useHomeAssistant();
-  return state.selectedFinancialScenario;
-}
-
 export function useSelectedPersona() {
   const { state } = useHomeAssistant();
   return state.selectedPersona;

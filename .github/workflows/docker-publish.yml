@@ -13,6 +13,8 @@ on:
   workflow_dispatch: # Allow manual triggering from GitHub UI
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
   # Registry to push images to (ghcr.io = GitHub Container Registry)
   # Alternative: docker.io for Docker Hub
   REGISTRY: ghcr.io

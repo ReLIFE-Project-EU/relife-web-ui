@@ -161,21 +161,112 @@ export const CONSTRUCTION_PERIOD_TO_YEAR: Record<string, number> = {
  */
 export const CONSTRUCTION_PERIODS = Object.keys(CONSTRUCTION_PERIOD_TO_YEAR);
 
+export function normalizeConstructionPeriod(
+  period?: string | null,
+): string | undefined {
+  if (!period) return undefined;
+
+  const trimmed = period.trim();
+  if (!trimmed) return undefined;
+
+  const normalized = trimmed
+    .toLowerCase()
+    .replace(/[–—]/g, "-")
+    .replace(/\s*-\s*/g, "-");
+
+  if (CONSTRUCTION_PERIOD_TO_YEAR[normalized] !== undefined) {
+    return normalized;
+  }
+
+  const yearRangeMatch = normalized.match(/^(\d{4})-(\d{4})$/);
+  if (yearRangeMatch) {
+    return `${yearRangeMatch[1]}-${yearRangeMatch[2]}`;
+  }
+
+  const presentRangeMatch = normalized.match(/^(\d{4})-(present|now)$/);
+  if (presentRangeMatch) {
+    return `${presentRangeMatch[1]}-present`;
+  }
+
+  const preMatch = normalized.match(/^pre[- ]?(\d{4})$/);
+  if (preMatch) {
+    return `pre-${preMatch[1]}`;
+  }
+
+  const postMatch = normalized.match(/^post[- ]?(\d{4})$/);
+  if (postMatch) {
+    return `post-${postMatch[1]}`;
+  }
+
+  return normalized;
+}
+
+export function constructionPeriodsEqual(
+  left?: string | null,
+  right?: string | null,
+): boolean {
+  const normalizedLeft = normalizeConstructionPeriod(left);
+  const normalizedRight = normalizeConstructionPeriod(right);
+
+  if (!normalizedLeft || !normalizedRight) {
+    return false;
+  }
+
+  return normalizedLeft === normalizedRight;
+}
+
+export function compareConstructionPeriods(
+  left?: string | null,
+  right?: string | null,
+): number {
+  const normalizedLeft = normalizeConstructionPeriod(left);
+  const normalizedRight = normalizeConstructionPeriod(right);
+
+  if (!normalizedLeft && !normalizedRight) {
+    return 0;
+  }
+
+  if (!normalizedLeft) {
+    return 1;
+  }
+
+  if (!normalizedRight) {
+    return -1;
+  }
+
+  const yearDifference =
+    deriveConstructionYear(normalizedLeft) -
+    deriveConstructionYear(normalizedRight);
+  if (yearDifference !== 0) {
+    return yearDifference;
+  }
+
+  return normalizedLeft.localeCompare(normalizedRight);
+}
+
 /**
  * Derive construction year from period string.
  * Handles both API-mapping periods ("1945-1970", "pre-1945") and
  * archetype-derived periods ("1946-1969") by computing the midpoint.
  */
 export function deriveConstructionYear(period: string): number {
+  const normalizedPeriod = normalizeConstructionPeriod(period) ?? period;
+
   // Check the known lookup table first
-  if (CONSTRUCTION_PERIOD_TO_YEAR[period] !== undefined) {
-    return CONSTRUCTION_PERIOD_TO_YEAR[period];
+  if (CONSTRUCTION_PERIOD_TO_YEAR[normalizedPeriod] !== undefined) {
+    return CONSTRUCTION_PERIOD_TO_YEAR[normalizedPeriod];
   }
 
   // Try parsing as "YYYY-YYYY" (archetype-derived format)
-  const match = period.match(/^(\d{4})-(\d{4})$/);
+  const match = normalizedPeriod.match(/^(\d{4})-(\d{4})$/);
   if (match) {
     return Math.round((parseInt(match[1], 10) + parseInt(match[2], 10)) / 2);
+  }
+
+  const presentMatch = normalizedPeriod.match(/^(\d{4})-present$/);
+  if (presentMatch) {
+    const startYear = parseInt(presentMatch[1], 10);
+    return Math.round((startYear + new Date().getFullYear()) / 2);
   }
 
   return 1980; // Default fallback

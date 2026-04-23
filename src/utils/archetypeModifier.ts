@@ -7,12 +7,17 @@ import type {
   ArchetypeDetails,
   BuildingModifications,
   BuildingPayload,
+  BuildingSurface,
   ModificationValidation,
   SystemPayload,
 } from "../types/archetype";
 
 // Re-export for convenience
 export { MODIFICATION_CONSTRAINTS } from "../types/archetype";
+
+function clonePayload<T>(payload: T): T {
+  return structuredClone(payload);
+}
 
 // ============================================================================
 // Validation
@@ -33,7 +38,7 @@ export function validateModifications(
   const CONSTRAINTS = {
     floorArea: { min: 10, max: maxFloorArea },
     numberOfFloors: { min: 1, max: 20 },
-    buildingHeight: { min: 2, max: 60 },
+    floorHeight: { min: 2, max: 6 },
     uValues: { min: 0.1, max: 5.0 },
     heatingSetpoint: { min: 15, max: 22 },
     coolingSetpoint: { min: 24, max: 30 },
@@ -63,14 +68,14 @@ export function validateModifications(
     }
   }
 
-  if (modifications.buildingHeight !== undefined) {
+  if (modifications.floorHeight !== undefined) {
     if (
-      modifications.buildingHeight < CONSTRAINTS.buildingHeight.min ||
-      modifications.buildingHeight > CONSTRAINTS.buildingHeight.max
+      modifications.floorHeight < CONSTRAINTS.floorHeight.min ||
+      modifications.floorHeight > CONSTRAINTS.floorHeight.max
     ) {
       errors.push({
-        field: "buildingHeight",
-        message: `Building height must be between ${CONSTRAINTS.buildingHeight.min}-${CONSTRAINTS.buildingHeight.max} m`,
+        field: "floorHeight",
+        message: `Floor height must be between ${CONSTRAINTS.floorHeight.min}-${CONSTRAINTS.floorHeight.max} m`,
       });
     }
   }
@@ -174,7 +179,7 @@ export function applyFloorAreaModification(
 ): BuildingPayload {
   const originalArea = bui.building.net_floor_area;
   const scaleFactor = newFloorArea / originalArea;
-  const modified = JSON.parse(JSON.stringify(bui)) as BuildingPayload;
+  const modified = clonePayload(bui);
 
   modified.building.net_floor_area = newFloorArea;
   modified.building_surface = modified.building_surface.map((surface) => ({
@@ -190,16 +195,32 @@ export function applyFloorAreaModification(
 export function applyGeometryModification(
   bui: BuildingPayload,
   numberOfFloors?: number,
-  buildingHeight?: number,
+  floorHeight?: number,
 ): BuildingPayload {
-  const modified = JSON.parse(JSON.stringify(bui)) as BuildingPayload;
+  const modified = clonePayload(bui);
+
+  const originalTotalHeight = bui.building.n_floors * bui.building.height;
+  const newTotalHeight =
+    (numberOfFloors ?? bui.building.n_floors) *
+    (floorHeight ?? bui.building.height);
 
   if (numberOfFloors !== undefined) {
     modified.building.n_floors = numberOfFloors;
   }
 
-  if (buildingHeight !== undefined) {
-    modified.building.height = buildingHeight;
+  if (floorHeight !== undefined) {
+    modified.building.height = floorHeight;
+  }
+
+  // Rescale vertical surfaces (walls + windows) when total building height changes
+  if (originalTotalHeight > 0 && newTotalHeight !== originalTotalHeight) {
+    const heightScale = newTotalHeight / originalTotalHeight;
+    modified.building_surface = modified.building_surface.map((surface) => {
+      if (isVerticalSurface(surface)) {
+        return { ...surface, area: surface.area * heightScale };
+      }
+      return surface;
+    });
   }
 
   return modified;
@@ -211,7 +232,7 @@ export function applyThermalModification(
   roofU?: number,
   windowU?: number,
 ): BuildingPayload {
-  const modified = JSON.parse(JSON.stringify(bui)) as BuildingPayload;
+  const modified = clonePayload(bui);
 
   modified.building_surface = modified.building_surface.map((surface) => {
     const newSurface = { ...surface };
@@ -245,7 +266,7 @@ export function applySetpointModification(
   heatingSetpoint?: number,
   coolingSetpoint?: number,
 ): BuildingPayload {
-  const modified = JSON.parse(JSON.stringify(bui)) as BuildingPayload;
+  const modified = clonePayload(bui);
 
   if (heatingSetpoint !== undefined) {
     modified.building_parameters.temperature_setpoints.heating_setpoint =
@@ -268,9 +289,7 @@ export function applyAllModifications(
   archetypeDetails: ArchetypeDetails,
   modifications: BuildingModifications,
 ): { bui: BuildingPayload; system: SystemPayload } {
-  let modifiedBui = JSON.parse(
-    JSON.stringify(archetypeDetails.bui),
-  ) as BuildingPayload;
+  let modifiedBui = clonePayload(archetypeDetails.bui);
 
   if (modifications.floorArea !== undefined) {
     modifiedBui = applyFloorAreaModification(
@@ -281,12 +300,12 @@ export function applyAllModifications(
 
   if (
     modifications.numberOfFloors !== undefined ||
-    modifications.buildingHeight !== undefined
+    modifications.floorHeight !== undefined
   ) {
     modifiedBui = applyGeometryModification(
       modifiedBui,
       modifications.numberOfFloors,
-      modifications.buildingHeight,
+      modifications.floorHeight,
     );
   }
 
@@ -314,9 +333,7 @@ export function applyAllModifications(
     );
   }
 
-  const modifiedSystem = JSON.parse(
-    JSON.stringify(archetypeDetails.system),
-  ) as SystemPayload;
+  const modifiedSystem = clonePayload(archetypeDetails.system);
 
   return {
     bui: modifiedBui,
@@ -327,6 +344,17 @@ export function applyAllModifications(
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+function isVerticalSurface(surface: BuildingSurface): boolean {
+  const name = surface.name.toLowerCase();
+  if (surface.type === "transparent") return true;
+  return (
+    surface.type === "opaque" &&
+    !name.includes("roof") &&
+    !name.includes("slab") &&
+    !name.includes("ground")
+  );
+}
 
 function calculateTotalWallArea(bui: BuildingPayload): number {
   return bui.building_surface
@@ -345,6 +373,27 @@ function calculateTotalWallArea(bui: BuildingPayload): number {
 export function extractConstructionPeriod(
   archetypeName: string,
 ): string | null {
+  const parts = archetypeName.split("_");
+  if (parts.length < 2) {
+    return null;
+  }
+
+  const periodParts = parts.slice(-2);
+  if (periodParts[0] === "0" && /^\d{4}$/.test(periodParts[1])) {
+    return `pre-${periodParts[1]}`;
+  }
+
+  if (/^\d{4}$/.test(periodParts[0]) && /^\d{4}$/.test(periodParts[1])) {
+    return `${periodParts[0]}-${periodParts[1]}`;
+  }
+
+  if (
+    /^\d{4}$/.test(periodParts[0]) &&
+    periodParts[1].toLowerCase() === "now"
+  ) {
+    return `${periodParts[0]}-present`;
+  }
+
   const match = archetypeName.match(/(\d{4})_(\d{4})/);
   return match ? `${match[1]}-${match[2]}` : null;
 }

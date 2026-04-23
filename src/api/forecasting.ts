@@ -190,6 +190,12 @@ export const forecasting = {
     if (params.use_heat_pump && params.heat_pump_cop !== undefined) {
       searchParams.set("heat_pump_cop", String(params.heat_pump_cop));
     }
+    if (params.uni_generation_mode !== undefined) {
+      searchParams.set("uni_generation_mode", params.uni_generation_mode);
+    }
+    if (params.uni_eta_generation !== undefined) {
+      searchParams.set("uni_eta_generation", String(params.uni_eta_generation));
+    }
     if (params.include_baseline !== undefined) {
       searchParams.set("include_baseline", String(params.include_baseline));
     }

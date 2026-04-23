@@ -50,7 +50,7 @@ export async function request<T>(
   if (token) {
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   } else {
-    console.warn("No auth token available for request to", path);
+    console.warn("No auth token available for API request.");
   }
 
   try {

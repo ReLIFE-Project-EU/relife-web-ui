@@ -4,14 +4,18 @@
  */
 
 import {
+  ActionIcon,
+  Badge,
   Box,
   Card,
+  HoverCard,
   ScrollArea,
   Stack,
   Table,
   Text,
   Title,
 } from "@mantine/core";
+import { IconInfoCircle } from "@tabler/icons-react";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import type { RenovationScenario } from "../../context/types";
 import {
@@ -38,6 +42,12 @@ export function ScenarioComparison() {
 
   const computeIntensity = (annualEnergyNeeds: number) =>
     floorArea && floorArea > 0 ? annualEnergyNeeds / floorArea : undefined;
+  const scenarioIncludesSystemMeasure = (scenario: RenovationScenario) =>
+    scenario.measureIds.some(
+      (measureId) =>
+        measureId === "condensing-boiler" ||
+        measureId === "air-water-heat-pump",
+    );
 
   return (
     <Card withBorder radius="md" p="lg">
@@ -69,7 +79,12 @@ export function ScenarioComparison() {
             <Table.Tbody>
               {/* EPC Row */}
               <Table.Tr>
-                <Table.Td fw={500}>EPC Rank</Table.Td>
+                <Table.Td fw={500}>
+                  <MetricLabel
+                    label="Estimated EPC"
+                    description="Shown for the current home and envelope-only scenarios. Scenarios with system upgrades can lower energy use, but EPC is not recalculated here to avoid mixing different meanings."
+                  />
+                </Table.Td>
                 <Table.Td style={{ textAlign: "center" }}>
                   {(() => {
                     const epc =
@@ -96,6 +111,24 @@ export function ScenarioComparison() {
                   })()}
                 </Table.Td>
                 {renovationScenarios.map((scenario) => {
+                  if (scenarioIncludesSystemMeasure(scenario)) {
+                    return (
+                      <Table.Td
+                        key={scenario.id}
+                        style={{ textAlign: "center" }}
+                      >
+                        <Stack gap={4} align="center">
+                          <Badge color="gray" variant="light">
+                            Not shown
+                          </Badge>
+                          <Text size="xs" c="dimmed">
+                            Includes a system upgrade
+                          </Text>
+                        </Stack>
+                      </Table.Td>
+                    );
+                  }
+
                   const intensity = computeIntensity(
                     scenario.annualEnergyNeeds,
                   );
@@ -121,7 +154,12 @@ export function ScenarioComparison() {
 
               {/* Energy Needs Row */}
               <MetricRow
-                label="Annual HVAC Energy Needs"
+                label={
+                  <MetricLabel
+                    label="Annual building thermal needs"
+                    description="The yearly heating and cooling your home needs to stay comfortable. This comes from the building simulation, not from the HVAC system."
+                  />
+                }
                 baseValue={
                   currentScenario?.annualEnergyNeeds ||
                   estimation.annualEnergyNeeds
@@ -134,7 +172,12 @@ export function ScenarioComparison() {
 
               {/* Energy Cost Row */}
               <MetricRow
-                label="Cost of Annual HVAC Energy Needs"
+                label={
+                  <MetricLabel
+                    label="Estimated cost of thermal needs"
+                    description="A simple frontend estimate based on thermal needs and a flat tariff. This is not the same as your utility bill or the Financial API results."
+                  />
+                }
                 baseValue={
                   currentScenario?.annualEnergyCost ||
                   estimation.annualEnergyCost
@@ -142,6 +185,20 @@ export function ScenarioComparison() {
                 scenarios={renovationScenarios}
                 getValue={(s) => s.annualEnergyCost}
                 formatter={formatCurrency}
+                lowerIsBetter
+              />
+
+              <OptionalMetricRow
+                label={
+                  <MetricLabel
+                    label="Estimated system energy consumption"
+                    description="The yearly electricity or fuel the HVAC system needs to meet the building's thermal needs. HRA uses this for financial savings when available."
+                  />
+                }
+                baseValue={currentScenario?.deliveredTotal}
+                scenarios={renovationScenarios}
+                getValue={(s) => s.deliveredTotal}
+                formatter={formatEnergyPerYear}
                 lowerIsBetter
               />
 
@@ -173,16 +230,87 @@ export function ScenarioComparison() {
           </Table>
         </ScrollArea>
         <Text size="xs" c="dimmed">
-          Cost values use a frontend flat tariff of{" "}
-          {formatCurrencyDecimal(ENERGY_PRICE_EUR_PER_KWH)}/kWh.
+          Thermal-needs cost values are frontend estimates based on a flat
+          tariff of {formatCurrencyDecimal(ENERGY_PRICE_EUR_PER_KWH)}/kWh.
+          System energy consumption is shown in kWh/year only because its real
+          cost depends on fuel and electricity prices.
         </Text>
       </Stack>
     </Card>
   );
 }
 
+interface OptionalMetricRowProps {
+  label: React.ReactNode;
+  baseValue: number | undefined;
+  scenarios: RenovationScenario[];
+  getValue: (scenario: RenovationScenario) => number | undefined;
+  formatter: (value: number) => string;
+  lowerIsBetter: boolean;
+}
+
+function OptionalMetricRow({
+  label,
+  baseValue,
+  scenarios,
+  getValue,
+  formatter,
+  lowerIsBetter,
+}: OptionalMetricRowProps) {
+  const anyValuePresent =
+    baseValue !== undefined ||
+    scenarios.some((scenario) => getValue(scenario) !== undefined);
+
+  if (!anyValuePresent) {
+    return null;
+  }
+
+  return (
+    <Table.Tr>
+      <Table.Td fw={500}>{label}</Table.Td>
+      <Table.Td style={{ textAlign: "center" }}>
+        {baseValue !== undefined ? (
+          <Text size="sm">{formatter(baseValue)}</Text>
+        ) : (
+          <MissingValueBadge />
+        )}
+      </Table.Td>
+      {scenarios.map((scenario) => {
+        const value = getValue(scenario);
+        const delta =
+          value !== undefined && baseValue !== undefined
+            ? calculatePercentChange(baseValue, value)
+            : undefined;
+
+        return (
+          <Table.Td key={scenario.id} style={{ textAlign: "center" }}>
+            <Stack gap={4} align="center">
+              {value !== undefined ? (
+                <Text size="sm">{formatter(value)}</Text>
+              ) : (
+                <MissingValueBadge />
+              )}
+              {delta !== undefined ? (
+                <DeltaBadge delta={delta} higherIsBetter={!lowerIsBetter} />
+              ) : null}
+            </Stack>
+          </Table.Td>
+        );
+      })}
+    </Table.Tr>
+  );
+}
+
+function MissingValueBadge() {
+  return (
+    <Badge variant="light" color="gray">
+      Not available
+    </Badge>
+  );
+}
+
 interface MetricRowProps {
-  label: string;
+  label: React.ReactNode;
   baseValue: number;
   scenarios: RenovationScenario[];
   getValue: (scenario: RenovationScenario) => number;
@@ -218,5 +346,36 @@ function MetricRow({
         );
       })}
     </Table.Tr>
+  );
+}
+
+function MetricLabel({
+  label,
+  description,
+}: {
+  label: string;
+  description: string;
+}) {
+  return (
+    <HoverCard width={260} shadow="md" position="top-start" withArrow>
+      <HoverCard.Target>
+        <ActionIcon.Group>
+          <Text span inherit>
+            {label}
+          </Text>
+          <ActionIcon
+            variant="subtle"
+            size="sm"
+            color="gray"
+            aria-label={`Explain ${label.toLowerCase()}`}
+          >
+            <IconInfoCircle size={14} />
+          </ActionIcon>
+        </ActionIcon.Group>
+      </HoverCard.Target>
+      <HoverCard.Dropdown>
+        <Text size="xs">{description}</Text>
+      </HoverCard.Dropdown>
+    </HoverCard>
   );
 }

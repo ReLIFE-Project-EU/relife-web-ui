@@ -5,6 +5,7 @@
 
 import { useState } from "react";
 import {
+  Alert,
   Box,
   Button,
   Checkbox,
@@ -44,6 +45,23 @@ function ModalContent({
   const initialMeasures = building?.selectedMeasures ?? [...globalMeasures];
   const [localMeasures, setLocalMeasures] =
     useState<RenovationMeasureId[]>(initialMeasures);
+  const analysisEligibleMeasures = renovation
+    .getAnalysisEligibleMeasures()
+    .map((measure) => measure.id);
+  const rankableMeasures = renovation
+    .getRankableMeasures()
+    .map((measure) => measure.id);
+  const localAnalysisEligibleButNonRankableMeasures = localMeasures.filter(
+    (measureId) =>
+      analysisEligibleMeasures.includes(measureId) &&
+      !rankableMeasures.includes(measureId),
+  );
+  const localUnsupportedMeasures = localMeasures.filter(
+    (measureId) => !analysisEligibleMeasures.includes(measureId),
+  );
+  const hasAnalysisEligibleMeasure = localMeasures.some((measureId) =>
+    analysisEligibleMeasures.includes(measureId),
+  );
 
   const handleToggle = (measureId: RenovationMeasureId) => {
     setLocalMeasures((prev) =>
@@ -81,6 +99,45 @@ function ModalContent({
         portfolio-level selection.
       </Text>
 
+      <Alert
+        color={
+          localUnsupportedMeasures.length > 0 ||
+          localAnalysisEligibleButNonRankableMeasures.length > 0
+            ? "yellow"
+            : "blue"
+        }
+        mb="lg"
+      >
+        This workflow can analyze envelope measures plus condensing-boiler and
+        air-water heat-pump scenarios. Only envelope scenarios participate in
+        ranking.
+        {localAnalysisEligibleButNonRankableMeasures.length > 0 && (
+          <>
+            {" "}
+            The following selected system measures will be analyzed, but
+            excluded from ranking:{" "}
+            <Text span fw={700}>
+              {localAnalysisEligibleButNonRankableMeasures
+                .map((measureId) => renovation.getMeasure(measureId)?.name)
+                .join(", ")}
+            </Text>
+            .
+          </>
+        )}
+        {localUnsupportedMeasures.length > 0 && (
+          <>
+            {" "}
+            The following selected measures are still excluded from analysis:{" "}
+            <Text span fw={700}>
+              {localUnsupportedMeasures
+                .map((measureId) => renovation.getMeasure(measureId)?.name)
+                .join(", ")}
+            </Text>
+            .
+          </>
+        )}
+      </Alert>
+
       <Stack gap="md">
         {categorizedMeasures.map(({ cat, measures }) => (
           <Box key={cat.id}>
@@ -94,8 +151,12 @@ function ModalContent({
                   label={measure.name}
                   checked={localMeasures.includes(measure.id)}
                   onChange={() => handleToggle(measure.id)}
-                  disabled={!measure.isSupported}
-                  description={!measure.isSupported ? "Coming soon" : undefined}
+                  disabled={!analysisEligibleMeasures.includes(measure.id)}
+                  description={
+                    analysisEligibleMeasures.includes(measure.id)
+                      ? undefined
+                      : "Coming soon"
+                  }
                 />
               ))}
             </Stack>
@@ -117,7 +178,10 @@ function ModalContent({
           <Button variant="default" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={localMeasures.length === 0}>
+          <Button
+            onClick={handleSave}
+            disabled={localMeasures.length === 0 || !hasAnalysisEligibleMeasure}
+          >
             Save
           </Button>
         </Group>

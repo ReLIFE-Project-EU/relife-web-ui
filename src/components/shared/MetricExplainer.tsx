@@ -65,10 +65,11 @@ const explanations: Record<FinancialMetricType, MetricExplanation> = {
       "Higher is better. Above 100% means you more than double your investment.",
   },
   MonthlyAvgSavings: {
-    title: "Monthly Average Savings",
+    title: "Monthly Cash Benefit",
     description:
-      "Your expected monthly energy cost savings after renovation. This is the average over the project lifetime, accounting for loan payments if applicable.",
-    goodValue: "Higher savings mean more money in your pocket each month.",
+      "An average monthly financial benefit across the project lifetime. It is based on the Financial API model, so it reflects more than energy bills alone.",
+    goodValue:
+      "Higher is better, but treat it as a comparison estimate rather than a bill forecast.",
   },
   SuccessRate: {
     title: "Success Probability",

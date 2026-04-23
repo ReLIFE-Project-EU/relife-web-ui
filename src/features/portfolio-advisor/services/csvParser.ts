@@ -8,6 +8,7 @@
 import {
   CONSTRUCTION_PERIODS,
   deriveConstructionPeriod,
+  normalizeConstructionPeriod,
 } from "../../../utils/apiMappings";
 import { CSV_REQUIRED_COLUMNS } from "../constants";
 import type { PRABuilding } from "../context/types";
@@ -15,7 +16,8 @@ import type { RenovationMeasureId } from "../../../types/renovation";
 
 const VALID_PERIODS = new Set(CONSTRUCTION_PERIODS);
 
-const VALID_MEASURE_IDS: ReadonlySet<string> = new Set<RenovationMeasureId>([
+/** Semicolon-delimited `measures` column: these IDs are accepted (lowercase in CSV). */
+export const CSV_VALID_MEASURE_IDS = [
   "wall-insulation",
   "roof-insulation",
   "floor-insulation",
@@ -24,7 +26,11 @@ const VALID_MEASURE_IDS: ReadonlySet<string> = new Set<RenovationMeasureId>([
   "condensing-boiler",
   "pv",
   "solar-thermal",
-]);
+] as const satisfies readonly RenovationMeasureId[];
+
+const VALID_MEASURE_IDS: ReadonlySet<string> = new Set<string>(
+  CSV_VALID_MEASURE_IDS,
+);
 
 export interface CSVParseResult {
   buildings: PRABuilding[];
@@ -115,9 +121,13 @@ export function parseCSV(text: string): CSVParseResult {
     // Parse construction period — accept period strings or numeric years (backwards compat)
     let constructionPeriod: string | undefined;
     if (hasConstructionPeriod) {
-      const raw = values[colIndex("construction_period")]?.trim().toLowerCase();
-      if (VALID_PERIODS.has(raw)) {
-        constructionPeriod = raw;
+      const raw = values[colIndex("construction_period")]?.trim();
+      const normalized = normalizeConstructionPeriod(raw);
+      if (
+        normalized &&
+        (VALID_PERIODS.has(normalized) || /^\d{4}-\d{4}$/.test(normalized))
+      ) {
+        constructionPeriod = normalized;
       } else {
         // Try parsing as a numeric year
         const asYear = parseInt(raw, 10);

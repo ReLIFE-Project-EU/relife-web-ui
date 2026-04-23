@@ -1,11 +1,15 @@
 ---
 name: api-client-upgrade
-description: Reviews latest OpenAPI specifications from api-specs/ and proposes upgrade plans for the frontend API client. Use when reviewing API specifications, upgrading API clients, analyzing endpoint gaps, or when the user asks to review or update API integrations.
+description: >
+  Proposes frontend API client (`src/api/`) upgrade plans using `api-specs/` snapshots
+  cross-checked against service code under `external-services/` when available. Use when
+  reviewing API integrations, upgrading clients, or analyzing endpoint gaps. If
+  `external-services/` is missing, pause and ask the user before treating OpenAPI JSON alone as sufficient.
 ---
 
 # API Client Upgrade Planning
 
-Reviews the latest API specifications and proposes structured upgrade plans for the frontend API client (`src/api/`).
+Reviews the latest API specifications and proposes structured upgrade plans for the frontend API client (`src/api/`). **Service code under `external-services/` is the primary contract reference**; JSON under `api-specs/` is a hint and may be wrong or incomplete (see [`AGENTS.md`](../../../AGENTS.md) § API specifications).
 
 ## Workflow
 
@@ -17,9 +21,15 @@ Follow these steps when reviewing API specifications:
 2. Identify the directory with the latest timestamp (alphabetically sorted, highest value)
 3. Note the three service specification files: `financial.json`, `forecasting.json`, `technical.json`
 
-### Step 2: Analyze Specifications
+### Step 2: Verify Against Service Code
 
-For each service specification file in the latest directory:
+1. Check whether these directories exist: `external-services/relife-financial-service`, `external-services/relife-forecasting-service`, `external-services/relife-technical-service`
+2. **If any expected repo is missing**: stop and **ask the user** to clone (e.g. `task fetch-sources` per [`Taskfile.yml`](../../../Taskfile.yml)) or to confirm another verification path before performing gap analysis from OpenAPI JSON alone
+3. For each present service, use the codebase (routes, models, validation) to confirm paths, parameters, and bodies—**reconcile discrepancies** with `api-specs/` and call out spec drift explicitly in the plan
+
+### Step 3: Analyze Specifications
+
+For each service (preferring verified code, using spec files as supplementary):
 
 1. **Extract endpoints**:
    - List all paths and HTTP methods
@@ -31,9 +41,9 @@ For each service specification file in the latest directory:
    - Identify all response payload types
    - Note any shared/common schemas
 
-### Step 3: Gap Analysis
+### Step 4: Gap Analysis
 
-Compare specifications against current implementation:
+Compare verified contract (code first, then spec) against current implementation:
 
 1. **Review current API client structure**:
    - Check `src/api/financial.ts`, `src/api/forecasting.ts`, `src/api/technical.ts`
@@ -46,7 +56,7 @@ Compare specifications against current implementation:
    - New request/response types not yet defined
    - Deprecated endpoints still in use
 
-### Step 4: Propose Upgrade Plan
+### Step 5: Propose Upgrade Plan
 
 Create a structured plan with:
 
@@ -79,9 +89,10 @@ Structure the plan as:
 ```markdown
 # API Client Upgrade Plan
 
-## Latest Specifications
+## Contract sources
 
-- Directory: `api-specs/[timestamp]/`
+- `api-specs/` directory: `api-specs/[timestamp]/`
+- Service code verified under `external-services/`: yes/no (note gaps)
 - Services: financial, forecasting, technical
 
 ## Type Definitions
@@ -118,10 +129,11 @@ Structure the plan as:
 - Ensure compatibility with React 19, TypeScript 5.9, Vite
 - Maintain strict typing (avoid `any`)
 - Preserve existing architecture patterns from `src/api/client.ts`
-- Reference OpenAPI specs as the source of truth
+- **Source-of-truth order**: (1) service implementation in `external-services/`, (2) observed HTTP behavior / tests when code is unavailable, (3) `api-specs/` snapshots as a non-authoritative aid—never assume JSON alone is complete or current
 
 ## Project Context
 
+- Contract policy and repo table: [`AGENTS.md`](../../../AGENTS.md) § API specifications (OpenAPI)
 - API client uses two-layer architecture (see `CLAUDE.md`)
 - Layer 1 (`src/api/`) contains thin HTTP wrappers
 - Layer 2 (`src/features/*/services/`) contains business logic

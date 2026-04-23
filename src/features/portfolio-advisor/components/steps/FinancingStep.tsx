@@ -116,13 +116,13 @@ export function FinancingStep() {
     dispatch({ type: "START_ANALYSIS" });
 
     try {
-      const results = await services.portfolioAnalysis.analyzePortfolio(
-        state.buildings,
-        state.renovation.selectedMeasures,
-        state.financingScheme,
-        state.funding,
-        state.projectLifetime,
-        (completed, total, current) => {
+      const results = await services.portfolioAnalysis.analyzePortfolio({
+        buildings: state.buildings,
+        selectedMeasures: state.renovation.selectedMeasures,
+        financingScheme: state.financingScheme,
+        funding: state.funding,
+        projectLifetime: state.projectLifetime,
+        onProgress: (completed, total, current) => {
           dispatch({
             type: "UPDATE_ANALYSIS_PROGRESS",
             completed,
@@ -130,9 +130,9 @@ export function FinancingStep() {
             currentBuilding: current,
           });
         },
-        state.renovation.estimatedCapex,
-        state.renovation.estimatedMaintenanceCost,
-      );
+        globalCapex: state.renovation.estimatedCapex,
+        globalMaintenanceCost: state.renovation.estimatedMaintenanceCost,
+      });
 
       // Set all building results in a single dispatch
       dispatch({ type: "BATCH_SET_BUILDING_RESULTS", results });

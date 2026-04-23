@@ -18,6 +18,7 @@ interface CashFlowChartProps {
   data: CashFlowData;
   projectLifetime?: number;
   title?: string;
+  scenarioLabel?: string;
 }
 
 const series: CompositeChartSeries[] = [
@@ -56,6 +57,7 @@ export function CashFlowChart({
   data,
   projectLifetime,
   title = "Cash flow timeline",
+  scenarioLabel,
 }: CashFlowChartProps) {
   const chartData = toChartData(data);
   const tickInterval =
@@ -95,6 +97,11 @@ export function CashFlowChart({
               Annual inflows, outflows, and cumulative position across the
               project horizon.
             </Text>
+            {scenarioLabel ? (
+              <Text size="xs" c="dimmed" mt={4}>
+                Showing package: {scenarioLabel}
+              </Text>
+            ) : null}
           </div>
           {projectLifetime ? (
             <Text size="sm" c="dimmed">

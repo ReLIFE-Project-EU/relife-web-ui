@@ -18,6 +18,10 @@ import {
 import L from "leaflet";
 import { Box, Text, Loader, Center, Stack } from "@mantine/core";
 import type { ArchetypeInfo } from "../../../../types/forecasting";
+import {
+  getCountryDisplayName,
+  getCountryReferenceLocation,
+} from "../../../../utils/countries";
 import styles from "./LocationMap.module.css";
 
 // Fix Leaflet's default icon path issue with bundlers
@@ -116,7 +120,7 @@ function MapViewUpdater({
 }: MapViewUpdaterProps) {
   const map = useMapEvents({});
   const highlightedCoords = highlightedArchetype
-    ? ARCHETYPE_LOCATIONS[highlightedArchetype.country]
+    ? getCountryReferenceLocation(highlightedArchetype.country)
     : null;
 
   useEffect(() => {
@@ -135,43 +139,6 @@ function MapViewUpdater({
 
   return null;
 }
-
-/**
- * Reference locations for archetype markers on the map (capital cities).
- * Covers all 27 EU member states for future archetype additions.
- */
-const ARCHETYPE_LOCATIONS: Record<string, { lat: number; lng: number }> = {
-  // Current archetypes
-  Greece: { lat: 37.98, lng: 23.73 }, // Athens
-  Italy: { lat: 41.9, lng: 12.5 }, // Rome
-
-  // Other EU member states (for future archetypes)
-  Austria: { lat: 48.21, lng: 16.37 }, // Vienna
-  Belgium: { lat: 50.85, lng: 4.35 }, // Brussels
-  Bulgaria: { lat: 42.7, lng: 23.32 }, // Sofia
-  Croatia: { lat: 45.81, lng: 15.98 }, // Zagreb
-  Cyprus: { lat: 35.17, lng: 33.36 }, // Nicosia
-  Czechia: { lat: 50.08, lng: 14.44 }, // Prague
-  Denmark: { lat: 55.68, lng: 12.57 }, // Copenhagen
-  Estonia: { lat: 59.44, lng: 24.75 }, // Tallinn
-  Finland: { lat: 60.17, lng: 24.94 }, // Helsinki
-  France: { lat: 48.86, lng: 2.35 }, // Paris
-  Germany: { lat: 52.52, lng: 13.41 }, // Berlin
-  Hungary: { lat: 47.5, lng: 19.04 }, // Budapest
-  Ireland: { lat: 53.33, lng: -6.26 }, // Dublin
-  Latvia: { lat: 56.95, lng: 24.11 }, // Riga
-  Lithuania: { lat: 54.69, lng: 25.28 }, // Vilnius
-  Luxembourg: { lat: 49.61, lng: 6.13 }, // Luxembourg City
-  Malta: { lat: 35.9, lng: 14.51 }, // Valletta
-  Netherlands: { lat: 52.37, lng: 4.89 }, // Amsterdam
-  Poland: { lat: 52.23, lng: 21.01 }, // Warsaw
-  Portugal: { lat: 38.72, lng: -9.14 }, // Lisbon
-  Romania: { lat: 44.43, lng: 26.1 }, // Bucharest
-  Slovakia: { lat: 48.15, lng: 17.11 }, // Bratislava
-  Slovenia: { lat: 46.06, lng: 14.51 }, // Ljubljana
-  Spain: { lat: 40.42, lng: -3.7 }, // Madrid
-  Sweden: { lat: 59.33, lng: 18.07 }, // Stockholm
-};
 
 // Default center: Central Europe
 const DEFAULT_CENTER: [number, number] = [48.0, 12.0];
@@ -216,7 +183,7 @@ export function LocationMap({
     >();
 
     archetypes.forEach((archetype) => {
-      const coords = ARCHETYPE_LOCATIONS[archetype.country];
+      const coords = getCountryReferenceLocation(archetype.country);
       if (coords) {
         const key = `${coords.lat},${coords.lng}`;
         if (!locationMap.has(key)) {
@@ -235,7 +202,9 @@ export function LocationMap({
     markerLng: number,
   ): "available" | "tentative" | "selected" => {
     if (selectedArchetype) {
-      const selectedCoords = ARCHETYPE_LOCATIONS[selectedArchetype.country];
+      const selectedCoords = getCountryReferenceLocation(
+        selectedArchetype.country,
+      );
       if (
         selectedCoords &&
         selectedCoords.lat === markerLat &&
@@ -246,7 +215,9 @@ export function LocationMap({
     }
 
     if (tentativeArchetype) {
-      const tentativeCoords = ARCHETYPE_LOCATIONS[tentativeArchetype.country];
+      const tentativeCoords = getCountryReferenceLocation(
+        tentativeArchetype.country,
+      );
       if (
         tentativeCoords &&
         tentativeCoords.lat === markerLat &&
@@ -409,7 +380,9 @@ export function LocationMap({
             >
               <Popup>
                 <Text size="sm" fw={500}>
-                  {marker.archetypes[0].country} Reference Buildings
+                  {getCountryDisplayName(marker.archetypes[0].country) ??
+                    marker.archetypes[0].country}{" "}
+                  Reference Buildings
                 </Text>
                 <Text
                   size="xs"

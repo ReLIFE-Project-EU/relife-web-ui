@@ -9,6 +9,7 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
   type Dispatch,
   type SetStateAction,
@@ -33,6 +34,7 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
+  IconAlertTriangle,
   IconBuildingCommunity,
   IconCheck,
   IconEqual,
@@ -41,24 +43,32 @@ import {
   IconMapPin,
   IconRuler,
   IconStack2,
+  IconX,
 } from "@tabler/icons-react";
 import type { ArchetypeInfo } from "../../../../types/forecasting";
 import type {
   ArchetypeDetails,
   BuildingModifications,
 } from "../../../../types/archetype";
+import type {
+  ArchetypeMatchResult,
+  MatchQuality,
+} from "../../../../services/types";
 import {
+  buildArchetypeSelectionLabels,
   countryFlag,
   countryNameToCode,
-  formatArchetypeName,
+  getArchetypeSelectionLabel,
 } from "../../../../utils/archetypeLabels";
 import { validateModifications } from "../../../../utils/archetypeModifier";
 import { checkAreaArchetypeMismatch } from "../../../../utils/inputSanityChecks";
+import { normalizeCountryName } from "../../../../utils/countries";
 import {
   formatArea,
   formatDecimal,
   formatNumber,
 } from "../../utils/formatters";
+import { buildMatchDeltaMessages } from "./archetypeUiMessaging";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 
@@ -67,7 +77,7 @@ type ApartmentLocation = "bottom" | "middle" | "top";
 interface DraftState {
   floorArea: number | string;
   numberOfFloors: number | string;
-  averageFloorHeight: number | string;
+  floorHeight: number | string;
   apartmentLocation: ApartmentLocation | null;
 }
 
@@ -76,13 +86,6 @@ const APARTMENT_LOCATION_OPTIONS = [
   { value: "middle", label: "Middle floor" },
   { value: "top", label: "Top floor" },
 ] as const;
-
-function getReferenceAverageFloorHeight(details: ArchetypeDetails): number {
-  if (details.numberOfFloors <= 0) {
-    return details.buildingHeight;
-  }
-  return details.buildingHeight / details.numberOfFloors;
-}
 
 function isApartmentLikeCategory(category: string): boolean {
   const normalized = category.toLowerCase();
@@ -138,20 +141,10 @@ function buildDraftState(
   apartmentLocation?: ApartmentLocation,
   modifications?: BuildingModifications,
 ): DraftState {
-  const referenceAverageFloorHeight = getReferenceAverageFloorHeight(details);
-  const resolvedFloors =
-    modifications?.numberOfFloors ?? details.numberOfFloors;
-  const resolvedBuildingHeight =
-    modifications?.buildingHeight ?? details.buildingHeight;
-  const resolvedAverageFloorHeight =
-    resolvedFloors > 0
-      ? resolvedBuildingHeight / resolvedFloors
-      : referenceAverageFloorHeight;
-
   return {
     floorArea: modifications?.floorArea ?? details.floorArea,
-    numberOfFloors: resolvedFloors,
-    averageFloorHeight: Number(resolvedAverageFloorHeight.toFixed(1)),
+    numberOfFloors: modifications?.numberOfFloors ?? details.numberOfFloors,
+    floorHeight: modifications?.floorHeight ?? details.floorHeight,
     apartmentLocation: apartmentLocation ?? null,
   };
 }
@@ -169,20 +162,16 @@ function buildAppliedChanges(
   simulationChanges: string[];
   contextChanges: string[];
 } {
-  const referenceAverageFloorHeight = getReferenceAverageFloorHeight(details);
   const floorArea =
     typeof draft.floorArea === "number" ? draft.floorArea : details.floorArea;
   const numberOfFloors =
     typeof draft.numberOfFloors === "number"
       ? draft.numberOfFloors
       : details.numberOfFloors;
-  const averageFloorHeight =
-    typeof draft.averageFloorHeight === "number"
-      ? draft.averageFloorHeight
-      : referenceAverageFloorHeight;
-  const buildingHeight = Number(
-    (numberOfFloors * averageFloorHeight).toFixed(1),
-  );
+  const floorHeight =
+    typeof draft.floorHeight === "number"
+      ? draft.floorHeight
+      : details.floorHeight;
 
   const modifications: BuildingModifications = {};
   const simulationChanges: string[] = [];
@@ -202,10 +191,10 @@ function buildAppliedChanges(
     );
   }
 
-  if (Math.abs(buildingHeight - details.buildingHeight) >= 0.05) {
-    modifications.buildingHeight = buildingHeight;
+  if (Math.abs(floorHeight - details.floorHeight) >= 0.05) {
+    modifications.floorHeight = floorHeight;
     simulationChanges.push(
-      `Building height: ${formatDecimal(details.buildingHeight)} m -> ${formatDecimal(buildingHeight)} m`,
+      `Floor height: ${formatDecimal(details.floorHeight)} m -> ${formatDecimal(floorHeight)} m`,
     );
   }
 
@@ -333,44 +322,75 @@ function DetailEvolutionRow({
   );
 }
 
+function matchQualityBadge(quality: MatchQuality) {
+  if (quality === "excellent") {
+    return (
+      <Badge color="green" variant="light">
+        Excellent match
+      </Badge>
+    );
+  }
+  if (quality === "good") {
+    return (
+      <Badge color="blue" variant="light">
+        Good match
+      </Badge>
+    );
+  }
+  return (
+    <Badge color="yellow" variant="light">
+      Approximate match
+    </Badge>
+  );
+}
+
 function ArchetypeSummary({
   details,
   isSelected,
   isModified,
   onUseReference,
+  onClearAccepted,
   draft,
   setDraft,
   onApplyAdjustments,
   appliedModifications,
   appliedApartmentLocation,
+  matchResult,
+  selectedPeriod,
+  onSelectAlternative,
 }: {
   details: ArchetypeDetails;
   isSelected: boolean;
   isModified: boolean;
   onUseReference: () => void;
+  onClearAccepted?: () => void;
   draft: DraftState;
   setDraft: Dispatch<SetStateAction<DraftState | null>>;
   onApplyAdjustments: () => void;
   appliedModifications?: BuildingModifications;
   appliedApartmentLocation?: ApartmentLocation;
+  matchResult: ArchetypeMatchResult | null;
+  selectedPeriod?: string | null;
+  onSelectAlternative: (archetype: ArchetypeInfo) => void;
 }) {
   const [adjustmentsOpen, { toggle: toggleAdjustments }] = useDisclosure(false);
+  const [alternativesOpen, { toggle: toggleAlternatives }] =
+    useDisclosure(false);
 
   const isApartment = isApartmentLikeCategory(details.category);
-  const referenceAverageFloorHeight = getReferenceAverageFloorHeight(details);
   const areaWarning =
     typeof draft.floorArea === "number"
       ? checkAreaArchetypeMismatch(draft.floorArea, details.floorArea)
       : { warning: false, message: "" };
   const appliedFloorArea = appliedModifications?.floorArea;
   const appliedNumberOfFloors = appliedModifications?.numberOfFloors;
-  const appliedBuildingHeight = appliedModifications?.buildingHeight;
-  const appliedAverageFloorHeight =
-    appliedBuildingHeight !== undefined &&
-    appliedNumberOfFloors !== undefined &&
-    appliedNumberOfFloors > 0
-      ? appliedBuildingHeight / appliedNumberOfFloors
-      : undefined;
+  const appliedFloorHeight = appliedModifications?.floorHeight;
+  const alternativeArchetypes = matchResult
+    ? [details, ...matchResult.alternatives.map((alt) => alt.archetype)]
+    : [details];
+  const archetypeSelectionLabels = buildArchetypeSelectionLabels(
+    alternativeArchetypes,
+  );
 
   const previewSummary = buildAppliedChanges(details, draft, isApartment);
   const validationResult = validateModifications(
@@ -390,17 +410,17 @@ function ArchetypeSummary({
               <Text fw={600} size="lg">
                 {details.category}
               </Text>
+              {matchResult ? matchQualityBadge(matchResult.matchQuality) : null}
             </Group>
             <Text size="sm" c="dimmed">
               {(() => {
                 const code = countryNameToCode(details.country);
-                const formattedName = formatArchetypeName(details.name);
-                if (!code) return formattedName;
-                // Avoid duplicating the country if formatArchetypeName already starts with it
-                if (formattedName.startsWith(details.country)) {
-                  return `${countryFlag(code)} ${formattedName}`;
-                }
-                return `${countryFlag(code)} ${details.country} · ${formattedName}`;
+                const label = getArchetypeSelectionLabel(
+                  details,
+                  archetypeSelectionLabels,
+                );
+                if (!code) return label;
+                return `${countryFlag(code)} ${label}`;
               })()}
             </Text>
           </Stack>
@@ -435,21 +455,22 @@ function ArchetypeSummary({
             />
             <DetailEvolutionRow
               icon={<IconRuler size={12} />}
-              label="Average floor height"
-              referenceValue={`${formatDecimal(referenceAverageFloorHeight)} m`}
+              label="Floor height"
+              referenceValue={`${formatDecimal(details.floorHeight)} m`}
               currentValue={
-                appliedAverageFloorHeight !== undefined
-                  ? `${formatDecimal(appliedAverageFloorHeight)} m`
+                appliedFloorHeight !== undefined
+                  ? `${formatDecimal(appliedFloorHeight)} m`
                   : undefined
               }
             />
             <DetailEvolutionRow
               icon={<IconStack2 size={12} />}
               label="Building height"
-              referenceValue={`${formatDecimal(details.buildingHeight)} m`}
+              referenceValue={`${formatDecimal(details.floorHeight * details.numberOfFloors)} m`}
               currentValue={
-                appliedBuildingHeight !== undefined
-                  ? `${formatDecimal(appliedBuildingHeight)} m`
+                appliedFloorHeight !== undefined ||
+                appliedNumberOfFloors !== undefined
+                  ? `${formatDecimal((appliedFloorHeight ?? details.floorHeight) * (appliedNumberOfFloors ?? details.numberOfFloors))} m`
                   : undefined
               }
             />
@@ -464,13 +485,51 @@ function ArchetypeSummary({
           </Stack>
         </Card>
 
-        <Alert color="blue" variant="light" icon={<IconInfoCircle size={16} />}>
-          <Text size="sm">
-            This reference home is the closest archetype for your location,
-            building type, and construction period. You can use it directly or
-            adjust a small set of fields to better match your building.
-          </Text>
-        </Alert>
+        {matchResult ? (
+          (() => {
+            const deltaMessages = buildMatchDeltaMessages(
+              matchResult,
+              details,
+              selectedPeriod,
+            );
+            if (deltaMessages.length === 0) return null;
+
+            return (
+              <Alert
+                color="yellow"
+                variant="light"
+                icon={<IconAlertTriangle size={16} />}
+              >
+                <Stack gap={4}>
+                  <Text size="sm" fw={500}>
+                    Adjusted from your inputs
+                  </Text>
+                  {deltaMessages.map((message) => (
+                    <Text key={message} size="sm">
+                      {message}
+                    </Text>
+                  ))}
+                  <Text size="sm">
+                    You can continue with this reference home, or choose an
+                    alternative below.
+                  </Text>
+                </Stack>
+              </Alert>
+            );
+          })()
+        ) : (
+          <Alert
+            color="blue"
+            variant="light"
+            icon={<IconInfoCircle size={16} />}
+          >
+            <Text size="sm">
+              This reference home is the closest archetype for your location,
+              building type, and construction period. You can use it directly or
+              adjust a small set of fields to better match your building.
+            </Text>
+          </Alert>
+        )}
 
         <Group grow>
           <Button
@@ -488,6 +547,66 @@ function ArchetypeSummary({
             {adjustmentsOpen ? "Hide adjustments" : "Adjust to my home"}
           </Button>
         </Group>
+
+        {isSelected && onClearAccepted ? (
+          <Button
+            variant="subtle"
+            color="gray"
+            size="sm"
+            leftSection={<IconX size={16} />}
+            onClick={onClearAccepted}
+            fullWidth
+          >
+            Discard accepted reference home
+          </Button>
+        ) : null}
+
+        {matchResult && matchResult.alternatives.length > 0 ? (
+          <>
+            <Button
+              variant="subtle"
+              size="xs"
+              onClick={toggleAlternatives}
+              fullWidth
+            >
+              {alternativesOpen
+                ? "Hide alternatives"
+                : `Show ${matchResult.alternatives.length} alternative${matchResult.alternatives.length === 1 ? "" : "s"}`}
+            </Button>
+            <Collapse in={alternativesOpen}>
+              <Stack gap="xs">
+                {matchResult.alternatives.map((alt) => {
+                  const code = countryNameToCode(alt.archetype.country);
+                  const flag = code ? countryFlag(code) : "";
+                  const label = getArchetypeSelectionLabel(
+                    alt.archetype,
+                    archetypeSelectionLabels,
+                  );
+                  return (
+                    <Group
+                      key={`${alt.archetype.country}-${alt.archetype.name}`}
+                      justify="space-between"
+                      align="center"
+                    >
+                      <Group gap="xs">
+                        {flag ? <Text size="sm">{flag}</Text> : null}
+                        <Text size="sm">{label}</Text>
+                        {matchQualityBadge(alt.matchQuality)}
+                      </Group>
+                      <Button
+                        size="xs"
+                        variant="light"
+                        onClick={() => onSelectAlternative(alt.archetype)}
+                      >
+                        Use this instead
+                      </Button>
+                    </Group>
+                  );
+                })}
+              </Stack>
+            </Collapse>
+          </>
+        ) : null}
 
         <Collapse in={adjustmentsOpen}>
           <Stack gap="md">
@@ -537,13 +656,13 @@ function ArchetypeSummary({
                 suffix="floors"
               />
               <NumberInput
-                label="Average floor height (m)"
-                description={`Reference: ${formatDecimal(referenceAverageFloorHeight)} m`}
-                value={draft.averageFloorHeight}
+                label="Floor height (m)"
+                description={`Reference: ${formatDecimal(details.floorHeight)} m`}
+                value={draft.floorHeight}
                 onChange={(value) =>
                   setDraft((current) => ({
                     ...(current ?? draft),
-                    averageFloorHeight: value,
+                    floorHeight: value,
                   }))
                 }
                 min={2}
@@ -553,11 +672,11 @@ function ArchetypeSummary({
               />
               <ReferenceDeltaCard
                 currentValue={
-                  typeof draft.averageFloorHeight === "number"
-                    ? draft.averageFloorHeight
+                  typeof draft.floorHeight === "number"
+                    ? draft.floorHeight
                     : undefined
                 }
-                referenceValue={referenceAverageFloorHeight}
+                referenceValue={details.floorHeight}
                 suffix="m"
               />
             </SimpleGrid>
@@ -659,9 +778,19 @@ export function ArchetypeSelector() {
     useState<ArchetypeInfo | null>(null);
   const [archetypeDetails, setArchetypeDetails] =
     useState<ArchetypeDetails | null>(null);
+  const [matchResult, setMatchResult] = useState<ArchetypeMatchResult | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [alternativeError, setAlternativeError] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftState | null>(null);
+  const requestIdRef = useRef(0);
+  /** Tracks the last archetype that was auto-matched so the effect can detect
+   *  genuine search-criteria changes without depending on `selectedArchetype`. */
+  const lastAutoMatchRef = useRef<{ name: string; country: string } | null>(
+    null,
+  );
 
   const { lat, lng, buildingType, constructionPeriod } = state.building;
   const canSearch =
@@ -695,8 +824,11 @@ export function ArchetypeSelector() {
 
   useEffect(() => {
     if (!canSearch) {
+      // Invalidate any in-flight request before clearing state.
+      requestIdRef.current++;
       setMatchedArchetype(null);
       setArchetypeDetails(null);
+      setMatchResult(null);
       setDraft(null);
       dispatch({
         type: "SET_BUILDING",
@@ -708,19 +840,23 @@ export function ArchetypeSelector() {
     }
 
     const findArchetype = async () => {
+      const requestId = ++requestIdRef.current;
       setIsLoading(true);
       setError(null);
 
       try {
-        const match = await building.findMatchingArchetype(
+        const foundMatchResult = await building.findMatchingArchetype(
           buildingType,
           constructionPeriod,
           { lat: lat!, lng: lng! },
         );
+        if (requestId !== requestIdRef.current) return;
+        const match = foundMatchResult?.archetype ?? null;
 
         if (!match) {
           setMatchedArchetype(null);
           setArchetypeDetails(null);
+          setMatchResult(null);
           setDraft(null);
           dispatch({
             type: "SET_BUILDING",
@@ -733,8 +869,10 @@ export function ArchetypeSelector() {
         }
 
         const details = await building.getArchetypeDetails(match);
+        if (requestId !== requestIdRef.current) return;
         setMatchedArchetype(match);
         setArchetypeDetails(details);
+        setMatchResult(foundMatchResult);
         dispatch({
           type: "SET_BUILDING",
           building: {
@@ -746,15 +884,20 @@ export function ArchetypeSelector() {
           },
         });
 
+        const prev = lastAutoMatchRef.current;
+        lastAutoMatchRef.current = { name: match.name, country: match.country };
         if (
-          !state.building.selectedArchetype ||
-          state.building.selectedArchetype.name !== match.name ||
-          state.building.selectedArchetype.country !== match.country
+          !prev ||
+          prev.name !== match.name ||
+          prev.country !== match.country
         ) {
           dispatch({
             type: "SET_BUILDING",
             building: {
-              country: match.country,
+              country:
+                normalizeCountryName(foundMatchResult?.detectedCountry) ??
+                normalizeCountryName(match.country) ??
+                match.country,
               tentativeArchetype: {
                 name: match.name,
                 category: match.category,
@@ -771,11 +914,13 @@ export function ArchetypeSelector() {
           });
         }
       } catch (err) {
+        if (requestId !== requestIdRef.current) return;
         setError(
           err instanceof Error ? err.message : "Failed to find archetype",
         );
         setMatchedArchetype(null);
         setArchetypeDetails(null);
+        setMatchResult(null);
         setDraft(null);
         dispatch({
           type: "SET_BUILDING",
@@ -784,7 +929,9 @@ export function ArchetypeSelector() {
           },
         });
       } finally {
-        setIsLoading(false);
+        if (requestId === requestIdRef.current) {
+          setIsLoading(false);
+        }
       }
     };
 
@@ -797,7 +944,6 @@ export function ArchetypeSelector() {
     dispatch,
     lat,
     lng,
-    state.building.selectedArchetype,
   ]);
 
   const handleUseReference = useCallback(() => {
@@ -857,6 +1003,57 @@ export function ArchetypeSelector() {
     });
   }, [archetypeDetails, dispatch, draft, matchedArchetype]);
 
+  const handleSelectAlternative = useCallback(
+    async (archetype: ArchetypeInfo) => {
+      setAlternativeError(null);
+      const requestId = ++requestIdRef.current;
+      try {
+        const details = await building.getArchetypeDetails(archetype);
+        if (requestId !== requestIdRef.current) return;
+        setMatchedArchetype(archetype);
+        setArchetypeDetails(details);
+        // The user explicitly overrode the auto-match, so auto-match
+        // transparency metadata no longer applies. Clearing matchResult
+        // removes the stale badge, explanation, and alternatives list.
+        setMatchResult(null);
+        // Sync lastAutoMatchRef so a subsequent auto-match against the same
+        // criteria doesn't needlessly reset adjustments the user just made.
+        lastAutoMatchRef.current = {
+          name: archetype.name,
+          country: archetype.country,
+        };
+        dispatch({
+          type: "SET_BUILDING",
+          building: {
+            country:
+              normalizeCountryName(matchResult?.detectedCountry) ??
+              normalizeCountryName(archetype.country) ??
+              archetype.country,
+            tentativeArchetype: {
+              name: archetype.name,
+              category: archetype.category,
+              country: archetype.country,
+            },
+            selectedArchetype: undefined,
+            floorArea: null,
+            numberOfFloors: null,
+            apartmentLocation: undefined,
+            floorNumber: null,
+            isModified: false,
+            modifications: undefined,
+          },
+        });
+      } catch (err) {
+        setAlternativeError(
+          err instanceof Error
+            ? err.message
+            : "Failed to load alternative archetype",
+        );
+      }
+    },
+    [building, dispatch, matchResult],
+  );
+
   if (!canSearch) {
     return (
       <ArchetypePlaceholder
@@ -914,16 +1111,33 @@ export function ArchetypeSelector() {
   }
 
   return (
-    <ArchetypeSummary
-      details={archetypeDetails}
-      isSelected={Boolean(isCurrentSelectionValid)}
-      isModified={Boolean(state.building.isModified)}
-      onUseReference={handleUseReference}
-      draft={draft}
-      setDraft={setDraft}
-      onApplyAdjustments={handleApplyAdjustments}
-      appliedModifications={state.building.modifications}
-      appliedApartmentLocation={state.building.apartmentLocation}
-    />
+    <Stack gap="xs">
+      {alternativeError ? (
+        <Alert
+          color="red"
+          variant="light"
+          icon={<IconAlertTriangle size={16} />}
+          onClose={() => setAlternativeError(null)}
+          withCloseButton
+        >
+          {alternativeError}
+        </Alert>
+      ) : null}
+      <ArchetypeSummary
+        details={archetypeDetails}
+        isSelected={Boolean(isCurrentSelectionValid)}
+        isModified={Boolean(state.building.isModified)}
+        onUseReference={handleUseReference}
+        onClearAccepted={() => dispatch({ type: "CLEAR_ACCEPTED_ARCHETYPE" })}
+        draft={draft}
+        setDraft={setDraft}
+        onApplyAdjustments={handleApplyAdjustments}
+        appliedModifications={state.building.modifications}
+        appliedApartmentLocation={state.building.apartmentLocation}
+        matchResult={matchResult}
+        selectedPeriod={constructionPeriod}
+        onSelectAlternative={handleSelectAlternative}
+      />
+    </Stack>
   );
 }

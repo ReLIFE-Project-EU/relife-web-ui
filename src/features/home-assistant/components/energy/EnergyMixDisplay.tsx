@@ -41,10 +41,10 @@ export function EnergyMixDisplay() {
       <Stack gap="lg">
         <Box>
           <Title order={4} mb="xs">
-            Estimated Aggregated Energy Results
+            Building Thermal Needs Breakdown
           </Title>
           <Text size="sm" c="dimmed">
-            Annual thermal demand by end use
+            Annual heating and cooling needs from the building simulation
           </Text>
         </Box>
 
@@ -77,8 +77,9 @@ export function EnergyMixDisplay() {
           <Text size="xs">
             These figures are <strong>ideal thermal loads</strong> from the
             building energy simulation — the energy the building needs to
-            maintain comfort. Actual energy consumption will be higher and
-            depends on your heating and cooling system efficiency.
+            maintain comfort. Actual system energy consumption depends on the
+            heating and cooling system, so it can be higher or lower. See Energy
+            Overview above for system consumption when it is available.
           </Text>
         </Alert>
       </Stack>

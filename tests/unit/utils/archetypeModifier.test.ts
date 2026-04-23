@@ -112,8 +112,14 @@ function createMockBui(): BuildingPayload {
         {
           name: "Occupancy",
           full_load: 120,
-          weekday: [0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0],
-          weekend: [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],
+          weekday: [
+            0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0,
+            0,
+          ],
+          weekend: [
+            0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
+            0,
+          ],
         },
       ],
     },
@@ -139,7 +145,7 @@ function createMockArchetypeDetails(): ArchetypeDetails {
     name: "SFH_Italy_1990_2000",
     floorArea: 100,
     numberOfFloors: 2,
-    buildingHeight: 6,
+    floorHeight: 3,
     totalWindowArea: 10,
     thermalProperties: { wallUValue: 1.5, roofUValue: 0.8, windowUValue: 2.8 },
     setpoints: {
@@ -163,7 +169,7 @@ describe("archetypeModifier", () => {
       const mods: BuildingModifications = {
         floorArea: 150,
         numberOfFloors: 3,
-        buildingHeight: 9,
+        floorHeight: 4,
         wallUValue: 1.0,
         roofUValue: 0.5,
         windowUValue: 2.0,
@@ -196,7 +202,9 @@ describe("archetypeModifier", () => {
       const result = validateModifications(mods, archetype);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors.some((e) => e.field === "totalWindowArea")).toBe(true);
+      expect(result.errors.some((e) => e.field === "totalWindowArea")).toBe(
+        true,
+      );
     });
 
     it("28: returns error when coolingSetpoint ≤ heatingSetpoint", () => {
@@ -210,9 +218,13 @@ describe("archetypeModifier", () => {
 
       expect(result.isValid).toBe(false);
       // coolingSetpoint=20 is also out of range [24,30], plus ≤ heating
-      const coolingErrors = result.errors.filter((e) => e.field === "coolingSetpoint");
+      const coolingErrors = result.errors.filter(
+        (e) => e.field === "coolingSetpoint",
+      );
       expect(coolingErrors.length).toBeGreaterThanOrEqual(1);
-      expect(coolingErrors.some((e) => e.message.includes("higher than heating"))).toBe(true);
+      expect(
+        coolingErrors.some((e) => e.message.includes("higher than heating")),
+      ).toBe(true);
     });
   });
 
@@ -238,6 +250,56 @@ describe("archetypeModifier", () => {
 
       const expected = 40 * Math.sqrt(2);
       expect(result.building.exposed_perimeter).toBeCloseTo(expected, 2);
+    });
+  });
+
+  // ---- applyGeometryModification (via applyAllModifications) ----
+
+  describe("applyAllModifications – geometry", () => {
+    it("scales wall and window areas when total building height changes", () => {
+      const archetype = createMockArchetypeDetails();
+      // Mock BUI: n_floors=2, height=6 → original total height = 12
+      // Change to n_floors=1 → new total height = 6 → scale = 0.5
+      const mods: BuildingModifications = { numberOfFloors: 1 };
+
+      const { bui } = applyAllModifications(archetype, mods);
+
+      expect(bui.building.n_floors).toBe(1);
+      for (const surface of bui.building_surface) {
+        const name = surface.name.toLowerCase();
+        if (name.includes("roof")) {
+          // Roof area unchanged (horizontal surface)
+          expect(surface.area).toBe(50);
+        } else if (surface.type === "transparent") {
+          // Window areas halved (vertical surface)
+          expect(surface.area).toBeCloseTo(2.5, 5);
+        } else {
+          // Wall areas halved (vertical surface)
+          expect(surface.area).toBeCloseTo(10, 5);
+        }
+      }
+    });
+
+    it("does not scale surfaces when total height is unchanged", () => {
+      const archetype = createMockArchetypeDetails();
+      // Mock BUI: n_floors=2, height=6 → total=12
+      // Change to n_floors=4, floorHeight=3 → total=12 (same)
+      const mods: BuildingModifications = { numberOfFloors: 4, floorHeight: 3 };
+
+      const { bui } = applyAllModifications(archetype, mods);
+
+      expect(bui.building.n_floors).toBe(4);
+      expect(bui.building.height).toBe(3);
+      for (const surface of bui.building_surface) {
+        const name = surface.name.toLowerCase();
+        if (name.includes("roof")) {
+          expect(surface.area).toBe(50);
+        } else if (surface.type === "transparent") {
+          expect(surface.area).toBe(5);
+        } else {
+          expect(surface.area).toBe(20);
+        }
+      }
     });
   });
 

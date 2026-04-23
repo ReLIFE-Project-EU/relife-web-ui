@@ -33,7 +33,7 @@ export interface ArchetypeSetpoints {
 export interface ArchetypeDetails extends ArchetypeInfo {
   floorArea: number; // m²
   numberOfFloors: number;
-  buildingHeight: number; // m
+  floorHeight: number; // m (per storey)
   totalWindowArea: number; // m²
   thermalProperties: ArchetypeThermalProperties;
   setpoints: ArchetypeSetpoints;
@@ -146,7 +146,7 @@ export interface BuildingModifications {
   // Geometry
   floorArea?: number; // m²
   numberOfFloors?: number;
-  buildingHeight?: number; // m
+  floorHeight?: number; // m (per storey)
 
   // Windows
   totalWindowArea?: number; // m²
@@ -195,9 +195,9 @@ export const MODIFICATION_CONSTRAINTS = {
     min: 1,
     max: 20,
   },
-  buildingHeight: {
+  floorHeight: {
     min: 2,
-    max: 60,
+    max: 6,
     unit: "m",
   },
   totalWindowArea: {

@@ -2,7 +2,15 @@
  * File list component showing files in the current portfolio.
  */
 
-import { Group, Paper, Skeleton, Stack, Table, Text } from "@mantine/core";
+import {
+  Group,
+  Paper,
+  Skeleton,
+  Stack,
+  Table,
+  Text,
+  ThemeIcon,
+} from "@mantine/core";
 import { IconFolderOpen } from "@tabler/icons-react";
 import { getFileTypeLabel } from "../../constants";
 import { useFileUpload } from "../../hooks/useFileUpload";
@@ -46,13 +54,11 @@ export function FileList() {
 
   if (files.length === 0) {
     return (
-      <Paper withBorder p="xl" radius="md">
+      <Paper withBorder p="xl" radius="md" bg="gray.0">
         <Stack align="center" gap="md">
-          <IconFolderOpen
-            size={48}
-            color="var(--mantine-color-dimmed)"
-            stroke={1.5}
-          />
+          <ThemeIcon size={56} radius="xl" variant="light" color="gray">
+            <IconFolderOpen size={28} stroke={1.5} />
+          </ThemeIcon>
           <Text c="dimmed" ta="center">
             No files in this portfolio yet.
             <br />
@@ -100,17 +106,19 @@ export function FileList() {
 
   return (
     <Paper withBorder radius="md">
-      <Table verticalSpacing="sm" highlightOnHover>
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>File</Table.Th>
-            <Table.Th>Size</Table.Th>
-            <Table.Th>Uploaded</Table.Th>
-            <Table.Th style={{ width: 60 }} />
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>{rows}</Table.Tbody>
-      </Table>
+      <Table.ScrollContainer minWidth={720}>
+        <Table verticalSpacing="sm" highlightOnHover>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>File</Table.Th>
+              <Table.Th>Size</Table.Th>
+              <Table.Th>Uploaded</Table.Th>
+              <Table.Th style={{ width: 60 }} />
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>{rows}</Table.Tbody>
+        </Table>
+      </Table.ScrollContainer>
     </Paper>
   );
 }

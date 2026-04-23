@@ -5,7 +5,7 @@
 import type { OutputLevel } from "../../utils/apiMappings";
 
 export const PRA_OUTPUT_LEVEL: OutputLevel = "professional";
-export const PRA_CONCURRENCY_LIMIT = 3;
+export const PRA_CONCURRENCY_LIMIT = 2;
 export const PRA_DEFAULT_PROJECT_LIFETIME = 20;
 
 export type FinancingScheme = "debt" | "equity" | "epc" | "leasing" | "ppa";

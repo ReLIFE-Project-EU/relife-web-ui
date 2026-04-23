@@ -1,7 +1,11 @@
 import { vi, describe, test, expect, beforeEach } from "vitest";
 import type { IBuildingService } from "../../../src/services/types";
 import type { BuildingInfo } from "../../../src/types/renovation";
-import type { ArchetypeDetails, BuildingPayload, SystemPayload } from "../../../src/types/archetype";
+import type {
+  ArchetypeDetails,
+  BuildingPayload,
+  SystemPayload,
+} from "../../../src/types/archetype";
 
 // ── Mock setup ──────────────────────────────────────────────────────────────
 
@@ -42,6 +46,7 @@ const mockBuildingService = {
   getAvailablePeriods: vi.fn(),
   countMatchingArchetypes: vi.fn(),
   getDefaultsForCountry: vi.fn(),
+  detectCountryFromCoords: vi.fn(),
 } as unknown as IBuildingService;
 
 // ── Test data ───────────────────────────────────────────────────────────────
@@ -50,6 +55,7 @@ const archetypeList = [
   { category: "SFH", country: "Greece", name: "GR_SFH_1961_1980" },
   { category: "SFH", country: "Italy", name: "IT_SFH_1961_1980" },
   { category: "MFH", country: "Greece", name: "GR_MFH_1961_1980" },
+  { category: "SFH", country: "Czechia", name: "CZ_SFH_1961_1980" },
 ];
 
 const stubSimulationResponse = {
@@ -64,6 +70,13 @@ const stubSimulationResponse = {
       Q_H: 200,
       Q_C: 100,
     }),
+    primary_energy_uni11300: {
+      summary: {
+        E_delivered_thermal_kWh: 1200,
+        E_delivered_electric_total_kWh: 300,
+        EP_total_kWh: 2100,
+      },
+    },
   },
 };
 
@@ -147,7 +160,7 @@ const stubArchetypeDetails: ArchetypeDetails = {
   name: "GR_SFH_1961_1980",
   floorArea: 100,
   numberOfFloors: 2,
-  buildingHeight: 6,
+  floorHeight: 3,
   totalWindowArea: 10,
   thermalProperties: {
     wallUValue: 1.5,
@@ -202,9 +215,9 @@ describe("EnergyService", () => {
     mockListArchetypes.mockResolvedValue(archetypeList);
     mockSimulateDirect.mockResolvedValue(stubSimulationResponse);
     mockSimulateCustomBuilding.mockResolvedValue(stubSimulationResponse);
-    (mockBuildingService.getArchetypeDetails as ReturnType<typeof vi.fn>).mockResolvedValue(
-      stubArchetypeDetails,
-    );
+    (
+      mockBuildingService.getArchetypeDetails as ReturnType<typeof vi.fn>
+    ).mockResolvedValue(stubArchetypeDetails);
     service = new EnergyService(mockBuildingService);
   });
 
@@ -237,6 +250,26 @@ describe("EnergyService", () => {
     expect(mockSimulateDirect).toHaveBeenCalledOnce();
   });
 
+  test("identical archetype simulations reuse the in-flight request", async () => {
+    await Promise.all([
+      service.estimateEPC(unmodifiedBuilding),
+      service.estimateEPC(unmodifiedBuilding),
+    ]);
+
+    expect(mockSimulateDirect).toHaveBeenCalledOnce();
+  });
+
+  test("failed archetype simulations are evicted from cache", async () => {
+    mockSimulateDirect
+      .mockRejectedValueOnce(new TypeError("fetch failed"))
+      .mockResolvedValueOnce(stubSimulationResponse);
+
+    await expect(service.estimateEPC(unmodifiedBuilding)).rejects.toThrow();
+    await service.estimateEPC(unmodifiedBuilding);
+
+    expect(mockSimulateDirect).toHaveBeenCalledTimes(2);
+  });
+
   test("simulateDirect receives correct archetype params", async () => {
     await service.estimateEPC(unmodifiedBuilding);
 
@@ -248,6 +281,15 @@ describe("EnergyService", () => {
         weatherSource: "pvgis",
       }),
     );
+  });
+
+  test("estimateEPC exposes UNI delivered and primary energy when available", async () => {
+    const estimation = await service.estimateEPC(unmodifiedBuilding);
+
+    expect(estimation.deliveredTotal).toBe(1500);
+    expect(estimation.deliveredEnergyCost).toBe(375);
+    expect(estimation.primaryEnergy).toBe(2100);
+    expect(estimation.annualEnergyNeeds).toBe(2628);
   });
 
   test("modified path sends validated BUI to simulateCustomBuilding", async () => {
@@ -294,6 +336,24 @@ describe("EnergyService", () => {
       }),
     );
     expect(result).toBeDefined();
+  });
+
+  test("findMatchingArchetype normalizes country aliases before exact matching", async () => {
+    const czechBuilding: BuildingInfo = {
+      ...unmodifiedBuilding,
+      country: "Czech Republic",
+      selectedArchetype: undefined,
+    };
+
+    await service.estimateEPC(czechBuilding);
+
+    expect(mockSimulateDirect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        country: "Czechia",
+        category: "SFH",
+        name: "CZ_SFH_1961_1980",
+      }),
+    );
   });
 
   test("findMatchingArchetype throws ArchetypeNotAvailableError when no match at all", async () => {

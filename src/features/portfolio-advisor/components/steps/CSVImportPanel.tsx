@@ -5,27 +5,33 @@
 
 import {
   Alert,
-  Anchor,
   Button,
   Card,
   Collapse,
   Group,
+  Loader,
   Select,
   Stack,
   Text,
+  ThemeIcon,
   Title,
   UnstyledButton,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
   IconAlertCircle,
+  IconArrowRight,
   IconChevronDown,
   IconChevronUp,
-  IconDownload,
   IconFileSpreadsheet,
+  IconFolder,
+  IconLogin,
   IconUpload,
 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { signInWithKeycloak, supabase } from "../../../../auth";
+import { useSupabaseSession } from "../../../../hooks/useAuth";
 import { portfolioApi } from "../../../portfolio-manager/api/portfolioApi";
 import { fileApi } from "../../../portfolio-manager/api/fileApi";
 import type {
@@ -40,6 +46,7 @@ export function CSVImportPanel({
 }: {
   onImport: (buildings: PRABuilding[]) => void;
 }) {
+  const { session, loading: isSessionLoading } = useSupabaseSession();
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [files, setFiles] = useState<PortfolioFile[]>([]);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(
@@ -51,8 +58,25 @@ export function CSVImportPanel({
   const [portfolioError, setPortfolioError] = useState<string | null>(null);
   const [opened, { toggle }] = useDisclosure(true);
 
-  // Load portfolios
+  const portfolioUploadGuidance = !selectedPortfolioId
+    ? portfolios.length === 0
+      ? "No portfolios are available yet. Create one and upload a CSV in My Portfolios, then return here to import it."
+      : "CSV files are uploaded and documented in My Portfolios. After uploading there, return here and choose a portfolio and file to import."
+    : files.length === 0
+      ? "This portfolio does not have any uploaded files yet. Add a CSV in My Portfolios, then return here to import it."
+      : "Need a different file or CSV format guidance? Use My Portfolios, then come back here to import.";
+
   useEffect(() => {
+    if (isSessionLoading) {
+      return;
+    }
+
+    if (!session) {
+      setPortfolios([]);
+      setPortfolioError(null);
+      return;
+    }
+
     portfolioApi
       .list()
       .then(setPortfolios)
@@ -61,15 +85,15 @@ export function CSVImportPanel({
           e instanceof Error ? e.message : "Failed to load portfolios",
         ),
       );
-  }, []);
+  }, [isSessionLoading, session]);
 
-  // Load files when portfolio changes
   useEffect(() => {
-    if (!selectedPortfolioId) {
+    if (!session || !selectedPortfolioId) {
       setFiles([]);
       setSelectedFileId(null);
       return;
     }
+
     fileApi
       .listByPortfolio(selectedPortfolioId)
       .then((f) => {
@@ -77,7 +101,7 @@ export function CSVImportPanel({
         setSelectedFileId(null);
       })
       .catch(() => setFiles([]));
-  }, [selectedPortfolioId]);
+  }, [selectedPortfolioId, session]);
 
   const handleImport = async () => {
     if (!selectedFileId) return;
@@ -122,59 +146,103 @@ export function CSVImportPanel({
 
       <Collapse in={opened}>
         <Stack gap="sm" mt="md">
+          {isSessionLoading && <Loader size="sm" />}
+
+          {!isSessionLoading && !session && (
+            <Alert color="blue" icon={<IconAlertCircle size={16} />}>
+              <Stack gap="xs">
+                <Text size="sm">
+                  Sign in to import a CSV from your saved portfolios.
+                </Text>
+                <Group>
+                  <Button
+                    size="xs"
+                    leftSection={<IconLogin size={14} />}
+                    onClick={() => signInWithKeycloak({ supabase })}
+                  >
+                    Sign in with SSO
+                  </Button>
+                </Group>
+              </Stack>
+            </Alert>
+          )}
+
           {portfolioError && (
             <Alert color="yellow" icon={<IconAlertCircle size={16} />}>
               {portfolioError}
             </Alert>
           )}
 
-          <Group grow align="end">
-            <Select
-              label="Portfolio"
-              placeholder="Choose a portfolio"
-              data={portfolios.map((p) => ({ value: p.id, label: p.name }))}
-              value={selectedPortfolioId}
-              onChange={setSelectedPortfolioId}
-              clearable
-            />
-
-            <Select
-              label="File"
-              placeholder="Choose a CSV file"
-              data={files.map((f) => ({
-                value: f.id,
-                label: f.originalFilename,
-              }))}
-              value={selectedFileId}
-              onChange={setSelectedFileId}
-              disabled={!selectedPortfolioId || files.length === 0}
-              clearable
-            />
-
-            <Button
-              leftSection={<IconUpload size={16} />}
-              onClick={handleImport}
-              loading={loading}
-              disabled={!selectedFileId}
+          {session && (
+            <Group
+              justify="space-between"
+              gap="sm"
+              align="flex-start"
+              wrap="wrap"
             >
-              Import
-            </Button>
-          </Group>
-
-          <Text size="xs" c="dimmed">
-            Not sure about the format?{" "}
-            <Anchor
-              href={`${import.meta.env.BASE_URL}portfolio_example.csv`}
-              download="portfolio_example.csv"
-              size="xs"
-              inline
-            >
-              <Group gap={4} component="span" display="inline-flex">
-                <IconDownload size={12} />
-                Download an example CSV
+              <Group gap="sm" wrap="nowrap" style={{ flex: 1 }}>
+                <ThemeIcon variant="light" color="teal" radius="md">
+                  <IconFolder size={16} />
+                </ThemeIcon>
+                <div>
+                  <Text size="sm" fw={600}>
+                    Upload and get CSV support in My Portfolios
+                  </Text>
+                  <Text size="sm" c="dimmed">
+                    {portfolioUploadGuidance}
+                  </Text>
+                </div>
               </Group>
-            </Anchor>
-          </Text>
+              <Button
+                component={Link}
+                to="/my-portfolios"
+                variant="subtle"
+                color="teal"
+                size="xs"
+                rightSection={<IconArrowRight size={14} />}
+              >
+                Open My Portfolios
+              </Button>
+            </Group>
+          )}
+
+          {session && (
+            <Group grow align="end">
+              <Select
+                label="Portfolio"
+                placeholder="Choose a portfolio"
+                data={portfolios.map((p) => ({ value: p.id, label: p.name }))}
+                value={selectedPortfolioId}
+                onChange={setSelectedPortfolioId}
+                disabled={isSessionLoading}
+                clearable
+              />
+
+              <Select
+                label="File"
+                placeholder="Choose a CSV file"
+                data={files.map((f) => ({
+                  value: f.id,
+                  label: f.originalFilename,
+                }))}
+                value={selectedFileId}
+                onChange={setSelectedFileId}
+                disabled={
+                  isSessionLoading || !selectedPortfolioId || files.length === 0
+                }
+                clearable
+              />
+
+              <Button
+                leftSection={<IconUpload size={16} />}
+                onClick={handleImport}
+                loading={loading}
+                disabled={isSessionLoading || !selectedFileId}
+              >
+                Import
+              </Button>
+            </Group>
+          )}
 
           {importErrors.length > 0 && (
             <Alert

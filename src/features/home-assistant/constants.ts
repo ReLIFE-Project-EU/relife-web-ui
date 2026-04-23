@@ -27,6 +27,9 @@ export const BUILDING_FLOORS_MAX = 100;
 export const PROJECT_LIFETIME_MIN = 1;
 export const PROJECT_LIFETIME_MAX = 30;
 export const PROJECT_LIFETIME_DEFAULT = 20;
+export const PACKAGE_SELECTION_MAX = 3;
+export const PACKAGE_CAPEX_DEFAULT = 10_000;
+export const PACKAGE_ANNUAL_MAINTENANCE_DEFAULT = 300;
 
 export const PROJECT_LIFETIME_MARKS = [
   { value: 5, label: "5y" },

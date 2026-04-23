@@ -14,16 +14,19 @@ import type {
   BuildingInfo,
   FundingOptions,
   RenovationMeasureId,
+  RenovationPackage,
 } from "../../../types/renovation";
 import { deriveConstructionYear } from "../../../utils/apiMappings";
 import { PRA_CONCURRENCY_LIMIT } from "../constants";
-import type { FinancingScheme } from "../constants";
 import type {
   BuildingAnalysisResult,
   PRABuilding,
   PRAFinancialResults,
 } from "../context/types";
-import type { IPortfolioAnalysisService } from "./types";
+import type {
+  IPortfolioAnalysisService,
+  PortfolioAnalysisRequest,
+} from "./types";
 
 export class PortfolioAnalysisService implements IPortfolioAnalysisService {
   private readonly energy: IEnergyService;
@@ -41,15 +44,19 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
   }
 
   async analyzePortfolio(
-    buildings: PRABuilding[],
-    selectedMeasures: RenovationMeasureId[],
-    _financingScheme: FinancingScheme,
-    funding: FundingOptions,
-    projectLifetime: number,
-    onProgress: (completed: number, total: number, current: string) => void,
-    globalCapex?: number | null,
-    globalMaintenanceCost?: number | null,
+    request: PortfolioAnalysisRequest,
   ): Promise<Record<string, BuildingAnalysisResult>> {
+    const {
+      buildings,
+      selectedMeasures,
+      financingScheme,
+      funding,
+      projectLifetime,
+      onProgress,
+      globalCapex,
+      globalMaintenanceCost,
+    } = request;
+    void financingScheme;
     const results: Record<string, BuildingAnalysisResult> = {};
     let completed = 0;
 
@@ -116,10 +123,42 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     const estimation = await this.energy.estimateEPC(buildingInfo);
 
     // Step 2: Evaluate renovation scenarios
+    const renovatedMeasures = selectedMeasures.filter((measureId) =>
+      this.renovation.isAnalysisEligibleMeasure(measureId),
+    );
+
+    if (selectedMeasures.length === 0) {
+      throw new Error(
+        "Portfolio analysis requires at least one selected renovation measure per building.",
+      );
+    }
+
+    if (renovatedMeasures.length === 0) {
+      throw new Error(
+        "Portfolio analysis requires at least one analyzable measure per building. Supported measures are wall, roof, floor, windows, condensing boiler, and air-water heat pump.",
+      );
+    }
+
+    if (this.hasMultipleSystemMeasures(renovatedMeasures)) {
+      throw new Error(
+        "Portfolio analysis currently supports at most one system upgrade per building. Select either condensing boiler or air-water heat pump, not both.",
+      );
+    }
+
+    const packages: RenovationPackage[] =
+      renovatedMeasures.length > 0
+        ? [
+            {
+              id: "renovated",
+              label: "After Renovation",
+              measureIds: renovatedMeasures,
+            },
+          ]
+        : [];
     const scenarios = await this.renovation.evaluateScenarios(
       buildingInfo,
       estimation,
-      selectedMeasures,
+      packages,
     );
 
     // Step 3: Calculate financial results
@@ -128,16 +167,19 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     const maintenanceCost =
       building.annualMaintenanceCost ?? globalMaintenanceCost ?? null;
 
-    const financialResults = await this.financial.calculateForAllScenarios(
+    const financialResults = await this.financial.calculateForAllScenarios({
       scenarios,
-      funding,
-      building.floorArea,
-      estimation,
-      "baseline",
-      capex,
-      maintenanceCost,
-      buildingInfo,
-    );
+      fundingOptions: funding,
+      floorArea: building.floorArea,
+      currentEstimation: estimation,
+      packageFinancialInputs: {
+        renovated: {
+          capex,
+          annualMaintenanceCost: maintenanceCost,
+        },
+      },
+      building: buildingInfo,
+    });
 
     // Enhance results with professional-level data if available
     const renovatedResults = financialResults["renovated"];
@@ -179,6 +221,20 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     };
   }
 
+  private hasMultipleSystemMeasures(
+    measureIds: RenovationMeasureId[],
+  ): boolean {
+    const systemMeasureIds: RenovationMeasureId[] = [
+      "condensing-boiler",
+      "air-water-heat-pump",
+    ];
+
+    return (
+      measureIds.filter((measureId) => systemMeasureIds.includes(measureId))
+        .length > 1
+    );
+  }
+
   /**
    * Convert PRABuilding to BuildingInfo for shared services.
    */
@@ -196,7 +252,11 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       buildingType: b.propertyType,
       constructionPeriod: b.constructionPeriod,
       selectedArchetype: b.archetypeName
-        ? { name: b.archetypeName, category: b.category, country: b.country }
+        ? {
+            name: b.archetypeName,
+            category: b.category,
+            country: b.archetypeCountry ?? b.country,
+          }
         : undefined,
       isModified: !!hasModifications,
       modifications: hasModifications ? b.modifications : undefined,

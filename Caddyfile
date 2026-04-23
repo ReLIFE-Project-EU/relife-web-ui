@@ -22,6 +22,56 @@
 		reverse_proxy {$API_FORECASTING_URL:http://forecasting:9090}
 	}
 
+	# FastAPI's Swagger UI in the backend images still requests root-level assets.
+	# Route those requests back to the originating service based on the docs page referer.
+	@financialDocsOpenAPI {
+		path /openapi.json
+		header_regexp Referer ^https?://[^/]+/api/financial/docs(?:[/?#].*)?$
+	}
+	handle @financialDocsOpenAPI {
+		reverse_proxy {$API_FINANCIAL_URL:http://financial:9090}
+	}
+
+	@forecastingDocsOpenAPI {
+		path /openapi.json
+		header_regexp Referer ^https?://[^/]+/api/forecasting/docs(?:[/?#].*)?$
+	}
+	handle @forecastingDocsOpenAPI {
+		reverse_proxy {$API_FORECASTING_URL:http://forecasting:9090}
+	}
+
+	@technicalDocsOpenAPI {
+		path /openapi.json
+		header_regexp Referer ^https?://[^/]+/api/technical/docs(?:[/?#].*)?$
+	}
+	handle @technicalDocsOpenAPI {
+		reverse_proxy {$API_TECHNICAL_URL:http://technical:9090}
+	}
+
+	@financialDocsOAuthRedirect {
+		path /docs/oauth2-redirect
+		header_regexp Referer ^https?://[^/]+/api/financial/docs(?:[/?#].*)?$
+	}
+	handle @financialDocsOAuthRedirect {
+		reverse_proxy {$API_FINANCIAL_URL:http://financial:9090}
+	}
+
+	@forecastingDocsOAuthRedirect {
+		path /docs/oauth2-redirect
+		header_regexp Referer ^https?://[^/]+/api/forecasting/docs(?:[/?#].*)?$
+	}
+	handle @forecastingDocsOAuthRedirect {
+		reverse_proxy {$API_FORECASTING_URL:http://forecasting:9090}
+	}
+
+	@technicalDocsOAuthRedirect {
+		path /docs/oauth2-redirect
+		header_regexp Referer ^https?://[^/]+/api/technical/docs(?:[/?#].*)?$
+	}
+	handle @technicalDocsOAuthRedirect {
+		reverse_proxy {$API_TECHNICAL_URL:http://technical:9090}
+	}
+
 	# Single-page application fallback
 	# Serve index.html for all non-API routes
 	handle {

@@ -1,17 +1,19 @@
 name: relife-platform
 
+x-api-service-environment: &api-service-environment
+  API_HOST: 0.0.0.0
+  API_PORT: 9090
+  SUPABASE_URL: ${SUPABASE_URL:-${VITE_SUPABASE_URL}}
+  SUPABASE_KEY: ${SUPABASE_KEY}
+  KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-${VITE_KEYCLOAK_CLIENT_ID}}
+  KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+  KEYCLOAK_REALM_URL: ${KEYCLOAK_REALM_URL}
+  ADMIN_ROLE_NAME: ${ADMIN_ROLE_NAME}
+  BUCKET_NAME: ${BUCKET_NAME}
+  LOG_LEVEL: ${SERVICE_LOG_LEVEL}
+
 x-api-service-defaults: &api-service-defaults
-  environment:
-    API_HOST: 0.0.0.0
-    API_PORT: 9090
-    SUPABASE_URL: ${SUPABASE_URL:-${VITE_SUPABASE_URL}}
-    SUPABASE_KEY: ${SUPABASE_KEY}
-    KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-${VITE_KEYCLOAK_CLIENT_ID}}
-    KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
-    KEYCLOAK_REALM_URL: ${KEYCLOAK_REALM_URL}
-    ADMIN_ROLE_NAME: ${ADMIN_ROLE_NAME}
-    BUCKET_NAME: ${BUCKET_NAME}
-    LOG_LEVEL: ${SERVICE_LOG_LEVEL}
+  environment: *api-service-environment
   healthcheck:
     test: ["CMD", "curl", "-f", "http://localhost:9090/docs"]
     interval: 30s
@@ -58,6 +60,9 @@ services:
   forecasting:
     image: ghcr.io/relife-project-eu/relife-forecasting-service:${IMAGE_TAG_FORECASTING}
     <<: *api-service-defaults
+    environment:
+      <<: *api-service-environment
+      API_WORKERS: ${API_WORKERS:-4}
   technical:
     platform: linux/amd64
     image: ghcr.io/relife-project-eu/relife-technical-service:${IMAGE_TAG_TECHNICAL}

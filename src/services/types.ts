@@ -18,9 +18,10 @@ import type {
   CashFlowData,
   EstimationResult,
   FinancialResults,
-  FinancialScenario,
   FundingOptions,
   MCDARankingResult,
+  PackageFinancialInputsById,
+  RenovationPackage,
   RenovationMeasureId,
   RenovationScenario,
   RiskAssessmentMetadata,
@@ -43,6 +44,23 @@ export interface SelectOption {
   label: string;
 }
 
+export type PeriodAvailabilityScope = "local" | "fallback";
+
+export type PeriodAvailabilityReason =
+  | "normalized-country-alias"
+  | "no-local-archetypes"
+  | "no-local-periods"
+  | null;
+
+export interface PeriodAvailabilityResult {
+  periods: string[];
+  recommendedPeriod: string | null;
+  detectedCountry: string | null;
+  sourceCountry: string | null;
+  scope: PeriodAvailabilityScope;
+  reason: PeriodAvailabilityReason;
+}
+
 export interface BuildingOptions {
   countries: SelectOption[];
   buildingTypes: SelectOption[];
@@ -53,6 +71,39 @@ export interface BuildingOptions {
   coolingTechnologies: SelectOption[];
   hotWaterTechnologies: SelectOption[];
   glazingTechnologies: SelectOption[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Archetype Matching Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type MatchQuality = "excellent" | "good" | "approximate";
+
+export interface ArchetypeScoreBreakdown {
+  countryScore: number;
+  periodScore: number;
+  geoScore: number;
+  total: number;
+}
+
+export interface ArchetypeMatchAlternative {
+  archetype: import("../types/forecasting").ArchetypeInfo;
+  matchQuality: MatchQuality;
+  score: number;
+}
+
+/**
+ * Rich result from archetype matching, providing transparency
+ * about why a particular archetype was selected.
+ */
+export interface ArchetypeMatchResult {
+  archetype: import("../types/forecasting").ArchetypeInfo;
+  detectedCountry: string | null;
+  matchQuality: MatchQuality;
+  periodRelaxed: boolean;
+  score: number;
+  scoreBreakdown: ArchetypeScoreBreakdown;
+  alternatives: ArchetypeMatchAlternative[];
 }
 
 export interface IBuildingService {
@@ -71,14 +122,14 @@ export interface IBuildingService {
   ): Promise<import("../types/forecasting").ArchetypeInfo[]>;
 
   /**
-   * Find best matching archetype based on user selections
-   * Uses distance-based matching across ALL countries
+   * Find best matching archetype based on user selections.
+   * Returns rich match result with score breakdown and alternatives.
    */
   findMatchingArchetype(
     category: string,
     period?: string | null,
     coords?: { lat: number; lng: number } | null,
-  ): Promise<import("../types/forecasting").ArchetypeInfo | null>;
+  ): Promise<ArchetypeMatchResult | null>;
 
   /**
    * Get available building categories based on coordinates
@@ -88,14 +139,22 @@ export interface IBuildingService {
   ): Promise<string[]>;
 
   /**
-   * Get available construction periods for a category
+   * Get available construction periods for a category.
+   * When country is provided, returns only periods available in that country.
    */
-  getAvailablePeriods(category: string): Promise<string[]>;
+  getAvailablePeriods(
+    category: string,
+    country?: string,
+  ): Promise<PeriodAvailabilityResult>;
 
   /**
    * Count matching archetypes for given criteria
    */
-  countMatchingArchetypes(category?: string, period?: string): Promise<number>;
+  countMatchingArchetypes(
+    category?: string,
+    period?: string,
+    country?: string,
+  ): Promise<number>;
 
   /**
    * Get full archetype details including BUI and System payloads
@@ -105,9 +164,15 @@ export interface IBuildingService {
   ): Promise<import("../types/archetype").ArchetypeDetails>;
 
   /**
-   * Get default building values for a specific country (deprecated)
+   * Legacy helper for country defaults used by older forms.
+   * Accepts an ISO country code or display name.
    */
   getDefaultsForCountry(country: string): Partial<BuildingInfo>;
+
+  /**
+   * Detect country from coordinates using bundled offline EU polygons.
+   */
+  detectCountryFromCoords(coords: { lat: number; lng: number }): string | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -208,22 +273,39 @@ export interface IRenovationService {
   getSupportedMeasures(): RenovationMeasure[];
 
   /**
+   * Get all measures that can currently participate in ranked packages.
+   */
+  getRankableMeasures(): RenovationMeasure[];
+
+  /**
+   * Get all measures that can currently participate in scenario analysis.
+   * This includes the rankable envelope set plus supported system scenarios
+   * that are comparable financially but not yet rankable.
+   */
+  getAnalysisEligibleMeasures(): RenovationMeasure[];
+
+  /**
+   * Check whether a measure can currently participate in scenario analysis.
+   */
+  isAnalysisEligibleMeasure(measureId: RenovationMeasureId): boolean;
+
+  /**
    * Get all measure categories with display info
    */
   getCategories(): MeasureCategoryInfo[];
 
   /**
-   * Evaluate renovation scenarios based on selected measures.
-   * Returns "current" (baseline) and "renovated" (with selected measures) scenarios.
-   *
-   * TODO: In production, this should call the Forecasting API to get
-   * actual energy_savings and energy_class values based on building simulation.
-   * Currently returns mock/placeholder data.
+   * Build package suggestions from the selected measures.
+   */
+  suggestPackages(selectedMeasures: RenovationMeasureId[]): RenovationPackage[];
+
+  /**
+   * Evaluate baseline + package scenarios.
    */
   evaluateScenarios(
     building: BuildingInfo,
     estimation: EstimationResult,
-    selectedMeasures: RenovationMeasureId[],
+    packages: RenovationPackage[],
   ): Promise<RenovationScenario[]>;
 }
 
@@ -259,8 +341,11 @@ export interface RiskAssessmentRequest {
   indicators?: string[]; // Default: ["IRR", "NPV", "PBP", "DPP", "ROI"]
   loan_amount?: number; // Default: 0
   loan_term?: number; // Default: 0 (years)
-  // capex and annual_maintenance_cost are optional
-  // API retrieves from internal dataset if not provided
+  upfront_incentive_percentage?: number; // 0-100
+  lifetime_incentive_amount?: number; // EUR/year
+  lifetime_incentive_years?: number; // years
+  // Backend fallback is planned but not currently available in the live service.
+  // HRA supplies these explicitly for now.
   capex?: number;
   annual_maintenance_cost?: number;
   include_visualizations?: boolean; // Override for visualizations
@@ -283,6 +368,15 @@ export interface RiskAssessmentResponse {
   cashFlowData?: CashFlowData;
 }
 
+export interface CalculateFinancialScenariosRequest {
+  scenarios: RenovationScenario[];
+  fundingOptions: FundingOptions;
+  floorArea: number;
+  currentEstimation: EstimationResult;
+  packageFinancialInputs: PackageFinancialInputsById;
+  building: BuildingInfo;
+}
+
 export interface IFinancialService {
   /**
    * Calculate After Renovation Value (ARV)
@@ -299,36 +393,23 @@ export interface IFinancialService {
   /**
    * Calculate financial results for all scenarios
    * Uses calculateARV and assessRisk internally
-   * @param scenarios Array of renovation scenarios to evaluate
-   * @param fundingOptions Funding/loan configuration
-   * @param floorArea Building floor area in m²
-   * @param currentEstimation Current building energy estimation
-   * @param financialScenario Economic scenario (baseline/optimistic/pessimistic)
-   * @param totalCapex Total capital expenditure for renovation (EUR), or null to let API fetch from database
-   * @param annualMaintenanceCost Annual O&M cost (EUR/year), or null to let API fetch from database
-   * @param building Building information for ARV calculation
    */
+  calculateForAllScenarios(
+    request: CalculateFinancialScenariosRequest,
+  ): Promise<Record<ScenarioId, FinancialResults>>;
   calculateForAllScenarios(
     scenarios: RenovationScenario[],
     fundingOptions: FundingOptions,
     floorArea: number,
     currentEstimation: EstimationResult,
-    financialScenario: FinancialScenario,
-    totalCapex: number | null,
-    annualMaintenanceCost: number | null,
+    packageFinancialInputs: PackageFinancialInputsById,
     building: BuildingInfo,
   ): Promise<Record<ScenarioId, FinancialResults>>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MCDA Service Types
-// TBD: Technical API provides 5 separate pillar endpoints:
-//   POST /technical/ee  - Energy Efficiency
-//   POST /financial/rei - Renewable Energy Integration
-//   POST /technical/sei - Sustainability & Environmental Impact
-//   POST /technical/uc  - User Comfort
-//   POST /technical/fv  - Financial Viability
-// Current mock implements TOPSIS locally; future: call API endpoints
+// Technical API integration for renovation-package ranking.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface MCDAPersona {
@@ -345,21 +426,17 @@ export interface MCDAPersona {
 }
 
 /**
- * TBD: Technical API pillar request structure
- * Each pillar endpoint expects KPI values with min/max bounds and a profile
+ * @deprecated Kept only for backward-compatible type exports.
  */
 export interface TechnicalPillarRequest {
   profile: string; // Persona ID
-  // Each pillar has specific KPI fields with _kpi, _min, _max suffixes
-  // See api-specs/20260108-125427/technical.json for full schemas
 }
 
 /**
- * TBD: Technical API pillar response structure
+ * @deprecated Kept only for backward-compatible type exports.
  */
 export interface TechnicalPillarResponse {
-  kpiWeight: number; // Normalized weight for this pillar
-  // Plus individual normalized values for each criterion
+  kpiWeight: number;
 }
 
 export interface IMCDAService {
@@ -374,15 +451,8 @@ export interface IMCDAService {
   getPersona(personaId: string): MCDAPersona | undefined;
 
   /**
-   * Rank scenarios using TOPSIS algorithm with persona weights.
+   * Rank renovation scenarios using the Technical API.
    * Returns rankings sorted by rank (1 = best).
-   *
-   * TBD: When Technical API integration is ready, this should:
-   * 1. Extract KPIs from scenarios and financial results
-   * 2. Call each pillar endpoint (/ee, /rei, /sei, /uc, /fv)
-   * 3. Aggregate pillar weights into final ranking
-   *
-   * Current mock implements TOPSIS algorithm locally.
    */
   rank(
     scenarios: RenovationScenario[],

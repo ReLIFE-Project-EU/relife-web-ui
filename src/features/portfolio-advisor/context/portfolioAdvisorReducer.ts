@@ -34,6 +34,11 @@ export const initialState: PortfolioAdvisorState = {
       duration: 10,
       interestRate: 0.05,
     },
+    incentives: {
+      upfrontPercentage: 0,
+      lifetimeAmount: 0,
+      lifetimeYears: 0,
+    },
   },
   buildingResults: {},
   selectedPersona: "cost-optimization",

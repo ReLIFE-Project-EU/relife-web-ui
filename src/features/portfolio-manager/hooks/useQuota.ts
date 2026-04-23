@@ -3,9 +3,9 @@
  */
 
 import { useContext, useCallback } from "react";
-import { quotaApi } from "../api";
 import { PortfolioContext } from "../context/PortfolioContextDefinition";
 import type { StorageQuota } from "../types";
+import { refreshPortfolioQuota } from "./quotaRefresh";
 
 export function useQuota(): {
   quota: StorageQuota | null;
@@ -23,12 +23,7 @@ export function useQuota(): {
   const { state, dispatch } = context;
 
   const refreshQuota = useCallback(async () => {
-    try {
-      const quota = await quotaApi.get();
-      dispatch({ type: "SET_QUOTA", quota });
-    } catch (err) {
-      console.error("Failed to refresh quota:", err);
-    }
+    await refreshPortfolioQuota(dispatch);
   }, [dispatch]);
 
   /**

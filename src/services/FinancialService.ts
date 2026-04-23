@@ -16,8 +16,8 @@ import type {
   CashFlowData,
   EstimationResult,
   FinancialResults,
-  FinancialScenario,
   FundingOptions,
+  PackageFinancialInputsById,
   PercentileData,
   RenovationScenario,
   RiskAssessmentPercentiles,
@@ -30,13 +30,26 @@ import {
   type APIEnergyClass,
   type OutputLevel,
 } from "../utils/apiMappings";
-import { applyFundingReduction } from "../utils/financialCalculations";
+import {
+  applyFundingReduction,
+  sanitizeLifetimeIncentives,
+} from "../utils/financialCalculations";
 import type {
   ARVRequest,
+  CalculateFinancialScenariosRequest,
   IFinancialService,
   RiskAssessmentRequest,
   RiskAssessmentResponse,
 } from "./types";
+
+const USE_SIMULATED_DELIVERED_ENERGY_FOR_FINANCE = true;
+
+function scenarioIncludesSystemMeasure(scenario: RenovationScenario): boolean {
+  return scenario.measureIds.some(
+    (measureId) =>
+      measureId === "condensing-boiler" || measureId === "air-water-heat-pump",
+  );
+}
 
 export class FinancialService implements IFinancialService {
   private readonly outputLevel: OutputLevel;
@@ -83,6 +96,9 @@ export class FinancialService implements IFinancialService {
       indicators: request.indicators,
       loan_amount: request.loan_amount ?? 0,
       loan_term: request.loan_term ?? 0,
+      upfront_incentive_percentage: request.upfront_incentive_percentage,
+      lifetime_incentive_amount: request.lifetime_incentive_amount,
+      lifetime_incentive_years: request.lifetime_incentive_years,
       capex: request.capex,
       annual_maintenance_cost: request.annual_maintenance_cost,
       include_visualizations: request.include_visualizations,
@@ -135,39 +151,61 @@ export class FinancialService implements IFinancialService {
 
   /**
    * Calculate financial results for all scenarios
-   * @param scenarios Array of renovation scenarios to evaluate
-   * @param fundingOptions Funding/loan configuration
-   * @param floorArea Building floor area in m²
-   * @param currentEstimation Current building energy estimation
-   * @param _financialScenario Economic scenario (baseline/optimistic/pessimistic)
-   * @param totalCapex Total capital expenditure for renovation (EUR), or null to let API fetch from database
-   * @param annualMaintenanceCost Annual O&M cost (EUR/year), or null to let API fetch from database
-   * @param building Building information for ARV calculation
    */
+  async calculateForAllScenarios(
+    request: CalculateFinancialScenariosRequest,
+  ): Promise<Record<ScenarioId, FinancialResults>>;
   async calculateForAllScenarios(
     scenarios: RenovationScenario[],
     fundingOptions: FundingOptions,
     floorArea: number,
     currentEstimation: EstimationResult,
-    _financialScenario: FinancialScenario,
-    totalCapex: number | null,
-    annualMaintenanceCost: number | null,
+    packageFinancialInputs: PackageFinancialInputsById,
     building: BuildingInfo,
+  ): Promise<Record<ScenarioId, FinancialResults>>;
+  async calculateForAllScenarios(
+    requestOrScenarios:
+      | CalculateFinancialScenariosRequest
+      | RenovationScenario[],
+    fundingOptions?: FundingOptions,
+    floorArea?: number,
+    currentEstimation?: EstimationResult,
+    packageFinancialInputs?: PackageFinancialInputsById,
+    building?: BuildingInfo,
   ): Promise<Record<ScenarioId, FinancialResults>> {
+    const {
+      scenarios,
+      fundingOptions: resolvedFundingOptions,
+      floorArea: resolvedFloorArea,
+      currentEstimation: resolvedCurrentEstimation,
+      packageFinancialInputs: resolvedPackageFinancialInputs,
+      building: resolvedBuilding,
+    } = Array.isArray(requestOrScenarios)
+      ? {
+          scenarios: requestOrScenarios,
+          fundingOptions: fundingOptions!,
+          floorArea: floorArea!,
+          currentEstimation: currentEstimation!,
+          packageFinancialInputs: packageFinancialInputs!,
+          building: building!,
+        }
+      : requestOrScenarios;
     const results: Record<string, FinancialResults> = {};
 
     for (const scenario of scenarios) {
       if (scenario.id === "current") {
         // Current scenario: no renovation, just current ARV
         const arvRequest: ARVRequest = {
-          lat: building.lat ?? 0,
-          lng: building.lng ?? 0,
-          floor_area: floorArea,
-          construction_year: building.constructionYear ?? 1990,
-          number_of_floors: building.numberOfFloors ?? 1,
-          floor_number: building.floorNumber,
-          property_type: toAPIPropertyType(building.buildingType),
-          energy_class: toAPIEnergyClass(currentEstimation.estimatedEPC),
+          lat: resolvedBuilding.lat ?? 0,
+          lng: resolvedBuilding.lng ?? 0,
+          floor_area: resolvedFloorArea,
+          construction_year: resolvedBuilding.constructionYear ?? 1990,
+          number_of_floors: resolvedBuilding.numberOfFloors ?? 1,
+          floor_number: resolvedBuilding.floorNumber,
+          property_type: toAPIPropertyType(resolvedBuilding.buildingType),
+          energy_class: toAPIEnergyClass(
+            resolvedCurrentEstimation.estimatedEPC,
+          ),
           renovated_last_5_years: false, // Current state, not recently renovated
         };
         const arvResult = await this.calculateARV(arvRequest);
@@ -184,55 +222,99 @@ export class FinancialService implements IFinancialService {
         continue;
       }
 
-      // For renovated scenario, use the provided totalCapex if available
-      // If totalCapex is null or 0, let the API fetch from its internal dataset
-      const hasCapex = totalCapex !== null && totalCapex > 0;
-      const renovationCost = hasCapex ? totalCapex : 0;
+      const packageInput = resolvedPackageFinancialInputs[scenario.id];
+      if (
+        !packageInput ||
+        packageInput.capex === null ||
+        packageInput.capex <= 0
+      ) {
+        throw new Error(`Missing CAPEX for scenario ${scenario.id}`);
+      }
+      if (
+        packageInput.annualMaintenanceCost === null ||
+        packageInput.annualMaintenanceCost < 0
+      ) {
+        throw new Error(
+          `Missing annual maintenance cost for scenario ${scenario.id}`,
+        );
+      }
 
-      // Apply funding options only if we have a CAPEX value
-      const { effectiveCost, loanAmount } = hasCapex
-        ? applyFundingReduction(renovationCost, fundingOptions)
-        : { effectiveCost: undefined, loanAmount: 0 };
+      const renovationCost = packageInput.capex;
+      const annualMaintenanceCost = packageInput.annualMaintenanceCost;
+      const { effectiveCost, loanAmount } = applyFundingReduction(
+        renovationCost,
+        resolvedFundingOptions,
+      );
+      const { lifetimeAmount, lifetimeYears } = sanitizeLifetimeIncentives(
+        resolvedFundingOptions.incentives.lifetimeAmount,
+        resolvedFundingOptions.incentives.lifetimeYears,
+        resolvedBuilding.projectLifetime,
+      );
 
       // Calculate loan term based on financing type
       const loanTerm =
-        fundingOptions.financingType === "loan"
-          ? fundingOptions.loan.duration
+        resolvedFundingOptions.financingType === "loan"
+          ? resolvedFundingOptions.loan.duration
           : 0;
+
+      // Keep ARV conservative for scenarios that include a system measure.
+      // Those scenarios may improve modeled consumption without producing a
+      // directly comparable EPC uplift in the current HRA flow.
+      const arvEnergyClass = scenarioIncludesSystemMeasure(scenario)
+        ? toAPIEnergyClass(resolvedCurrentEstimation.estimatedEPC)
+        : toAPIEnergyClass(scenario.epcClass);
 
       // ARV Request for renovated scenario
       const arvRequest: ARVRequest = {
-        lat: building.lat ?? 0,
-        lng: building.lng ?? 0,
-        floor_area: floorArea,
-        construction_year: building.constructionYear ?? 1990,
-        number_of_floors: building.numberOfFloors ?? 1,
-        floor_number: building.floorNumber,
-        property_type: toAPIPropertyType(building.buildingType),
-        energy_class: toAPIEnergyClass(scenario.epcClass),
-        renovated_last_5_years: building.renovatedLast5Years,
+        lat: resolvedBuilding.lat ?? 0,
+        lng: resolvedBuilding.lng ?? 0,
+        floor_area: resolvedFloorArea,
+        construction_year: resolvedBuilding.constructionYear ?? 1990,
+        number_of_floors: resolvedBuilding.numberOfFloors ?? 1,
+        floor_number: resolvedBuilding.floorNumber,
+        property_type: toAPIPropertyType(resolvedBuilding.buildingType),
+        energy_class: arvEnergyClass,
+        renovated_last_5_years: resolvedBuilding.renovatedLast5Years,
       };
 
-      // Risk assessment request
-      // Note: capex and annual_maintenance_cost are optional
-      // If undefined, API retrieves from internal dataset
-      const hasMaintenanceCost =
-        annualMaintenanceCost !== null && annualMaintenanceCost > 0;
-      const annualEnergySavingsKWh = Math.max(
-        0,
-        currentEstimation.annualEnergyNeeds - (scenario.annualEnergyNeeds ?? 0),
-      ); // values are already in kWh/year
+      // Canonical HRA semantic for POST /financial/risk-assessment:
+      // annual_energy_savings = max(0, baseline deliveredTotal - scenario deliveredTotal)
+      //
+      // This is saved HVAC system energy in kWh/year from Forecasting/UNI,
+      // already scaled to the user's floor area. It is intentionally NOT:
+      // - thermal-needs savings (Q_H/Q_C)
+      // - a direct EUR saving
+      //
+      // System measures such as condensing boiler or heat pump can therefore
+      // produce financial savings even when the building's thermal needs stay
+      // broadly unchanged, because the HVAC system delivers the same comfort
+      // with less input energy. If the required UNI totals are missing for a
+      // scenario, skip the detailed risk/cash-flow path instead of silently
+      // falling back to a different savings semantic.
+      const canUseDeliveredEnergy =
+        USE_SIMULATED_DELIVERED_ENERGY_FOR_FINANCE &&
+        resolvedCurrentEstimation.deliveredTotal !== undefined &&
+        scenario.deliveredTotal !== undefined;
+      const annualEnergySavingsKWh = canUseDeliveredEnergy
+        ? Math.max(
+            0,
+            resolvedCurrentEstimation.deliveredTotal! -
+              scenario.deliveredTotal!,
+          )
+        : 0;
 
       const riskRequest: RiskAssessmentRequest = {
         annual_energy_savings: Math.round(annualEnergySavingsKWh),
-        project_lifetime: building.projectLifetime,
+        project_lifetime: resolvedBuilding.projectLifetime,
         output_level: this.outputLevel,
-        capex: effectiveCost, // undefined if no CAPEX provided, API will fetch from DB
-        annual_maintenance_cost: hasMaintenanceCost
-          ? annualMaintenanceCost
-          : undefined,
+        capex: effectiveCost,
+        annual_maintenance_cost: annualMaintenanceCost,
         loan_amount: loanAmount,
         loan_term: loanTerm,
+        upfront_incentive_percentage:
+          resolvedFundingOptions.incentives.upfrontPercentage,
+        lifetime_incentive_amount: lifetimeAmount,
+        lifetime_incentive_years: lifetimeYears,
       };
 
       // The risk-assessment endpoint requires annual_energy_savings > 0.
@@ -250,9 +332,7 @@ export class FinancialService implements IFinancialService {
         riskAssessment: riskResult,
         capitalExpenditure: riskResult
           ? Math.round(riskResult.metadata.capex)
-          : hasCapex
-            ? Math.round(effectiveCost ?? renovationCost)
-            : 0,
+          : Math.round(effectiveCost),
         returnOnInvestment: riskResult?.pointForecasts.ROI ?? 0,
         paybackTime: riskResult?.pointForecasts.PBP ?? 0,
         netPresentValue: riskResult?.pointForecasts.NPV ?? 0,

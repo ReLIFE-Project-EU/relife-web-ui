@@ -98,6 +98,12 @@ export interface EstimationResult {
   // Named "Consumption" to distinguish it from savings, which are computed in FinancialService
   // by subtracting the renovated scenario's annualEnergyNeeds from this value.
   annualEnergyConsumption: number; // kWh/year
+  /** UNI/TS 11300 combined HVAC delivered energy, when available. */
+  deliveredTotal?: number;
+  /** Frontend flat-tariff estimate derived from deliveredTotal, when available. */
+  deliveredEnergyCost?: number;
+  /** UNI/TS 11300 total primary energy, when available. */
+  primaryEnergy?: number;
 
   /**
    * Notices returned during validation of a modified archetype.
@@ -116,6 +122,9 @@ export interface EstimationResult {
     heatingCoolingNeeds: number;
     flexibilityIndex: number;
     comfortIndex: number;
+    deliveredTotal?: number;
+    deliveredEnergyCost?: number;
+    primaryEnergy?: number;
   };
 
   /**
@@ -203,23 +212,47 @@ export interface LoanDetails {
   interestRate: number;
 }
 
+export interface IncentiveDetails {
+  /** Upfront incentive as a percentage of CAPEX (0-100). */
+  upfrontPercentage: number;
+  /** Annual OPEX reduction in euros per year. */
+  lifetimeAmount: number;
+  /** Duration of the annual OPEX reduction in years. */
+  lifetimeYears: number;
+}
+
 export interface FundingOptions {
   /** The chosen financing type */
   financingType: FinancingType;
   /** Loan details (only relevant when financingType is "loan") */
   loan: LoanDetails;
+  /** Backend-native incentive inputs shared across tools. */
+  incentives: IncentiveDetails;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Results Types (Screen 3)
 // ─────────────────────────────────────────────────────────────────────────────
 
+export interface RenovationPackage {
+  id: string;
+  label: string;
+  measureIds: RenovationMeasureId[];
+}
+
+export interface PackageFinancialInput {
+  capex: number | null;
+  annualMaintenanceCost: number | null;
+}
+
+export type PackageFinancialInputsById = Record<string, PackageFinancialInput>;
+
 /**
  * Scenario IDs for comparison.
  * - "current": Baseline before renovation
- * - "renovated": After applying selected measures
+ * - dynamic package IDs for evaluated renovation options
  */
-export type ScenarioId = "current" | "renovated";
+export type ScenarioId = string;
 
 export interface RenovationScenario {
   id: ScenarioId;
@@ -228,8 +261,13 @@ export interface RenovationScenario {
   annualEnergyNeeds: number; // kWh/year (HVAC demand, API-derived)
   annualEnergyCost: number; // EUR/year (derived from annualEnergyNeeds using ENERGY_PRICE_EUR_PER_KWH)
   heatingCoolingNeeds: number; // kWh/year (HVAC demand, API-derived)
+  deliveredTotal?: number; // kWh/year (UNI/TS 11300 delivered energy, when available)
+  deliveredEnergyCost?: number; // EUR/year estimate derived from deliveredTotal
+  primaryEnergy?: number; // kWh/year (UNI/TS 11300 primary energy, when available)
   flexibilityIndex: number;
   comfortIndex: number;
+  packageId: string | null;
+  measureIds: RenovationMeasureId[];
   measures: string[];
 }
 
@@ -269,7 +307,7 @@ export interface RiskAssessmentPointForecasts {
 export interface RiskAssessmentMetadata {
   n_sims?: number; // Number of Monte Carlo simulations (optional - only show if API returns it)
   project_lifetime: number;
-  capex: number; // Used CAPEX value (may come from API dataset)
+  capex: number; // Used CAPEX value returned by the Financial API metadata
   loan_amount: number;
   annual_loan_payment?: number;
   loan_rate_percent?: number;
