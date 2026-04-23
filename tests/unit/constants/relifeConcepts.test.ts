@@ -31,6 +31,12 @@ describe("relifeConcepts ontology", () => {
     }
   });
 
+  test("scenario EPC comparison footnote concept is defined", () => {
+    const concept = relifeConcepts["scenario-epc-comparison-note"];
+    expect(concept.label.trim()).not.toBe("");
+    expect(concept.description.trim()).not.toBe("");
+  });
+
   test("HRA-required concepts include labels, descriptions, and applicable units", () => {
     const unitRequiredConcepts = [
       "annual-building-thermal-needs",

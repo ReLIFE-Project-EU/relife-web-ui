@@ -3,7 +3,14 @@
  * Displays an EPC class as a colored badge.
  */
 
-import { Badge, Box, Tooltip, type MantineSize } from "@mantine/core";
+import {
+  Badge,
+  Box,
+  Stack,
+  Text,
+  Tooltip,
+  type MantineSize,
+} from "@mantine/core";
 import {
   getEPCColor,
   getEPCDescription,
@@ -24,6 +31,8 @@ interface EPCBadgeProps {
   energyIntensity?: number;
   /** When true, renders as outline variant with "~" prefix to signal approximation */
   estimated?: boolean;
+  /** Extra tooltip lines (e.g. system / PV scope for scenario comparison). */
+  additionalTooltipNotes?: readonly string[];
 }
 
 export function EPCBadge({
@@ -33,6 +42,7 @@ export function EPCBadge({
   className,
   energyIntensity,
   estimated,
+  additionalTooltipNotes,
 }: EPCBadgeProps) {
   const badge = (
     <Badge
@@ -53,7 +63,10 @@ export function EPCBadge({
 
   if (showTooltip) {
     const range = EPC_ENERGY_RANGES[epcClass];
-    const hasExtra = energyIntensity !== undefined || estimated;
+    const hasExtra =
+      energyIntensity !== undefined ||
+      estimated ||
+      (additionalTooltipNotes?.length ?? 0) > 0;
 
     const tooltipContent = hasExtra ? (
       <Box>
@@ -77,6 +90,15 @@ export function EPCBadge({
             certificate.
           </Box>
         )}
+        {additionalTooltipNotes && additionalTooltipNotes.length > 0 ? (
+          <Stack gap={6} mt={6}>
+            {additionalTooltipNotes.map((note, index) => (
+              <Text key={index} size="xs" c="dimmed" fs="italic">
+                {note}
+              </Text>
+            ))}
+          </Stack>
+        ) : null}
       </Box>
     ) : (
       getEPCDescription(epcClass)

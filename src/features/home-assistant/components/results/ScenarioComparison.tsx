@@ -7,6 +7,7 @@ import { Badge, Box, Card, Stack, Table, Text, Title } from "@mantine/core";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import type { RenovationScenario } from "../../context/types";
 import type { ConceptId } from "../../../../constants/relifeConcepts";
+import { relifeConcepts } from "../../../../constants/relifeConcepts";
 import {
   calculatePercentChange,
   formatCurrency,
@@ -14,6 +15,11 @@ import {
   formatEnergyPerYear,
 } from "../../utils/formatters";
 import { ENERGY_PRICE_EUR_PER_KWH } from "../../services/energyUtils";
+import {
+  getEpcScenarioTooltipNotes,
+  getRenovationMeasureFlags,
+  renovationScenariosNeedEpcComparisonNote,
+} from "../../../../utils/renovationMeasureFlags";
 import { ConceptLabel, DeltaBadge, EPCBadge } from "../shared";
 
 export function ScenarioComparison() {
@@ -31,12 +37,9 @@ export function ScenarioComparison() {
 
   const computeIntensity = (annualEnergyNeeds: number) =>
     floorArea && floorArea > 0 ? annualEnergyNeeds / floorArea : undefined;
-  const scenarioIncludesSystemMeasure = (scenario: RenovationScenario) =>
-    scenario.measureIds.some(
-      (measureId) =>
-        measureId === "condensing-boiler" ||
-        measureId === "air-water-heat-pump",
-    );
+
+  const showScenarioEpcComparisonNote =
+    renovationScenariosNeedEpcComparisonNote(renovationScenarios);
 
   return (
     <Card withBorder radius="md" p="lg">
@@ -97,27 +100,14 @@ export function ScenarioComparison() {
                   })()}
                 </Table.Td>
                 {renovationScenarios.map((scenario) => {
-                  if (scenarioIncludesSystemMeasure(scenario)) {
-                    return (
-                      <Table.Td
-                        key={scenario.id}
-                        style={{ textAlign: "center" }}
-                      >
-                        <Stack gap={4} align="center">
-                          <Badge color="gray" variant="light">
-                            Not shown
-                          </Badge>
-                          <Text size="xs" c="dimmed">
-                            Includes a system upgrade
-                          </Text>
-                        </Stack>
-                      </Table.Td>
-                    );
-                  }
-
                   const intensity = computeIntensity(
                     scenario.annualEnergyNeeds,
                   );
+                  const measureFlags = getRenovationMeasureFlags(
+                    scenario.measureIds,
+                  );
+                  const additionalTooltipNotes =
+                    getEpcScenarioTooltipNotes(measureFlags);
                   return (
                     <Table.Td key={scenario.id} style={{ textAlign: "center" }}>
                       <Stack gap={4} align="center">
@@ -126,6 +116,11 @@ export function ScenarioComparison() {
                           size="md"
                           energyIntensity={intensity}
                           estimated
+                          additionalTooltipNotes={
+                            additionalTooltipNotes.length > 0
+                              ? additionalTooltipNotes
+                              : undefined
+                          }
                         />
                         {intensity !== undefined && (
                           <Text size="xs" c="dimmed">
@@ -177,12 +172,19 @@ export function ScenarioComparison() {
             </Table.Tbody>
           </Table>
         </Table.ScrollContainer>
-        <Text size="xs" c="dimmed">
-          Thermal-needs cost values are frontend estimates based on a flat
-          tariff of {formatCurrencyDecimal(ENERGY_PRICE_EUR_PER_KWH)}/kWh.
-          System energy consumption is shown in kWh/year only because its real
-          cost depends on fuel and electricity prices.
-        </Text>
+        <Stack gap="xs">
+          {showScenarioEpcComparisonNote ? (
+            <Text size="xs" c="dimmed">
+              {relifeConcepts["scenario-epc-comparison-note"].description}
+            </Text>
+          ) : null}
+          <Text size="xs" c="dimmed">
+            Thermal-needs cost values are frontend estimates based on a flat
+            tariff of {formatCurrencyDecimal(ENERGY_PRICE_EUR_PER_KWH)}/kWh.
+            System energy consumption is shown in kWh/year only because its real
+            cost depends on fuel and electricity prices.
+          </Text>
+        </Stack>
       </Stack>
     </Card>
   );

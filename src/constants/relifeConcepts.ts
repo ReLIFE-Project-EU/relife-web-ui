@@ -4,6 +4,7 @@ export type ConceptId =
   | "annual-building-thermal-needs"
   | "system-energy-consumption"
   | "estimated-epc"
+  | "scenario-epc-comparison-note"
   | "energy-intensity"
   | "estimated-thermal-needs-cost"
   | "investment"
@@ -82,10 +83,16 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     id: "estimated-epc",
     label: "Estimated EPC",
     description:
-      "Approximate energy class from the simulation result, shown for comparison.",
+      "Approximate energy class from modeled annual building thermal needs per floor area, shown for comparison.",
     caveat: "This is not an official Energy Performance Certificate.",
     professionalDetail:
-      "Computed from modeled energy intensity with approximate class thresholds; country-specific certification rules may differ.",
+      "Letter bands map modeled thermal needs intensity (kWh/m²/year) to approximate classes; they do not fully represent heating fuel or primary energy the way many official schemes do.",
+  },
+  "scenario-epc-comparison-note": {
+    id: "scenario-epc-comparison-note",
+    label: "Estimated EPC in scenario comparison",
+    description:
+      "Some columns include a heating-system upgrade and/or solar (PV). The estimated class is still derived from modeled annual thermal needs per m². System and PV benefits often appear in delivered energy, costs, or generation rows even when this letter moves little. This is not an official Energy Performance Certificate.",
   },
   "energy-intensity": {
     id: "energy-intensity",
