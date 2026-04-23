@@ -3,12 +3,9 @@
  *
  * TBD INTEGRATION NOTES
  * =====================
- * Some types are aligned with api-specs/20260108-125427/ but the following
- * integrations are pending finalization:
+ * The following integrations are pending finalization (verify shapes against service repos):
  * - [ ] Forecasting API: BuildingInfo -> BuildingPayload mapping
  * - [ ] Technical API: MCDA pillar endpoint integration
- *
- * Reference: api-specs/20260108-125427/financial.json
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -273,7 +270,7 @@ export interface RenovationScenario {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Financial API Response Types
-// Matches api-specs/20260108-125427/financial.json schemas
+// Align with relife-financial-service (verify in repo).
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**

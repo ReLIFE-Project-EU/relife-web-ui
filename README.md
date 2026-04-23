@@ -22,7 +22,7 @@ npm run preview
 
 The three platform services (financial, forecasting, technical) are developed in separate repositories. For local builds that compile those images, clone them under `external-services/` (this path is gitignored). Use `task fetch-sources` (see [`Taskfile.yml`](./Taskfile.yml)) with the appropriate repo refs.
 
-JSON OpenAPI files under `api-specs/` are **snapshots only** and may not match real behavior. When integrating or changing API clients, verify against the service code or a running stack; see [`AGENTS.md`](./AGENTS.md) (section **API specifications (OpenAPI)**).
+When integrating or changing API clients, verify contracts against service source (local `external-services/` or the upstream GitHub repos), a running stack, and/or integration tests; see [`AGENTS.md`](./AGENTS.md) (section **Backend API contracts**).
 
 ## Renovation Tools Architecture
 

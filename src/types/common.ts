@@ -1,5 +1,5 @@
 // Common types shared across all services
-// Based on OpenAPI specs from api-specs/20251125-145112/
+// Shapes should match the Financial, Forecasting, and Technical services (verify in upstream repos).
 
 // ============================================================================
 // Service Types

@@ -21,7 +21,6 @@ interface StepContext {
     typeDefinition?: string; // "src/types/forecasting.ts"
     apiWrapper?: string; // "src/api/forecasting.ts"
     serviceConsumer?: string; // "src/services/EnergyService.ts"
-    openApiSpec?: string; // "api-specs/.../forecasting.json"
   };
   validationErrors: string[]; // ["missing field: results.hourly_building", ...]
 }
@@ -240,7 +239,7 @@ export function assertHttpStatus(
     } else if (response.status === 404) {
       errorDetails.push(
         "",
-        "HTTP 404 - endpoint not found. Verify URL matches OpenAPI spec.",
+        "HTTP 404 - endpoint not found. Verify URL matches the service route definitions.",
       );
     }
 

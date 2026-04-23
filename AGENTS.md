@@ -11,7 +11,7 @@ Before starting any task, verify:
 3. **Scope**: Can the task be solved with a smaller change than initially planned? If yes, do the smaller change.
 4. **Conflict**: Does this task conflict with D3.2, the existing architecture, or an adjacent requirement? If yes, stop and ask the user before proceeding.
 5. **Ambiguity**: Is the requirement unclear or open to multiple valid interpretations? If yes, ask the user to clarify before writing any code.
-6. **API integration / client types**: Does the task change `src/api/` or service-related types? If yes, confirm the service code under `external-services/` is available (or get user guidance on how to verify contracts) before treating files under `api-specs/` as sufficient on their own. See [API specifications (OpenAPI)](#api-specifications-openapi).
+6. **API integration / client types**: Does the task change `src/api/` or service-related types? If yes, verify request/response shapes using the **service implementation** (local clones under `external-services/` when present, otherwise the public GitHub repositories), a **running stack**, or **integration tests**—and ask the user if you cannot verify. See [Backend API contracts](#backend-api-contracts).
 
 ### Stop and Ask the User When
 
@@ -20,7 +20,7 @@ Before starting any task, verify:
 - The change would touch more than ~3 files in ways not directly requested
 - An assumption is being made that the user has not stated explicitly
 - Proposed work requires an architectural decision (new pattern, new layer, new abstraction)
-- The task depends on accurate request/response shapes and either: checked-in OpenAPI appears incomplete or wrong versus behavior you know, or the service repositories under `external-services/` are missing and you would otherwise rely only on `api-specs/`
+- The task depends on accurate request/response shapes and you cannot verify them from `external-services/`, upstream GitHub source, a running stack, or integration tests
 
 ---
 
@@ -107,23 +107,23 @@ Modify only what the request requires; preserve surrounding code style.
 
 These principles trade speed for correctness on non-trivial work.
 
-## API specifications (OpenAPI)
+## Backend API contracts
 
-JSON OpenAPI exports for the Financial, Forecasting, and Technical services live under `api-specs/` in timestamped folders (e.g. `api-specs/20260114-165540`). Treat them as **convenience snapshots**, not a reliable contract: they are often **incomplete or misaligned** with what the services actually accept and return. Live `/openapi.json` (e.g. refreshed via `task fetch-specs`) can still diverge from handlers, validation, and serializers in the real codebase.
+**This repository does not ship OpenAPI or other checked-in API specification snapshots.** FastAPI-generated `/openapi.json` from running services is often incomplete or out of sync with handlers, validation, and serializers—do **not** treat it as the contract when changing clients or types.
 
-**Authoritative source for API shape** is the **service implementation**: route handlers, request/response models, and validation in the upstream repositories. Clone them locally under `external-services/` (directory is gitignored; not every workspace has it):
+**Authoritative source for API shape** is the **service implementation**: route handlers, request/response models, and validation in the upstream repositories.
 
-| Service     | Local path                                     | Repository                                                      |
-| ----------- | ---------------------------------------------- | --------------------------------------------------------------- |
+| Service     | Local path (optional clone)                     | Repository                                                      |
+| ----------- | ----------------------------------------------- | --------------------------------------------------------------- |
 | Financial   | `external-services/relife-financial-service`   | https://github.com/ReLIFE-Project-EU/relife-financial-service   |
 | Forecasting | `external-services/relife-forecasting-service` | https://github.com/ReLIFE-Project-EU/relife-forecasting-service |
 | Technical   | `external-services/relife-technical-service`   | https://github.com/ReLIFE-Project-EU/relife-technical-service   |
 
-**Workflow**: Prefer reading or searching `external-services/<repo>` for the truth, use `api-specs/` only as a starting point or diff aid, and cross-check with a running stack or integration tests when needed.
+**Workflow**: Prefer reading or searching `external-services/<repo>` when those directories exist (they are gitignored; cloning is optional). If they are missing, use the **GitHub repositories** above, a **running stack** (`task up` / Docker Compose), and **integration tests** under `tests/integration/`. Cross-check behavior at HTTP boundaries when in doubt.
 
-**If `external-services/` is missing or incomplete**: **Ask the user** to clone (see `task fetch-sources` in [`Taskfile.yml`](./Taskfile.yml)) or to provide another verification path (running services, concrete handler/schema references). Do **not** implement or refactor API clients solely from `api-specs/` without stating that the change is speculative or riskier.
+**If you still cannot verify a contract**: **Ask the user** for guidance (e.g. clone via `task fetch-sources` in [`Taskfile.yml`](./Taskfile.yml), point to specific handlers, or confirm observed API behavior).
 
-This is separate from D3.2’s expectation that APIs use OpenAPI/HTTP as **interchange formats**—it concerns the **accuracy of checked-in artifacts** in this repo, not the platform’s standards.
+D3.2 may refer to OpenAPI/HTTP as **interchange formats** for the platform; this section is about **where to read accurate shapes** for this Web UI repo, not about dropping HTTP/OpenAPI as a standard elsewhere.
 
 ## API Integration Architecture
 
@@ -140,7 +140,7 @@ Low-level HTTP client wrappers that directly communicate with backend REST endpo
 These wrappers:
 
 - Handle authentication tokens (via Supabase session)
-- Provide typed request/response interfaces intended to match **verified backend behavior** (service code under `external-services/` first; `api-specs/` as a non-authoritative hint)
+- Provide typed request/response interfaces intended to match **verified backend behavior** (service source under `external-services/` and/or upstream GitHub, plus runtime or tests when needed)
 - Throw `APIError` for error handling
 - Should NOT contain business logic—they are pure HTTP adapters
 

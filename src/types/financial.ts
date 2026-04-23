@@ -1,5 +1,5 @@
 // Financial Service API Types
-// Based on OpenAPI specs from api-specs/20260108-125427/financial.json
+// Align with relife-financial-service request/response models (verify in repo).
 
 // ============================================================================
 // Enums

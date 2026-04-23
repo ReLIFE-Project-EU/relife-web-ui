@@ -1,5 +1,5 @@
 // Forecasting Service API Types
-// Based on OpenAPI specs from api-specs/20260116-111114/forecasting.json
+// Align with relife-forecasting-service request/response models (verify in repo).
 
 // ============================================================================
 // Archetype Types (GET /building/available)

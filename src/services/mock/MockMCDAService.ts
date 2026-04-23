@@ -24,7 +24,7 @@
  *
  * Current implementation uses local TOPSIS algorithm with D3.2 persona weights.
  *
- * Reference: api-specs/20260108-125427/technical.json
+ * When integrated, align pillar payloads with relife-technical-service / relife-financial-service (verify in repos).
  */
 
 import type {

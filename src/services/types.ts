@@ -4,12 +4,10 @@
  *
  * TBD INTEGRATION NOTES
  * =====================
- * Financial API types are aligned with api-specs/20260108-125427/financial.json
+ * Financial API types align with relife-financial-service (verify in repo).
  * Pending integrations:
  * - [ ] Forecasting API: Project-based workflow (see IEnergyService)
  * - [ ] Technical API: 5 pillar endpoints (see IMCDAService)
- *
- * Reference: api-specs/20260108-125427/
  */
 
 import type {
@@ -311,7 +309,7 @@ export interface IRenovationService {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Financial Service Types
-// Aligned with api-specs/20260108-125427/financial.json
+// Align with relife-financial-service (verify in repo).
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**

@@ -6,7 +6,7 @@
  * - HRA (Home Renovation Assistant): uses "private" output level
  * - PRA (Portfolio Renovation Advisor): may use "professional" or higher
  *
- * Reference: api-specs/20260114-115138/financial.json
+ * Align with relife-financial-service (verify in repo).
  */
 
 import { financial } from "../api";

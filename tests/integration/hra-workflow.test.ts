@@ -103,7 +103,6 @@ describe.sequential("HRA Workflow", () => {
         typeDefinition: "src/types/forecasting.ts",
         apiWrapper: "src/api/forecasting.ts",
         serviceConsumer: "src/services/BuildingService.ts",
-        openApiSpec: "api-specs/latest/forecasting.json",
       },
     );
 
@@ -165,7 +164,6 @@ describe.sequential("HRA Workflow", () => {
         typeDefinition: "src/types/forecasting.ts",
         apiWrapper: "src/api/forecasting.ts",
         serviceConsumer: "src/services/EnergyService.ts",
-        openApiSpec: "api-specs/latest/forecasting.json",
       },
     );
 
@@ -270,7 +268,6 @@ describe.sequential("HRA Workflow", () => {
         typeDefinition: "src/types/forecasting.ts",
         apiWrapper: "src/api/forecasting.ts",
         serviceConsumer: "src/services/RenovationService.ts",
-        openApiSpec: "api-specs/latest/forecasting.json",
       },
     );
 
@@ -325,7 +322,6 @@ describe.sequential("HRA Workflow", () => {
         typeDefinition: "src/types/forecasting.ts",
         apiWrapper: "src/api/forecasting.ts",
         serviceConsumer: "src/services/RenovationService.ts",
-        openApiSpec: "api-specs/latest/forecasting.json",
       },
     );
 
@@ -382,7 +378,6 @@ describe.sequential("HRA Workflow", () => {
         typeDefinition: "src/types/forecasting.ts",
         apiWrapper: "src/api/forecasting.ts",
         serviceConsumer: "src/services/RenovationService.ts",
-        openApiSpec: "api-specs/latest/forecasting.json",
       },
     );
 
@@ -438,7 +433,6 @@ describe.sequential("HRA Workflow", () => {
         typeDefinition: "src/types/financial.ts",
         apiWrapper: "src/api/financial.ts",
         serviceConsumer: "src/services/FinancialService.ts",
-        openApiSpec: "api-specs/latest/financial.json",
       },
     );
 
@@ -518,7 +512,6 @@ describe.sequential("HRA Workflow", () => {
         typeDefinition: "src/types/financial.ts",
         apiWrapper: "src/api/financial.ts",
         serviceConsumer: "src/services/FinancialService.ts",
-        openApiSpec: "api-specs/latest/financial.json",
       },
     );
 

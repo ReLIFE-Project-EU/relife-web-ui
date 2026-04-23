@@ -2,11 +2,11 @@
  * API Mappings for Renovation Tools
  *
  * Maps between UI-friendly values and API-required formats.
- * Reference: api-specs/20260108-125427/financial.json
+ * Align with relife-financial-service enums and payloads (verify in repo).
  *
  * TBD INTEGRATION NOTES
  * =====================
- * These mappings are based on the current API specs. Update if:
+ * These mappings follow the Financial service contract. Update if:
  * - [ ] API PropertyType enum changes
  * - [ ] API EnergyClass enum changes
  * - [ ] Additional building types are added to UI
