@@ -340,17 +340,38 @@ export class RenovationService implements IRenovationService {
       uniTotals !== undefined
         ? uniTotals.primaryEnergy * areaScaleFactor
         : undefined;
-    const selfConsumption =
-      renovatedScenario.results.pv_hp?.summary?.annual_kwh?.self_consumption;
+    const scaledHeatingPrimaryEnergy =
+      uniTotals?.heatingPrimaryEnergy !== undefined
+        ? uniTotals.heatingPrimaryEnergy * areaScaleFactor
+        : undefined;
+    const scaledCoolingPrimaryEnergy =
+      uniTotals?.coolingPrimaryEnergy !== undefined
+        ? uniTotals.coolingPrimaryEnergy * areaScaleFactor
+        : undefined;
+    const pvAnnual = renovatedScenario.results.pv_hp?.summary?.annual_kwh;
+    const pvIndicators = renovatedScenario.results.pv_hp?.summary?.indicators;
+    const scaledPvGeneration =
+      pvAnnual?.pv_generation !== undefined
+        ? pvAnnual.pv_generation * areaScaleFactor
+        : undefined;
+    const scaledPvSelfConsumption =
+      pvAnnual?.self_consumption !== undefined
+        ? pvAnnual.self_consumption * areaScaleFactor
+        : undefined;
+    const scaledPvGridExport =
+      pvAnnual?.grid_export !== undefined
+        ? pvAnnual.grid_export * areaScaleFactor
+        : undefined;
     if (
-      selfConsumption !== undefined &&
+      scaledPvSelfConsumption !== undefined &&
       renovationPackage.measureIds.includes(PV_MEASURE_ID) &&
       scaledDeliveredTotal !== undefined
     ) {
-      const pvCreditKwh = selfConsumption * areaScaleFactor;
-      scaledDeliveredTotal = Math.max(0, scaledDeliveredTotal - pvCreditKwh);
+      scaledDeliveredTotal = Math.max(
+        0,
+        scaledDeliveredTotal - scaledPvSelfConsumption,
+      );
       // TODO(pv-primary): apply electricity primary factor before reducing primary energy.
-      // TODO(pv-kpis): surface PV generation, export, and self-consumption KPIs in results.
     }
     const renovatedIntensity = scaledRenovatedHvac / userArea;
 
@@ -374,6 +395,30 @@ export class RenovationService implements IRenovationService {
         : {}),
       ...(scaledPrimaryEnergy !== undefined
         ? { primaryEnergy: Math.round(scaledPrimaryEnergy) }
+        : {}),
+      ...(scaledHeatingPrimaryEnergy !== undefined
+        ? { heatingPrimaryEnergy: Math.round(scaledHeatingPrimaryEnergy) }
+        : {}),
+      ...(scaledCoolingPrimaryEnergy !== undefined
+        ? { coolingPrimaryEnergy: Math.round(scaledCoolingPrimaryEnergy) }
+        : {}),
+      ...(uniTotals?.heatPumpCop !== undefined
+        ? { heatPumpCop: uniTotals.heatPumpCop }
+        : {}),
+      ...(scaledPvGeneration !== undefined
+        ? { pvGeneration: Math.round(scaledPvGeneration) }
+        : {}),
+      ...(scaledPvSelfConsumption !== undefined
+        ? { pvSelfConsumption: Math.round(scaledPvSelfConsumption) }
+        : {}),
+      ...(scaledPvGridExport !== undefined
+        ? { pvGridExport: Math.round(scaledPvGridExport) }
+        : {}),
+      ...(pvIndicators?.self_consumption_rate !== undefined
+        ? { pvSelfConsumptionRate: pvIndicators.self_consumption_rate }
+        : {}),
+      ...(pvIndicators?.self_sufficiency_rate !== undefined
+        ? { pvSelfSufficiencyRate: pvIndicators.self_sufficiency_rate }
         : {}),
       comfortIndex: Math.min(
         100,

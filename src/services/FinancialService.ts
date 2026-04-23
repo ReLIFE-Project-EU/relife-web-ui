@@ -133,6 +133,9 @@ export class FinancialService implements IFinancialService {
         capex: (response.metadata.capex as number) ?? request.capex ?? 0,
         loan_amount:
           (response.metadata.loan_amount as number) ?? request.loan_amount ?? 0,
+        annual_maintenance_cost: response.metadata.annual_maintenance_cost as
+          | number
+          | undefined,
         annual_loan_payment: response.metadata.annual_loan_payment as
           | number
           | undefined,
@@ -214,6 +217,7 @@ export class FinancialService implements IFinancialService {
           arv: arvResult,
           riskAssessment: null,
           capitalExpenditure: 0,
+          annualMaintenanceCost: 0,
           returnOnInvestment: 0,
           paybackTime: 0,
           netPresentValue: 0,
@@ -333,6 +337,8 @@ export class FinancialService implements IFinancialService {
         capitalExpenditure: riskResult
           ? Math.round(riskResult.metadata.capex)
           : Math.round(effectiveCost),
+        annualMaintenanceCost:
+          riskResult?.metadata.annual_maintenance_cost ?? annualMaintenanceCost,
         returnOnInvestment: riskResult?.pointForecasts.ROI ?? 0,
         paybackTime: riskResult?.pointForecasts.PBP ?? 0,
         netPresentValue: riskResult?.pointForecasts.NPV ?? 0,

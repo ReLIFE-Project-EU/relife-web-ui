@@ -48,6 +48,9 @@ export const DEFAULT_FLOOR_AREA = 100;
 export interface ExtractedUniTotals {
   deliveredTotal: number;
   primaryEnergy: number;
+  heatingPrimaryEnergy?: number;
+  coolingPrimaryEnergy?: number;
+  heatPumpCop?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -136,6 +139,15 @@ export function extractUniTotals(
   return {
     deliveredTotal,
     primaryEnergy,
+    ...(summary.EP_heat_total_kWh !== undefined
+      ? { heatingPrimaryEnergy: summary.EP_heat_total_kWh }
+      : {}),
+    ...(summary.EP_cool_total_kWh !== undefined
+      ? { coolingPrimaryEnergy: summary.EP_cool_total_kWh }
+      : {}),
+    ...(summary.heat_pump_cop !== undefined
+      ? { heatPumpCop: summary.heat_pump_cop }
+      : {}),
   };
 }
 

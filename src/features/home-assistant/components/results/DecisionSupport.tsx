@@ -5,25 +5,29 @@
 
 import {
   Alert,
-  Badge,
   Box,
   Button,
   Card,
   Group,
   Select,
-  SimpleGrid,
   Stack,
   Text,
   Title,
 } from "@mantine/core";
-import { IconInfoCircle, IconTrophy } from "@tabler/icons-react";
+import {
+  IconCircleCheck,
+  IconCircleDashed,
+  IconInfoCircle,
+  IconTrophy,
+} from "@tabler/icons-react";
+import { getRankingScenarioStatuses } from "../../../../services/TechnicalMCDAService";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
-import { getRankColor, getRankLabel } from "../../utils/colorUtils";
+import { getRankColor } from "../../utils/colorUtils";
 
 export function DecisionSupport() {
   const { state, dispatch } = useHomeAssistant();
-  const { mcda, renovation } = useHomeAssistantServices();
+  const { mcda } = useHomeAssistantServices();
   const {
     scenarios,
     financialResults,
@@ -35,19 +39,21 @@ export function DecisionSupport() {
   const currentScenario = scenarios.find(
     (scenario) => scenario.id === "current",
   );
-  const rankableMeasureIds = new Set(
-    renovation.getRankableMeasures().map((measure) => measure.id),
-  );
   const renovationScenarios = scenarios.filter((s) => s.id !== "current");
-  const rankableRenovationScenarios = renovationScenarios.filter((scenario) =>
-    scenario.measureIds.every((measureId) => rankableMeasureIds.has(measureId)),
+  const rankingStatuses = getRankingScenarioStatuses(
+    renovationScenarios,
+    financialResults,
   );
-  const canRank = rankableRenovationScenarios.length >= 2 && currentScenario;
+  const rankableRenovationScenarios = rankingStatuses
+    .filter((status) => status.eligible)
+    .map((status) => status.scenario);
+  const canRank = rankableRenovationScenarios.length >= 2 && !!currentScenario;
+  const rankingByScenarioId = new Map(
+    (mcdaRanking ?? []).map((result) => [result.scenarioId, result]),
+  );
 
-  // Get available personas from service
   const personas = mcda.getPersonas();
 
-  // Convert personas to Select options
   const personaOptions = personas.map((persona) => ({
     value: persona.id,
     label: persona.name,
@@ -71,7 +77,7 @@ export function DecisionSupport() {
       }
 
       const ranking = await mcda.rank(
-        [currentScenario, ...rankableRenovationScenarios],
+        [currentScenario, ...renovationScenarios],
         financialResults,
         selectedPersona,
       );
@@ -99,17 +105,14 @@ export function DecisionSupport() {
             Decision Support
           </Title>
           <Text size="sm" c="dimmed">
-            Rank renovation options based on your priorities
+            Compare packages and see which ones best match your priorities
           </Text>
         </Box>
 
         <Alert variant="light" color="blue" icon={<IconInfoCircle size={16} />}>
-          Select a profile that matches your priorities. The ranking uses the
-          Technical API over the evaluated envelope packages only. System
-          upgrades and mixed envelope + system scenarios are shown in the
-          comparison, but they are excluded from ranking. Some criteria
-          currently use placeholder values while the live integration is still
-          being expanded.
+          Select a weighting profile and run the ranking to see personalized
+          recommendations. Only packages with complete energy and cost data can
+          be ranked.
         </Alert>
 
         {/* Persona Selection */}
@@ -139,7 +142,7 @@ export function DecisionSupport() {
             color="green"
             disabled={!canRank}
           >
-            Run
+            Run Ranking
           </Button>
         </Group>
 
@@ -151,85 +154,125 @@ export function DecisionSupport() {
 
         {!canRank && (
           <Alert color="yellow" icon={<IconInfoCircle size={16} />}>
-            At least two evaluated envelope packages are required to run the
-            ranking.
+            {rankingStatuses.filter((s) => s.eligible).length === 0
+              ? "No packages are ready for ranking yet. Complete the energy evaluation for at least two packages to see recommendations."
+              : "Add one more package with complete data to see the ranking."}
           </Alert>
         )}
 
-        {/* Ranking Results */}
-        {mcdaRanking && mcdaRanking.length > 0 && (
+        {/* Package List */}
+        {rankingStatuses.length > 0 && (
           <Box>
             <Text size="sm" fw={500} mb="md">
-              Ranking Results
+              Your Packages
             </Text>
-            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
-              {mcdaRanking.map((result) => {
-                const scenario = renovationScenarios.find(
-                  (s) => s.id === result.scenarioId,
-                );
-                if (!scenario) return null;
-
-                const isFirst = result.rank === 1;
+            <Stack gap="xs">
+              {rankingStatuses.map((status) => {
+                const { scenario } = status;
+                const result = rankingByScenarioId.get(scenario.id);
+                const isFirst = result?.rank === 1;
 
                 return (
-                  <Box
-                    key={result.scenarioId}
-                    p="md"
+                  <Card
+                    key={scenario.id}
+                    padding="sm"
+                    radius="sm"
+                    withBorder
                     style={{
-                      backgroundColor: isFirst
-                        ? "var(--mantine-color-yellow-0)"
+                      backgroundColor: result
+                        ? isFirst
+                          ? "var(--mantine-color-yellow-0)"
+                          : "var(--mantine-color-body)"
                         : "var(--mantine-color-gray-0)",
-                      borderRadius: "var(--mantine-radius-sm)",
-                      border: isFirst
-                        ? "2px solid var(--mantine-color-yellow-5)"
-                        : "1px solid var(--mantine-color-gray-3)",
-                      position: "relative",
+                      borderColor: result
+                        ? isFirst
+                          ? "var(--mantine-color-yellow-6)"
+                          : "var(--mantine-color-gray-3)"
+                        : "var(--mantine-color-gray-3)",
+                      borderWidth: isFirst ? 2 : 1,
                     }}
                   >
-                    {/* Rank Badge */}
-                    <Badge
-                      color={getRankColor(result.rank)}
-                      variant={result.rank === 1 ? "filled" : "light"}
-                      size="lg"
-                      style={{
-                        position: "absolute",
-                        top: -10,
-                        right: 10,
-                      }}
-                    >
-                      #{result.rank}
-                    </Badge>
+                    <Group align="flex-start" gap="md">
+                      {/* Rank indicator */}
+                      <Box
+                        style={{
+                          width: 40,
+                          textAlign: "center",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {result ? (
+                          isFirst ? (
+                            <IconTrophy
+                              size={28}
+                              color="var(--mantine-color-yellow-6)"
+                            />
+                          ) : (
+                            <Text
+                              size="xl"
+                              fw={700}
+                              c={getRankColor(result.rank)}
+                            >
+                              {result.rank}
+                            </Text>
+                          )
+                        ) : status.eligible ? (
+                          <IconCircleCheck
+                            size={28}
+                            color="var(--mantine-color-green-6)"
+                          />
+                        ) : (
+                          <IconCircleDashed
+                            size={28}
+                            color="var(--mantine-color-gray-6)"
+                          />
+                        )}
+                      </Box>
 
-                    <Stack gap="xs" mt="sm">
-                      <Text fw={600} size="lg">
-                        {scenario.label}
-                      </Text>
-                      <Text size="sm" c="dimmed">
-                        Score: {(result.score * 100).toFixed(1)}%
-                      </Text>
-                      {isFirst && (
-                        <Badge
-                          color="yellow"
-                          variant="light"
-                          leftSection={<IconTrophy size={12} />}
-                        >
-                          {getRankLabel(result.rank)}
-                        </Badge>
-                      )}
-                    </Stack>
-                  </Box>
+                      {/* Package info */}
+                      <Box style={{ flex: 1 }}>
+                        <Text fw={600} size="md">
+                          {scenario.label}
+                        </Text>
+                        {result ? (
+                          <Group gap="xs" mt={4}>
+                            <Text size="sm" c="dimmed">
+                              Score: {(result.score * 100).toFixed(1)}%
+                            </Text>
+                            {isFirst && (
+                              <>
+                                <Text size="xs" c="dimmed">
+                                  •
+                                </Text>
+                                <Text size="sm" c="yellow.9">
+                                  Best match for your priorities
+                                </Text>
+                              </>
+                            )}
+                          </Group>
+                        ) : status.eligible ? (
+                          <Text size="sm" c="green.7" mt={4}>
+                            Ready to rank - needs at least one more package
+                          </Text>
+                        ) : (
+                          <Text size="sm" c="dimmed" mt={4}>
+                            {status.reason}
+                          </Text>
+                        )}
+                      </Box>
+                    </Group>
+                  </Card>
                 );
               })}
-            </SimpleGrid>
+            </Stack>
           </Box>
         )}
 
         {/* No ranking yet message */}
-        {!mcdaRanking && (
+        {!mcdaRanking && canRank && (
           <Text size="sm" c="dimmed" ta="center" py="md">
-            {canRank
-              ? 'Select a profile and click "Run" to see personalized ranking'
-              : "Evaluate more than one envelope package to enable ranking"}
+            Select a profile above and click Run Ranking to see personalized
+            recommendations
           </Text>
         )}
       </Stack>

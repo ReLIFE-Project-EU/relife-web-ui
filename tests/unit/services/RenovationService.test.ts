@@ -146,6 +146,8 @@ const stubECMResponse = {
           summary: {
             E_delivered_thermal_kWh: 1000,
             E_delivered_electric_total_kWh: 250,
+            EP_heat_total_kWh: 1200,
+            EP_cool_total_kWh: 600,
             EP_total_kWh: 1800,
           },
         },
@@ -486,6 +488,8 @@ describe("RenovationService", () => {
     expect(scenarios[1]?.deliveredTotal).toBe(1250);
     expect(scenarios[1]?.deliveredEnergyCost).toBe(313);
     expect(scenarios[1]?.primaryEnergy).toBe(1800);
+    expect(scenarios[1]?.heatingPrimaryEnergy).toBe(1200);
+    expect(scenarios[1]?.coolingPrimaryEnergy).toBe(600);
   });
 
   test("evaluateScenarios handles condensing-boiler system scenarios without relying on envelope elements", async () => {
@@ -511,6 +515,8 @@ describe("RenovationService", () => {
               summary: {
                 E_delivered_thermal_kWh: 900,
                 E_delivered_electric_total_kWh: 100,
+                EP_heat_total_kWh: 1000,
+                EP_cool_total_kWh: 400,
                 EP_total_kWh: 1400,
               },
             },
@@ -543,6 +549,8 @@ describe("RenovationService", () => {
     expect(scenarios[1]?.label).toBe("Condensing Boiler");
     expect(scenarios[1]?.deliveredTotal).toBe(1000);
     expect(scenarios[1]?.primaryEnergy).toBe(1400);
+    expect(scenarios[1]?.heatingPrimaryEnergy).toBe(1000);
+    expect(scenarios[1]?.coolingPrimaryEnergy).toBe(400);
   });
 
   test("evaluateScenarios enables heat-pump UNI totals for mixed scenarios", async () => {
@@ -568,6 +576,8 @@ describe("RenovationService", () => {
               heat_pump_applied: true,
               summary: {
                 E_delivered_electric_total_kWh: 850,
+                EP_heat_total_kWh: 900,
+                EP_cool_total_kWh: 300,
                 EP_total_kWh: 1200,
                 heat_pump_cop: 3.2,
               },
@@ -605,6 +615,9 @@ describe("RenovationService", () => {
     );
     expect(scenarios[1]?.deliveredTotal).toBe(850);
     expect(scenarios[1]?.primaryEnergy).toBe(1200);
+    expect(scenarios[1]?.heatingPrimaryEnergy).toBe(900);
+    expect(scenarios[1]?.coolingPrimaryEnergy).toBe(300);
+    expect(scenarios[1]?.heatPumpCop).toBe(3.2);
   });
 
   test("evaluateScenarios sends PV params without scenario_elements for PV-only packages", async () => {
@@ -716,13 +729,21 @@ describe("RenovationService", () => {
               summary: {
                 E_delivered_thermal_kWh: 1500,
                 E_delivered_electric_total_kWh: 500,
+                EP_heat_total_kWh: 2000,
+                EP_cool_total_kWh: 1000,
                 EP_total_kWh: 3000,
               },
             },
             pv_hp: {
               summary: {
                 annual_kwh: {
+                  pv_generation: 2200,
                   self_consumption: 1500,
+                  grid_export: 700,
+                },
+                indicators: {
+                  self_consumption_rate: 0.68,
+                  self_sufficiency_rate: 0.42,
                 },
               },
             },
@@ -746,6 +767,13 @@ describe("RenovationService", () => {
     expect(scenarios[1]?.deliveredTotal).toBe(500);
     expect(scenarios[1]?.deliveredEnergyCost).toBe(125);
     expect(scenarios[1]?.primaryEnergy).toBe(3000);
+    expect(scenarios[1]?.heatingPrimaryEnergy).toBe(2000);
+    expect(scenarios[1]?.coolingPrimaryEnergy).toBe(1000);
+    expect(scenarios[1]?.pvGeneration).toBe(2200);
+    expect(scenarios[1]?.pvSelfConsumption).toBe(1500);
+    expect(scenarios[1]?.pvGridExport).toBe(700);
+    expect(scenarios[1]?.pvSelfConsumptionRate).toBe(0.68);
+    expect(scenarios[1]?.pvSelfSufficiencyRate).toBe(0.42);
     expect(scenarios[1]?.annualEnergyNeeds).toBe(876);
     expect(scenarios[1]?.heatingCoolingNeeds).toBe(876);
   });

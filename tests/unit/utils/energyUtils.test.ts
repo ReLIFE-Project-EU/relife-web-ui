@@ -190,6 +190,7 @@ describe("extractUniTotals", () => {
     expect(extractUniTotals(uniResults, { allowHeatPump: true })).toEqual({
       deliveredTotal: 900,
       primaryEnergy: 1800,
+      heatPumpCop: 3.2,
     });
   });
 });

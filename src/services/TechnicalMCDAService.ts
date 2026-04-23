@@ -41,6 +41,21 @@ const KPI_KEYS: McdaKpiKey[] = [
   "arv_kpi",
 ];
 
+const NEUTRALIZED_KPI_KEYS: McdaKpiKey[] = [
+  "window_kpi",
+  "st_coverage_kpi",
+  "embodied_carbon_kpi",
+  "gwp_kpi",
+  "thermal_comfort_air_temp_kpi",
+  "thermal_comfort_humidity_kpi",
+];
+
+export interface RankingScenarioStatus {
+  scenario: RenovationScenario;
+  eligible: boolean;
+  reason: string | null;
+}
+
 export class TechnicalMCDAService implements IMCDAService {
   getPersonas(): MCDAPersona[] {
     return MCDA_PERSONAS;
@@ -92,12 +107,14 @@ export function buildMcdaTopsisRequest(
   const renovationScenarios = scenarios.filter(
     (scenario) => scenario.id !== "current",
   );
-  const technologies = renovationScenarios.map((scenario) =>
-    deriveTechnologyKpis(
-      scenario,
-      financialResults[scenario.id],
-      baselineScenario,
-    ),
+  const rankableScenarios = getRankingScenarioStatuses(
+    renovationScenarios,
+    financialResults,
+  )
+    .filter((status) => status.eligible)
+    .map((status) => status.scenario);
+  const technologies = rankableScenarios.map((scenario) =>
+    deriveTechnologyKpis(scenario, financialResults[scenario.id]),
   );
 
   return {
@@ -107,7 +124,7 @@ export function buildMcdaTopsisRequest(
       technologies.length > 0
         ? createMcdaMinsMaxes(technologies)
         : createMcdaMinsMaxes([
-            deriveTechnologyKpis(baselineScenario, undefined, baselineScenario),
+            deriveTechnologyKpis(baselineScenario, undefined),
           ]),
   };
 }
@@ -125,30 +142,26 @@ export function mapPersonaToProfile(personaId: string): McdaProfile {
 export function deriveTechnologyKpis(
   scenario: RenovationScenario,
   financial: FinancialResults | undefined,
-  baselineScenario: RenovationScenario,
 ): McdaTechnology {
-  const baselineEnergy = Math.max(1, baselineScenario.annualEnergyNeeds);
-  const annualEnergyReductionPct =
-    ((baselineScenario.annualEnergyNeeds - scenario.annualEnergyNeeds) /
-      baselineEnergy) *
-    100;
-  const envelopeScore = Math.max(0, annualEnergyReductionPct);
+  const annualMaintenanceCost = getAnnualMaintenanceCost(financial);
 
   return {
     name: scenario.id,
-    envelope_kpi: envelopeScore,
-    window_kpi: scenario.measureIds.includes("windows") ? envelopeScore : 0,
-    heating_system_kpi: 0,
-    cooling_system_kpi: 0,
+    envelope_kpi: scenario.annualEnergyNeeds,
+    window_kpi: 0,
+    heating_system_kpi: scenario.heatingPrimaryEnergy ?? 0,
+    cooling_system_kpi: scenario.coolingPrimaryEnergy ?? 0,
     st_coverage_kpi: 0,
-    onsite_res_kpi: 0,
-    net_energy_export_kpi: 0,
+    onsite_res_kpi:
+      (scenario.pvSelfSufficiencyRate ?? scenario.pvSelfConsumptionRate ?? 0) *
+      100,
+    net_energy_export_kpi: scenario.pvGridExport ?? 0,
     embodied_carbon_kpi: 0,
     gwp_kpi: 0,
-    thermal_comfort_air_temp_kpi: scenario.comfortIndex,
+    thermal_comfort_air_temp_kpi: 0,
     thermal_comfort_humidity_kpi: 0,
     ii_kpi: financial?.capitalExpenditure ?? 0,
-    aoc_kpi: scenario.annualEnergyCost,
+    aoc_kpi: annualMaintenanceCost ?? 0,
     irr_kpi: financial?.riskAssessment?.pointForecasts.IRR ?? 0,
     npv_kpi: financial?.riskAssessment?.pointForecasts.NPV ?? 0,
     pp_kpi: financial?.riskAssessment?.pointForecasts.PBP ?? 0,
@@ -162,6 +175,11 @@ export function createMcdaMinsMaxes(
   const minsMaxes = {} as McdaMinsMaxes;
 
   for (const key of KPI_KEYS) {
+    if (NEUTRALIZED_KPI_KEYS.includes(key)) {
+      minsMaxes[key] = [-1, 1];
+      continue;
+    }
+
     const values = technologies.map((technology) => technology[key]);
     const min = Math.min(...values);
     const max = Math.max(...values);
@@ -176,4 +194,81 @@ export function createMcdaMinsMaxes(
   }
 
   return minsMaxes;
+}
+
+export function getRankingScenarioStatuses(
+  scenarios: RenovationScenario[],
+  financialResults: Record<ScenarioId, FinancialResults>,
+): RankingScenarioStatus[] {
+  return scenarios
+    .filter((scenario) => scenario.id !== "current")
+    .map((scenario) => {
+      const reason = getRankingExclusionReason(
+        scenario,
+        financialResults[scenario.id],
+      );
+
+      return {
+        scenario,
+        eligible: reason === null,
+        reason,
+      };
+    });
+}
+
+function getRankingExclusionReason(
+  scenario: RenovationScenario,
+  financial: FinancialResults | undefined,
+): string | null {
+  if (!financial) {
+    return "Financial data is missing";
+  }
+
+  if (!financial.riskAssessment) {
+    return "No energy savings calculated";
+  }
+
+  if (!isFiniteNumber(getAnnualMaintenanceCost(financial))) {
+    return "Maintenance cost data is missing";
+  }
+
+  if (!isFiniteNumber(scenario.annualEnergyNeeds)) {
+    return "Energy data is incomplete";
+  }
+
+  if (
+    !isFiniteNumber(scenario.heatingPrimaryEnergy) ||
+    !isFiniteNumber(scenario.coolingPrimaryEnergy)
+  ) {
+    return "Energy data is incomplete";
+  }
+
+  if (scenario.measureIds.includes("pv")) {
+    const hasPvBalance =
+      isFiniteNumber(scenario.pvGeneration) &&
+      isFiniteNumber(scenario.pvSelfConsumption) &&
+      isFiniteNumber(scenario.pvGridExport);
+    const hasPvRate =
+      isFiniteNumber(scenario.pvSelfSufficiencyRate) ||
+      isFiniteNumber(scenario.pvSelfConsumptionRate);
+
+    if (!hasPvBalance || !hasPvRate) {
+      return "Solar panel data is incomplete";
+    }
+  }
+
+  return null;
+}
+
+function getAnnualMaintenanceCost(
+  financial: FinancialResults | undefined,
+): number | undefined {
+  const metadataValue =
+    financial?.riskAssessment?.metadata.annual_maintenance_cost;
+
+  return financial?.annualMaintenanceCost ?? metadataValue;
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
 }

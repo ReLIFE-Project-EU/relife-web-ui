@@ -261,6 +261,14 @@ export interface RenovationScenario {
   deliveredTotal?: number; // kWh/year (UNI/TS 11300 delivered energy, when available)
   deliveredEnergyCost?: number; // EUR/year estimate derived from deliveredTotal
   primaryEnergy?: number; // kWh/year (UNI/TS 11300 primary energy, when available)
+  heatingPrimaryEnergy?: number; // kWh/year (UNI/TS 11300 primary energy for heating, when available)
+  coolingPrimaryEnergy?: number; // kWh/year (UNI/TS 11300 primary energy for cooling, when available)
+  heatPumpCop?: number; // COP used by Forecasting for heat-pump scenarios, when available
+  pvGeneration?: number; // kWh/year PV generation, when available
+  pvSelfConsumption?: number; // kWh/year PV self-consumption, when available
+  pvGridExport?: number; // kWh/year PV grid export, when available
+  pvSelfConsumptionRate?: number; // 0-1 PV self-consumption rate, when available
+  pvSelfSufficiencyRate?: number; // 0-1 PV self-sufficiency rate, when available
   flexibilityIndex: number;
   comfortIndex: number;
   packageId: string | null;
@@ -306,6 +314,7 @@ export interface RiskAssessmentMetadata {
   project_lifetime: number;
   capex: number; // Used CAPEX value returned by the Financial API metadata
   loan_amount: number;
+  annual_maintenance_cost?: number;
   annual_loan_payment?: number;
   loan_rate_percent?: number;
   output_level: string;
@@ -371,6 +380,7 @@ export interface FinancialResults {
 
   // Derived/cached values from API responses for convenience
   capitalExpenditure: number; // From metadata.capex
+  annualMaintenanceCost?: number; // EUR/year, from request or Financial API metadata
   returnOnInvestment: number; // From pointForecasts.ROI
   paybackTime: number; // From pointForecasts.PBP
   netPresentValue: number; // From pointForecasts.NPV

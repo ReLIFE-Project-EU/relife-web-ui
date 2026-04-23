@@ -113,8 +113,8 @@ These principles trade speed for correctness on non-trivial work.
 
 **Authoritative source for API shape** is the **service implementation**: route handlers, request/response models, and validation in the upstream repositories.
 
-| Service     | Local path (optional clone)                     | Repository                                                      |
-| ----------- | ----------------------------------------------- | --------------------------------------------------------------- |
+| Service     | Local path (optional clone)                    | Repository                                                      |
+| ----------- | ---------------------------------------------- | --------------------------------------------------------------- |
 | Financial   | `external-services/relife-financial-service`   | https://github.com/ReLIFE-Project-EU/relife-financial-service   |
 | Forecasting | `external-services/relife-forecasting-service` | https://github.com/ReLIFE-Project-EU/relife-forecasting-service |
 | Technical   | `external-services/relife-technical-service`   | https://github.com/ReLIFE-Project-EU/relife-technical-service   |
