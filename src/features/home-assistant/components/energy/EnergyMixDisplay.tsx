@@ -9,18 +9,19 @@
  */
 
 import {
-  Alert,
   Box,
   Card,
+  Fieldset,
   Group,
   SimpleGrid,
   Stack,
   Text,
   Title,
 } from "@mantine/core";
-import { IconFlame, IconInfoCircle, IconSnowflake } from "@tabler/icons-react";
+import { IconFlame, IconSnowflake } from "@tabler/icons-react";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { formatEnergyPerYear } from "../../utils/formatters";
+import { ConceptLabel } from "../shared";
 
 export function EnergyMixDisplay() {
   const { state } = useHomeAssistant();
@@ -48,6 +49,14 @@ export function EnergyMixDisplay() {
           </Text>
         </Box>
 
+        <Fieldset legend="What this metric means">
+          <ConceptLabel
+            conceptId="annual-building-thermal-needs"
+            descriptionVisible
+            withExplainer={false}
+          />
+        </Fieldset>
+
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
           <DemandSection
             title="Heating Demand"
@@ -67,21 +76,6 @@ export function EnergyMixDisplay() {
             icon={<IconFlame size={16} color="var(--mantine-color-gray-6)" />}
           />
         </SimpleGrid>
-
-        <Alert
-          icon={<IconInfoCircle size={16} />}
-          color="blue"
-          variant="light"
-          p="sm"
-        >
-          <Text size="xs">
-            These figures are <strong>ideal thermal loads</strong> from the
-            building energy simulation — the energy the building needs to
-            maintain comfort. Actual system energy consumption depends on the
-            heating and cooling system, so it can be higher or lower. See Energy
-            Overview above for system consumption when it is available.
-          </Text>
-        </Alert>
       </Stack>
     </Card>
   );

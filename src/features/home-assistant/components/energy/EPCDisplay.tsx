@@ -4,18 +4,14 @@
  */
 
 import {
-  Alert,
-  ActionIcon,
   Box,
   Card,
   Group,
-  HoverCard,
   SimpleGrid,
   Stack,
   Text,
   Title,
 } from "@mantine/core";
-import { IconInfoCircle } from "@tabler/icons-react";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import {
   formatCurrency,
@@ -24,8 +20,8 @@ import {
 } from "../../utils/formatters";
 import { ENERGY_PRICE_EUR_PER_KWH } from "../../services/energyUtils";
 import {
+  ConceptMetricCard,
   EPCBadge,
-  MetricCard,
   ReferenceAdjustedComparisonCard,
 } from "../shared";
 
@@ -81,47 +77,28 @@ export function EPCDisplay() {
             </Stack>
           </Group>
 
-          <Alert
-            icon={<IconInfoCircle size={16} />}
-            color="blue"
-            variant="light"
-          >
-            <Text size="sm">
-              <strong>Building thermal needs</strong> show how much heating and
-              cooling the home needs. <strong>System energy consumption</strong>{" "}
-              shows the electricity or fuel needed to deliver it.
-            </Text>
-          </Alert>
-
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-            <MetricCard
-              label={
-                <MetricLabel
-                  label="Building thermal needs"
-                  description="Annual heating and cooling needed for comfort. This comes from the building simulation, not from the HVAC system."
-                />
-              }
+            <ConceptMetricCard
+              conceptId="annual-building-thermal-needs"
               value={formatEnergyPerYear(estimation.annualEnergyNeeds)}
+              descriptionVisible
             />
-            <MetricCard
-              label={
-                <MetricLabel
-                  label="Estimated system energy consumption"
-                  description="Annual electricity or fuel use from the backend UNI/TS 11300 system simulation, scaled to your home's area. Envelope measures lower it by reducing heating/cooling needs. Boiler and heat-pump measures lower it by meeting those needs more efficiently."
-                />
-              }
+            <ConceptMetricCard
+              conceptId="system-energy-consumption"
               value={
                 hasDeliveredConsumption
                   ? formatEnergyPerYear(estimation.deliveredTotal!)
                   : "Not available"
               }
+              descriptionVisible
             />
           </SimpleGrid>
 
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-            <MetricCard
-              label="Estimated cost of thermal needs"
+            <ConceptMetricCard
+              conceptId="estimated-thermal-needs-cost"
               value={formatCurrency(estimation.annualEnergyCost)}
+              descriptionVisible
             />
           </SimpleGrid>
 
@@ -140,34 +117,5 @@ export function EPCDisplay() {
         </Stack>
       </Card>
     </Stack>
-  );
-}
-
-function MetricLabel({
-  label,
-  description,
-}: {
-  label: string;
-  description: string;
-}) {
-  return (
-    <Group gap={4} wrap="nowrap">
-      <Text inherit>{label}</Text>
-      <HoverCard width={240} shadow="md" position="top" withArrow>
-        <HoverCard.Target>
-          <ActionIcon
-            variant="subtle"
-            size="sm"
-            color="gray"
-            aria-label={`Explain ${label.toLowerCase()}`}
-          >
-            <IconInfoCircle size={14} />
-          </ActionIcon>
-        </HoverCard.Target>
-        <HoverCard.Dropdown>
-          <Text size="xs">{description}</Text>
-        </HoverCard.Dropdown>
-      </HoverCard>
-    </Group>
   );
 }

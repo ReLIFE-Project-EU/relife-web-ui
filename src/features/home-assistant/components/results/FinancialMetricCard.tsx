@@ -6,6 +6,11 @@
 
 import { Card, Group, Stack, Text } from "@mantine/core";
 import type { MantineColor } from "@mantine/core";
+import type { ConceptId } from "../../../../constants/relifeConcepts";
+import {
+  financialMetricConceptIds,
+  relifeConcepts,
+} from "../../../../constants/relifeConcepts";
 import {
   MetricExplainer,
   RangeIndicator,
@@ -14,8 +19,7 @@ import {
 import type { PercentileData } from "../../context/types";
 
 export interface FinancialMetricCardProps {
-  /** Display label for the metric */
-  label: string;
+  conceptId?: ConceptId;
   /** The metric type for explanations */
   metricType: FinancialMetricType;
   /** Point forecast value (P50/median) */
@@ -33,7 +37,7 @@ export interface FinancialMetricCardProps {
 }
 
 export function FinancialMetricCard({
-  label,
+  conceptId,
   metricType,
   value,
   formatter,
@@ -42,6 +46,8 @@ export function FinancialMetricCard({
   lowerIsBetter = false,
   highlighted = false,
 }: FinancialMetricCardProps) {
+  const concept =
+    relifeConcepts[conceptId ?? financialMetricConceptIds[metricType]];
   const hasPercentiles =
     percentiles &&
     percentiles.P10 !== undefined &&
@@ -58,7 +64,7 @@ export function FinancialMetricCard({
         {/* Header with label and info icon */}
         <Group gap={6} wrap="nowrap">
           <Text size="sm" c="dimmed" style={{ flex: 1 }}>
-            {label}
+            {concept.label}
           </Text>
           <MetricExplainer metric={metricType} />
         </Group>

@@ -18,7 +18,6 @@ import {
   Collapse,
   Divider,
   Group,
-  ScrollArea,
   SimpleGrid,
   Stack,
   Table,
@@ -27,11 +26,7 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import {
-  IconChevronDown,
-  IconChevronUp,
-  IconInfoCircle,
-} from "@tabler/icons-react";
+import { IconChevronDown, IconChevronUp } from "@tabler/icons-react";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { CashFlowChart } from "./CashFlowChart";
 import { FinancialMetricCard } from "./FinancialMetricCard";
@@ -40,7 +35,8 @@ import {
   hasFinancialResultForScenario,
 } from "./financialSelection";
 import { RiskGauge } from "./RiskGauge";
-import { MetricExplainer } from "../shared";
+import { ConceptLabel } from "../shared";
+import type { ConceptId } from "../../../../constants/relifeConcepts";
 import type {
   CashFlowData,
   FinancialResults,
@@ -230,7 +226,7 @@ export function FinancialDataSection() {
             <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
               {/* Net Present Value */}
               <FinancialMetricCard
-                label="Net Present Value"
+                conceptId="npv"
                 metricType="NPV"
                 value={
                   selectedResult.riskAssessment?.pointForecasts.NPV ??
@@ -244,7 +240,7 @@ export function FinancialDataSection() {
 
               {/* Payback Period */}
               <FinancialMetricCard
-                label="Payback Period"
+                conceptId="payback-period"
                 metricType="PBP"
                 value={
                   selectedResult.riskAssessment?.pointForecasts.PBP ??
@@ -260,7 +256,7 @@ export function FinancialDataSection() {
               {selectedResult.riskAssessment?.pointForecasts
                 .MonthlyAvgSavings !== undefined && (
                 <FinancialMetricCard
-                  label="Monthly Cash Benefit"
+                  conceptId="monthly-cash-benefit"
                   metricType="MonthlyAvgSavings"
                   value={
                     selectedResult.riskAssessment.pointForecasts
@@ -273,7 +269,7 @@ export function FinancialDataSection() {
 
               {/* Capital Expenditure */}
               <FinancialMetricCard
-                label="Investment Required"
+                conceptId="investment"
                 metricType="CAPEX"
                 value={selectedResult.capitalExpenditure}
                 formatter={formatCurrency}
@@ -346,15 +342,10 @@ export function FinancialDataSection() {
                   }
                   scenarioLabel={selectedScenario.label}
                 />
-                <Alert
-                  variant="light"
-                  color="blue"
-                  icon={<IconInfoCircle size={16} />}
-                  radius="sm"
-                >
+                <Text size="xs" c="dimmed">
                   Green bars show yearly benefit from saved energy; red bars
                   show yearly costs. The dark line shows the running total.
-                </Alert>
+                </Text>
                 {cashFlowData.breakeven_year === null && (
                   <Card withBorder radius="sm" p="sm" bg="red.0">
                     <Text size="sm" fw={600} c="red.7">
@@ -433,7 +424,7 @@ function SecondaryMetricsTable({
 
   const metrics = [
     {
-      label: "Internal Rate of Return",
+      conceptId: "irr" as const,
       metricType: "IRR" as const,
       value: (result.riskAssessment?.pointForecasts.IRR ?? 0) * 100,
       formatter: formatPercent,
@@ -446,7 +437,7 @@ function SecondaryMetricsTable({
         : undefined,
     },
     {
-      label: "Return on Investment",
+      conceptId: "roi" as const,
       metricType: "ROI" as const,
       value:
         (result.riskAssessment?.pointForecasts.ROI ??
@@ -461,7 +452,7 @@ function SecondaryMetricsTable({
         : undefined,
     },
     {
-      label: "Discounted Payback Period",
+      conceptId: "discounted-payback-period" as const,
       metricType: "DPP" as const,
       value: result.riskAssessment?.pointForecasts.DPP ?? 0,
       formatter: formatYears,
@@ -472,7 +463,7 @@ function SecondaryMetricsTable({
 
   return (
     <Stack gap="md">
-      <ScrollArea>
+      <Table.ScrollContainer minWidth={520}>
         <Table striped highlightOnHover withTableBorder>
           <Table.Thead>
             <Table.Tr>
@@ -488,8 +479,7 @@ function SecondaryMetricsTable({
               <Table.Tr key={metric.metricType}>
                 <Table.Td>
                   <Group gap={6}>
-                    {metric.label}
-                    <MetricExplainer metric={metric.metricType} />
+                    <ConceptLabel conceptId={metric.conceptId} />
                   </Group>
                 </Table.Td>
                 <Table.Td style={{ textAlign: "right" }}>
@@ -514,8 +504,7 @@ function SecondaryMetricsTable({
             <Table.Tr>
               <Table.Td>
                 <Group gap={6}>
-                  Break-even Year
-                  <MetricExplainer metric="BreakEven" />
+                  <ConceptLabel conceptId="break-even-year" />
                 </Group>
               </Table.Td>
               <Table.Td style={{ textAlign: "right" }}>
@@ -541,7 +530,7 @@ function SecondaryMetricsTable({
             </Table.Tr>
           </Table.Tbody>
         </Table>
-      </ScrollArea>
+      </Table.ScrollContainer>
     </Stack>
   );
 }
@@ -563,36 +552,36 @@ function ScenarioComparisonTable({
   onSelectScenario,
 }: ScenarioComparisonTableProps) {
   const metrics: Array<{
-    label: string;
+    conceptId: ConceptId;
     getValue: (fr: FinancialResults) => number | undefined;
     formatter: (value: number | undefined) => string;
   }> = [
     {
-      label: "Investment",
+      conceptId: "investment",
       getValue: (fr: FinancialResults) => fr.capitalExpenditure,
       formatter: (value) => (value === undefined ? "-" : formatCurrency(value)),
     },
     {
-      label: "Net Present Value",
+      conceptId: "npv",
       getValue: (fr: FinancialResults) =>
         fr.riskAssessment?.pointForecasts.NPV ?? fr.netPresentValue,
       formatter: (value) => (value === undefined ? "-" : formatCurrency(value)),
     },
     {
-      label: "Payback Period",
+      conceptId: "payback-period",
       getValue: (fr: FinancialResults) =>
         fr.riskAssessment?.pointForecasts.PBP ?? fr.paybackTime,
       formatter: (value) => (value === undefined ? "-" : formatYears(value)),
     },
     {
-      label: "Monthly Cash Benefit",
+      conceptId: "monthly-cash-benefit",
       getValue: (fr: FinancialResults) =>
         fr.riskAssessment?.pointForecasts.MonthlyAvgSavings,
       formatter: (v: number | undefined) =>
         v !== undefined ? formatCurrency(v) : "-",
     },
     {
-      label: "Success Rate",
+      conceptId: "success-probability",
       getValue: (fr: FinancialResults) => {
         const rate = fr.riskAssessment?.pointForecasts.SuccessRate;
         return rate !== undefined ? rate * 100 : undefined;
@@ -630,7 +619,7 @@ function ScenarioComparisonTable({
   });
 
   return (
-    <ScrollArea>
+    <Table.ScrollContainer minWidth={720}>
       <Table striped highlightOnHover withTableBorder withColumnBorders>
         <Table.Thead>
           <Table.Tr>
@@ -710,8 +699,10 @@ function ScenarioComparisonTable({
         </Table.Thead>
         <Table.Tbody>
           {metrics.map((metric) => (
-            <Table.Tr key={metric.label}>
-              <Table.Td fw={500}>{metric.label}</Table.Td>
+            <Table.Tr key={metric.conceptId}>
+              <Table.Td fw={500}>
+                <ConceptLabel conceptId={metric.conceptId} />
+              </Table.Td>
               {scenarios.map((scenario) => {
                 const fr = financialResults[scenario.id];
                 const color = getScenarioColor(scenario.id);
@@ -751,6 +742,6 @@ function ScenarioComparisonTable({
           ))}
         </Table.Tbody>
       </Table>
-    </ScrollArea>
+    </Table.ScrollContainer>
   );
 }

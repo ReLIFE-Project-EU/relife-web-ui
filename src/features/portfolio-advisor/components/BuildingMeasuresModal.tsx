@@ -17,6 +17,7 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { IconArrowBackUp } from "@tabler/icons-react";
+import { measureEffectProfiles } from "../../../constants/relifeConcepts";
 import type { RenovationMeasureId } from "../../../types/renovation";
 import type { PRABuilding } from "../context/types";
 import { usePortfolioAdvisorServices } from "../hooks/usePortfolioAdvisorServices";
@@ -174,7 +175,9 @@ function ModalContent({
                           !isAnalysisEligible || mutuallyExclusiveDisabled
                         }
                         description={
-                          isAnalysisEligible ? undefined : "Coming soon"
+                          isAnalysisEligible
+                            ? measureEffectProfiles[measure.id].summary
+                            : "Coming soon"
                         }
                       />
                     </Box>

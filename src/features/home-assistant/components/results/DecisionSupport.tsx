@@ -1,6 +1,6 @@
 /**
  * DecisionSupport Component
- * Provides MCDA-based ranking with persona selection.
+ * Provides recommendation ranking with priority profile selection.
  */
 
 import {
@@ -8,8 +8,10 @@ import {
   Box,
   Button,
   Card,
+  Fieldset,
   Group,
-  Select,
+  Radio,
+  SimpleGrid,
   Stack,
   Text,
   Title,
@@ -24,6 +26,7 @@ import { getRankingScenarioStatuses } from "../../../../services/TechnicalMCDASe
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 import { getRankColor } from "../../utils/colorUtils";
+import { ConceptLabel } from "../shared";
 
 export function DecisionSupport() {
   const { state, dispatch } = useHomeAssistant();
@@ -54,15 +57,7 @@ export function DecisionSupport() {
 
   const personas = mcda.getPersonas();
 
-  const personaOptions = personas.map((persona) => ({
-    value: persona.id,
-    label: persona.name,
-    description: persona.description,
-  }));
-
-  const selectedPersonaData = personas.find((p) => p.id === selectedPersona);
-
-  const handlePersonaChange = (value: string | null) => {
+  const handlePersonaChange = (value: string) => {
     if (value) {
       dispatch({ type: "SELECT_PERSONA", persona: value });
     }
@@ -102,55 +97,65 @@ export function DecisionSupport() {
       <Stack gap="lg">
         <Box>
           <Title order={4} mb="xs">
-            Decision Support
+            Recommendation Ranking
           </Title>
           <Text size="sm" c="dimmed">
             Compare packages and see which ones best match your priorities
           </Text>
         </Box>
 
-        <Alert variant="light" color="blue" icon={<IconInfoCircle size={16} />}>
-          Select a weighting profile and run the ranking to see personalized
-          recommendations. Only packages with complete energy and cost data can
-          be ranked.
-        </Alert>
+        <Fieldset legend="How recommendations are ranked">
+          <Stack gap="sm">
+            <ConceptLabel
+              conceptId="priority-profile"
+              descriptionVisible
+              withExplainer={false}
+            />
+            <Text size="sm" c="dimmed">
+              Only packages with complete energy and cost data can be ranked.
+            </Text>
+          </Stack>
+        </Fieldset>
 
         {/* Persona Selection */}
-        <Group align="flex-end" gap="md">
-          <Select
-            label="Weighting Profile"
-            description="Choose what matters most to you"
-            placeholder="Select a profile"
-            data={personaOptions}
+        <Stack gap="md">
+          <Radio.Group
+            label="Priority profile"
+            description="Choose what matters most before running the ranking."
             value={selectedPersona}
             onChange={handlePersonaChange}
-            style={{ flex: 1, maxWidth: 300 }}
-            renderOption={({ option }) => (
-              <Stack gap={2}>
-                <Text size="sm">{option.label}</Text>
-                <Text size="xs" c="dimmed">
-                  {(option as (typeof personaOptions)[number]).description}
-                </Text>
-              </Stack>
-            )}
-          />
-
-          <Button
-            onClick={handleRunRanking}
-            loading={isRanking}
-            leftSection={<IconTrophy size={16} />}
-            color="green"
-            disabled={!canRank}
           >
-            Run Ranking
-          </Button>
-        </Group>
+            <SimpleGrid cols={{ base: 1, md: 3 }} spacing="sm" mt="xs">
+              {personas.map((persona) => (
+                <Radio.Card key={persona.id} value={persona.id} p="md">
+                  <Group wrap="nowrap" align="flex-start">
+                    <Radio.Indicator />
+                    <Box>
+                      <Text size="sm" fw={600}>
+                        {persona.name}
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        {persona.description}
+                      </Text>
+                    </Box>
+                  </Group>
+                </Radio.Card>
+              ))}
+            </SimpleGrid>
+          </Radio.Group>
 
-        {selectedPersonaData && (
-          <Text size="sm" c="dimmed">
-            {selectedPersonaData.description}
-          </Text>
-        )}
+          <Group justify="flex-end">
+            <Button
+              onClick={handleRunRanking}
+              loading={isRanking}
+              leftSection={<IconTrophy size={16} />}
+              color="green"
+              disabled={!canRank}
+            >
+              Run Ranking
+            </Button>
+          </Group>
+        </Stack>
 
         {!canRank && (
           <Alert color="yellow" icon={<IconInfoCircle size={16} />}>
@@ -237,7 +242,7 @@ export function DecisionSupport() {
                         {result ? (
                           <Group gap="xs" mt={4}>
                             <Text size="sm" c="dimmed">
-                              Score: {(result.score * 100).toFixed(1)}%
+                              Ranking score: {(result.score * 100).toFixed(1)}%
                             </Text>
                             {isFirst && (
                               <>

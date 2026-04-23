@@ -19,6 +19,7 @@ import {
   IconScale,
 } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
+import { relifeConcepts } from "../constants/relifeConcepts";
 
 const features = [
   {
@@ -30,14 +31,12 @@ const features = [
   {
     icon: IconCalculator,
     title: "Financial Analysis",
-    description:
-      "Comprehensive financial indicators including NPV, IRR, ROI, payback periods, and Monte Carlo risk assessment at professional output level.",
+    description: `Professional outputs for ${relifeConcepts.npv.label}, ${relifeConcepts.irr.label}, ${relifeConcepts.roi.label}, ${relifeConcepts["payback-period"].label}, and Monte Carlo risk assessment.`,
   },
   {
     icon: IconScale,
-    title: "Technical Analysis (MCDA)",
-    description:
-      "Multi-Criteria Decision Analysis across five pillars: Energy Efficiency, Renewables, Sustainability, Comfort, and Financial Viability.",
+    title: "Recommendation Ranking",
+    description: `${relifeConcepts.mcda.description} It balances energy, renewables, sustainability, comfort, and financial viability.`,
   },
   {
     icon: IconChartBar,

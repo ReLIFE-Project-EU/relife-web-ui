@@ -18,6 +18,7 @@ import {
   IconMap,
   IconPresentation,
 } from "@tabler/icons-react";
+import { relifeConcepts } from "../constants/relifeConcepts";
 
 const plannedFeatures = [
   {
@@ -41,8 +42,7 @@ const plannedFeatures = [
   {
     icon: IconPresentation,
     title: "Policy Dashboard",
-    description:
-      "Track policy impacts and key performance indicators for renovation strategies.",
+    description: `Track policy impacts using shared indicators such as ${relifeConcepts["annual-building-thermal-needs"].label.toLowerCase()}, ${relifeConcepts["estimated-epc"].label.toLowerCase()}, and financial outcomes.`,
   },
 ];
 

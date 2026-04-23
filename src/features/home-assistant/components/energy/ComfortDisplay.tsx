@@ -15,6 +15,7 @@ import {
 import { IconAdjustments, IconTemperature } from "@tabler/icons-react";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { getIndexColor } from "../../utils/colorUtils";
+import { ConceptLabel } from "../shared";
 
 export function ComfortDisplay() {
   const { state } = useHomeAssistant();
@@ -32,14 +33,12 @@ export function ComfortDisplay() {
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
           <IndexDisplay
             icon={<IconAdjustments size={20} />}
-            label="Flexibility Index"
-            description="Energy flexibility potential for demand response"
+            conceptId="flexibility-index"
             value={estimation.flexibilityIndex}
           />
           <IndexDisplay
             icon={<IconTemperature size={20} />}
-            label="Comfort Index"
-            description="Indoor thermal comfort level"
+            conceptId="comfort-index"
             value={estimation.comfortIndex}
           />
         </SimpleGrid>
@@ -50,23 +49,19 @@ export function ComfortDisplay() {
 
 interface IndexDisplayProps {
   icon: React.ReactNode;
-  label: string;
-  description: string;
+  conceptId: "flexibility-index" | "comfort-index";
   value: number;
 }
 
-function IndexDisplay({ icon, label, description, value }: IndexDisplayProps) {
+function IndexDisplay({ icon, conceptId, value }: IndexDisplayProps) {
   const color = getIndexColor(value);
 
   return (
     <Stack gap="xs">
       <Group gap="xs">
         {icon}
-        <Text fw={500}>{label}</Text>
+        <ConceptLabel conceptId={conceptId} descriptionVisible />
       </Group>
-      <Text size="xs" c="dimmed">
-        {description}
-      </Text>
       <Group gap="sm" align="center">
         <Progress
           value={value}

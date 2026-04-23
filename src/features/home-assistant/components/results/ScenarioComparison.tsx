@@ -3,21 +3,10 @@
  * Displays a comparison table of all renovation scenarios.
  */
 
-import {
-  ActionIcon,
-  Badge,
-  Box,
-  Card,
-  HoverCard,
-  ScrollArea,
-  Stack,
-  Table,
-  Text,
-  Title,
-} from "@mantine/core";
-import { IconInfoCircle } from "@tabler/icons-react";
+import { Badge, Box, Card, Stack, Table, Text, Title } from "@mantine/core";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import type { RenovationScenario } from "../../context/types";
+import type { ConceptId } from "../../../../constants/relifeConcepts";
 import {
   calculatePercentChange,
   formatCurrency,
@@ -25,7 +14,7 @@ import {
   formatEnergyPerYear,
 } from "../../utils/formatters";
 import { ENERGY_PRICE_EUR_PER_KWH } from "../../services/energyUtils";
-import { DeltaBadge, EPCBadge } from "../shared";
+import { ConceptLabel, DeltaBadge, EPCBadge } from "../shared";
 
 export function ScenarioComparison() {
   const { state } = useHomeAssistant();
@@ -61,7 +50,7 @@ export function ScenarioComparison() {
           </Text>
         </Box>
 
-        <ScrollArea>
+        <Table.ScrollContainer minWidth={900}>
           <Table highlightOnHover withTableBorder withColumnBorders>
             <Table.Thead>
               <Table.Tr>
@@ -80,10 +69,7 @@ export function ScenarioComparison() {
               {/* EPC Row */}
               <Table.Tr>
                 <Table.Td fw={500}>
-                  <MetricLabel
-                    label="Estimated EPC"
-                    description="Shown for the current home and envelope-only scenarios. Scenarios with system upgrades can lower energy use, but EPC is not recalculated here to avoid mixing different meanings."
-                  />
+                  <MetricLabel conceptId="estimated-epc" />
                 </Table.Td>
                 <Table.Td style={{ textAlign: "center" }}>
                   {(() => {
@@ -155,10 +141,7 @@ export function ScenarioComparison() {
               {/* Energy Needs Row */}
               <MetricRow
                 label={
-                  <MetricLabel
-                    label="Annual building thermal needs"
-                    description="The yearly heating and cooling your home needs to stay comfortable. This comes from the building simulation, not from the HVAC system."
-                  />
+                  <MetricLabel conceptId="annual-building-thermal-needs" />
                 }
                 baseValue={
                   currentScenario?.annualEnergyNeeds ||
@@ -172,12 +155,7 @@ export function ScenarioComparison() {
 
               {/* Energy Cost Row */}
               <MetricRow
-                label={
-                  <MetricLabel
-                    label="Estimated cost of thermal needs"
-                    description="A simple frontend estimate based on thermal needs and a flat tariff. This is not the same as your utility bill or the Financial API results."
-                  />
-                }
+                label={<MetricLabel conceptId="estimated-thermal-needs-cost" />}
                 baseValue={
                   currentScenario?.annualEnergyCost ||
                   estimation.annualEnergyCost
@@ -189,12 +167,7 @@ export function ScenarioComparison() {
               />
 
               <OptionalMetricRow
-                label={
-                  <MetricLabel
-                    label="Estimated system energy consumption"
-                    description="The yearly electricity or fuel the HVAC system needs to meet the building's thermal needs. HRA uses this for financial savings when available."
-                  />
-                }
+                label={<MetricLabel conceptId="system-energy-consumption" />}
                 baseValue={currentScenario?.deliveredTotal}
                 scenarios={renovationScenarios}
                 getValue={(s) => s.deliveredTotal}
@@ -204,7 +177,7 @@ export function ScenarioComparison() {
 
               {/* Flexibility Index Row */}
               <MetricRow
-                label="Flexibility Index (0–100)"
+                label={<MetricLabel conceptId="flexibility-index" />}
                 baseValue={
                   currentScenario?.flexibilityIndex ||
                   estimation.flexibilityIndex
@@ -217,7 +190,7 @@ export function ScenarioComparison() {
 
               {/* Comfort Index Row */}
               <MetricRow
-                label="Comfort Index (0–100)"
+                label={<MetricLabel conceptId="comfort-index" />}
                 baseValue={
                   currentScenario?.comfortIndex || estimation.comfortIndex
                 }
@@ -228,7 +201,7 @@ export function ScenarioComparison() {
               />
             </Table.Tbody>
           </Table>
-        </ScrollArea>
+        </Table.ScrollContainer>
         <Text size="xs" c="dimmed">
           Thermal-needs cost values are frontend estimates based on a flat
           tariff of {formatCurrencyDecimal(ENERGY_PRICE_EUR_PER_KWH)}/kWh.
@@ -349,33 +322,6 @@ function MetricRow({
   );
 }
 
-function MetricLabel({
-  label,
-  description,
-}: {
-  label: string;
-  description: string;
-}) {
-  return (
-    <HoverCard width={260} shadow="md" position="top-start" withArrow>
-      <HoverCard.Target>
-        <ActionIcon.Group>
-          <Text span inherit>
-            {label}
-          </Text>
-          <ActionIcon
-            variant="subtle"
-            size="sm"
-            color="gray"
-            aria-label={`Explain ${label.toLowerCase()}`}
-          >
-            <IconInfoCircle size={14} />
-          </ActionIcon>
-        </ActionIcon.Group>
-      </HoverCard.Target>
-      <HoverCard.Dropdown>
-        <Text size="xs">{description}</Text>
-      </HoverCard.Dropdown>
-    </HoverCard>
-  );
+function MetricLabel({ conceptId }: { conceptId: ConceptId }) {
+  return <ConceptLabel conceptId={conceptId} descriptionVisible />;
 }

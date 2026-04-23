@@ -1,7 +1,11 @@
 import { Card, Group, Stack, Table, Text, Title } from "@mantine/core";
 import { IconBuildingCommunity, IconHome } from "@tabler/icons-react";
 import type { EstimationResult } from "../../../../types/renovation";
-import { DeltaValue, EPCBadge } from "../../../../components/shared";
+import {
+  ConceptLabel,
+  DeltaValue,
+  EPCBadge,
+} from "../../../../components/shared";
 import {
   calculatePercentChange,
   formatCurrency,
@@ -74,9 +78,7 @@ export function ReferenceAdjustedComparisonCard({
           <Table.Tbody>
             <Table.Tr>
               <Table.Td>
-                <Text size="sm" c="dimmed">
-                  Estimated EPC
-                </Text>
+                <ConceptLabel conceptId="estimated-epc" />
               </Table.Td>
               <Table.Td>
                 <EPCBadge
@@ -105,9 +107,7 @@ export function ReferenceAdjustedComparisonCard({
 
             <Table.Tr>
               <Table.Td>
-                <Text size="sm" c="dimmed">
-                  Annual building thermal needs
-                </Text>
+                <ConceptLabel conceptId="annual-building-thermal-needs" />
               </Table.Td>
               <Table.Td>
                 <Text size="sm" fw={500}>
@@ -129,9 +129,7 @@ export function ReferenceAdjustedComparisonCard({
 
             <Table.Tr>
               <Table.Td>
-                <Text size="sm" c="dimmed">
-                  Estimated cost of thermal needs
-                </Text>
+                <ConceptLabel conceptId="estimated-thermal-needs-cost" />
               </Table.Td>
               <Table.Td>
                 <Text size="sm" fw={500}>
@@ -153,9 +151,7 @@ export function ReferenceAdjustedComparisonCard({
 
             <Table.Tr>
               <Table.Td>
-                <Text size="sm" c="dimmed">
-                  Comfort index
-                </Text>
+                <ConceptLabel conceptId="comfort-index" />
               </Table.Td>
               <Table.Td>
                 <Text size="sm" fw={500}>

@@ -66,6 +66,10 @@ Canonical trigger: use the [Pre-Task Checklist](#pre-task-checklist). The exampl
 
 D3.2 represents formal project requirements, but implementation realities may require adjustments. The user must explicitly approve any deviation from documented requirements.
 
+### Shared Concept Ontology
+
+ReLIFE user-facing concepts are centrally defined in [`src/constants/relifeConcepts.ts`](./src/constants/relifeConcepts.ts). UI code must reuse these entries for labels, descriptions, caveats, professional details, metric names, and measure effects so terminology stays consistent and user-friendly across HRA, PRA, and RSE. Do not redefine shared concept copy inline. Add a new concept only when strictly necessary and keep it concise.
+
 ## Development Process
 
 This project prioritizes transparency, restraint, and verifiability over speed or comprehensiveness.
@@ -235,6 +239,7 @@ The `src/` directory is organized as follows:
 - `src/auth.ts` – Supabase authentication setup
 - `src/components/` – Shared, reusable UI components
 - `src/config.ts` – App-wide configuration (env vars, constants)
+- `src/constants/` – Shared domain constants and concept ontology
 - `src/contexts/` – React contexts (e.g., global loading state)
 - `src/features/` – Domain-specific features and pages (one subdirectory per tool)
 - `src/hooks/` – Shared hooks

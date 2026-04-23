@@ -25,6 +25,7 @@ import {
 } from "@tabler/icons-react";
 import type { RenovationMeasureId } from "../../context/types";
 import type { RenovationMeasure } from "../../services";
+import { MeasureEffectSummary } from "../shared";
 
 interface MeasureCardProps {
   measure: RenovationMeasure;
@@ -152,6 +153,8 @@ export function MeasureCard({
             />
           </Tooltip>
         </Group>
+
+        <MeasureEffectSummary measureId={measure.id} compact />
 
         <Stack gap="xs">
           <Group justify="space-between" align="center">

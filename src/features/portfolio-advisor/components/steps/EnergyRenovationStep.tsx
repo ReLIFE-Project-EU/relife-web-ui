@@ -33,6 +33,7 @@ import {
   IconWindow,
 } from "@tabler/icons-react";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
+import { MeasureEffectSummary } from "../../../../components/shared/MeasureEffectSummary";
 import { checkCapexPerSqm } from "../../../../utils/inputSanityChecks";
 import type { RenovationMeasureId } from "../../../../types/renovation";
 import type { RenovationMeasure } from "../../../../services/types";
@@ -178,6 +179,8 @@ function MeasureCard({
               }}
             />
           </Group>
+
+          <MeasureEffectSummary measureId={measure.id} compact />
 
           {!measure.isSupported && (
             <Badge color="yellow" size="sm" variant="light" fullWidth>

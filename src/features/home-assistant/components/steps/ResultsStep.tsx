@@ -41,7 +41,7 @@ export function ResultsStep() {
       {/* Header */}
       <Box>
         <Title order={2} mb="xs">
-          Results & Decision Support
+          Results & Recommendations
         </Title>
         <Text c="dimmed" size="sm">
           Compare renovation scenarios and find the best option for your needs.
@@ -57,7 +57,7 @@ export function ResultsStep() {
       {/* Measures List */}
       <MeasuresList />
 
-      {/* Decision Support (MCDA Ranking) */}
+      {/* Recommendation ranking */}
       <DecisionSupport />
 
       {/* Error display */}

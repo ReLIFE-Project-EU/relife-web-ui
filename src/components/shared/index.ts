@@ -12,3 +12,7 @@ export { RangeIndicator } from "./RangeIndicator";
 export type { RangeIndicatorProps } from "./RangeIndicator";
 export { SectionHeader } from "./SectionHeader";
 export { StepNavigation, BackButton } from "./StepNavigation";
+export { ConceptExplainer } from "./ConceptExplainer";
+export { ConceptLabel } from "./ConceptLabel";
+export { ConceptMetricCard } from "./ConceptMetricCard";
+export { MeasureEffectSummary } from "./MeasureEffectSummary";
