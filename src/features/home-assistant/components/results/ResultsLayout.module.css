@@ -1,0 +1,717 @@
+/* HRA Results layout — scoped styles for the recommendation hero, tabs,
+ * deep-dive panel, and final comparison table. Uses Mantine theme tokens
+ * (var(--mantine-color-*), var(--mantine-spacing-*), etc.) so it stays in
+ * sync with the global theme. No new color tokens are introduced. */
+
+/* ───────── Hero band: recommendation card + sidebar ───────── */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  gap: var(--mantine-spacing-md);
+}
+
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+}
+
+.recoCard,
+.sideCard,
+.deep,
+.compareCard {
+  background: var(--mantine-color-body);
+  border: 1px solid var(--mantine-color-gray-2);
+  border-radius: var(--mantine-radius-md);
+}
+
+.recoCard {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.recoBand {
+  background: var(--mantine-color-gray-0);
+  border-bottom: 1px solid var(--mantine-color-gray-2);
+  color: var(--mantine-color-dark-9);
+  padding: var(--mantine-spacing-md) var(--mantine-spacing-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+}
+
+.recoRank {
+  background: var(--mantine-color-relife-0);
+  border: 1px solid var(--mantine-color-relife-2);
+  color: var(--mantine-color-relife-7);
+  font-weight: 700;
+  font-size: var(--mantine-font-size-xs);
+  min-width: 28px;
+  padding: 3px 8px;
+  border-radius: var(--mantine-radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.recoBandTitle {
+  flex: 1;
+}
+
+.recoBandScore {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  color: var(--mantine-color-gray-7);
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 500;
+}
+
+.recoBody {
+  padding: var(--mantine-spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-lg);
+  flex: 1;
+}
+
+.recoHead {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--mantine-spacing-md);
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .recoHead {
+    grid-template-columns: 1fr;
+  }
+}
+
+.recoEpcSwap {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  background: var(--mantine-color-gray-0);
+  border: 1px solid var(--mantine-color-gray-2);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  border-radius: var(--mantine-radius-md);
+}
+
+.recoEpcSwap .epcArrow {
+  color: var(--mantine-color-gray-5);
+}
+
+.recoEpcSwap .epcLabel {
+  font-size: var(--mantine-font-size-xs);
+  color: var(--mantine-color-gray-7);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.recoMetrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--mantine-spacing-sm);
+}
+
+@media (max-width: 720px) {
+  .recoMetrics {
+    grid-template-columns: 1fr;
+  }
+}
+
+.recoMetric {
+  background: var(--mantine-color-relife-0);
+  border: 1px solid var(--mantine-color-relife-2);
+  border-radius: var(--mantine-radius-md);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+}
+
+.recoMetric .metricLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--mantine-color-relife-7);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.recoMetric .metricValue {
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--mantine-color-dark-9);
+}
+
+.recoMetric .metricUnit {
+  font-size: 13px;
+  color: var(--mantine-color-gray-7);
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.recoMetric .metricHint {
+  font-size: 12px;
+  color: var(--mantine-color-gray-7);
+  margin-top: 4px;
+}
+
+.recoFootnote {
+  font-size: 12px;
+  color: var(--mantine-color-gray-6);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  border-top: 1px dashed var(--mantine-color-gray-3);
+  padding-top: var(--mantine-spacing-sm);
+}
+
+/* Hero sidebar */
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+}
+
+.sideCard {
+  padding: var(--mantine-spacing-lg);
+}
+
+.sideTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--mantine-spacing-sm);
+}
+
+.sideTitle h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--mantine-color-dark-9);
+}
+
+.persona {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--mantine-spacing-xs);
+}
+
+.personaOpt {
+  cursor: pointer;
+  user-select: none;
+  border: 1.5px solid var(--mantine-color-gray-3);
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-body);
+  padding: var(--mantine-spacing-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
+  font: inherit;
+  color: inherit;
+}
+
+.personaOpt:hover {
+  border-color: var(--mantine-color-gray-4);
+  background: var(--mantine-color-gray-0);
+}
+
+.personaOpt:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.personaOpt.on {
+  border-color: var(--mantine-color-relife-7);
+  background: var(--mantine-color-relife-0);
+}
+
+.personaIc {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--mantine-color-gray-1);
+  color: var(--mantine-color-gray-7);
+  margin-bottom: 4px;
+}
+
+.personaOpt.on .personaIc {
+  background: var(--mantine-color-relife-7);
+  color: #fff;
+}
+
+.personaLabel {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--mantine-color-dark-9);
+  line-height: 1.2;
+}
+
+.personaHint {
+  font-size: 11px;
+  color: var(--mantine-color-gray-7);
+  line-height: 1.3;
+}
+
+/* Ranking list */
+.rankList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rankItem {
+  display: grid;
+  grid-template-columns: 24px 12px 1fr auto;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+  cursor: pointer;
+  border-radius: var(--mantine-radius-md);
+  border: 1.5px solid transparent;
+  background: transparent;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
+}
+
+.rankItem:hover {
+  background: var(--mantine-color-gray-0);
+}
+
+.rankItem.sel {
+  background: var(--mantine-color-relife-0);
+  border-color: var(--mantine-color-relife-2);
+}
+
+.rankNum {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--mantine-color-gray-7);
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rankItem.sel .rankNum {
+  color: var(--mantine-color-relife-7);
+}
+
+.rankCrown {
+  color: var(--mantine-color-relife-8);
+}
+
+.rankName {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--mantine-color-dark-9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rankScore {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--mantine-color-dark-9);
+}
+
+.rankNotice {
+  font-size: 12px;
+  color: var(--mantine-color-gray-7);
+  padding: 8px 12px;
+}
+
+.scoreBar {
+  display: inline-block;
+  width: 64px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--mantine-color-gray-2);
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.scoreBarFill {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
+}
+
+/* ───────── Tabs strip ───────── */
+.tabsRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--mantine-color-gray-2);
+  padding: 0 4px;
+  margin-bottom: -1px;
+  flex-wrap: wrap;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-top-left-radius: var(--mantine-radius-md);
+  border-top-right-radius: var(--mantine-radius-md);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--mantine-color-gray-7);
+  position: relative;
+  top: 1px;
+  font-family: inherit;
+}
+
+.tab:hover {
+  color: var(--mantine-color-dark-9);
+}
+
+.tab[aria-selected="true"] {
+  background: var(--mantine-color-body);
+  border-color: var(--mantine-color-gray-2);
+  color: var(--mantine-color-dark-9);
+}
+
+.tab[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--mantine-color-body);
+}
+
+.tab .tabCrown {
+  color: var(--mantine-color-relife-8);
+}
+
+.scenDot {
+  display: inline-block;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ───────── Deep-dive panel ───────── */
+.deep {
+  border-top-left-radius: 0;
+  border-top-right-radius: var(--mantine-radius-md);
+  border-bottom-left-radius: var(--mantine-radius-md);
+  border-bottom-right-radius: var(--mantine-radius-md);
+  padding: var(--mantine-spacing-lg);
+}
+
+.deepCols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--mantine-spacing-xl);
+}
+
+@media (max-width: 900px) {
+  .deepCols {
+    grid-template-columns: 1fr;
+  }
+}
+
+.deepEyebrow {
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 500;
+  color: var(--mantine-color-gray-7);
+}
+
+.deepHeading {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--mantine-color-dark-9);
+  margin: 4px 0 14px;
+}
+
+.miniGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--mantine-spacing-sm);
+}
+
+@media (max-width: 540px) {
+  .miniGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.miniCard {
+  background: var(--mantine-color-gray-0);
+  border: 1px solid var(--mantine-color-gray-2);
+  border-radius: var(--mantine-radius-md);
+  padding: var(--mantine-spacing-md);
+}
+
+.miniLabel {
+  font-size: 12px;
+  color: var(--mantine-color-gray-7);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.miniValue {
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.1;
+  color: var(--mantine-color-dark-9);
+}
+
+.miniUnit {
+  font-size: 13px;
+  color: var(--mantine-color-gray-7);
+  font-weight: 500;
+  margin-left: 3px;
+}
+
+.miniDelta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--mantine-color-gray-7);
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.epcInline {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  margin-top: 4px;
+}
+
+.epcInlineArrow {
+  color: var(--mantine-color-gray-5);
+}
+
+.measures {
+  background: var(--mantine-color-gray-0);
+  border: 1px solid var(--mantine-color-gray-2);
+  border-left: 3px solid var(--scen-color, var(--mantine-color-relife-7));
+  border-radius: var(--mantine-radius-md);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+}
+
+.measuresHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.measuresList {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  color: var(--mantine-color-dark-7);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.measuresList li {
+  line-height: 1.4;
+}
+
+/* Financial 2x2 grid (we use FinancialMetricCard but want consistent gap) */
+.finGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--mantine-spacing-sm);
+}
+
+@media (max-width: 540px) {
+  .finGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.finExtras {
+  margin-top: var(--mantine-spacing-sm);
+  font-size: 13px;
+  color: var(--mantine-color-gray-7);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mantine-spacing-md);
+}
+
+.finExtras b {
+  color: var(--mantine-color-dark-9);
+  font-weight: 600;
+}
+
+.empty {
+  background: var(--mantine-color-gray-0);
+  border: 1px dashed var(--mantine-color-gray-4);
+  border-radius: var(--mantine-radius-md);
+  padding: var(--mantine-spacing-lg);
+  text-align: center;
+  color: var(--mantine-color-gray-7);
+}
+
+.emptyTitle {
+  font-weight: 700;
+  color: var(--mantine-color-red-7);
+  margin-bottom: 4px;
+}
+
+.warn {
+  margin-top: var(--mantine-spacing-sm);
+  background: var(--mantine-color-red-0);
+  border: 1px solid var(--mantine-color-red-2);
+  border-radius: var(--mantine-radius-md);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  color: var(--mantine-color-red-9);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Cashflow header */
+.cashflowHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: var(--mantine-spacing-xl) 0 var(--mantine-spacing-xs);
+  gap: var(--mantine-spacing-md);
+  flex-wrap: wrap;
+}
+
+.cashflowHead .deepHeading {
+  margin: 4px 0 0;
+}
+
+/* ───────── Compare-all card ───────── */
+.compareCard {
+  padding: var(--mantine-spacing-lg);
+}
+
+.compareCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--mantine-spacing-sm);
+}
+
+.compareCardHead h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--mantine-color-dark-9);
+  margin: 0;
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table thead th {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--mantine-color-gray-7);
+  text-align: right;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--mantine-color-gray-2);
+  white-space: nowrap;
+}
+
+.table thead th:first-child {
+  text-align: left;
+  padding-left: 12px;
+}
+
+.table tbody td {
+  padding: 12px 10px;
+  font-size: 14px;
+  color: var(--mantine-color-dark-7);
+  text-align: right;
+  border-bottom: 1px solid var(--mantine-color-gray-2);
+  white-space: nowrap;
+}
+
+.table tbody td:first-child {
+  text-align: left;
+  padding-left: 12px;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr.baseline td {
+  background: var(--mantine-color-gray-0);
+  color: var(--mantine-color-gray-7);
+}
+
+.table tbody tr.scen {
+  cursor: pointer;
+}
+
+.table tbody tr.scen:hover td {
+  background: var(--mantine-color-gray-0);
+}
+
+.table tbody tr.sel td {
+  background: var(--mantine-color-relife-0);
+}
+
+.rowName {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: var(--mantine-color-dark-9);
+}
+
+.baselineTag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--mantine-color-gray-7);
+  display: block;
+}
+
+.tableScroll {
+  overflow-x: auto;
+}

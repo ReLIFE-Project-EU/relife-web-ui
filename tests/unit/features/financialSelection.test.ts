@@ -26,14 +26,14 @@ describe("getEffectiveDetailScenarioId", () => {
     ).toBe("package-wall-insulation-windows");
   });
 
-  test("falls back to the first scenario with financial data when the selection has no result", () => {
+  test("returns the selected scenario even when it has no financial result", () => {
     expect(
       getEffectiveDetailScenarioId(
         scenarios,
         financialResults,
         "package-windows",
       ),
-    ).toBe("package-wall-insulation");
+    ).toBe("package-windows");
   });
 
   test("falls back to the first scenario with financial data when the selection is stale", () => {

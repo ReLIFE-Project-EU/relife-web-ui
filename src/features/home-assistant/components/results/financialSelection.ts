@@ -14,8 +14,7 @@ export function getEffectiveDetailScenarioId(
 ): ScenarioId | null {
   if (
     selectedScenarioId &&
-    scenarios.some((scenario) => scenario.id === selectedScenarioId) &&
-    hasFinancialResultForScenario(financialResults, selectedScenarioId)
+    scenarios.some((scenario) => scenario.id === selectedScenarioId)
   ) {
     return selectedScenarioId;
   }

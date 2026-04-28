@@ -2,7 +2,8 @@
  * Results Components Index
  */
 
-export { ScenarioComparison } from "./ScenarioComparison";
-export { FinancialDataSection } from "./FinancialDataSection";
-export { MeasuresList } from "./MeasuresList";
-export { DecisionSupport } from "./DecisionSupport";
+export { CompareAllTable } from "./CompareAllTable";
+export { EnergyDeepDive } from "./EnergyDeepDive";
+export { FinancialDeepDive } from "./FinancialDeepDive";
+export { RecommendationHero } from "./RecommendationHero";
+export { ScenarioTabs } from "./ScenarioTabs";

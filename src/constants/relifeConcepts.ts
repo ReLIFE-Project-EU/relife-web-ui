@@ -7,6 +7,10 @@ export type ConceptId =
   | "scenario-epc-comparison-note"
   | "energy-intensity"
   | "estimated-thermal-needs-cost"
+  | "pv-generation"
+  | "pv-self-consumption"
+  | "pv-grid-export"
+  | "pv-self-consumption-rate"
   | "investment"
   | "npv"
   | "irr"
@@ -61,23 +65,23 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     id: "annual-building-thermal-needs",
     label: "Annual building thermal needs",
     description:
-      "Heating and cooling the building needs over a year to stay comfortable.",
-    unit: "kWh/year",
+      "The heat the building's envelope needs each year to stay at a comfortable indoor temperature, before any heating or cooling system is involved.",
+    unit: "kWh thermal/year",
     caveat:
-      "This is not HVAC fuel or electricity use. Actual system consumption depends on the heating and cooling system.",
+      "This is a property of the envelope itself: the same envelope produces the same thermal needs whether you use a gas boiler, a heat pump, or solar PV. To see what energy the system actually pulls from suppliers, look at System energy consumption.",
     professionalDetail:
-      "Derived from the building simulation thermal loads, typically Q_H plus Q_C for the modeled year.",
+      "Sum of hourly Q_H + Q_C ideal loads from the pybuildingenergy ISO 13790 / 5R1C simulation, expressed in kWh thermal at the building's setpoint.",
   },
   "system-energy-consumption": {
     id: "system-energy-consumption",
     label: "System energy consumption",
     description:
-      "Electricity or fuel the heating and cooling system uses to meet the building's thermal needs.",
-    unit: "kWh/year",
+      "Energy actually pulled from external suppliers (gas, electricity, district heat) by the heating and cooling system to meet the building's thermal needs.",
+    unit: "kWh delivered/year",
     caveat:
-      "This is shown only when the system simulation returns delivered energy.",
+      "Differs from Annual building thermal needs because of system efficiency: a gas boiler at η≈0.9 burns ~110 kWh of gas per 100 kWh of heat, while a heat pump at COP≈3 uses ~33 kWh of electricity for the same heat. Covers HVAC end uses only — domestic hot water, lighting, and appliances are not included. Shown only when the simulation returns delivered energy.",
     professionalDetail:
-      "Used as the energy-savings basis for Financial API calculations when comparable before and after values are available.",
+      "Computed by extractUniTotals as deliveredThermal + E_delivered_electric_total_kWh from the UNI/TS 11300 summary; deliveredThermal is forced to 0 when a heat pump is detected (heat_pump_applied) to avoid double-counting electric input. Used as the energy-savings basis for Financial API calculations when comparable before-and-after values are available.",
   },
   "estimated-epc": {
     id: "estimated-epc",
@@ -104,9 +108,43 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
   "estimated-thermal-needs-cost": {
     id: "estimated-thermal-needs-cost",
     label: "Estimated cost of thermal needs",
-    description: "Flat-tariff estimate based on annual building thermal needs.",
+    description:
+      "Flat-tariff price tag for Annual building thermal needs, computed in the frontend at a fixed rate of 0.25 EUR/kWh thermal.",
     unit: "EUR/year",
-    caveat: "This is not a utility bill and is not the Financial API result.",
+    caveat:
+      "Not a utility bill: it does not account for heating-system efficiency, fuel mix, or PV self-consumption, and it is computed from thermal needs rather than delivered energy. The Financial Service uses a separate Monte Carlo electricity tariff for its own calculations, so figures shown here will not match the financial step.",
+    professionalDetail:
+      "Frontend-only estimate from estimateAnnualHvacEnergyCost() in energyUtils.ts, intentionally country-agnostic and fuel-agnostic so all pricing assumptions live in one place.",
+  },
+  "pv-generation": {
+    id: "pv-generation",
+    label: "PV generation",
+    description:
+      "Solar electricity produced on-site by the PV array over a full year, modelled with PVGIS climate data.",
+    unit: "kWh/year",
+  },
+  "pv-self-consumption": {
+    id: "pv-self-consumption",
+    label: "PV self-consumption",
+    description:
+      "Share of the PV generation used directly by the building rather than exported, before any battery is considered.",
+    unit: "kWh/year",
+    professionalDetail:
+      "Hourly minimum of PV generation and on-site electric load, summed over the year.",
+  },
+  "pv-grid-export": {
+    id: "pv-grid-export",
+    label: "PV grid export",
+    description:
+      "PV generation surplus pushed back to the grid after on-site consumption (and battery charging, when modelled).",
+    unit: "kWh/year",
+  },
+  "pv-self-consumption-rate": {
+    id: "pv-self-consumption-rate",
+    label: "PV self-consumption rate",
+    description:
+      "Fraction of PV generation that is consumed on-site rather than exported.",
+    unit: "%",
   },
   investment: {
     id: "investment",
