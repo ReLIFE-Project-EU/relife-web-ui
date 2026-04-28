@@ -9,6 +9,21 @@
 		Referrer-Policy "strict-origin-when-cross-origin"
 	}
 
+	# Public Umami tracking endpoints. The dashboard is not exposed through Caddy.
+	handle /umami/script.js {
+		rewrite * /script.js
+		reverse_proxy {$UMAMI_URL:http://umami:3000}
+	}
+
+	handle /api/send {
+		reverse_proxy {$UMAMI_URL:http://umami:3000}
+	}
+
+	handle /umami/api/send {
+		rewrite * /api/send
+		reverse_proxy {$UMAMI_URL:http://umami:3000}
+	}
+
 	# API reverse proxy
 	handle_path /api/technical/* {
 		reverse_proxy {$API_TECHNICAL_URL:http://technical:9090}

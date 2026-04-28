@@ -32,8 +32,10 @@ services:
         VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL}
         VITE_KEYCLOAK_REALM: ${VITE_KEYCLOAK_REALM}
         VITE_KEYCLOAK_CLIENT_ID: ${VITE_KEYCLOAK_CLIENT_ID}
+        VITE_UMAMI_WEBSITE_ID: ${UMAMI_WEBSITE_ID}
         APP_COMMIT_SHA: ${APP_COMMIT_SHA:-unknown}
         APP_COMMIT_DATE: ${APP_COMMIT_DATE:-unknown}
+    restart: unless-stopped
     ports:
       - ${HOST_PORT_CADDY}:8080
     depends_on:
@@ -43,10 +45,13 @@ services:
         condition: service_healthy
       technical:
         condition: service_healthy
+      umami-provision:
+        condition: service_completed_successfully
     environment:
       API_TECHNICAL_URL: http://technical:9090
       API_FORECASTING_URL: http://forecasting:9090
       API_FINANCIAL_URL: http://financial:9090
+      UMAMI_URL: http://umami:3000
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/"]
       interval: 30s
@@ -56,9 +61,11 @@ services:
   financial:
     platform: linux/amd64
     image: ghcr.io/relife-project-eu/relife-financial-service:${IMAGE_TAG_FINANCIAL}
+    restart: unless-stopped
     <<: *api-service-defaults
   forecasting:
     image: ghcr.io/relife-project-eu/relife-forecasting-service:${IMAGE_TAG_FORECASTING}
+    restart: unless-stopped
     <<: *api-service-defaults
     environment:
       <<: *api-service-environment
@@ -66,4 +73,67 @@ services:
   technical:
     platform: linux/amd64
     image: ghcr.io/relife-project-eu/relife-technical-service:${IMAGE_TAG_TECHNICAL}
+    restart: unless-stopped
     <<: *api-service-defaults
+  umami-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${UMAMI_DB_NAME}
+      POSTGRES_USER: ${UMAMI_DB_USER}
+      POSTGRES_PASSWORD: ${UMAMI_DB_PASSWORD}
+    volumes:
+      - umami-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+  umami:
+    image: ghcr.io/umami-software/umami:${UMAMI_IMAGE_TAG}
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:${HOST_PORT_UMAMI}:3000
+    depends_on:
+      umami-db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${UMAMI_DB_USER}:${UMAMI_DB_PASSWORD}@umami-db:5432/${UMAMI_DB_NAME}
+      DATABASE_TYPE: postgresql
+      APP_SECRET: ${UMAMI_APP_SECRET}
+      DISABLE_TELEMETRY: 1
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/api/heartbeat').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+  umami-provision:
+    image: node:22-alpine
+    restart: on-failure
+    depends_on:
+      umami:
+        condition: service_healthy
+    working_dir: /app
+    volumes:
+      - ./scripts/provision-umami.mjs:/app/provision-umami.mjs:ro
+    environment:
+      UMAMI_BASE_URL: http://umami:3000
+      UMAMI_ADMIN_USERNAME: ${UMAMI_ADMIN_USERNAME}
+      UMAMI_ADMIN_PASSWORD: ${UMAMI_ADMIN_PASSWORD}
+      UMAMI_BOOTSTRAP_PASSWORD: ${UMAMI_BOOTSTRAP_PASSWORD}
+      UMAMI_WEBSITE_ID: ${UMAMI_WEBSITE_ID}
+      UMAMI_WEBSITE_NAME: ${UMAMI_WEBSITE_NAME}
+      UMAMI_WEBSITE_DOMAIN: ${UMAMI_WEBSITE_DOMAIN}
+    command: ["node", "/app/provision-umami.mjs"]
+
+volumes:
+  umami-db-data: {}

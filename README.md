@@ -24,6 +24,12 @@ The three platform services (financial, forecasting, technical) are developed in
 
 When integrating or changing API clients, verify contracts against service source (local `external-services/` or the upstream GitHub repos), a running stack, and/or integration tests; see [`AGENTS.md`](./AGENTS.md) (section **Backend API contracts**).
 
+### Visitor analytics
+
+The Docker Compose stack includes a self-hosted Umami instance for privacy-focused visitor tracking. `task up` and `docker compose up` start Umami and run `umami-provision`, which idempotently creates or updates the configured website record from `.env.default` / `.env.local`.
+
+Caddy exposes only the public tracker script at `/umami/script.js` and collection endpoint at `/api/send`. The Umami dashboard is not routed through Caddy; it is bound to `127.0.0.1:${HOST_PORT_UMAMI}` for local operator access only. Override the default Umami passwords and app secret in `.env.local` before using a shared or public deployment.
+
 ## Renovation Tools Architecture
 
 The ReLIFE Web UI implements three renovation tools with different implementation maturity levels. The diagrams below document current runtime behavior (not target design), including where services are real, mocked, partial, or not wired yet.
