@@ -11,7 +11,14 @@ export type { FinancialMetricType } from "./MetricExplainer";
 export { RangeIndicator } from "./RangeIndicator";
 export type { RangeIndicatorProps } from "./RangeIndicator";
 export { SectionHeader } from "./SectionHeader";
+export {
+  SelectionSummaryPanel,
+  SummaryStatusBadge,
+} from "./SelectionSummaryPanel";
+export type { SelectionSummaryItem } from "./SelectionSummaryPanel";
 export { StepNavigation, BackButton } from "./StepNavigation";
+export { StepProgressFooter } from "./StepProgressFooter";
+export { StepSectionCard } from "./StepSectionCard";
 export { ConceptExplainer } from "./ConceptExplainer";
 export { ConceptLabel } from "./ConceptLabel";
 export { ConceptMetricCard } from "./ConceptMetricCard";
