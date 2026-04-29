@@ -32,8 +32,6 @@ interface StepSectionCardProps {
   complete?: boolean;
   /** Section is currently the user's focus (visual emphasis). */
   active?: boolean;
-  /** Initial open state. Defaults to true. */
-  defaultOpen?: boolean;
   /** Section body. */
   children: ReactNode;
 }
@@ -44,10 +42,9 @@ export function StepSectionCard({
   meta,
   complete = false,
   active = false,
-  defaultOpen = true,
   children,
 }: StepSectionCardProps) {
-  const [opened, { toggle }] = useDisclosure(defaultOpen);
+  const [opened, { toggle }] = useDisclosure(true);
 
   const borderColor = complete
     ? "var(--mantine-color-relife-2)"

@@ -148,11 +148,7 @@ describe("home assistant frontend risk guards", () => {
     expect(buildPeriodFallbackMessage(result, "Single Family House")).toEqual({
       title:
         "No Single Family House archetypes in France for the selected period",
-      reason: "no-local-periods",
-      buildingType: "Single Family House",
-      detectedCountry: "France",
-      sourceCountry: "Hungary",
-      recommendedPeriod: "1980-1989",
+      body: "France has Single Family House archetypes, but not for the selected construction period. We'll use the closest available reference from the wider European catalog. Review the matched country and period in the archetype card before continuing.",
     });
   });
 });

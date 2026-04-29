@@ -6,25 +6,12 @@ import type { ArchetypeDetails } from "../../../../types/archetype";
 import { constructionPeriodsEqual } from "../../../../utils/apiMappings";
 import { getCountryDisplayName } from "../../../../utils/countries";
 
-export type PeriodFallbackReason = "no-local-archetypes" | "no-local-periods";
-
 /**
- * Structured description of a fallback-archetype situation, suitable for
- * rendering as a titled Alert with bulleted details.
+ * User-facing fallback text for rendering as a titled Alert.
  */
 export interface PeriodFallbackInfo {
-  /** Headline summarizing the fallback in one short sentence. */
   title: string;
-  /** Why we fell back. */
-  reason: PeriodFallbackReason;
-  /** Building type label as shown to the user. */
-  buildingType: string;
-  /** Country detected from the user's pin. */
-  detectedCountry: string;
-  /** Country whose archetype catalog the fallback was drawn from. Null when same as detected. */
-  sourceCountry: string | null;
-  /** Construction period of the recommended archetype. Null if no period could be inferred. */
-  recommendedPeriod: string | null;
+  body: string;
 }
 
 export function buildPeriodFallbackMessage(
@@ -36,30 +23,24 @@ export function buildPeriodFallbackMessage(
   }
 
   const detectedCountry = result.detectedCountry ?? "your country";
-  const sourceCountry =
-    result.sourceCountry && result.sourceCountry !== result.detectedCountry
-      ? result.sourceCountry
-      : null;
-  const recommendedPeriod = result.recommendedPeriod ?? null;
-  const reason: PeriodFallbackReason =
+  const reason =
     result.reason === "no-local-periods"
       ? "no-local-periods"
       : "no-local-archetypes";
 
   let title: string;
+  let body: string;
   if (reason === "no-local-periods") {
     title = `No ${buildingType} archetypes in ${detectedCountry} for the selected period`;
+    body = `${detectedCountry} has ${buildingType} archetypes, but not for the selected construction period. We'll use the closest available reference from the wider European catalog. Review the matched country and period in the archetype card before continuing.`;
   } else {
     title = `No ${buildingType} archetypes available in ${detectedCountry}`;
+    body = `No local ${buildingType} archetype is currently available for ${detectedCountry}. We'll use the closest available reference from the wider European catalog. Review the matched country and period in the archetype card before continuing.`;
   }
 
   return {
     title,
-    reason,
-    buildingType,
-    detectedCountry,
-    sourceCountry,
-    recommendedPeriod,
+    body,
   };
 }
 

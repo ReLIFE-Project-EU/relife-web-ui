@@ -7,7 +7,6 @@
 
 import { Button, Group, Paper, Text } from "@mantine/core";
 import {
-  IconArrowLeft,
   IconArrowRight,
   IconChecks,
   IconCircleCheck,
@@ -24,9 +23,6 @@ interface StepProgressFooterProps {
   onPrimary: () => void;
   primaryDisabled?: boolean;
   isLoading?: boolean;
-  /** Optional left-side secondary action (e.g. previous step). */
-  secondaryLabel?: string;
-  onSecondary?: () => void;
 }
 
 export function StepProgressFooter({
@@ -37,8 +33,6 @@ export function StepProgressFooter({
   onPrimary,
   primaryDisabled = false,
   isLoading = false,
-  secondaryLabel,
-  onSecondary,
 }: StepProgressFooterProps) {
   const allDone = completedCount >= totalCount;
 
@@ -89,16 +83,6 @@ export function StepProgressFooter({
         </Group>
 
         <Group gap="xs">
-          {secondaryLabel && onSecondary && (
-            <Button
-              variant="default"
-              leftSection={<IconArrowLeft size={16} />}
-              onClick={onSecondary}
-              disabled={isLoading}
-            >
-              {secondaryLabel}
-            </Button>
-          )}
           <Button
             rightSection={<IconArrowRight size={16} />}
             onClick={onPrimary}

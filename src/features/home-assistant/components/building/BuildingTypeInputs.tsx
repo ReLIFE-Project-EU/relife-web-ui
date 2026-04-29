@@ -57,7 +57,6 @@ export function BuildingTypeInputs() {
     useState<PeriodAvailabilityResult | null>(null);
   const [archetypeCount, setArchetypeCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [showInfoAlert, setShowInfoAlert] = useState(true);
   const periodRequestIdRef = useRef(0);
 
   const hasCoordinates =
@@ -211,25 +210,6 @@ export function BuildingTypeInputs() {
 
   return (
     <Stack gap="md">
-      {showInfoAlert && (
-        <Alert
-          variant="light"
-          color="blue"
-          icon={<IconInfoCircle size={16} />}
-          withCloseButton
-          onClose={() => setShowInfoAlert(false)}
-        >
-          <Text size="sm" fw={500} mb={4}>
-            How Building Matching Works
-          </Text>
-          <Text size="sm">
-            Your building will be matched to reference archetypes from our
-            database. Options shown are filtered based on what's available near
-            your coordinates.
-          </Text>
-        </Alert>
-      )}
-
       {periodFallback && (
         <Alert
           variant="light"
@@ -238,12 +218,7 @@ export function BuildingTypeInputs() {
           title={periodFallback.title}
         >
           <Stack gap="xs">
-            <Text size="sm">
-              We'll match the closest available archetype from the wider
-              European catalog. The matched country and period are shown in the
-              archetype card below — they may change as you adjust the
-              construction period.
-            </Text>
+            <Text size="sm">{periodFallback.body}</Text>
             <Anchor
               size="sm"
               component="button"

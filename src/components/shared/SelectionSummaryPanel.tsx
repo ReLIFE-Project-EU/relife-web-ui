@@ -4,7 +4,6 @@
  */
 
 import {
-  Badge,
   Card,
   Divider,
   Group,
@@ -129,25 +128,5 @@ export function SelectionSummaryPanel({
         </>
       )}
     </Card>
-  );
-}
-
-interface SummaryStatusBadgeProps {
-  complete: boolean;
-}
-
-/**
- * Small helper badge for the panel header (e.g. "in progress" / "matched").
- */
-export function SummaryStatusBadge({ complete }: SummaryStatusBadgeProps) {
-  return (
-    <Badge
-      size="sm"
-      variant="light"
-      color={complete ? "relife" : "gray"}
-      tt="uppercase"
-    >
-      {complete ? "Matched" : "In progress"}
-    </Badge>
   );
 }

@@ -3,7 +3,7 @@
  * Screen 1: Collects building information and triggers EPC estimation.
  */
 
-import { Alert, Box, Grid, Stack, Text, Title } from "@mantine/core";
+import { Alert, Badge, Box, Grid, Stack, Text, Title } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 import {
@@ -11,7 +11,6 @@ import {
   SelectionSummaryPanel,
   StepProgressFooter,
   StepSectionCard,
-  SummaryStatusBadge,
   type SelectionSummaryItem,
 } from "../../../../components/shared";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
@@ -200,7 +199,16 @@ export function BuildingInfoStep() {
         {/* Summary column */}
         <Grid.Col span={{ base: 12, md: 4 }}>
           <SelectionSummaryPanel
-            status={<SummaryStatusBadge complete={archetypeDone} />}
+            status={
+              <Badge
+                size="sm"
+                variant="light"
+                color={archetypeDone ? "relife" : "gray"}
+                tt="uppercase"
+              >
+                {archetypeDone ? "Matched" : "In progress"}
+              </Badge>
+            }
             items={summaryItems}
             note={summaryNote}
           />
