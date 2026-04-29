@@ -3,25 +3,19 @@
  * Screen 1: Collects building information and triggers EPC estimation.
  */
 
+import { Alert, Box, Grid, Stack, Text, Title } from "@mantine/core";
+import { IconInfoCircle } from "@tabler/icons-react";
+import { useMemo, useState } from "react";
 import {
-  Box,
-  Card,
-  Divider,
-  Stack,
-  Text,
-  Timeline,
-  Title,
-} from "@mantine/core";
-import {
-  IconBuildingCommunity,
-  IconHome,
-  IconMapPin,
-  IconSearch,
-  IconSettings,
-} from "@tabler/icons-react";
+  ErrorAlert,
+  SelectionSummaryPanel,
+  StepProgressFooter,
+  StepSectionCard,
+  SummaryStatusBadge,
+  type SelectionSummaryItem,
+} from "../../../../components/shared";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
-import { ErrorAlert, SectionHeader, StepNavigation } from "../shared";
 import {
   ArchetypeSelector,
   BuildingTypeInputs,
@@ -30,15 +24,31 @@ import {
 
 export function BuildingInfoStep() {
   const { state, dispatch } = useHomeAssistant();
-  const { energy } = useHomeAssistantServices();
+  const { energy, building } = useHomeAssistantServices();
+  const [showHowItWorks, setShowHowItWorks] = useState(true);
 
-  // Validation - only require archetype selection fields
-  const isValid =
-    state.building.lat !== null &&
-    state.building.lng !== null &&
-    state.building.buildingType &&
-    state.building.constructionPeriod &&
-    state.building.selectedArchetype !== undefined;
+  const hasCoordinates =
+    state.building.lat !== null && state.building.lng !== null;
+
+  const detectedCountry = useMemo(() => {
+    if (!hasCoordinates) return null;
+    return building.detectCountryFromCoords({
+      lat: state.building.lat!,
+      lng: state.building.lng!,
+    });
+  }, [hasCoordinates, state.building.lat, state.building.lng, building]);
+
+  const locationDone = hasCoordinates;
+  const buildingDone =
+    Boolean(state.building.buildingType) &&
+    Boolean(state.building.constructionPeriod);
+  const archetypeDone = state.building.selectedArchetype !== undefined;
+
+  const completedCount = [locationDone, buildingDone, archetypeDone].filter(
+    Boolean,
+  ).length;
+
+  const isValid = locationDone && buildingDone && archetypeDone;
 
   const handleEstimateEPC = async () => {
     if (!isValid) return;
@@ -58,128 +68,156 @@ export function BuildingInfoStep() {
     }
   };
 
+  const summaryItems: SelectionSummaryItem[] = [
+    {
+      id: "country",
+      label: "Country",
+      value: detectedCountry ?? undefined,
+      complete: Boolean(detectedCountry),
+      placeholder: "Click on the map",
+    },
+    {
+      id: "type",
+      label: "Type",
+      value: state.building.buildingType || undefined,
+      complete: Boolean(state.building.buildingType),
+    },
+    {
+      id: "period",
+      label: "Built",
+      value: state.building.constructionPeriod || undefined,
+      complete: Boolean(state.building.constructionPeriod),
+    },
+    {
+      id: "archetype",
+      label: "Archetype",
+      value: state.building.selectedArchetype?.name,
+      complete: archetypeDone,
+      placeholder: "Awaiting match",
+    },
+  ];
+
+  const summaryNote = archetypeDone ? (
+    <Text size="xs" c="dimmed">
+      <Text component="span" fw={600} c="var(--mantine-color-text)">
+        Energy figures come next.
+      </Text>{" "}
+      Once you continue, we'll combine this archetype with your bills to
+      estimate today's energy use.
+    </Text>
+  ) : (
+    <Text size="xs" c="dimmed">
+      Fill in the location, type, and period to match an archetype.
+    </Text>
+  );
+
   return (
-    <Stack gap="xl">
-      {/* Header */}
+    <Stack gap="lg">
+      {/* Heading */}
       <Box>
-        <Title order={2} mb="xs">
-          Provide Building Information
+        <Title order={2} mb={4}>
+          Tell us about your building
         </Title>
         <Text c="dimmed" size="sm">
-          Enter details about your building to estimate its current energy
-          performance.
+          Place your home on the map, pick its type and age. We'll match it to a
+          representative archetype with typical energy use, then refine in the
+          next step.
         </Text>
       </Box>
 
-      {/* Workflow info card */}
-      <Card
-        withBorder
-        radius="md"
-        p="lg"
-        bg="var(--mantine-color-default-hover)"
-      >
-        <Text
-          size="sm"
-          fw={600}
-          c="dimmed"
-          tt="uppercase"
-          style={{ letterSpacing: "0.05em" }}
-          mb="md"
+      {/* Dismissible "How matching works" info card */}
+      {showHowItWorks && (
+        <Alert
+          variant="light"
+          color="blue"
+          icon={<IconInfoCircle size={16} />}
+          withCloseButton
+          onClose={() => setShowHowItWorks(false)}
+          title="How this works"
         >
-          How this works
-        </Text>
-        <Timeline color="relife" active={-1} bulletSize={32} lineWidth={2}>
-          <Timeline.Item
-            bullet={<IconSearch size={16} stroke={1.75} />}
-            title={
-              <Text size="sm" fw={600}>
-                Find your archetype
-              </Text>
-            }
-          >
-            <Text size="xs" c="dimmed" mt={4}>
-              Enter your building's location, type, and construction period to
-              find a matching reference archetype from the European building
-              stock database.
-            </Text>
-          </Timeline.Item>
-          <Timeline.Item
-            bullet={<IconSettings size={16} stroke={1.75} />}
-            title={
-              <Text size="sm" fw={600}>
-                Review and refine
-              </Text>
-            }
-          >
-            <Text size="xs" c="dimmed" mt={4}>
-              Review and select the matched archetype, then optionally adjust
-              parameters to better reflect your building's actual
-              characteristics.
-            </Text>
-          </Timeline.Item>
-        </Timeline>
-      </Card>
+          <Text size="sm">
+            We group buildings into archetypes by country, type, and
+            construction period. The closer the match, the more reliable the
+            estimate. You can review and refine the matched archetype before
+            continuing.
+          </Text>
+        </Alert>
+      )}
 
-      {/* Location Section */}
-      <Box>
-        <SectionHeader
-          icon={
-            <IconMapPin
-              size={18}
-              stroke={1.5}
-              color="var(--mantine-color-dimmed)"
-            />
-          }
-          label="Location"
-        />
-        <LocationInputs />
-      </Box>
+      {/* Two-column: stacked sections + sticky summary */}
+      <Grid gutter="lg">
+        {/* Main column */}
+        <Grid.Col span={{ base: 12, md: 8 }}>
+          <Stack gap="md">
+            <StepSectionCard
+              number={1}
+              title="Location"
+              meta={
+                detectedCountry
+                  ? detectedCountry
+                  : hasCoordinates
+                    ? "Pin set — country not yet detected"
+                    : "Click on the map to drop your pin"
+              }
+              complete={locationDone}
+              active={!locationDone}
+            >
+              <LocationInputs />
+            </StepSectionCard>
 
-      <Divider />
+            <StepSectionCard
+              number={2}
+              title="Building type & age"
+              meta={
+                buildingDone
+                  ? `${state.building.buildingType} · ${state.building.constructionPeriod}`
+                  : "Pick the type and construction period"
+              }
+              complete={buildingDone}
+              active={locationDone && !buildingDone}
+            >
+              <BuildingTypeInputs />
+            </StepSectionCard>
 
-      {/* Building Details Section */}
-      <Box>
-        <SectionHeader
-          icon={
-            <IconHome
-              size={18}
-              stroke={1.5}
-              color="var(--mantine-color-dimmed)"
-            />
-          }
-          label="Building Details"
-        />
-        <BuildingTypeInputs />
-      </Box>
+            <Box id="hra-archetype-section" style={{ scrollMarginTop: 96 }}>
+              <StepSectionCard
+                number={3}
+                title="Matched archetype"
+                meta={
+                  archetypeDone
+                    ? state.building.selectedArchetype?.name
+                    : "Awaiting building type & period"
+                }
+                complete={archetypeDone}
+                active={buildingDone && !archetypeDone}
+              >
+                <ArchetypeSelector />
+              </StepSectionCard>
+            </Box>
+          </Stack>
+        </Grid.Col>
 
-      <Divider />
-
-      {/* Archetype Selection Section */}
-      <Box>
-        <SectionHeader
-          icon={
-            <IconBuildingCommunity
-              size={18}
-              stroke={1.5}
-              color="var(--mantine-color-dimmed)"
-            />
-          }
-          label="Building Archetype"
-        />
-        <ArchetypeSelector />
-      </Box>
+        {/* Summary column */}
+        <Grid.Col span={{ base: 12, md: 4 }}>
+          <SelectionSummaryPanel
+            status={<SummaryStatusBadge complete={archetypeDone} />}
+            items={summaryItems}
+            note={summaryNote}
+          />
+        </Grid.Col>
+      </Grid>
 
       {/* Error display */}
       <ErrorAlert error={state.error} title="Estimation Error" />
 
-      {/* Navigation */}
-      <StepNavigation
-        currentStep={0}
-        totalSteps={3}
-        onPrimaryAction={handleEstimateEPC}
-        primaryActionLabel="Show my energy profile"
-        isLoading={state.isEstimating}
+      {/* Sticky progress footer with primary CTA */}
+      <StepProgressFooter
+        completedCount={completedCount}
+        totalCount={3}
+        primaryLabel="Show my energy profile"
+        onPrimary={handleEstimateEPC}
         primaryDisabled={!isValid}
+        isLoading={state.isEstimating}
       />
     </Stack>
   );

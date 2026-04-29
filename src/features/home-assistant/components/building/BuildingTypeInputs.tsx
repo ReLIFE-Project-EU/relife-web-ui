@@ -5,15 +5,27 @@
 
 import {
   Alert,
+  Anchor,
   Badge,
+  Box,
   Group,
   Loader,
-  Select,
   SimpleGrid,
+  Stack,
   Text,
+  ThemeIcon,
+  UnstyledButton,
 } from "@mantine/core";
-import { IconInfoCircle } from "@tabler/icons-react";
-import { useEffect, useRef, useState } from "react";
+import {
+  IconArrowRight,
+  IconBuilding,
+  IconBuildingCommunity,
+  IconBuildingSkyscraper,
+  IconCalendarEvent,
+  IconHome,
+  IconInfoCircle,
+} from "@tabler/icons-react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import type { PeriodAvailabilityResult } from "../../../../services/types";
 import {
   constructionPeriodsEqual,
@@ -22,6 +34,18 @@ import {
 import { buildPeriodFallbackMessage } from "./archetypeUiMessaging";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
+
+type IconType = ComponentType<{ size?: number; stroke?: number }>;
+
+function getCategoryIcon(category: string): IconType {
+  const lower = category.toLowerCase();
+  if (lower.includes("apartment") || lower.includes("block"))
+    return IconBuildingCommunity;
+  if (lower.includes("multi")) return IconBuilding;
+  if (lower.includes("terraced") || lower.includes("row"))
+    return IconBuildingSkyscraper;
+  return IconHome;
+}
 
 export function BuildingTypeInputs() {
   const { state, dispatch } = useHomeAssistant();
@@ -169,14 +193,24 @@ export function BuildingTypeInputs() {
     periodAvailability,
   ]);
 
-  const periodFallbackMessage = buildPeriodFallbackMessage(
+  const periodFallback = buildPeriodFallbackMessage(
     periodAvailability,
     state.building.buildingType,
   );
 
+  const handleSeeAlternatives = () => {
+    if (typeof document === "undefined") return;
+    const target = document.getElementById("hra-archetype-section");
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  const selectedType = state.building.buildingType;
+  const selectedPeriod = state.building.constructionPeriod;
+
   return (
-    <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-      {/* Info alert */}
+    <Stack gap="md">
       {showInfoAlert && (
         <Alert
           variant="light"
@@ -184,7 +218,6 @@ export function BuildingTypeInputs() {
           icon={<IconInfoCircle size={16} />}
           withCloseButton
           onClose={() => setShowInfoAlert(false)}
-          style={{ gridColumn: "1 / -1" }}
         >
           <Text size="sm" fw={500} mb={4}>
             How Building Matching Works
@@ -197,73 +230,145 @@ export function BuildingTypeInputs() {
         </Alert>
       )}
 
-      {periodFallbackMessage && (
+      {periodFallback && (
         <Alert
           variant="light"
           color="yellow"
           icon={<IconInfoCircle size={16} />}
-          style={{ gridColumn: "1 / -1" }}
+          title={periodFallback.title}
         >
-          <Text size="sm">{periodFallbackMessage}</Text>
+          <Stack gap="xs">
+            <Text size="sm">
+              We'll match the closest available archetype from the wider
+              European catalog. The matched country and period are shown in the
+              archetype card below — they may change as you adjust the
+              construction period.
+            </Text>
+            <Anchor
+              size="sm"
+              component="button"
+              type="button"
+              onClick={handleSeeAlternatives}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                alignSelf: "flex-start",
+              }}
+            >
+              See archetype <IconArrowRight size={14} />
+            </Anchor>
+          </Stack>
         </Alert>
       )}
 
-      {/* Loading state */}
       {isLoading && (
-        <div
-          style={{ gridColumn: "1 / -1", textAlign: "center", padding: "1rem" }}
-        >
+        <Group justify="center" py="md">
           <Loader size="sm" />
-          <Text size="sm" c="dimmed" mt="xs">
+          <Text size="sm" c="dimmed">
             Loading available options...
           </Text>
-        </div>
+        </Group>
       )}
 
-      {/* Building type */}
       {!isLoading && (
         <>
-          <div>
-            <Select
-              label="Building Type"
-              description={
-                hasCoordinates
-                  ? "Ordered by nearest archetypes to your location."
-                  : "Enter coordinates first for location-based filtering."
-              }
-              placeholder="Choose building type"
-              data={availableCategories.map((cat) => ({
-                value: cat,
-                label: cat,
-              }))}
-              value={state.building.buildingType}
-              onChange={(value) => {
-                if (value) {
-                  dispatch({
-                    type: "UPDATE_BUILDING",
-                    field: "buildingType",
-                    value,
-                  });
-                }
-              }}
-              required
-              allowDeselect={false}
-              disabled={!hasCoordinates}
-            />
-            {!hasCoordinates && (
-              <Text size="xs" c="orange" mt={4}>
-                Enter coordinates above to see available building types
+          {/* Building type tile grid */}
+          <Box>
+            <Group gap={6} mb="xs">
+              <IconHome size={14} color="var(--mantine-color-dimmed)" />
+              <Text
+                size="xs"
+                fw={700}
+                c="dimmed"
+                tt="uppercase"
+                style={{ letterSpacing: "0.07em" }}
+              >
+                Building type
               </Text>
-            )}
-          </div>
+            </Group>
 
-          {/* Construction period */}
-          <div>
-            <Group gap="xs" mb={4}>
-              <Text size="sm" fw={500}>
-                Construction Period
+            {!hasCoordinates ? (
+              <Text size="sm" c="orange">
+                Enter coordinates above to see available building types.
               </Text>
-              {state.building.buildingType && archetypeCount > 0 && (
+            ) : availableCategories.length === 0 ? (
+              <Text size="sm" c="dimmed">
+                No building types available for this location.
+              </Text>
+            ) : (
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
+                {availableCategories.map((category) => {
+                  const Icon = getCategoryIcon(category);
+                  const isOn = selectedType === category;
+                  return (
+                    <UnstyledButton
+                      key={category}
+                      onClick={() =>
+                        dispatch({
+                          type: "UPDATE_BUILDING",
+                          field: "buildingType",
+                          value: category,
+                        })
+                      }
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        padding: "12px 14px",
+                        borderRadius: "var(--mantine-radius-md)",
+                        border: `1.5px solid ${
+                          isOn
+                            ? "var(--mantine-color-relife-7)"
+                            : "var(--mantine-color-default-border)"
+                        }`,
+                        background: isOn
+                          ? "var(--mantine-color-relife-0)"
+                          : "var(--mantine-color-body)",
+                        boxShadow: isOn
+                          ? "0 0 0 2px rgba(40,144,72,0.12)"
+                          : undefined,
+                        transition:
+                          "border-color 120ms ease, background 120ms ease",
+                      }}
+                    >
+                      <ThemeIcon
+                        size={36}
+                        radius="xl"
+                        color={isOn ? "relife" : "gray"}
+                        variant={isOn ? "filled" : "light"}
+                      >
+                        <Icon size={18} stroke={1.75} />
+                      </ThemeIcon>
+                      <Text fw={600} size="sm">
+                        {category}
+                      </Text>
+                    </UnstyledButton>
+                  );
+                })}
+              </SimpleGrid>
+            )}
+          </Box>
+
+          {/* Construction period chips */}
+          <Box>
+            <Group gap="xs" mb="xs" align="center">
+              <Group gap={6}>
+                <IconCalendarEvent
+                  size={14}
+                  color="var(--mantine-color-dimmed)"
+                />
+                <Text
+                  size="xs"
+                  fw={700}
+                  c="dimmed"
+                  tt="uppercase"
+                  style={{ letterSpacing: "0.07em" }}
+                >
+                  Construction period
+                </Text>
+              </Group>
+              {selectedType && archetypeCount > 0 && (
                 <Badge size="sm" variant="light" color="blue">
                   {archetypeCount}{" "}
                   {periodAvailability?.scope === "fallback"
@@ -273,35 +378,62 @@ export function BuildingTypeInputs() {
                 </Badge>
               )}
             </Group>
-            <Select
-              description="When was your building constructed?"
-              placeholder="Choose construction period"
-              data={availablePeriods.map((period) => ({
-                value: period,
-                label: period,
-              }))}
-              value={state.building.constructionPeriod}
-              onChange={(value) => {
-                if (value) {
-                  dispatch({
-                    type: "UPDATE_BUILDING",
-                    field: "constructionPeriod",
-                    value,
-                  });
-                }
-              }}
-              required
-              allowDeselect={false}
-              disabled={!state.building.buildingType}
-            />
-            {state.building.buildingType && availablePeriods.length === 0 && (
-              <Text size="xs" c="red" mt={4}>
-                No construction periods available for this building type
+
+            {!selectedType ? (
+              <Text size="sm" c="dimmed">
+                Pick a building type first.
               </Text>
+            ) : availablePeriods.length === 0 ? (
+              <Text size="sm" c="red">
+                No construction periods available for this building type.
+              </Text>
+            ) : (
+              <Group gap="xs">
+                {availablePeriods.map((period) => {
+                  const isOn = selectedPeriod === period;
+                  return (
+                    <UnstyledButton
+                      key={period}
+                      onClick={() =>
+                        dispatch({
+                          type: "UPDATE_BUILDING",
+                          field: "constructionPeriod",
+                          value: period,
+                        })
+                      }
+                      style={{
+                        padding: "9px 14px",
+                        borderRadius: "var(--mantine-radius-md)",
+                        border: `1.5px solid ${
+                          isOn
+                            ? "var(--mantine-color-relife-7)"
+                            : "var(--mantine-color-default-border)"
+                        }`,
+                        background: isOn
+                          ? "var(--mantine-color-relife-0)"
+                          : "var(--mantine-color-body)",
+                        boxShadow: isOn
+                          ? "0 0 0 2px rgba(40,144,72,0.12)"
+                          : undefined,
+                        transition:
+                          "border-color 120ms ease, background 120ms ease",
+                      }}
+                    >
+                      <Text
+                        fw={700}
+                        size="sm"
+                        c={isOn ? "relife.7" : undefined}
+                      >
+                        {period}
+                      </Text>
+                    </UnstyledButton>
+                  );
+                })}
+              </Group>
             )}
-          </div>
+          </Box>
         </>
       )}
-    </SimpleGrid>
+    </Stack>
   );
 }

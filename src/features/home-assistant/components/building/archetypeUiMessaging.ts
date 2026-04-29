@@ -6,27 +6,61 @@ import type { ArchetypeDetails } from "../../../../types/archetype";
 import { constructionPeriodsEqual } from "../../../../utils/apiMappings";
 import { getCountryDisplayName } from "../../../../utils/countries";
 
+export type PeriodFallbackReason = "no-local-archetypes" | "no-local-periods";
+
+/**
+ * Structured description of a fallback-archetype situation, suitable for
+ * rendering as a titled Alert with bulleted details.
+ */
+export interface PeriodFallbackInfo {
+  /** Headline summarizing the fallback in one short sentence. */
+  title: string;
+  /** Why we fell back. */
+  reason: PeriodFallbackReason;
+  /** Building type label as shown to the user. */
+  buildingType: string;
+  /** Country detected from the user's pin. */
+  detectedCountry: string;
+  /** Country whose archetype catalog the fallback was drawn from. Null when same as detected. */
+  sourceCountry: string | null;
+  /** Construction period of the recommended archetype. Null if no period could be inferred. */
+  recommendedPeriod: string | null;
+}
+
 export function buildPeriodFallbackMessage(
   result: PeriodAvailabilityResult | null,
   buildingType: string,
-): string | null {
+): PeriodFallbackInfo | null {
   if (!result || result.scope !== "fallback") {
     return null;
   }
 
-  const country = result.detectedCountry ?? "your country";
+  const detectedCountry = result.detectedCountry ?? "your country";
   const sourceCountry =
     result.sourceCountry && result.sourceCountry !== result.detectedCountry
-      ? ` from ${result.sourceCountry}`
-      : "";
-  const recommendedPeriod =
-    result.recommendedPeriod ?? "the closest available period";
+      ? result.sourceCountry
+      : null;
+  const recommendedPeriod = result.recommendedPeriod ?? null;
+  const reason: PeriodFallbackReason =
+    result.reason === "no-local-periods"
+      ? "no-local-periods"
+      : "no-local-archetypes";
 
-  if (result.reason === "no-local-periods") {
-    return `No ${buildingType} reference archetypes in ${country} match the selected construction period. ${recommendedPeriod} was preselected using the closest available reference archetype${sourceCountry}. You can continue, but this fallback may not be the optimal match.`;
+  let title: string;
+  if (reason === "no-local-periods") {
+    title = `No ${buildingType} archetypes in ${detectedCountry} for the selected period`;
+  } else {
+    title = `No ${buildingType} archetypes available in ${detectedCountry}`;
   }
 
-  return `No ${buildingType} reference archetypes are currently available in ${country}. ${recommendedPeriod} was preselected from the wider European archetype catalog${sourceCountry}. You can continue, but this fallback may not be the optimal match.`;
+  return {
+    title,
+    reason,
+    buildingType,
+    detectedCountry,
+    sourceCountry,
+    recommendedPeriod,
+  };
 }
 
 export function extractArchetypePeriod(name: string): string | null {
