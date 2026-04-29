@@ -17,6 +17,8 @@ interface StepNavigationProps {
   totalSteps: number;
   /** Callback for going to previous step */
   onPrevious?: () => void;
+  /** Label for the previous button */
+  previousLabel?: string;
   /** Callback for going to next step (if not using primary action) */
   onNext?: () => void;
   /** Primary action callback (replaces Next on certain steps) */
@@ -35,6 +37,7 @@ export function StepNavigation({
   currentStep,
   totalSteps,
   onPrevious,
+  previousLabel = "Previous",
   onNext,
   onPrimaryAction,
   primaryActionLabel,
@@ -59,7 +62,7 @@ export function StepNavigation({
             onClick={onPrevious}
             disabled={disabled || isLoading}
           >
-            Previous
+            {previousLabel}
           </Button>
         )}
       </div>

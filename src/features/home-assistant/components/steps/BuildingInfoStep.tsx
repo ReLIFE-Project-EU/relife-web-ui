@@ -31,8 +31,6 @@ import {
 export function BuildingInfoStep() {
   const { state, dispatch } = useHomeAssistant();
   const { energy } = useHomeAssistantServices();
-  const hasSimulationAdjustments =
-    state.building.isModified && state.building.modifications;
 
   // Validation - only require archetype selection fields
   const isValid =
@@ -179,11 +177,7 @@ export function BuildingInfoStep() {
         currentStep={0}
         totalSteps={3}
         onPrimaryAction={handleEstimateEPC}
-        primaryActionLabel={
-          hasSimulationAdjustments
-            ? "Estimate EPC for adjusted home"
-            : "Estimate EPC"
-        }
+        primaryActionLabel="Show my energy profile"
         isLoading={state.isEstimating}
         primaryDisabled={!isValid}
       />

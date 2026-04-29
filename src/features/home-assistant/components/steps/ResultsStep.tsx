@@ -140,6 +140,7 @@ export function ResultsStep() {
           currentStep={2}
           totalSteps={3}
           onPrevious={handlePrevious}
+          previousLabel="Back to renovation options"
         />
       </Box>
     );
@@ -261,6 +262,7 @@ export function ResultsStep() {
         currentStep={2}
         totalSteps={3}
         onPrevious={handlePrevious}
+        previousLabel="Back to renovation options"
       />
     </Stack>
   );

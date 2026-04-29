@@ -118,6 +118,7 @@ export function EnergyRenovationStep() {
           currentStep={1}
           totalSteps={3}
           onPrevious={handlePrevious}
+          previousLabel="Back to building details"
         />
       </Box>
     );
@@ -188,8 +189,9 @@ export function EnergyRenovationStep() {
         currentStep={1}
         totalSteps={3}
         onPrevious={handlePrevious}
+        previousLabel="Back to building details"
         onPrimaryAction={handleEvaluate}
-        primaryActionLabel="Evaluate Measures"
+        primaryActionLabel="Compare renovation options"
         isLoading={state.isEvaluating}
         primaryDisabled={!canEvaluate}
       />
