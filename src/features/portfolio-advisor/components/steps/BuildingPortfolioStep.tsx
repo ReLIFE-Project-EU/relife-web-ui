@@ -198,6 +198,7 @@ export function BuildingPortfolioStep() {
         currentStep={0}
         totalSteps={4}
         onNext={handleNext}
+        nextLabel="Choose renovation measures"
         primaryDisabled={state.buildings.length === 0}
       />
     </Stack>

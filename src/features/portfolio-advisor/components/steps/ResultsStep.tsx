@@ -576,6 +576,7 @@ export function ResultsStep() {
           currentStep={3}
           totalSteps={4}
           onPrevious={handlePrevious}
+          previousLabel="Back to financing"
         />
       </Stack>
     );
@@ -681,6 +682,7 @@ export function ResultsStep() {
         currentStep={3}
         totalSteps={4}
         onPrevious={handlePrevious}
+        previousLabel="Back to financing"
       />
     </Stack>
   );

@@ -529,7 +529,9 @@ export function EnergyRenovationStep() {
         currentStep={1}
         totalSteps={4}
         onPrevious={handlePrevious}
+        previousLabel="Back to building portfolio"
         onNext={handleNext}
+        nextLabel="Configure financing"
         primaryDisabled={!canProceed}
       />
     </Stack>

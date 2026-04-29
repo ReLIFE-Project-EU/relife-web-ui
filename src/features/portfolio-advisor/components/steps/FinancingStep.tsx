@@ -16,9 +16,8 @@ import {
   Text,
   Title,
   UnstyledButton,
-  Button,
 } from "@mantine/core";
-import { IconCash, IconChartBar } from "@tabler/icons-react";
+import { IconCash } from "@tabler/icons-react";
 import { memo, useCallback } from "react";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
 import { ErrorAlert } from "../../../../components/shared/ErrorAlert";
@@ -273,25 +272,16 @@ export function FinancingStep() {
       {/* Error display */}
       <ErrorAlert error={state.error} title="Analysis Error" />
 
-      {/* Analyze Portfolio button */}
-      <Group justify="center">
-        <Button
-          size="lg"
-          color="teal"
-          leftSection={<IconChartBar size={20} />}
-          onClick={handleAnalyze}
-          loading={state.isEvaluating}
-          disabled={state.buildings.length === 0}
-        >
-          Analyze Portfolio ({state.buildings.length} buildings)
-        </Button>
-      </Group>
-
       {/* Navigation */}
       <StepNavigation
         currentStep={2}
         totalSteps={4}
         onPrevious={handlePrevious}
+        previousLabel="Back to renovation options"
+        onPrimaryAction={handleAnalyze}
+        primaryActionLabel="Analyse portfolio"
+        isLoading={state.isEvaluating}
+        primaryDisabled={state.buildings.length === 0}
         disabled={state.isEvaluating}
       />
     </Stack>

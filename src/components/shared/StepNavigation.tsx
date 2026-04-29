@@ -21,6 +21,8 @@ interface StepNavigationProps {
   previousLabel?: string;
   /** Callback for going to next step (if not using primary action) */
   onNext?: () => void;
+  /** Label for the next button */
+  nextLabel?: string;
   /** Primary action callback (replaces Next on certain steps) */
   onPrimaryAction?: () => void;
   /** Label for the primary action button */
@@ -39,6 +41,7 @@ export function StepNavigation({
   onPrevious,
   previousLabel = "Previous",
   onNext,
+  nextLabel = "Next",
   onPrimaryAction,
   primaryActionLabel,
   isLoading = false,
@@ -82,9 +85,9 @@ export function StepNavigation({
           <Button
             rightSection={<IconArrowRight size={16} />}
             onClick={onNext}
-            disabled={disabled || isLoading}
+            disabled={disabled || isLoading || primaryDisabled}
           >
-            Next
+            {nextLabel}
           </Button>
         ) : null}
       </div>
