@@ -303,7 +303,7 @@ Comparison strategy:
       - Which API(s) are mocked/stubbed/partial for this specific tool
       - What that implies for users and contributors (e.g., "financial results are placeholder")
       - Links to code evidence (paths) rather than making vague claims
-  - Optionally include a comparison note: "The flow diagram above shows the current implementation. Compare it with the [original design flow diagram](docs/hra-tool-design.md#sequential-flow) to identify deviations."
+  - Optionally include a comparison note: "The flow diagram above shows the current implementation. Compare it with the [original design flow diagram](../../docs/hra-tool-design.md#sequential-flow) to identify deviations."
 
 ### 6) Validate documentation correctness
 

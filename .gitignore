@@ -7,7 +7,12 @@
 .env.test.local
 .env.production.local
 
-.claude
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/*/
+.claude/skills/*/*
+!.claude/skills/*/SKILL.md
 TEMP-*.md
 *-trace-*.md
 *.har
