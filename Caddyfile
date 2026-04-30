@@ -1,3 +1,13 @@
+{
+	# Production HTTPS terminates at an upstream nginx proxy before reaching this
+	# container. Trust private proxy IPs so Umami receives the real visitor IP for
+	# country detection instead of nginx's LAN address.
+	servers {
+		trusted_proxies static private_ranges
+		trusted_proxies_strict
+	}
+}
+
 :8080 {
 	# Enable gzip compression
 	encode gzip
