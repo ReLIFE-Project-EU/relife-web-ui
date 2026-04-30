@@ -1,343 +1,217 @@
 # AGENTS.md
 
-This file provides guidance to AI agents when working with code in this repository.
+Guidance for AI agents working in this repository.
 
 ## Pre-Task Checklist
 
-Before starting any task, verify:
+Before starting work:
 
-1. **D3.2**: Does this task touch any of the three tools, building data input, financial indicators, MCDA, or EPC reporting? If yes, read [`D32_WEB_UI_GUIDANCE.md`](./D32_WEB_UI_GUIDANCE.md) first.
-2. **Versions**: Are the libraries you intend to use listed in [Tech Stack Versions](#tech-stack-versions)? Use only the documented versions.
-3. **Scope**: Can the task be solved with a smaller change than initially planned? If yes, do the smaller change.
-4. **Conflict**: Does this task conflict with D3.2, the existing architecture, or an adjacent requirement? If yes, stop and ask the user before proceeding.
-5. **Ambiguity**: Is the requirement unclear or open to multiple valid interpretations? If yes, ask the user to clarify before writing any code.
-6. **API integration / client types**: Does the task change `src/api/` or service-related types? If yes, verify request/response shapes using the **service implementation** (local clones under `external-services/` when present, otherwise the public GitHub repositories), a **running stack**, or **integration tests**—and ask the user if you cannot verify. See [Backend API contracts](#backend-api-contracts).
+1. **D3.2**: if the task touches HRA/PRA/RSE, building data input, financial indicators, MCDA, EPC reporting, renovation service flows, or compliance, read [D32_WEB_UI_GUIDANCE.md](./D32_WEB_UI_GUIDANCE.md).
+2. **Versions**: use only the documented dependency versions below and those already present in `package.json` / lockfile.
+3. **Scope**: solve the stated problem with the smallest direct change.
+4. **Conflict**: if the request conflicts with D3.2, current architecture, or an adjacent requirement, stop and ask.
+5. **Ambiguity**: if multiple valid interpretations remain after repo inspection, ask before coding.
+6. **API/client types**: if changing `src/api/` or service-related types, verify request/response shapes from service source, running stack, or integration tests. Ask if contracts cannot be verified.
 
-### Stop and Ask the User When
+Stop and ask when:
 
-- A D3.2 requirement conflicts with the task or user instruction
-- Adding a dependency not already in `package.json` is being considered
-- The change would touch more than ~3 files in ways not directly requested
-- An assumption is being made that the user has not stated explicitly
-- Proposed work requires an architectural decision (new pattern, new layer, new abstraction)
-- The task depends on accurate request/response shapes and you cannot verify them from `external-services/`, upstream GitHub source, a running stack, or integration tests
+- D3.2 conflicts with the task or user instruction.
+- Adding a dependency is being considered.
+- The change would touch more than about 3 files in ways not directly requested.
+- A user-visible assumption has not been stated explicitly.
+- A new architecture pattern, layer, or abstraction would be needed.
+- Accurate service request/response shape matters and cannot be verified.
 
----
+## ReLIFE Context
 
-## ReLIFE Project Context
+This repository implements the **ReLIFE Web UI**, part of the EU LIFE ReLIFE project for building energy renovation in Europe.
 
-This repository implements the **ReLIFE Web UI**, part of the EU LIFE program ReLIFE project for building energy renovation in Europe.
+D3.2 defines:
 
-### D3.2 Requirements Document
+- **Three tools**: Renovation Strategy Explorer (policy/research), Portfolio Renovation Advisor (financial institutions/ESCOs/large owners), Home Renovation Assistant (homeowners/tenants/small owners).
+- **Three backend services**: Financial, Forecasting, Technical.
+- **Key domains**: funding options, NPV/IRR/ROI/PP/DPP/ARV, risk assessment, building simulation, climate scenarios, technical sheets, five-pillar MCDA, building stock analysis, GDPR, RBAC, data minimization.
 
-This section summarizes Web UI-relevant requirements from deliverable D3.2 "Methodological Frameworks of ReLIFE Services". The trigger for when to consult [`D32_WEB_UI_GUIDANCE.md`](./D32_WEB_UI_GUIDANCE.md) is defined in the [Pre-Task Checklist](#pre-task-checklist).
+Shared user-facing terminology lives in `src/constants/relifeConcepts.ts`. Reuse entries for labels, descriptions, caveats, professional details, metric names, and measure effects. Do not redefine shared concept copy inline. Add concepts only when necessary.
 
-#### Key Architectural Constraints from D3.2
-
-- **Three Distinct Tools** must be implemented.
-- **Renovation Strategy Explorer** (Group 1: policymakers, researchers).
-- **Portfolio Renovation Advisor** (Group 2: financial institutions, ESCOs).
-- **Home Renovation Assistant** (Group 3: homeowners).
-- **Three Backend Services** the UI must integrate with.
-- **Financial Service**: Funding options, financial indicators (NPV, IRR, ROI, PP, DPP, ARV), risk assessment.
-- **Forecasting Service**: Building energy simulation, climate scenarios (present/2030/2050).
-- **Technical Service**: Technical sheets, MCDA with 5 pillars, building stock analysis.
-- **MCDA Framework**: Five evaluation pillars with predefined user personas (Environmentally Conscious, Comfort-Driven, Cost-Optimization Oriented).
-- **Compliance Requirements**: GDPR, role-based access, data minimization, consent management.
-
-#### D3.2-Covered Example Areas
-
-Canonical trigger: use the [Pre-Task Checklist](#pre-task-checklist). The examples below are common D3.2-covered areas:
-
-- Implementing any of the three tools or their workflows
-- Adding forms for building data input (three pathways: archetype, custom, modified)
-- Displaying financial indicators or risk assessment results
-- Implementing MCDA scoring or persona selection
-- Adding EPC-based reporting features
-- Designing data flows between services
-
-#### Handling Conflicts with D3.2
-
-**IMPORTANT**: If D3.2 requirements or guidelines conflict with the current task, user instructions, or practical implementation constraints:
-
-1. **Do NOT silently deviate** from D3.2 or make assumptions
-2. **Ask the user directly** for clarification before proceeding
-3. Clearly explain the conflict and present options
-
-D3.2 represents formal project requirements, but implementation realities may require adjustments. The user must explicitly approve any deviation from documented requirements.
-
-### Shared Concept Ontology
-
-ReLIFE user-facing concepts are centrally defined in [`src/constants/relifeConcepts.ts`](./src/constants/relifeConcepts.ts). UI code must reuse these entries for labels, descriptions, caveats, professional details, metric names, and measure effects so terminology stays consistent and user-friendly across HRA, PRA, and RSE. Do not redefine shared concept copy inline. Add a new concept only when strictly necessary and keep it concise.
-
-Use visible explanations sparingly. Visible text should introduce high-risk concepts or prevent likely misinterpretation; repeated labels, dense tables, and secondary metrics should use the shared concept label plus tooltip/popover detail instead of rendering explanatory sentences by default.
+Use visible explanations sparingly. Prefer shared concept labels plus tooltip/popover detail for repeated labels, dense tables, and secondary metrics.
 
 ## Development Process
 
-This project prioritizes transparency, restraint, and verifiability over speed or comprehensiveness.
+This project values transparency, restraint, and verifiability over speed or broad rewrites.
 
-### 1. Think Before Coding
+Think before coding:
 
-State assumptions explicitly. If uncertain, ask the user directly.
+- State assumptions explicitly.
+- Surface multiple interpretations instead of choosing silently.
+- Ask when requirements conflict or remain ambiguous after repo inspection.
 
-- Surface multiple interpretations rather than deciding silently.
-- Acknowledge simpler alternatives when they exist.
-- Pause and clarify when requirements conflict or remain ambiguous.
+Simplicity first:
 
-### 2. Simplicity First
+- Implement exactly what was requested.
+- Prefer the smaller change when it solves the problem.
+- Validate at system boundaries; avoid defensive checks for impossible internal states.
 
-Write minimal code solving the stated problem only.
+Surgical changes:
 
-- Implement exactly what was requested; avoid speculative features or unused abstractions.
-- If you can solve the problem in 50 lines instead of 200, choose the simpler solution.
-- Validate at system boundaries (API responses, user input); avoid defensive checks for impossible internal states.
-- Treat code length as a signal: growing files should be split, not expanded.
+- Preserve surrounding style and architecture.
+- Do not refactor working code as a side effect.
+- Do not remove dependencies unless your change created the dependency.
+- Flag unrelated dead code instead of deleting it silently.
 
-### 3. Surgical Changes
+Goal-driven execution:
 
-Modify only what the request requires; preserve surrounding code style.
+- Turn vague requests into measurable success criteria.
+- For multi-step work, define a brief verification plan.
+- Test before and after when you need to establish causality.
 
-- Don't refactor working code or "improve" unrelated sections.
-- Don't remove dependencies unless your changes created them.
-- Match existing patterns in the file/feature being modified.
-- If you spot pre-existing dead code, flag it to the user rather than deleting it silently.
+## Backend API Contracts
 
-### 4. Goal-Driven Execution
+This repo does not ship authoritative OpenAPI/spec snapshots. FastAPI `/openapi.json` may be incomplete or stale.
 
-- Transform vague requests into measurable success criteria.
-- For multi-step tasks, create a brief verification plan upfront.
-- Test before and after changes to establish causality.
-- Define success explicitly (metric, target, and measurement method).
+Authoritative contract sources:
 
----
-
-These principles trade speed for correctness on non-trivial work.
-
-## Backend API contracts
-
-**This repository does not ship OpenAPI or other checked-in API specification snapshots.** FastAPI-generated `/openapi.json` from running services is often incomplete or out of sync with handlers, validation, and serializers—do **not** treat it as the contract when changing clients or types.
-
-**Authoritative source for API shape** is the **service implementation**: route handlers, request/response models, and validation in the upstream repositories.
-
-| Service     | Local path (optional clone)                    | Repository                                                      |
+| Service     | Local source when present                      | Upstream                                                        |
 | ----------- | ---------------------------------------------- | --------------------------------------------------------------- |
 | Financial   | `external-services/relife-financial-service`   | https://github.com/ReLIFE-Project-EU/relife-financial-service   |
 | Forecasting | `external-services/relife-forecasting-service` | https://github.com/ReLIFE-Project-EU/relife-forecasting-service |
 | Technical   | `external-services/relife-technical-service`   | https://github.com/ReLIFE-Project-EU/relife-technical-service   |
 
-**Workflow**: Prefer reading or searching `external-services/<repo>` when those directories exist (they are gitignored; cloning is optional). If they are missing, use the **GitHub repositories** above, a **running stack** (`task up` / Docker Compose), and **integration tests** under `tests/integration/`. Cross-check behavior at HTTP boundaries when in doubt.
+Workflow:
 
-**If you still cannot verify a contract**: **Ask the user** for guidance (e.g. clone via `task fetch-sources` in [`Taskfile.yml`](./Taskfile.yml), point to specific handlers, or confirm observed API behavior).
-
-D3.2 may refer to OpenAPI/HTTP as **interchange formats** for the platform; this section is about **where to read accurate shapes** for this Web UI repo, not about dropping HTTP/OpenAPI as a standard elsewhere.
+- Prefer route handlers, request/response models, serializers, and validation in `external-services/<repo>`.
+- If local clones are missing, use upstream GitHub source, a running stack (`task up` / Docker Compose), or `tests/integration/`.
+- Cross-check HTTP behavior when in doubt.
+- If still uncertain, ask whether to fetch service sources, inspect a specific handler, or confirm observed behavior.
 
 ## API Integration Architecture
 
-The codebase uses a **two-layer architecture** for backend service integration:
+Use the existing two-layer boundary.
 
 ### Layer 1: API Wrappers (`src/api/`)
 
-Low-level HTTP client wrappers that directly communicate with backend REST endpoints:
+Thin HTTP adapters only:
 
-- **`client.ts`**: Core request utilities with authentication handling (`request`, `uploadRequest`, `downloadRequest`)
-- **`financial.ts`**, **`forecasting.ts`**, **`technical.ts`**: Thin wrappers mapping directly to backend endpoints (e.g., `financial.assessRisk()`, `financial.calculateARV()`)
-- **`index.ts`**: Re-exports all service clients
+- `client.ts`: core request utilities with auth handling (`request`, `uploadRequest`, `downloadRequest`).
+- `financial.ts`, `forecasting.ts`, `technical.ts`: endpoint wrappers.
+- `index.ts`: service client re-exports.
 
-These wrappers:
+API wrappers handle Supabase auth tokens, typed request/response interfaces, and `APIError`. They should not contain business logic.
 
-- Handle authentication tokens (via Supabase session)
-- Provide typed request/response interfaces intended to match **verified backend behavior** (service source under `external-services/` and/or upstream GitHub, plus runtime or tests when needed)
-- Throw `APIError` for error handling
-- Should NOT contain business logic—they are pure HTTP adapters
+### Layer 2: Feature/Domain Services
 
-### Layer 2: Feature Service Abstractions (`src/features/<tool>/services/`)
+Feature services under `src/features/<tool>/services/` and shared services under `src/services/` consume API wrappers and add orchestration, transformations, calculations, interfaces, and mocks.
 
-Domain-specific service classes that **consume the API wrappers** and add business logic:
-
-- **Example**: `src/features/home-assistant/services/FinancialService.ts` imports `financial` from `src/api`, implements `IFinancialService`, and adds higher-level methods like `calculateForAllScenarios()` with business logic, data transformations, and orchestration of multiple API calls.
-
-- **Interfaces** (in `services/types.ts`): Define contracts like `IFinancialService`, `IBuildingService`, `IEnergyService`, `IMCDAService`
-- **Mock implementations** (in `services/mock/`): For testing and development when backend services are unavailable
-- **Real implementations**: Use the `src/api/` wrappers and transform data for the UI
-
-### When to Modify Each Layer
-
-| Task                                                       | Modify                               |
-| ---------------------------------------------------------- | ------------------------------------ |
-| Backend endpoint changed (URL, request/response shape)     | `src/api/<service>.ts`               |
-| New backend endpoint added                                 | `src/api/<service>.ts`               |
-| Business logic for a feature (calculations, orchestration) | `src/features/<tool>/services/`      |
-| New feature-specific data transformations                  | `src/features/<tool>/services/`      |
-| Mock data for testing/development                          | `src/features/<tool>/services/mock/` |
-
-### Example Data Flow
-
-```mermaid
-flowchart TD
-    A[UI Component] --> B[Feature Hook<br/>e.g., useHomeAssistantServices]
-    B --> C[Service Class<br/>e.g., FinancialService.calculateForAllScenarios]
-    C --> D[API Wrapper<br/>e.g., financial.assessRisk, financial.calculateARV]
-    D --> E[Backend Service]
-```
+| Task                                    | Edit                       |
+| --------------------------------------- | -------------------------- |
+| Backend endpoint changed                | `src/api/<service>.ts`     |
+| New backend endpoint                    | `src/api/<service>.ts`     |
+| Feature business logic or orchestration | Feature/shared service     |
+| Feature-specific transformations        | Feature/shared service     |
+| Test/dev fake behavior                  | Existing mock service area |
 
 ## Tech Stack Versions
 
-**CRITICAL**: Always verify that any proposed changes, API usage, or code examples are compatible with the exact versions listed below. Do not suggest features, APIs, or patterns from different versions.
+Do not use APIs or patterns from incompatible versions.
 
-### Core Dependencies
+Core:
 
-- **React**: `^19.2.0`
-- **React DOM**: `^19.2.0`
-- **TypeScript**: `~5.9.3`
-- **Vite**: `^7.2.4`
-- **react-router-dom**: `^7.9.6`
-- **@supabase/supabase-js**: `^2.84.0`
+- React `^19.2.0`
+- React DOM `^19.2.0`
+- TypeScript `~5.9.3`
+- Vite `^7.2.4`
+- react-router-dom `^7.9.6`
+- `@supabase/supabase-js` `^2.84.0`
 
-### UI Framework
+UI:
 
-- **@mantine/core**: `^8.3.8`
-- **@mantine/hooks**: `^8.3.8`
-- **@mantine/form**: `^8.3.12`
-- **@mantine/charts**: `^8.3.12`
-- **@mantine/dropzone**: `^8.3.12`
-- **@tabler/icons-react**: `^3.35.0`
-- **react-leaflet**: `^5.0.0`
-- **leaflet**: `^1.9.4`
+- `@mantine/core` `^8.3.8`
+- `@mantine/hooks` `^8.3.8`
+- `@mantine/form` `^8.3.12`
+- `@mantine/charts` `^8.3.12`
+- `@mantine/dropzone` `^8.3.12`
+- `@tabler/icons-react` `^3.35.0`
+- `react-leaflet` `^5.0.0`
+- `leaflet` `^1.9.4`
 
-### Development Tools
+Tooling:
 
-- **@vitejs/plugin-react**: `^5.1.1`
-- **ESLint**: `^9.39.1`
-- **TypeScript ESLint**: `^8.46.4`
-- **Prettier**: `^3.6.2`
-- **Vitest**: `^4.0.18`
+- `@vitejs/plugin-react` `^5.1.1`
+- ESLint `^9.39.1`
+- TypeScript ESLint `^8.46.4`
+- Prettier `^3.6.2`
+- Vitest `^4.0.18`
 
-### TypeScript Configuration
+TypeScript config: target `ES2022`, module `ESNext`, JSX `react-jsx`, strict mode enabled, module resolution `bundler`.
 
-- **Target**: `ES2022`
-- **Module**: `ESNext`
-- **JSX**: `react-jsx`
-- **Strict mode**: Enabled
-- **Module Resolution**: `bundler`
+## Project Structure
 
-**When in doubt**, consult the official documentation for the specific versions listed above, not the latest documentation.
+- `src/api/`: API wrappers.
+- `src/auth.ts`: Supabase auth setup.
+- `src/components/`: shared reusable UI.
+- `src/config.ts`: app-wide env/config constants.
+- `src/constants/`: shared domain constants and concept ontology.
+- `src/contexts/`: React contexts.
+- `src/features/`: domain-specific feature areas.
+- `src/hooks/`: shared hooks.
+- `src/routes/`: route definitions.
+- `src/services/`: shared business services.
+- `src/theme.ts`: central Mantine theme.
+- `src/types/`: shared TypeScript types.
+- `src/utils/`: shared utilities.
 
-## Code Style
+Keep files short and focused. Split large components rather than expanding them indefinitely.
 
-### General Principles
+## Coding Rules
 
-- **Keep it minimal**: Do not add new dependencies unless strictly necessary and clearly justified.
-- **Prefer built-in features** from Vite, React, and Mantine over external libraries.
-- **Use TypeScript** with strict typing (`strict: true`) and avoid `any` unless unavoidable (and document why).
-- **Always prefer Mantine components and layout primitives**: Use built-in Mantine components for all UI and layout needs. Custom CSS should only be used as a last resort when Mantine does not provide a clean, comparable solution.
+General:
 
-**Scope reminder**: If you're adding a feature, don't refactor surrounding code. If you're fixing a bug, don't add error handling for hypothetical scenarios. Write for the problem at hand.
+- Write minimal code that solves the requested problem only.
+- Match existing patterns in the touched file/feature.
+- Prefer built-in Vite, React, Mantine, and browser APIs over new libraries.
+- Avoid speculative features, unused abstractions, unrelated refactors, mutable globals, and commented-out code.
+- Delete dead code introduced by your change. Flag pre-existing dead code instead of silently removing it.
+- Use TypeScript strict typing; avoid `any` unless unavoidable and explained.
+- Use modern ES modules and syntax: `const`/`let`, no `var`.
+- Use consistent names: components `PascalCase`; functions, variables, and hooks `camelCase`; hooks start with `use`.
+- Keep imports grouped: external, internal, relative.
 
-### Project Structure
+React:
 
-The `src/` directory is organized as follows:
+- Use function components and hooks; no class components.
+- Prefer named exports.
+- Use `React.FC` only when it materially helps, such as explicit `children` typing.
+- Keep presentational components free of direct API calls; put fetching/effects/state orchestration in containers/hooks/services.
 
-- `src/api/` – API wrappers (HTTP clients, one file per backend service)
-- `src/auth.ts` – Supabase authentication setup
-- `src/components/` – Shared, reusable UI components
-- `src/config.ts` – App-wide configuration (env vars, constants)
-- `src/constants/` – Shared domain constants and concept ontology
-- `src/contexts/` – React contexts (e.g., global loading state)
-- `src/features/` – Domain-specific features and pages (one subdirectory per tool)
-- `src/hooks/` – Shared hooks
-- `src/routes/` – Route definitions (react-router-dom v7)
-- `src/services/` – Shared services (non-feature-specific business logic)
-- `src/theme.ts` – Central Mantine theme configuration
-- `src/types/` – Shared TypeScript types
-- `src/utils/` – Shared utility functions
+Mantine and styling:
 
-Keep files **short and focused**; split components when they grow too large or complex.
+- Prefer Mantine components and layout primitives.
+- Reuse `src/theme.ts`; do not create a second theme.
+- Use `style`, `className`, or `classNames`. Do not use Mantine `sx`.
+- Use Mantine hooks, such as `useDisclosure` or `useMantineTheme`, where they fit.
+- Prefer theme tokens/CSS variables over hard-coded colors and magic numbers.
+- Prefer `@tabler/icons-react` over emojis in UI.
+- Add custom CSS files only when Mantine props/styles cannot handle the case cleanly.
 
-### React & JSX
+Error handling and state:
 
-- Use **function components** and **React hooks**; do not use class components.
-- Use **named exports** for components and functions (`export const MyComponent = ...`).
-- Use **React.FC** only when needed for props like `children`; otherwise prefer plain function types.
-- Keep components **presentational or container-style**.
-- Presentational components: UI, no direct API calls.
-- Container components/hooks: data fetching, side effects, state.
+- At API and user-input boundaries, handle errors explicitly and visibly with typed errors and Mantine UI states such as `Alert`, disabled controls, loaders, or skeletons.
+- Do not swallow boundary errors or rely on `console.error` alone.
+- Inside pure/internal code, avoid defensive checks for states TypeScript/framework guarantees impossible.
+- Prefer local state and small custom hooks over global state. Do not add data/state libraries without a clear need.
 
-### Mantine
+Configuration:
 
-- Use Mantine components for layout and UI (e.g. `AppShell`, `Stack`, `Group`, `Button`, `TextInput`).
-- Configure the central Mantine theme in `src/theme.ts` and reuse it—do not create a second theme file.
-- Use the `style` prop (accepts a CSS object) for one-off inline overrides.
-- Use `className` and `classNames` (Styles API) for targeting Mantine component internals.
-- Custom CSS files should only be used when neither `style` nor `classNames` can achieve the result.
-- Use **Mantine hooks** (e.g. `useDisclosure`, `useMantineTheme`) where appropriate instead of adding utility libraries.
+- Use Vite env variables (`import.meta.env`) for API base URLs and feature flags.
+- Do not hardcode environment-specific URLs, production domains, tokens, or secrets in components.
+- Keep dev proxy/config in Vite or compose/task config.
 
-### Styling
+## Testing and Verification
 
-- Prefer **Mantine props and the `style` prop** for styling over global CSS.
-- Use CSS variables or Mantine theme tokens for colors and spacing; avoid hard-coded values (magic numbers).
-- Keep consistent spacing & typography using the theme scale.
-- **Avoid emojis** in UI code; prefer native icon libraries (e.g. `@tabler/icons-react`) that are already included as dependencies.
-
-### Error Handling & UX
-
-- At **system boundaries** (API responses, user input): always handle errors explicitly and visibly—throw typed errors (`APIError`), catch them in the UI, and show error states using Mantine components (e.g. `Alert`). Never swallow errors silently or rely on `console.error` alone.
-- Within **internal code** (pure functions, hooks, data transformations): skip defensive null-checks and try/catch for scenarios that TypeScript or framework guarantees make impossible. Over-defensive internal code adds noise without value.
-- Provide simple **loading states** using Mantine (`Loader`, skeletons, disabled buttons).
-
-### State & Data Fetching
-
-- Prefer **local component state and small custom hooks** over global state unless truly necessary.
-- If you introduce a state or data-fetching library, it must be justified by a clear need (e.g. caching, invalidation, complex state).
-- Any new state or data-fetching library must stay consistent with the "minimal dependencies" guideline.
-
-### Configuration & Environment
-
-- Use **Vite environment variables** (`import.meta.env`) for configuration (API base URL, feature flags).
-- Do not hardcode environment-specific URLs (`localhost`, production domains) inside components.
-- Keep any dev-only config (e.g. proxy settings) in Vite config files.
-
-### Testing & Quality
-
-- Write **small, focused tests** for API client functions.
-- Write **small, focused tests** for critical UI components and hooks.
-- Use **Vitest + React Testing Library** (both already included); avoid adding heavy testing frameworks.
-
-### Code Style Essentials
-
-- Use **consistent naming**: components in `PascalCase`; functions, variables, and hooks in `camelCase`; hooks named like `useSomething`.
-- Use ES modules and modern syntax: `const` / `let` (no `var`) and arrow functions for callbacks/small utilities.
-- Keep imports **sorted and grouped**: external libraries, internal modules, then local-relative imports.
-- Avoid dead code, unused imports, and commented-out blocks—delete them instead.
-
-## Universal Dos/Don'ts
-
-Quick-reference checklist. Prefer the [Development Process](#development-process) section for rationale.
-
-### Don't
-
-- Do NOT add dependencies unless native APIs are insufficient and the need is clearly justified.
-- Do NOT add speculative features, unused abstractions, or unrelated refactors.
-- Do NOT delete pre-existing dead code silently; flag it to the user instead.
-- Do NOT hardcode environment-specific URLs, tokens, or magic numbers.
-- Do NOT use the `sx` prop (Mantine v8); use `style`, `className`, or `classNames`.
-- Do NOT swallow errors silently at system boundaries.
-- Do NOT leave dead code, unused imports, or commented-out sections.
-- Do NOT make large, unfocused commits or commit secrets.
-- Do NOT over-optimize before profiling.
-- Do NOT rely on mutable globals or unclear side effects.
-- Do NOT omit root-level `README.md` or work outside a git directory.
-
-### Do
-
-- Clarify ambiguous requirements by asking the user directly; surface alternatives explicitly.
-- State assumptions clearly; ask rather than assume.
-- Transform vague requests into measurable success criteria.
-- Search the codebase for existing patterns before implementing new ones.
-- Confirm framework/library versions before writing code (see [Tech Stack Versions](#tech-stack-versions)).
-- Write minimal code solving exactly what was requested.
-- Match existing code patterns and style in the file/feature you're modifying.
-- Use TypeScript strict typing and avoid `any` (document if unavoidable).
-- Make atomic, descriptive commits that reflect the "why" of changes.
-- Run lint and build locally before completing work.
-- Generate focused tests for key logic and verify behavior before and after changes.
-- Document non-obvious decisions and keep `README.md` up to date.
+- Search for existing patterns before implementing new ones.
+- For non-trivial changes, define success criteria and a verification plan.
+- Test before and after changes when causality matters.
+- Write focused tests for changed API clients, critical hooks/components, and domain logic.
+- Use Vitest + React Testing Library; do not add heavy test frameworks.
+- Run lint and build before completion when feasible.
+- Keep `README.md` current for non-obvious operational or architecture changes.
