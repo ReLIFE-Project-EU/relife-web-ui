@@ -4,6 +4,7 @@ import {
   IconBuildingEstate,
   IconHome,
   IconHomeHeart,
+  IconMessageCircle,
 } from "@tabler/icons-react";
 import React from "react";
 import { useLocation } from "react-router-dom";
@@ -14,8 +15,12 @@ interface NavItem {
   label: string;
   icon: React.FC<{ size?: number | string; style?: React.CSSProperties }>;
   link?: string;
+  external?: boolean;
   links?: { label: string; link: string }[];
 }
+
+const FEEDBACK_FORM_URL =
+  "https://share.hsforms.com/1KTWnmHp0RjyvgJ-5yD8NcQ2i2ln";
 
 const navigationData: NavItem[] = [
   { label: "Home", icon: IconHome, link: "/" },
@@ -40,6 +45,13 @@ const navigationData: NavItem[] = [
     icon: IconHomeHeart,
     link: "/home-assistant",
   },
+
+  {
+    label: "Feedback",
+    icon: IconMessageCircle,
+    link: FEEDBACK_FORM_URL,
+    external: true,
+  },
 ];
 
 export const LayoutNavbar = () => {
@@ -53,6 +65,7 @@ export const LayoutNavbar = () => {
 
     // Check if the active path matches the direct link or is a sub-path (for tool pages)
     const isDirectLinkActive =
+      !item.external &&
       item.link &&
       (item.link === activePath || activePath.startsWith(item.link + "/"));
 

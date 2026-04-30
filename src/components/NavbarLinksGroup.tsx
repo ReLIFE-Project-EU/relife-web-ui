@@ -18,6 +18,7 @@ interface LinksGroupProps {
   initiallyOpened?: boolean;
   links?: { label: string; link: string }[];
   link?: string;
+  external?: boolean;
   active?: boolean;
   activePath?: string;
 }
@@ -28,6 +29,7 @@ export function LinksGroup({
   initiallyOpened,
   links,
   link,
+  external,
   active,
   activePath,
 }: LinksGroupProps) {
@@ -49,6 +51,27 @@ export function LinksGroup({
   });
 
   if (!hasLinks && link) {
+    if (external) {
+      return (
+        <UnstyledButton
+          component="a"
+          href={link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={classes.control}
+        >
+          <Group justify="space-between" gap={0}>
+            <Box style={{ display: "flex", alignItems: "center" }}>
+              <ThemeIcon variant="light" size={30}>
+                <Icon style={{ width: rem(18), height: rem(18) }} />
+              </ThemeIcon>
+              <Box ml="md">{label}</Box>
+            </Box>
+          </Group>
+        </UnstyledButton>
+      );
+    }
+
     return (
       <UnstyledButton
         component={Link}
