@@ -108,8 +108,17 @@ function buildPeriodFallbackMessage(
 
 export function ManualAddPanel({
   onAdd,
+  onClose,
+  withCard = true,
 }: {
   onAdd: (building: PRABuilding) => void;
+  /** Optional: invoked after a successful add, e.g. to close a host Drawer. */
+  onClose?: () => void;
+  /**
+   * When false, render the form bare (no outer Card wrapper) — used when the
+   * panel is hosted inside a Drawer. Defaults to true for backward compat.
+   */
+  withCard?: boolean;
 }) {
   const { building: buildingService } = usePortfolioAdvisorServices();
   const [formState, dispatch] = useReducer(
@@ -429,6 +438,7 @@ export function ManualAddPanel({
 
     onAdd(building);
     dispatch({ type: "RESET_FORM" });
+    onClose?.();
   };
 
   function handleMapClick(clickedLat: number, clickedLng: number) {
@@ -463,12 +473,14 @@ export function ManualAddPanel({
     sortedAvailableArchetypes,
   );
 
-  return (
-    <Card withBorder radius="md" p="lg">
-      <Group mb="md">
-        <IconPlus size={20} />
-        <Title order={4}>Add Building Manually</Title>
-      </Group>
+  const body = (
+    <>
+      {withCard && (
+        <Group mb="md">
+          <IconPlus size={20} />
+          <Title order={4}>Add Building Manually</Title>
+        </Group>
+      )}
 
       <Stack gap="md">
         {/* Section 1: Building identification */}
@@ -1003,6 +1015,16 @@ export function ManualAddPanel({
           Add Building
         </Button>
       </Stack>
+    </>
+  );
+
+  if (!withCard) {
+    return body;
+  }
+
+  return (
+    <Card withBorder radius="md" p="lg">
+      {body}
     </Card>
   );
 }

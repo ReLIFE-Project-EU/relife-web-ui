@@ -10,7 +10,6 @@ import {
   Grid,
   Group,
   NumberInput,
-  Progress,
   SimpleGrid,
   Stack,
   Text,
@@ -18,9 +17,11 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import { IconCash } from "@tabler/icons-react";
-import { memo, useCallback } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
 import { ErrorAlert } from "../../../../components/shared/ErrorAlert";
+import { MetricCard } from "../../../../components/shared/MetricCard";
+import { formatCurrency } from "../../../../utils/formatters";
 import { FINANCING_SCHEMES, type FinancingScheme } from "../../constants";
 import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
 import { usePortfolioAdvisorServices } from "../../hooks/usePortfolioAdvisorServices";
@@ -56,13 +57,10 @@ const SchemeCard = memo(function SchemeCard({
         withBorder
         radius="md"
         p="md"
+        bg={selected ? "relife.0" : isDisabled ? "gray.0" : undefined}
         style={{
-          borderColor: selected ? "var(--mantine-color-teal-6)" : undefined,
-          backgroundColor: selected
-            ? "var(--mantine-color-teal-0)"
-            : isDisabled
-              ? "var(--mantine-color-gray-1)"
-              : undefined,
+          borderColor: selected ? "var(--mantine-color-relife-7)" : undefined,
+          borderWidth: selected ? 2 : 1,
           opacity: isDisabled ? 0.6 : 1,
         }}
       >
@@ -79,7 +77,7 @@ const SchemeCard = memo(function SchemeCard({
             </Badge>
           )}
           {selected && (
-            <Badge size="xs" color="teal" variant="filled">
+            <Badge size="xs" color="relife" variant="filled">
               Selected
             </Badge>
           )}
@@ -91,6 +89,17 @@ const SchemeCard = memo(function SchemeCard({
     </UnstyledButton>
   );
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Loan summary metrics (derived display)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function computeAnnuity(loanAmount: number, ratePct: number, years: number) {
+  if (loanAmount <= 0 || years <= 0) return 0;
+  const r = ratePct;
+  if (r === 0) return loanAmount / years;
+  return (loanAmount * r) / (1 - Math.pow(1 + r, -years));
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Component
@@ -146,11 +155,25 @@ export function FinancingStep() {
     }
   };
 
-  const progressPercent = state.analysisProgress
-    ? Math.round(
-        (state.analysisProgress.completed / state.analysisProgress.total) * 100,
-      )
-    : 0;
+  // Loan summary derived from existing state. Total CAPEX = sum of per-building
+  // overrides plus the global default for buildings without an override.
+  const totalCapex = useMemo(() => {
+    return state.buildings.reduce((sum, b) => {
+      if (typeof b.estimatedCapex === "number") return sum + b.estimatedCapex;
+      return sum + (state.renovation.estimatedCapex ?? 0);
+    }, 0);
+  }, [state.buildings, state.renovation.estimatedCapex]);
+
+  const loanAmount =
+    state.financingScheme === "debt"
+      ? totalCapex * (state.funding.loan.percentage / 100)
+      : 0;
+  const ownerEquity = totalCapex - loanAmount;
+  const annuity = computeAnnuity(
+    loanAmount,
+    state.funding.loan.interestRate,
+    state.funding.loan.duration,
+  );
 
   return (
     <Stack gap="xl">
@@ -192,6 +215,7 @@ export function FinancingStep() {
             <Grid.Col span={{ base: 12, sm: 4 }}>
               <NumberInput
                 label="Loan Percentage (%)"
+                description="Share of total CAPEX financed by the loan."
                 value={state.funding.loan.percentage}
                 onChange={(val) => {
                   if (typeof val === "number") {
@@ -210,6 +234,7 @@ export function FinancingStep() {
             <Grid.Col span={{ base: 12, sm: 4 }}>
               <NumberInput
                 label="Loan Term (years)"
+                description="Repayment horizon."
                 value={state.funding.loan.duration}
                 onChange={(val) => {
                   if (typeof val === "number") {
@@ -227,6 +252,7 @@ export function FinancingStep() {
             <Grid.Col span={{ base: 12, sm: 4 }}>
               <NumberInput
                 label="Interest Rate (%)"
+                description="Effective annual rate."
                 value={state.funding.loan.interestRate * 100}
                 onChange={(val) => {
                   if (typeof val === "number") {
@@ -244,35 +270,36 @@ export function FinancingStep() {
               />
             </Grid.Col>
           </Grid>
-        </Card>
-      )}
 
-      {/* Analysis Progress */}
-      {state.analysisProgress && (
-        <Card withBorder radius="md" p="lg">
-          <Title order={4} mb="md">
-            Analyzing Portfolio...
-          </Title>
-          <Progress
-            value={progressPercent}
-            size="lg"
-            radius="md"
-            mb="sm"
-            animated
-          />
-          <Text size="sm" c="dimmed">
-            {state.analysisProgress.completed} / {state.analysisProgress.total}{" "}
-            buildings processed
-            {state.analysisProgress.currentBuilding &&
-              ` - Current: ${state.analysisProgress.currentBuilding}`}
-          </Text>
+          {/* Loan summary — derived from existing state, no new fields */}
+          <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md" mt="lg">
+            <MetricCard
+              label="Total CAPEX"
+              value={formatCurrency(totalCapex)}
+            />
+            <MetricCard
+              label="Loan amount"
+              value={formatCurrency(loanAmount)}
+              variant="highlight"
+            />
+            <MetricCard
+              label="Owner equity"
+              value={formatCurrency(ownerEquity)}
+            />
+            <MetricCard
+              label="Annual payment"
+              value={formatCurrency(annuity)}
+            />
+          </SimpleGrid>
         </Card>
       )}
 
       {/* Error display */}
       <ErrorAlert error={state.error} title="Analysis Error" />
 
-      {/* Navigation */}
+      {/* Navigation
+          Note: a global Progress bar already shows during analysis at the
+          top of the wizard, so the local progress card has been removed. */}
       <StepNavigation
         currentStep={2}
         totalSteps={4}

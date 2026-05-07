@@ -4,11 +4,14 @@
  */
 
 import {
+  Accordion,
   Alert,
   Badge,
   Box,
+  Button,
   Card,
   Checkbox,
+  Divider,
   Grid,
   Group,
   NumberInput,
@@ -28,6 +31,7 @@ import {
   IconHome,
   IconInfoCircle,
   IconSolarPanel,
+  IconSparkles,
   IconSun,
   IconWall,
   IconWindow,
@@ -37,6 +41,7 @@ import { MeasureEffectSummary } from "../../../../components/shared/MeasureEffec
 import { checkCapexPerSqm } from "../../../../utils/inputSanityChecks";
 import type { RenovationMeasureId } from "../../../../types/renovation";
 import type { RenovationMeasure } from "../../../../services/types";
+import { SUGGESTED_PACKAGE } from "../../constants";
 import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
 import { usePortfolioAdvisorServices } from "../../hooks/usePortfolioAdvisorServices";
 import { getPortfolioMeasureStatus } from "../../utils/measureSelection";
@@ -71,32 +76,6 @@ function getMeasureIcon(measureId: RenovationMeasureId) {
   }
 }
 
-function getCategoryColor(category: string): string {
-  switch (category) {
-    case "envelope":
-      return "blue";
-    case "systems":
-      return "orange";
-    case "renewable":
-      return "green";
-    default:
-      return "gray";
-  }
-}
-
-function getCategoryLabel(category: string): string {
-  switch (category) {
-    case "envelope":
-      return "Envelope";
-    case "systems":
-      return "Systems";
-    case "renewable":
-      return "Renewables";
-    default:
-      return "Other";
-  }
-}
-
 function MeasureCard({
   measure,
   selected,
@@ -109,32 +88,42 @@ function MeasureCard({
   disabled?: boolean;
 }) {
   const handleClick = () => !disabled && onToggle(measure.id);
-  const categoryColor = getCategoryColor(measure.category);
-  const categoryLabel = getCategoryLabel(measure.category);
 
   return (
-    <UnstyledButton onClick={handleClick} w="100%">
+    <UnstyledButton onClick={handleClick} w="100%" disabled={disabled}>
       <Card
         withBorder
-        radius="lg"
-        p="lg"
-        shadow={selected ? "md" : "sm"}
-        bg={selected ? `${categoryColor}.0` : disabled ? "gray.0" : "white"}
+        radius="md"
+        p="md"
+        bg={selected ? "relife.0" : disabled ? "gray.0" : "white"}
         style={{
-          borderColor: selected
-            ? `var(--mantine-color-${categoryColor}-5)`
-            : undefined,
+          borderColor: selected ? "var(--mantine-color-relife-7)" : undefined,
           borderWidth: selected ? 2 : 1,
           cursor: disabled ? "not-allowed" : "pointer",
           transition: "border-color 150ms ease, box-shadow 150ms ease",
           opacity: disabled ? 0.7 : 1,
         }}
       >
-        <Stack gap="md">
+        <Stack gap="sm">
           <Group justify="space-between" align="flex-start" wrap="nowrap">
             <Group gap="sm" wrap="nowrap" align="flex-start">
-              <Text c={categoryColor}>{getMeasureIcon(measure.id)}</Text>
-              <Stack gap={4}>
+              <Box
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: "var(--mantine-radius-md)",
+                  display: "grid",
+                  placeItems: "center",
+                  backgroundColor: selected
+                    ? "var(--mantine-color-relife-7)"
+                    : "var(--mantine-color-gray-1)",
+                  color: selected ? "white" : "var(--mantine-color-gray-7)",
+                  flexShrink: 0,
+                }}
+              >
+                {getMeasureIcon(measure.id)}
+              </Box>
+              <Stack gap={2} style={{ minWidth: 0 }}>
                 <Text fw={600} size="sm">
                   {measure.name}
                 </Text>
@@ -155,18 +144,21 @@ function MeasureCard({
             </Tooltip>
           </Group>
 
+          <MeasureEffectSummary measureId={measure.id} compact />
+
           <Group justify="space-between" align="center">
-            <Badge
-              color={categoryColor}
-              variant={selected ? "filled" : "light"}
-            >
-              {categoryLabel}
-            </Badge>
+            {!measure.isSupported ? (
+              <Badge color="yellow" size="xs" variant="light">
+                Coming soon
+              </Badge>
+            ) : (
+              <span />
+            )}
             <Checkbox
               checked={selected}
               onChange={handleClick}
               label={
-                <Text fw={500} size="sm">
+                <Text size="xs" fw={500} c={selected ? "relife.8" : "dimmed"}>
                   {selected ? "Selected" : "Select"}
                 </Text>
               }
@@ -174,19 +166,11 @@ function MeasureCard({
               disabled={disabled}
               styles={{
                 body: { alignItems: "center" },
-                label: { paddingLeft: 8 },
+                label: { paddingLeft: 6 },
                 input: { cursor: disabled ? "not-allowed" : "pointer" },
               }}
             />
           </Group>
-
-          <MeasureEffectSummary measureId={measure.id} compact />
-
-          {!measure.isSupported && (
-            <Badge color="yellow" size="sm" variant="light" fullWidth>
-              Coming Soon
-            </Badge>
-          )}
         </Stack>
       </Card>
     </UnstyledButton>
@@ -240,6 +224,12 @@ export function EnergyRenovationStep() {
   );
   const canProceed = costFieldsValid && hasValidSelections;
 
+  const buildingsWithOverrides = state.buildings.filter(
+    (b) =>
+      (b.selectedMeasures !== undefined && b.selectedMeasures.length > 0) ||
+      (b.modifications && Object.keys(b.modifications).length > 0),
+  ).length;
+
   const categorizedMeasures = renovation.getCategories().map((cat) => ({
     cat,
     measures: renovation.getMeasuresByCategory(cat.id),
@@ -247,6 +237,10 @@ export function EnergyRenovationStep() {
 
   const handleToggle = (measureId: RenovationMeasureId) => {
     dispatch({ type: "TOGGLE_MEASURE", measureId });
+  };
+
+  const applyPackage = (measures: RenovationMeasureId[]) => {
+    dispatch({ type: "SET_MEASURES", measures });
   };
 
   const handlePrevious = () => {
@@ -285,24 +279,44 @@ export function EnergyRenovationStep() {
           Energy & Renovation Options
         </Title>
         <Text c="dimmed" size="sm">
-          Select renovation measures and configure project settings for all
-          buildings in the portfolio.
+          Pick the renovation measures to evaluate, then tune the project
+          settings used for the calculation.
         </Text>
       </Box>
 
       {/* Renovation Measures */}
       <Card withBorder radius="md" p="lg">
-        <Title order={4} mb="md">
-          Renovation Measures
-        </Title>
-        <Text size="sm" c="dimmed" mb="lg">
-          Select the measures to apply across the portfolio. Each building will
-          be evaluated with these measures.
-        </Text>
+        <Group justify="space-between" mb="md" wrap="wrap">
+          <Box>
+            <Title order={4}>Renovation Measures</Title>
+            <Text size="sm" c="dimmed">
+              Select the measures to apply across the portfolio. Each building
+              will be evaluated with these measures.
+            </Text>
+          </Box>
+          <Group gap="xs">
+            <Button
+              variant="subtle"
+              size="xs"
+              onClick={() => applyPackage([])}
+              disabled={selectedMeasures.length === 0}
+            >
+              Clear
+            </Button>
+            <Button
+              variant="light"
+              size="xs"
+              leftSection={<IconSparkles size={14} />}
+              onClick={() => applyPackage(SUGGESTED_PACKAGE)}
+            >
+              Suggested package
+            </Button>
+          </Group>
+        </Group>
 
         {categorizedMeasures.map(({ cat, measures }) => (
           <Box key={cat.id} mb="lg">
-            <Title order={5} tt="uppercase" c="dimmed" size="sm" mb="xs">
+            <Title order={5} tt="uppercase" c="dimmed" size="sm" mb={2}>
               {cat.label}
             </Title>
             <Text size="xs" c="dimmed" mb="sm">
@@ -426,14 +440,61 @@ export function EnergyRenovationStep() {
         </Alert>
       )}
 
-      {/* Per-Building Measure Overrides */}
-      <BuildingMeasuresTable />
+      {/* Per-Building Measure Overrides — collapsed by default to give the
+          measure grid above breathing room. */}
+      <Accordion variant="separated" radius="md" multiple>
+        <Accordion.Item value="overrides">
+          <Accordion.Control>
+            <Group gap="sm">
+              <Title order={5}>Per-building overrides</Title>
+              <Text size="sm" c="dimmed">
+                Optional. Customize measures and modifications for individual
+                buildings.
+              </Text>
+              {buildingsWithOverrides > 0 && (
+                <Badge color="orange" variant="light" size="sm">
+                  {buildingsWithOverrides} customized
+                </Badge>
+              )}
+            </Group>
+          </Accordion.Control>
+          <Accordion.Panel>
+            <BuildingMeasuresTable />
+          </Accordion.Panel>
+        </Accordion.Item>
+      </Accordion>
 
-      {/* Cost Overrides */}
+      {/* Project Settings & Cost Overrides — merged into a single card */}
       <Card withBorder radius="md" p="lg">
-        <Title order={4} mb="md">
-          Cost Overrides
+        <Title order={4} mb="xs">
+          Project settings & cost overrides
         </Title>
+        <Text size="sm" c="dimmed" mb="md">
+          Used as defaults for buildings that don&apos;t override these values
+          individually.
+        </Text>
+
+        <Box pb="xl" mb="md">
+          <Text size="sm" mb="xs">
+            Project Lifetime: {state.projectLifetime} years
+          </Text>
+          <Text size="xs" c="dimmed" mb="sm">
+            Horizon used for NPV, ROI and payback computations.
+          </Text>
+          <Slider
+            value={state.projectLifetime}
+            onChange={(val) =>
+              dispatch({ type: "SET_PROJECT_LIFETIME", years: val })
+            }
+            min={1}
+            max={30}
+            marks={LIFETIME_MARKS}
+            label={(val) => `${val} years`}
+          />
+        </Box>
+
+        <Divider my="md" label="Cost overrides" labelPosition="left" />
+
         <Alert
           variant="light"
           color="yellow"
@@ -452,6 +513,7 @@ export function EnergyRenovationStep() {
           <Grid.Col span={{ base: 12, sm: 6 }}>
             <NumberInput
               label="Total CAPEX (EUR)"
+              description="Applied to buildings without a per-building CAPEX override."
               placeholder="e.g. 10000"
               value={state.renovation.estimatedCapex ?? ""}
               onChange={(val) =>
@@ -482,6 +544,7 @@ export function EnergyRenovationStep() {
           <Grid.Col span={{ base: 12, sm: 6 }}>
             <NumberInput
               label="Annual Maintenance Cost (EUR/year)"
+              description="Post-renovation O&M cost."
               placeholder="e.g. 300"
               value={state.renovation.estimatedMaintenanceCost ?? ""}
               onChange={(val) =>
@@ -500,28 +563,6 @@ export function EnergyRenovationStep() {
             />
           </Grid.Col>
         </Grid>
-      </Card>
-
-      {/* Project Settings */}
-      <Card withBorder radius="md" p="lg">
-        <Title order={4} mb="md">
-          Project Settings
-        </Title>
-        <Box pb="xl">
-          <Text size="sm" mb="xs">
-            Project Lifetime: {state.projectLifetime} years
-          </Text>
-          <Slider
-            value={state.projectLifetime}
-            onChange={(val) =>
-              dispatch({ type: "SET_PROJECT_LIFETIME", years: val })
-            }
-            min={1}
-            max={30}
-            marks={LIFETIME_MARKS}
-            label={(val) => `${val} years`}
-          />
-        </Box>
       </Card>
 
       {/* Navigation */}

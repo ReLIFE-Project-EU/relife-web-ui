@@ -1,4 +1,4 @@
-import { Box, Stack, Text } from "@mantine/core";
+import { Box, Group, Stack, Text } from "@mantine/core";
 import type { ReactNode } from "react";
 import type { ConceptId } from "../../constants/relifeConcepts";
 import { ConceptLabel } from "./ConceptLabel";
@@ -8,6 +8,7 @@ interface ConceptMetricCardProps {
   value: ReactNode;
   descriptionVisible?: boolean;
   variant?: "default" | "highlight";
+  prefix?: string;
 }
 
 export function ConceptMetricCard({
@@ -15,6 +16,7 @@ export function ConceptMetricCard({
   value,
   descriptionVisible = false,
   variant = "default",
+  prefix,
 }: ConceptMetricCardProps) {
   const backgroundColor =
     variant === "highlight"
@@ -30,11 +32,18 @@ export function ConceptMetricCard({
       }}
     >
       <Stack gap={4}>
-        <ConceptLabel
-          conceptId={conceptId}
-          descriptionVisible={descriptionVisible}
-          size="xs"
-        />
+        <Group gap={4} wrap="nowrap">
+          {prefix && (
+            <Text span size="xs" c="dimmed" fw={500}>
+              {prefix}
+            </Text>
+          )}
+          <ConceptLabel
+            conceptId={conceptId}
+            descriptionVisible={descriptionVisible}
+            size="xs"
+          />
+        </Group>
         <Text size="lg" fw={600}>
           {value}
         </Text>

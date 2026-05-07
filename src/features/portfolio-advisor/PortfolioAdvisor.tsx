@@ -35,6 +35,7 @@ import {
   FinancingStep,
   ResultsStep,
 } from "./components/steps";
+import { PortfolioSummaryStrip } from "./components/PortfolioSummaryStrip";
 
 /**
  * Inner component that uses the context.
@@ -133,6 +134,10 @@ function PortfolioAdvisorWizard() {
         )}
 
         <Box ref={topRef} aria-hidden style={{ scrollMarginTop: 96 }} />
+
+        {/* Sticky portfolio context strip */}
+        <PortfolioSummaryStrip state={state} />
+
         <Stepper
           active={state.currentStep}
           onStepClick={handleStepClick}
