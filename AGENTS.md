@@ -206,6 +206,15 @@ Configuration:
 - Do not hardcode environment-specific URLs, production domains, tokens, or secrets in components.
 - Keep dev proxy/config in Vite or compose/task config.
 
+## Audit Logging (HRA / PRA pipelines)
+
+Structured trace consumed by the `renovation-result-validator` skill. Off by default; enable with `VITE_RELIFE_AUDIT_LOG=info|debug`.
+
+- Single utility: `src/utils/auditLogger.ts` (ring buffer, severity × category, sanitizer, `window.__relifeAudit.dump()/download()`).
+- Correlation via `AuditCtx` (`runId`, `buildingId`, `scenarioId`). HRA uses ambient ctx (sequential flow); PRA threads explicit ctx through `PortfolioAnalysisService` because buildings run concurrently.
+- Service interfaces (`IEnergyService.estimateEPC`, `IRenovationService.evaluateScenarios`, `IFinancialService.calculateForAllScenarios`, `IMCDAService.rank`) accept an optional `auditCtx?: AuditCtx`. Add it when extending these contracts.
+- When instrumenting new pipeline code: emit `info` for stage start/end with summary outputs, `debug` for full request/response payloads and intermediate transformations, `warn` for fallbacks, `error` for API failures. Do not log auth headers or other secrets.
+
 ## Testing and Verification
 
 - Search for existing patterns before implementing new ones.

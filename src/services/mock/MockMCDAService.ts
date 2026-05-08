@@ -37,6 +37,7 @@ import { extractCriteriaValues, topsis } from "../../utils/mcdaAlgorithms";
 import type { IMCDAService, MCDAPersona } from "../types";
 import { MOCK_DELAY_MEDIUM } from "./constants";
 import { MCDA_PERSONAS } from "./data/personas";
+import { auditLog, type AuditCtx } from "../../utils/auditLogger";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Service Implementation
@@ -55,6 +56,7 @@ export class MockMCDAService implements IMCDAService {
     scenarios: RenovationScenario[],
     financialResults: Record<ScenarioId, FinancialResults>,
     personaId: string,
+    auditCtx?: AuditCtx,
   ): Promise<MCDARankingResult[]> {
     // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MEDIUM));
@@ -67,7 +69,25 @@ export class MockMCDAService implements IMCDAService {
     // Filter out current scenario (we only rank renovation options)
     const renovationScenarios = scenarios.filter((s) => s.id !== "current");
 
+    auditLog.info(
+      "mcda",
+      "mcda.rank.start",
+      {
+        engine: "mock-topsis-frontend",
+        personaId,
+        scenarioCount: renovationScenarios.length,
+        scenarioIds: renovationScenarios.map((s) => s.id),
+      },
+      auditCtx,
+    );
+
     if (renovationScenarios.length === 0) {
+      auditLog.info(
+        "mcda",
+        "mcda.rank.end",
+        { engine: "mock-topsis-frontend", ranking: [], reason: "no-scenarios" },
+        auditCtx,
+      );
       return [];
     }
 
@@ -84,6 +104,21 @@ export class MockMCDAService implements IMCDAService {
         financialResults[scenario.id],
         baselineEnergy,
       ),
+    );
+
+    auditLog.debug(
+      "mcda",
+      "mcda.criteria.matrix",
+      {
+        engine: "mock-topsis-frontend",
+        baselineEnergy,
+        weights: persona.weights,
+        rows: renovationScenarios.map((s, i) => ({
+          scenarioId: s.id,
+          criteria: criteriaMatrix[i],
+        })),
+      },
+      auditCtx,
     );
 
     // Run TOPSIS
@@ -103,6 +138,16 @@ export class MockMCDAService implements IMCDAService {
     results.forEach((result, index) => {
       result.rank = index + 1;
     });
+
+    auditLog.info(
+      "mcda",
+      "mcda.rank.end",
+      {
+        engine: "mock-topsis-frontend",
+        ranking: results,
+      },
+      auditCtx,
+    );
 
     return results;
   }

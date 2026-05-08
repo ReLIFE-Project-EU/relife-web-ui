@@ -41,6 +41,7 @@ import type {
   RiskAssessmentRequest,
   RiskAssessmentResponse,
 } from "./types";
+import { auditLog, type AuditCtx } from "../utils/auditLogger";
 
 const USE_SIMULATED_DELIVERED_ENERGY_FOR_FINANCE = true;
 
@@ -183,6 +184,7 @@ export class FinancialService implements IFinancialService {
       currentEstimation: resolvedCurrentEstimation,
       packageFinancialInputs: resolvedPackageFinancialInputs,
       building: resolvedBuilding,
+      auditCtx: parentAuditCtx,
     } = Array.isArray(requestOrScenarios)
       ? {
           scenarios: requestOrScenarios,
@@ -191,11 +193,36 @@ export class FinancialService implements IFinancialService {
           currentEstimation: currentEstimation!,
           packageFinancialInputs: packageFinancialInputs!,
           building: building!,
+          auditCtx: undefined as AuditCtx | undefined,
         }
       : requestOrScenarios;
     const results: Record<string, FinancialResults> = {};
 
+    auditLog.info(
+      "financial",
+      "financial.run.start",
+      {
+        outputLevel: this.outputLevel,
+        scenarioIds: scenarios.map((s) => s.id),
+        floorArea: resolvedFloorArea,
+        projectLifetime: resolvedBuilding.projectLifetime,
+        financingType: resolvedFundingOptions.financingType,
+      },
+      parentAuditCtx,
+    );
+
     for (const scenario of scenarios) {
+      const auditCtx = parentAuditCtx?.child({ scenarioId: scenario.id });
+      auditLog.info(
+        "financial",
+        "financial.scenario.start",
+        {
+          scenarioId: scenario.id,
+          scenarioEPC: scenario.epcClass,
+          measureIds: scenario.measureIds,
+        },
+        auditCtx,
+      );
       if (scenario.id === "current") {
         // Current scenario: no renovation, just current ARV
         const arvRequest: ARVRequest = {
@@ -211,6 +238,12 @@ export class FinancialService implements IFinancialService {
           ),
           renovated_last_5_years: false, // Current state, not recently renovated
         };
+        auditLog.debug(
+          "financial",
+          "financial.arv.request",
+          { request: arvRequest as unknown as Record<string, unknown> },
+          auditCtx,
+        );
         const arvResult = await this.calculateARV(arvRequest);
 
         results[scenario.id] = {
@@ -223,6 +256,18 @@ export class FinancialService implements IFinancialService {
           netPresentValue: 0,
           afterRenovationValue: arvResult.totalPrice,
         };
+        auditLog.info(
+          "financial",
+          "financial.scenario.end",
+          {
+            scenarioId: scenario.id,
+            kind: "current",
+            afterRenovationValue: arvResult.totalPrice,
+            arvPricePerSqm: arvResult.pricePerSqm,
+            arvEnergyClass: arvResult.energyClass,
+          },
+          auditCtx,
+        );
         continue;
       }
 
@@ -307,6 +352,28 @@ export class FinancialService implements IFinancialService {
           )
         : 0;
 
+      auditLog.debug(
+        "financial",
+        "financial.savings.computed",
+        {
+          canUseDeliveredEnergy,
+          baselineDeliveredTotal: resolvedCurrentEstimation.deliveredTotal,
+          scenarioDeliveredTotal: scenario.deliveredTotal,
+          annualEnergySavingsKWh,
+          renovationCost,
+          fundingFinancingType: resolvedFundingOptions.financingType,
+          effectiveCost,
+          loanAmount,
+          loanTerm,
+          upfrontIncentivePercentage:
+            resolvedFundingOptions.incentives.upfrontPercentage,
+          lifetimeIncentiveAmount: lifetimeAmount,
+          lifetimeIncentiveYears: lifetimeYears,
+          arvUsesCurrentEPC: scenarioIncludesSystemMeasure(scenario),
+        },
+        auditCtx,
+      );
+
       const riskRequest: RiskAssessmentRequest = {
         annual_energy_savings: Math.round(annualEnergySavingsKWh),
         project_lifetime: resolvedBuilding.projectLifetime,
@@ -325,13 +392,39 @@ export class FinancialService implements IFinancialService {
       // If the renovation produces no measurable savings, skip that call.
       const hasSavings = riskRequest.annual_energy_savings > 0;
 
+      auditLog.debug(
+        "financial",
+        "financial.arv.request",
+        { request: arvRequest as unknown as Record<string, unknown> },
+        auditCtx,
+      );
+      if (hasSavings) {
+        auditLog.debug(
+          "financial",
+          "financial.risk.request",
+          { request: riskRequest as unknown as Record<string, unknown> },
+          auditCtx,
+        );
+      } else {
+        auditLog.warn(
+          "financial",
+          "financial.risk.skipped",
+          {
+            scenarioId: scenario.id,
+            reason: "zero-or-negative-savings",
+            annualEnergySavingsKWh,
+          },
+          auditCtx,
+        );
+      }
+
       // Call APIs in parallel (risk assessment only when savings > 0)
       const [arvResult, riskResult] = await Promise.all([
         this.calculateARV(arvRequest),
         hasSavings ? this.assessRisk(riskRequest) : Promise.resolve(null),
       ]);
 
-      results[scenario.id] = {
+      const scenarioResults: FinancialResults = {
         arv: arvResult,
         riskAssessment: riskResult,
         capitalExpenditure: riskResult
@@ -345,7 +438,37 @@ export class FinancialService implements IFinancialService {
         afterRenovationValue: arvResult.totalPrice,
         // NOTE: npvRange and paybackTimeRange removed - use actual percentiles from API instead
       };
+      results[scenario.id] = scenarioResults;
+
+      auditLog.info(
+        "financial",
+        "financial.scenario.end",
+        {
+          scenarioId: scenario.id,
+          capitalExpenditure: scenarioResults.capitalExpenditure,
+          annualMaintenanceCost: scenarioResults.annualMaintenanceCost,
+          netPresentValue: scenarioResults.netPresentValue,
+          returnOnInvestment: scenarioResults.returnOnInvestment,
+          paybackTime: scenarioResults.paybackTime,
+          afterRenovationValue: scenarioResults.afterRenovationValue,
+          arvEnergyClass: arvResult.energyClass,
+          riskComputed: riskResult !== null,
+          probabilityKeys: riskResult?.probabilities
+            ? Object.keys(riskResult.probabilities)
+            : undefined,
+        },
+        auditCtx,
+      );
     }
+
+    auditLog.info(
+      "financial",
+      "financial.run.end",
+      {
+        scenarioIds: scenarios.map((s) => s.id),
+      },
+      parentAuditCtx,
+    );
 
     return results as Record<ScenarioId, FinancialResults>;
   }

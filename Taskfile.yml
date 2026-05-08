@@ -118,12 +118,18 @@ tasks:
 
   dev:
     desc: "Start the frontend development server and all backend services using Docker"
+    env:
+      # Opt-in audit trace consumed by the renovation-result-validator skill.
+      # Override via .env.local (e.g. VITE_RELIFE_AUDIT_LOG=off) to silence.
+      VITE_RELIFE_AUDIT_LOG: '{{.VITE_RELIFE_AUDIT_LOG | default "debug"}}'
     cmds:
       - task: up
       - npm run dev
 
   dev-local:
     desc: "Start the frontend dev server with locally built API services"
+    env:
+      VITE_RELIFE_AUDIT_LOG: '{{.VITE_RELIFE_AUDIT_LOG | default "debug"}}'
     cmds:
       - task: local-services-git-context
       - task: up-local

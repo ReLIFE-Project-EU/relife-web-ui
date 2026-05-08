@@ -38,6 +38,7 @@ import {
 } from "../utils/archetypeModifier";
 import { countryNamesEqual, normalizeCountryName } from "../utils/countries";
 import { normalizeConstructionPeriod } from "../utils/apiMappings";
+import { auditLog, type AuditCtx } from "../utils/auditLogger";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Custom Error Types
@@ -278,6 +279,7 @@ export class EnergyService implements IEnergyService {
    */
   private async resolveSelectedArchetype(
     selected: NonNullable<BuildingInfo["selectedArchetype"]>,
+    auditCtx?: AuditCtx,
   ): Promise<ArchetypeInfo> {
     const archetypes = await this.getArchetypes();
     const match = archetypes.find(
@@ -288,8 +290,14 @@ export class EnergyService implements IEnergyService {
     );
     if (match) return match;
 
-    console.warn(
-      `Selected archetype ${selected.name} not found, falling back to matching`,
+    auditLog.warn(
+      "energy",
+      "energy.archetype.fallback",
+      {
+        reason: "selected-archetype-not-found",
+        requested: selected,
+      },
+      auditCtx,
     );
     return {
       name: selected.name,
@@ -313,6 +321,7 @@ export class EnergyService implements IEnergyService {
    */
   private async findMatchingArchetype(
     building: BuildingInfo,
+    auditCtx?: AuditCtx,
   ): Promise<ArchetypeInfo> {
     const archetypes = await this.getArchetypes();
     const { buildingType } = building;
@@ -332,9 +341,15 @@ export class EnergyService implements IEnergyService {
       countryNamesEqual(a.country, country),
     );
     if (countryMatch) {
-      console.warn(
-        `No exact archetype match for ${country}/${buildingType}, ` +
-          `using ${countryMatch.category} instead`,
+      auditLog.warn(
+        "energy",
+        "energy.archetype.fallback",
+        {
+          reason: "no-exact-category-match",
+          requested: { country, category: buildingType },
+          chosen: { country: countryMatch.country, category: countryMatch.category, name: countryMatch.name },
+        },
+        auditCtx,
       );
       return countryMatch;
     }
@@ -350,8 +365,16 @@ export class EnergyService implements IEnergyService {
           ) && a.category === buildingType,
       );
       if (regionMatch) {
-        console.warn(
-          `No archetype for ${country}, using similar climate: ${regionMatch.country}`,
+        auditLog.warn(
+          "energy",
+          "energy.archetype.fallback",
+          {
+            reason: "climate-region-category-match",
+            requested: { country, category: buildingType },
+            chosen: { country: regionMatch.country, category: regionMatch.category, name: regionMatch.name },
+            region: userRegion,
+          },
+          auditCtx,
         );
         return regionMatch;
       }
@@ -363,8 +386,16 @@ export class EnergyService implements IEnergyService {
         ),
       );
       if (anyRegionMatch) {
-        console.warn(
-          `No archetype for ${country}, using ${anyRegionMatch.country}/${anyRegionMatch.category}`,
+        auditLog.warn(
+          "energy",
+          "energy.archetype.fallback",
+          {
+            reason: "climate-region-any-match",
+            requested: { country, category: buildingType },
+            chosen: { country: anyRegionMatch.country, category: anyRegionMatch.category, name: anyRegionMatch.name },
+            region: userRegion,
+          },
+          auditCtx,
         );
         return anyRegionMatch;
       }
@@ -384,6 +415,7 @@ export class EnergyService implements IEnergyService {
     modifiedSystem?: unknown;
     validationNotes?: string[];
     referenceEstimation?: EstimationResult["referenceEstimation"];
+    auditCtx?: AuditCtx;
   }): EstimationResult {
     const {
       simulationResponse,
@@ -395,6 +427,7 @@ export class EnergyService implements IEnergyService {
       modifiedSystem,
       validationNotes,
       referenceEstimation,
+      auditCtx,
     } = params;
 
     const hourlyData = simulationResponse.results?.hourly_building;
@@ -444,6 +477,40 @@ export class EnergyService implements IEnergyService {
 
     const comfortIndex = calculateComfortIndex(building);
     const flexibilityIndex = calculateFlexibilityIndex(building);
+
+    auditLog.debug(
+      "energy",
+      "energy.simulation.summary",
+      {
+        archetype: {
+          name: archetype.name,
+          category: archetype.category,
+          country: archetype.country,
+        },
+        archetypeArea,
+        userArea,
+        areaScaleFactor,
+        annualTotalsRaw: {
+          Q_H_total: heatingTotal,
+          Q_C_total: coolingTotal,
+          Q_HC_total: hvacTotal,
+        },
+        scaled: {
+          heatingDemand: scaledHeating,
+          coolingDemand: scaledCooling,
+          hvacTotal: scaledHvacTotal,
+          deliveredTotal: scaledDeliveredTotal,
+          primaryEnergy: scaledPrimaryEnergy,
+        },
+        energyIntensity,
+        estimatedEPC,
+        uniTotalsAvailable: uniTotals !== undefined,
+        comfortIndex,
+        flexibilityIndex,
+        validationNoteCount: validationNotes?.length ?? 0,
+      },
+      auditCtx,
+    );
 
     return {
       estimatedEPC,
@@ -496,10 +563,51 @@ export class EnergyService implements IEnergyService {
    * - Validates modifications locally, then via the Forecasting API
    * - Runs both modified and reference simulations for comparison
    */
-  async estimateEPC(building: BuildingInfo): Promise<EstimationResult> {
+  async estimateEPC(
+    building: BuildingInfo,
+    auditCtx?: AuditCtx,
+  ): Promise<EstimationResult> {
+    auditLog.info(
+      "energy",
+      "energy.estimate.start",
+      {
+        country: building.country,
+        buildingType: building.buildingType,
+        constructionPeriod: building.constructionPeriod,
+        floorArea: building.floorArea,
+        numberOfFloors: building.numberOfFloors,
+        floorNumber: building.floorNumber,
+        lat: building.lat,
+        lng: building.lng,
+        isModified: building.isModified === true,
+        modificationKeys: building.modifications
+          ? Object.keys(building.modifications)
+          : [],
+        selectedArchetype: building.selectedArchetype,
+      },
+      auditCtx,
+    );
+
     const archetype = building.selectedArchetype
-      ? await this.resolveSelectedArchetype(building.selectedArchetype)
-      : await this.findMatchingArchetype(building);
+      ? await this.resolveSelectedArchetype(building.selectedArchetype, auditCtx)
+      : await this.findMatchingArchetype(building, auditCtx);
+
+    auditLog.info(
+      "energy",
+      "energy.archetype.resolved",
+      {
+        archetype: {
+          name: archetype.name,
+          category: archetype.category,
+          country: archetype.country,
+        },
+        viaUserSelection: !!building.selectedArchetype,
+        countryMismatch:
+          !!building.country &&
+          !countryNamesEqual(archetype.country, building.country),
+      },
+      auditCtx,
+    );
 
     if (building.isModified && building.modifications) {
       try {
@@ -557,6 +665,7 @@ export class EnergyService implements IEnergyService {
           },
           archetypeArea: archetypeDetails.floorArea,
           userArea: archetypeDetails.floorArea,
+          auditCtx,
         });
 
         const validationNotes = [
@@ -565,7 +674,7 @@ export class EnergyService implements IEnergyService {
           ...getSimulationValidationNotes(customSimulation),
         ];
 
-        return this.buildEstimationFromSimulation({
+        const result = this.buildEstimationFromSimulation({
           simulationResponse: customSimulation,
           archetype,
           building,
@@ -586,7 +695,24 @@ export class EnergyService implements IEnergyService {
             deliveredEnergyCost: referenceEstimation.deliveredEnergyCost,
             primaryEnergy: referenceEstimation.primaryEnergy,
           },
+          auditCtx,
         });
+        auditLog.info(
+          "energy",
+          "energy.estimate.end",
+          {
+            estimatedEPC: result.estimatedEPC,
+            annualEnergyNeeds: result.annualEnergyNeeds,
+            heatingCoolingNeeds: result.heatingCoolingNeeds,
+            deliveredTotal: result.deliveredTotal,
+            primaryEnergy: result.primaryEnergy,
+            archetypeFloorArea: result.archetypeFloorArea,
+            modified: true,
+            referenceEstimatedEPC: referenceEstimation.estimatedEPC,
+          },
+          auditCtx,
+        );
+        return result;
       } catch (error) {
         if (error instanceof TypeError && error.message.includes("fetch")) {
           throw new APIConnectionError();
@@ -614,14 +740,30 @@ export class EnergyService implements IEnergyService {
         weatherSource: "pvgis",
       });
 
-      return this.buildEstimationFromSimulation({
+      const result = this.buildEstimationFromSimulation({
         simulationResponse,
         archetype,
         building,
         archetypeArea: archetypeDetails.floorArea,
         userArea: building.floorArea || DEFAULT_FLOOR_AREA,
         validationNotes: getSimulationValidationNotes(simulationResponse),
+        auditCtx,
       });
+      auditLog.info(
+        "energy",
+        "energy.estimate.end",
+        {
+          estimatedEPC: result.estimatedEPC,
+          annualEnergyNeeds: result.annualEnergyNeeds,
+          heatingCoolingNeeds: result.heatingCoolingNeeds,
+          deliveredTotal: result.deliveredTotal,
+          primaryEnergy: result.primaryEnergy,
+          archetypeFloorArea: result.archetypeFloorArea,
+          modified: false,
+        },
+        auditCtx,
+      );
+      return result;
     } catch (error) {
       if (error instanceof TypeError && error.message.includes("fetch")) {
         throw new APIConnectionError();

@@ -15,6 +15,7 @@ import {
 } from "../../../../components/shared";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
+import { auditLog } from "../../../../utils/auditLogger";
 import {
   ArchetypeSelector,
   BuildingTypeInputs,
@@ -54,8 +55,14 @@ export function BuildingInfoStep() {
 
     dispatch({ type: "START_ESTIMATION" });
 
+    const auditCtx = auditLog.startRun("hra");
+    auditLog.info("pipeline", "pipeline.run.start", {
+      tool: "hra",
+      stage: "building-info",
+    });
+
     try {
-      const result = await energy.estimateEPC(state.building);
+      const result = await energy.estimateEPC(state.building, auditCtx);
       dispatch({ type: "SET_ESTIMATION", result });
       dispatch({ type: "NEXT_STEP" });
     } catch (error) {

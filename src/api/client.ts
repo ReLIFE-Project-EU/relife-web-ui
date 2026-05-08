@@ -9,6 +9,7 @@ import type {
   TableDataResponse,
 } from "../types/common";
 import { APIError, ServiceType } from "../types/common";
+import { auditLog } from "../utils/auditLogger";
 
 const API_BASE = "/api";
 
@@ -70,10 +71,13 @@ export async function request<T>(
         // No JSON body or parsing failed
       }
 
-      console.error(
-        `API Error ${response.status} for ${path}`,
+      auditLog.error("api", "api.error", {
+        method,
+        path,
+        status: response.status,
+        statusText: response.statusText,
         validationErrors,
-      );
+      });
       throw new APIError(
         response.status,
         response.statusText,
@@ -118,6 +122,13 @@ export async function uploadRequest<T>(
         // No JSON body or parsing failed
       }
 
+      auditLog.error("api", "api.error", {
+        method,
+        path,
+        status: response.status,
+        statusText: response.statusText,
+        validationErrors,
+      });
       throw new APIError(
         response.status,
         response.statusText,

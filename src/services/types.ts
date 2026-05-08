@@ -32,6 +32,7 @@ import type {
   APIPropertyType,
   OutputLevel,
 } from "../utils/apiMappings";
+import type { AuditCtx } from "../utils/auditLogger";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Building Service Types
@@ -193,7 +194,10 @@ export interface IEnergyService {
    *
    * The mock implementation derives values from building characteristics.
    */
-  estimateEPC(building: BuildingInfo): Promise<EstimationResult>;
+  estimateEPC(
+    building: BuildingInfo,
+    auditCtx?: AuditCtx,
+  ): Promise<EstimationResult>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -303,6 +307,7 @@ export interface IRenovationService {
     building: BuildingInfo,
     estimation: EstimationResult,
     packages: RenovationPackage[],
+    auditCtx?: AuditCtx,
   ): Promise<RenovationScenario[]>;
 }
 
@@ -372,6 +377,7 @@ export interface CalculateFinancialScenariosRequest {
   currentEstimation: EstimationResult;
   packageFinancialInputs: PackageFinancialInputsById;
   building: BuildingInfo;
+  auditCtx?: AuditCtx;
 }
 
 export interface IFinancialService {
@@ -455,5 +461,6 @@ export interface IMCDAService {
     scenarios: RenovationScenario[],
     financialResults: Record<ScenarioId, FinancialResults>,
     personaId: string,
+    auditCtx?: AuditCtx,
   ): Promise<MCDARankingResult[]>;
 }

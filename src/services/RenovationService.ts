@@ -34,6 +34,7 @@ import {
 import { normalizeSystemSelection } from "./measureNormalization";
 import { PV_DEFAULTS, pvKwpFromFloorArea } from "./pvConfig";
 import type { IRenovationService, RenovationMeasure } from "./types";
+import { auditLog, type AuditCtx } from "../utils/auditLogger";
 
 const U_VALUE_TARGETS: Partial<Record<RenovationMeasureId, number>> = {
   "wall-insulation": 0.25,
@@ -210,10 +211,30 @@ export class RenovationService implements IRenovationService {
     building: BuildingInfo,
     estimation: EstimationResult,
     packages: RenovationPackage[],
+    auditCtx?: AuditCtx,
   ): Promise<RenovationScenario[]> {
     const baselineScenario = this.buildBaselineScenario(estimation);
 
+    auditLog.info(
+      "renovation",
+      "renovation.evaluate.start",
+      {
+        packageCount: packages.length,
+        packageIds: packages.map((p) => p.id),
+        baselineEPC: estimation.estimatedEPC,
+        baselineDeliveredTotal: estimation.deliveredTotal,
+        archetype: estimation.archetype,
+      },
+      auditCtx,
+    );
+
     if (packages.length === 0) {
+      auditLog.info(
+        "renovation",
+        "renovation.evaluate.end",
+        { scenarios: [baselineScenario.id], reason: "no-packages" },
+        auditCtx,
+      );
       return [baselineScenario];
     }
 
@@ -224,7 +245,16 @@ export class RenovationService implements IRenovationService {
     const packageScenarios = await mapWithConcurrencyLimit(
       packages,
       FORECASTING_SCENARIO_CONCURRENCY_LIMIT,
-      (pkg) => this.evaluatePackageScenario(building, estimation, pkg),
+      (pkg) => this.evaluatePackageScenario(building, estimation, pkg, auditCtx),
+    );
+
+    auditLog.info(
+      "renovation",
+      "renovation.evaluate.end",
+      {
+        scenarios: [baselineScenario.id, ...packageScenarios.map((s) => s.id)],
+      },
+      auditCtx,
     );
 
     return [baselineScenario, ...packageScenarios];
@@ -294,8 +324,28 @@ export class RenovationService implements IRenovationService {
     building: BuildingInfo,
     estimation: EstimationResult,
     renovationPackage: RenovationPackage,
+    parentCtx?: AuditCtx,
   ): Promise<RenovationScenario> {
+    const auditCtx = parentCtx?.child({ scenarioId: renovationPackage.id });
+
+    auditLog.info(
+      "renovation",
+      "renovation.scenario.start",
+      {
+        packageId: renovationPackage.id,
+        packageLabel: renovationPackage.label,
+        measureIds: renovationPackage.measureIds,
+      },
+      auditCtx,
+    );
+
     const ecmParams = this.buildECMParams(estimation, renovationPackage);
+    auditLog.debug(
+      "renovation",
+      "renovation.ecm.params",
+      { ecmParams: ecmParams as unknown as Record<string, unknown> },
+      auditCtx,
+    );
     const ecmResponse = await forecasting.simulateECM(ecmParams);
     const renovatedScenario = this.selectScenarioForPackage(
       ecmResponse.scenarios,
@@ -376,7 +426,38 @@ export class RenovationService implements IRenovationService {
     }
     const renovatedIntensity = scaledRenovatedHvac / userArea;
 
-    return {
+    auditLog.debug(
+      "renovation",
+      "renovation.ecm.scaling",
+      {
+        userArea,
+        archetypeFloorArea: estimation.archetypeFloorArea,
+        areaScaleFactor,
+        raw: {
+          hvacTotal: renovatedHvacEnergy,
+          deliveredTotal: uniTotals?.deliveredTotal,
+          primaryEnergy: uniTotals?.primaryEnergy,
+          pvGeneration: pvAnnual?.pv_generation,
+          pvSelfConsumption: pvAnnual?.self_consumption,
+        },
+        scaled: {
+          hvacTotal: scaledRenovatedHvac,
+          deliveredTotal: scaledDeliveredTotal,
+          primaryEnergy: scaledPrimaryEnergy,
+          pvGeneration: scaledPvGeneration,
+          pvSelfConsumption: scaledPvSelfConsumption,
+          pvGridExport: scaledPvGridExport,
+        },
+        renovatedIntensity,
+        uniTotalsAvailable: uniTotals !== undefined,
+        pvSelfConsumptionApplied:
+          scaledPvSelfConsumption !== undefined &&
+          renovationPackage.measureIds.includes(PV_MEASURE_ID),
+      },
+      auditCtx,
+    );
+
+    const scenario: RenovationScenario = {
       id: renovationPackage.id,
       packageId: renovationPackage.id,
       label: renovationPackage.label,
@@ -431,6 +512,28 @@ export class RenovationService implements IRenovationService {
         (measureId) => this.getMeasure(measureId)?.name ?? measureId,
       ),
     };
+
+    auditLog.info(
+      "renovation",
+      "renovation.scenario.end",
+      {
+        packageId: renovationPackage.id,
+        epcClass: scenario.epcClass,
+        annualEnergyNeeds: scenario.annualEnergyNeeds,
+        deliveredTotal: scenario.deliveredTotal,
+        primaryEnergy: scenario.primaryEnergy,
+        heatingPrimaryEnergy: scenario.heatingPrimaryEnergy,
+        coolingPrimaryEnergy: scenario.coolingPrimaryEnergy,
+        heatPumpCop: scenario.heatPumpCop,
+        pvGeneration: scenario.pvGeneration,
+        pvSelfConsumption: scenario.pvSelfConsumption,
+        pvSelfConsumptionRate: scenario.pvSelfConsumptionRate,
+        pvSelfSufficiencyRate: scenario.pvSelfSufficiencyRate,
+      },
+      auditCtx,
+    );
+
+    return scenario;
   }
 
   private buildECMParams(

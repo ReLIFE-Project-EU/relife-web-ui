@@ -166,6 +166,7 @@ describe("PortfolioAnalysisService", () => {
           measureIds: ["condensing-boiler"],
         },
       ],
+      expect.anything(),
     );
     expect(mockCalculateForAllScenarios).toHaveBeenCalled();
     expect(results["building-1"]).toMatchObject({
@@ -196,6 +197,7 @@ describe("PortfolioAnalysisService", () => {
           measureIds: ["wall-insulation", "air-water-heat-pump"],
         },
       ],
+      expect.anything(),
     );
   });
 
@@ -223,6 +225,7 @@ describe("PortfolioAnalysisService", () => {
           measureIds: ["air-water-heat-pump"],
         },
       ],
+      expect.anything(),
     );
     expect(mockCalculateForAllScenarios).toHaveBeenCalled();
     expect(results["building-1"]).toMatchObject({
@@ -257,6 +260,7 @@ describe("PortfolioAnalysisService", () => {
           measureIds: ["pv"],
         },
       ],
+      expect.anything(),
     );
     expect(mockCalculateForAllScenarios).toHaveBeenCalled();
     expect(results["building-1"]).toMatchObject({

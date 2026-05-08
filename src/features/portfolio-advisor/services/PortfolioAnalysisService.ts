@@ -18,6 +18,7 @@ import type {
   RenovationPackage,
 } from "../../../types/renovation";
 import { deriveConstructionYear } from "../../../utils/apiMappings";
+import { auditLog, type AuditCtx } from "../../../utils/auditLogger";
 import { PRA_CONCURRENCY_LIMIT } from "../constants";
 import type {
   BuildingAnalysisResult,
@@ -61,6 +62,22 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     const results: Record<string, BuildingAnalysisResult> = {};
     let completed = 0;
 
+    const parentCtx = auditLog.startRun("pra");
+    auditLog.info(
+      "portfolio",
+      "portfolio.run.start",
+      {
+        buildingCount: buildings.length,
+        financingScheme,
+        projectLifetime,
+        globalCapex,
+        globalMaintenanceCost,
+        defaultSelectedMeasures: selectedMeasures,
+        concurrencyLimit: PRA_CONCURRENCY_LIMIT,
+      },
+      parentCtx,
+    );
+
     // Process in batches of PRA_CONCURRENCY_LIMIT
     const queue = [...buildings];
     while (queue.length > 0) {
@@ -74,6 +91,7 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
             projectLifetime,
             globalCapex,
             globalMaintenanceCost,
+            parentCtx,
           ),
         ),
       );
@@ -94,11 +112,34 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
             status: "error",
             error: String(result.reason),
           };
+          auditLog.error(
+            "portfolio",
+            "portfolio.building.error",
+            {
+              buildingId: building.id,
+              buildingName: building.name,
+              error: String(result.reason),
+            },
+            parentCtx.child({ buildingId: building.id }),
+          );
         }
 
         onProgress(completed, buildings.length, building.name);
       }
     }
+
+    const successCount = Object.values(results).filter(
+      (r) => r.status === "success",
+    ).length;
+    const errorCount = Object.values(results).filter(
+      (r) => r.status === "error",
+    ).length;
+    auditLog.info(
+      "portfolio",
+      "portfolio.run.end",
+      { successCount, errorCount, total: buildings.length },
+      parentCtx,
+    );
 
     return results;
   }
@@ -117,11 +158,30 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     projectLifetime: number,
     globalCapex?: number | null,
     globalMaintenanceCost?: number | null,
+    parentCtx?: AuditCtx,
   ): Promise<BuildingAnalysisResult> {
+    const auditCtx = parentCtx?.child({ buildingId: building.id });
+    auditLog.info(
+      "portfolio",
+      "portfolio.building.start",
+      {
+        buildingId: building.id,
+        buildingName: building.name,
+        country: building.country,
+        propertyType: building.propertyType,
+        constructionPeriod: building.constructionPeriod,
+        floorArea: building.floorArea,
+        selectedMeasures,
+        perBuildingCapex: building.estimatedCapex,
+        perBuildingMaintenance: building.annualMaintenanceCost,
+      },
+      auditCtx,
+    );
+
     const buildingInfo = this.toBuildingInfo(building, projectLifetime);
 
     // Step 1: Estimate EPC
-    const estimation = await this.energy.estimateEPC(buildingInfo);
+    const estimation = await this.energy.estimateEPC(buildingInfo, auditCtx);
 
     // Step 2: Evaluate renovation scenarios
     const renovatedMeasures = selectedMeasures.filter((measureId) =>
@@ -156,6 +216,7 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       buildingInfo,
       estimation,
       packages,
+      auditCtx,
     );
 
     // Step 3: Calculate financial results
@@ -176,6 +237,7 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
         },
       },
       building: buildingInfo,
+      auditCtx,
     });
 
     // Enhance results with professional-level data if available
@@ -208,6 +270,24 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
         }
       }
     }
+
+    auditLog.info(
+      "portfolio",
+      "portfolio.building.end",
+      {
+        buildingId: building.id,
+        scenarioCount: scenarios.length,
+        renovatedNPV: praFinancialResults?.netPresentValue,
+        renovatedROI: praFinancialResults?.returnOnInvestment,
+        renovatedPaybackTime: praFinancialResults?.paybackTime,
+        renovatedCapex: praFinancialResults?.capitalExpenditure,
+        renovatedARV: praFinancialResults?.afterRenovationValue,
+        probabilityKeys: praFinancialResults?.probabilities
+          ? Object.keys(praFinancialResults.probabilities)
+          : undefined,
+      },
+      auditCtx,
+    );
 
     return {
       buildingId: building.id,

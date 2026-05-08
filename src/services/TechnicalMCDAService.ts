@@ -14,6 +14,7 @@ import type {
 } from "../types/technical";
 import type { IMCDAService, MCDAPersona } from "./types";
 import { MCDA_PERSONAS } from "./mock/data/personas";
+import { auditLog, type AuditCtx } from "../utils/auditLogger";
 
 const PERSONA_TO_PROFILE: Record<string, McdaProfile> = {
   "environmentally-conscious": "Environment-Oriented",
@@ -69,6 +70,7 @@ export class TechnicalMCDAService implements IMCDAService {
     scenarios: RenovationScenario[],
     financialResults: Record<ScenarioId, FinancialResults>,
     personaId: string,
+    auditCtx?: AuditCtx,
   ): Promise<MCDARankingResult[]> {
     const request = buildMcdaTopsisRequest(
       scenarios,
@@ -76,17 +78,64 @@ export class TechnicalMCDAService implements IMCDAService {
       personaId,
     );
 
+    auditLog.info(
+      "mcda",
+      "mcda.rank.start",
+      {
+        engine: "technical-topsis-backend",
+        personaId,
+        profile: request.profile,
+        technologyCount: request.technologies.length,
+        technologyNames: request.technologies.map((t) => t.name),
+      },
+      auditCtx,
+    );
+
+    auditLog.debug(
+      "mcda",
+      "mcda.kpi.mapping",
+      {
+        engine: "technical-topsis-backend",
+        neutralizedKpis: NEUTRALIZED_KPI_KEYS,
+        technologies: request.technologies,
+        minsMaxes: request.mins_maxes,
+      },
+      auditCtx,
+    );
+
     if (request.technologies.length < 2) {
+      auditLog.info(
+        "mcda",
+        "mcda.rank.end",
+        {
+          engine: "technical-topsis-backend",
+          ranking: [],
+          reason: "insufficient-technologies",
+        },
+        auditCtx,
+      );
       return [];
     }
 
     const response = await technical.runTopsis(request);
 
-    return response.ranking.map((item, index) => ({
+    const ranking = response.ranking.map((item, index) => ({
       scenarioId: item.name,
       rank: index + 1,
       score: item.closeness,
     }));
+
+    auditLog.info(
+      "mcda",
+      "mcda.rank.end",
+      {
+        engine: "technical-topsis-backend",
+        ranking,
+      },
+      auditCtx,
+    );
+
+    return ranking;
   }
 }
 

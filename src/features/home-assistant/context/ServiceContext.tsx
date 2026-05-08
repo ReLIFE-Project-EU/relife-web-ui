@@ -5,14 +5,16 @@
  * Callers can inject alternate implementations for tests or specialized flows.
  */
 
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import type { IHomeAssistantServices } from "../services/types";
 import { buildingService } from "../services/BuildingService";
 import { EnergyService } from "../services/EnergyService";
 import { FinancialService } from "../services/FinancialService";
 import { RenovationService } from "../services/RenovationService";
 import { TechnicalMCDAService } from "../../../services/TechnicalMCDAService";
+import { MockMCDAService } from "../../../services/mock/MockMCDAService";
 import { ServiceContext } from "./ServiceContextDefinition";
+import { auditLog } from "../../../utils/auditLogger";
 
 interface ServiceProviderProps {
   children: ReactNode;
@@ -39,6 +41,27 @@ export function HomeAssistantServiceProvider({
       renovation: new RenovationService(),
     };
   }, [services]);
+
+  useEffect(() => {
+    if (!auditLog.enabled) return;
+    auditLog.info("env", "env.detect", {
+      tool: "hra",
+      injected: !!services,
+      services: {
+        energy: value.energy.constructor.name,
+        renovation: value.renovation.constructor.name,
+        financial: value.financial.constructor.name,
+        mcda: value.mcda.constructor.name,
+      },
+      mcdaPath:
+        value.mcda instanceof TechnicalMCDAService
+          ? "technical-backend"
+          : value.mcda instanceof MockMCDAService
+            ? "mock-frontend"
+            : "custom",
+      financialOutputLevel: "private",
+    });
+  }, [value, services]);
 
   return (
     <ServiceContext.Provider value={value}>{children}</ServiceContext.Provider>
