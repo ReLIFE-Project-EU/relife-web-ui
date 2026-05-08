@@ -24,6 +24,7 @@ import type {
   ScenarioId,
 } from "../types/renovation";
 import {
+  deriveConstructionYear,
   fromAPIEnergyClass,
   toAPIEnergyClass,
   toAPIPropertyType,
@@ -44,6 +45,10 @@ import type {
 import { auditLog, type AuditCtx } from "../utils/auditLogger";
 
 const USE_SIMULATED_DELIVERED_ENERGY_FOR_FINANCE = true;
+
+function resolveConstructionYear(building: BuildingInfo): number {
+  return building.constructionYear ?? deriveConstructionYear(building.constructionPeriod);
+}
 
 function scenarioIncludesSystemMeasure(scenario: RenovationScenario): boolean {
   return scenario.measureIds.some(
@@ -229,7 +234,7 @@ export class FinancialService implements IFinancialService {
           lat: resolvedBuilding.lat ?? 0,
           lng: resolvedBuilding.lng ?? 0,
           floor_area: resolvedFloorArea,
-          construction_year: resolvedBuilding.constructionYear ?? 1990,
+          construction_year: resolveConstructionYear(resolvedBuilding),
           number_of_floors: resolvedBuilding.numberOfFloors ?? 1,
           floor_number: resolvedBuilding.floorNumber,
           property_type: toAPIPropertyType(resolvedBuilding.buildingType),
@@ -318,7 +323,7 @@ export class FinancialService implements IFinancialService {
         lat: resolvedBuilding.lat ?? 0,
         lng: resolvedBuilding.lng ?? 0,
         floor_area: resolvedFloorArea,
-        construction_year: resolvedBuilding.constructionYear ?? 1990,
+        construction_year: resolveConstructionYear(resolvedBuilding),
         number_of_floors: resolvedBuilding.numberOfFloors ?? 1,
         floor_number: resolvedBuilding.floorNumber,
         property_type: toAPIPropertyType(resolvedBuilding.buildingType),

@@ -22,10 +22,9 @@ export const CLIMATE_ZONES: SelectOption[] = [
 ];
 
 export const BUILDING_TYPES: SelectOption[] = [
-  { value: "apartment", label: "Apartment" },
-  { value: "detached", label: "Detached House" },
-  { value: "semi-detached", label: "Semi-Detached House" },
-  { value: "terraced", label: "Terraced House" },
+  { value: "Single Family House", label: "Single Family House" },
+  { value: "Multi family House", label: "Multi family House" },
+  { value: "Apartment", label: "Apartment" },
 ];
 
 export const CONSTRUCTION_PERIODS: SelectOption[] = [

@@ -31,44 +31,21 @@ export type APIPropertyType =
   | "Apartment Complex";
 
 /**
- * Maps UI building types to API PropertyType enum
+ * Maps archetype category labels to Financial API PropertyType enum.
+ * These are the canonical values stored in BuildingInfo.buildingType.
  */
 export const PROPERTY_TYPE_TO_API: Record<string, APIPropertyType> = {
-  apartment: "Apartment",
-  detached: "Detached House",
-  "semi-detached": "Maisonette",
-  terraced: "Building",
+  "Single Family House": "Detached House",
+  "Multi family House": "Apartment Complex",
+  Apartment: "Apartment",
 };
 
 /**
- * Maps API PropertyType to UI building types
+ * Convert archetype category to Financial API PropertyType.
+ * Unknown categories fall back to "Other".
  */
-export const PROPERTY_TYPE_FROM_API: Record<APIPropertyType, string> = {
-  Apartment: "apartment",
-  "Detached House": "detached",
-  Maisonette: "semi-detached",
-  Building: "terraced",
-  // The following API types don't have direct UI equivalents yet
-  // TBD: Add UI support for these property types if needed
-  Loft: "apartment",
-  "Studio / Bedsit": "apartment",
-  Villa: "detached",
-  Other: "detached",
-  "Apartment Complex": "apartment",
-};
-
-/**
- * Convert UI building type to API PropertyType
- */
-export function toAPIPropertyType(uiBuildingType: string): APIPropertyType {
-  return PROPERTY_TYPE_TO_API[uiBuildingType] ?? "Other";
-}
-
-/**
- * Convert API PropertyType to UI building type
- */
-export function fromAPIPropertyType(apiPropertyType: APIPropertyType): string {
-  return PROPERTY_TYPE_FROM_API[apiPropertyType] ?? "detached";
+export function toAPIPropertyType(buildingType: string): APIPropertyType {
+  return PROPERTY_TYPE_TO_API[buildingType] ?? "Other";
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

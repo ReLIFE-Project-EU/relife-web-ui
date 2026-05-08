@@ -71,8 +71,42 @@ export const CSV_REQUIRED_COLUMNS = [
   "floor_area",
   "construction_period",
   "number_of_floors",
-  "property_type",
 ] as const;
+
+/**
+ * Archetype categories accepted in CSV uploads.
+ *
+ * These values are the canonical labels used by the Financial API's archetype
+ * catalog and must be passed through unchanged. The mixed casing
+ * (`"Multi family House"` with lowercase `f`, `"Single Family House"` with
+ * uppercase `F`) reflects the upstream values — do not normalize.
+ */
+export const CSV_VALID_CATEGORIES = [
+  "Single Family House",
+  "Multi family House",
+  "Apartment",
+] as const;
+
+export type ArchetypeCategory = (typeof CSV_VALID_CATEGORIES)[number];
+
+const CATEGORY_LOOKUP = new Map<string, ArchetypeCategory>(
+  CSV_VALID_CATEGORIES.map((c) => [normalizeCategoryKey(c), c]),
+);
+
+function normalizeCategoryKey(input: string): string {
+  return input.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Resolve a user-supplied category string to its canonical form.
+ * Tolerates case differences and irregular whitespace. Returns `undefined`
+ * if the input does not match any accepted category.
+ */
+export function normalizeArchetypeCategory(
+  input: string,
+): ArchetypeCategory | undefined {
+  return CATEGORY_LOOKUP.get(normalizeCategoryKey(input));
+}
 
 export const CSV_OPTIONAL_COLUMNS = [
   "archetype_name",

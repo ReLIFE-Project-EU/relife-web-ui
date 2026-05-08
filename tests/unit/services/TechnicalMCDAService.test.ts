@@ -123,6 +123,8 @@ describe("TechnicalMCDAService helpers", () => {
       window_kpi: 0,
       heating_system_kpi: 9200,
       cooling_system_kpi: 1300,
+      thermal_comfort_air_temp_kpi: 74,
+      thermal_comfort_humidity_kpi: 0,
       ii_kpi: 9000,
       aoc_kpi: 250,
       irr_kpi: 0.1,
@@ -139,8 +141,17 @@ describe("TechnicalMCDAService helpers", () => {
     ]);
 
     expect(minsMaxes.window_kpi).toEqual([-1, 1]);
-    expect(minsMaxes.thermal_comfort_air_temp_kpi).toEqual([-1, 1]);
+    expect(minsMaxes.thermal_comfort_humidity_kpi).toEqual([-1, 1]);
     expect(minsMaxes.heating_system_kpi).toEqual([9200, 10000]);
+  });
+
+  test("createMcdaMinsMaxes uses real min/max for thermal_comfort_air_temp_kpi when comfort values differ", () => {
+    const minsMaxes = createMcdaMinsMaxes([
+      deriveTechnologyKpis(wallScenario, wallFinancial),
+      deriveTechnologyKpis(windowScenario, windowFinancial),
+    ]);
+
+    expect(minsMaxes.thermal_comfort_air_temp_kpi).toEqual([72, 74]);
   });
 
   test("buildMcdaTopsisRequest assembles technologies from normalized scenarios", () => {

@@ -10,7 +10,11 @@ import {
   deriveConstructionPeriod,
   normalizeConstructionPeriod,
 } from "../../../utils/apiMappings";
-import { CSV_REQUIRED_COLUMNS } from "../constants";
+import {
+  CSV_REQUIRED_COLUMNS,
+  CSV_VALID_CATEGORIES,
+  normalizeArchetypeCategory,
+} from "../constants";
 import type { PRABuilding } from "../context/types";
 import type { RenovationMeasureId } from "../../../types/renovation";
 
@@ -107,8 +111,17 @@ export function parseCSV(text: string): CSVParseResult {
       );
     }
 
-    const category = values[colIndex("category")]?.trim();
-    if (!category) rowErrors.push(`Row ${rowNum}: category is empty.`);
+    const rawCategory = values[colIndex("category")]?.trim();
+    const category = rawCategory
+      ? normalizeArchetypeCategory(rawCategory)
+      : undefined;
+    if (!rawCategory) {
+      rowErrors.push(`Row ${rowNum}: category is empty.`);
+    } else if (!category) {
+      rowErrors.push(
+        `Row ${rowNum}: category "${rawCategory}" is not recognized. Expected: ${CSV_VALID_CATEGORIES.join(", ")}.`,
+      );
+    }
 
     const country = values[colIndex("country")]?.trim();
     if (!country) rowErrors.push(`Row ${rowNum}: country is empty.`);
@@ -157,10 +170,8 @@ export function parseCSV(text: string): CSVParseResult {
       );
     }
 
-    const propertyType = values[colIndex("property_type")]?.trim();
-    if (!propertyType) {
-      rowErrors.push(`Row ${rowNum}: property_type is empty.`);
-    }
+    // property_type is no longer a required column; derive from category
+    const propertyType = category || "";
 
     // Parse optional fields
     const archetypeNameIdx = colIndex("archetype_name");

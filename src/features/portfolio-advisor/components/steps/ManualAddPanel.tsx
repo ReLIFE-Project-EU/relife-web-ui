@@ -60,27 +60,10 @@ const APARTMENT_LOCATION_OPTIONS = [
   { value: "top", label: "Top floor" },
 ];
 
-function derivePropertyType(category: string): string {
-  const lower = category.toLowerCase();
-  if (lower.includes("apartment")) return "apartment";
-  if (lower.includes("semi")) return "semi-detached";
-  if (lower.includes("single family") || lower.includes("detached"))
-    return "detached";
-  return "Other";
-}
+const APARTMENT_CATEGORIES = new Set(["Multi family House", "Apartment"]);
 
-function getApartmentArchetypeCategory(categories: string[]): string {
-  return (
-    categories.find((c) => c.toLowerCase().includes("apartment")) ??
-    categories.find((c) => c.toLowerCase().includes("multi family")) ??
-    categories.find(
-      (c) =>
-        c.toLowerCase().includes("single family") ||
-        c.toLowerCase().includes("residential"),
-    ) ??
-    categories[0] ??
-    ""
-  );
+function isApartmentCategory(category: string | null): boolean {
+  return !!category && APARTMENT_CATEGORIES.has(category);
 }
 
 function buildPeriodFallbackMessage(
@@ -320,41 +303,15 @@ export function ManualAddPanel({
     }
   }, [selectedArchetypeName, availableArchetypes]);
 
-  const buildingTypeOptions = [
-    { value: "Apartment", label: "Apartment" },
-    ...categories
-      .filter((c) => !c.toLowerCase().includes("apartment"))
-      .map((c) => ({ value: c, label: c })),
-  ];
+  const buildingTypeOptions = categories.map((c) => ({ value: c, label: c }));
 
-  const buildingTypeValue =
-    propertyType === "apartment" ? "Apartment" : category;
-
-  // Detect when the user's selection doesn't match any backend category directly
-  const categoryFallback =
-    propertyType === "apartment" &&
-    category &&
-    !category.toLowerCase().includes("apartment")
-      ? category
-      : null;
+  const buildingTypeValue = category;
 
   function handleBuildingTypeChange(value: string | null) {
     if (!value) return;
-    if (value === "Apartment") {
-      const aptCategory = getApartmentArchetypeCategory(categories);
-      dispatch({ type: "SET_FIELD", field: "category", value: aptCategory });
-      dispatch({
-        type: "SET_FIELD",
-        field: "propertyType",
-        value: "apartment",
-      });
-    } else {
-      dispatch({ type: "SET_FIELD", field: "category", value });
-      dispatch({
-        type: "SET_FIELD",
-        field: "propertyType",
-        value: derivePropertyType(value),
-      });
+    dispatch({ type: "SET_FIELD", field: "category", value });
+    dispatch({ type: "SET_FIELD", field: "propertyType", value });
+    if (!isApartmentCategory(value)) {
       dispatch({ type: "SET_FIELD", field: "apartmentLocation", value: null });
     }
   }
@@ -364,7 +321,7 @@ export function ManualAddPanel({
     category &&
     constructionPeriod &&
     propertyType &&
-    (propertyType !== "apartment" || formState.apartmentLocation !== null) &&
+    (!isApartmentCategory(category) || formState.apartmentLocation !== null) &&
     typeof lat === "number" &&
     typeof lng === "number" &&
     !loadingArchetype &&
@@ -421,7 +378,7 @@ export function ManualAddPanel({
           : matchedArchetype.numberOfFloors,
       propertyType: propertyType!,
       floorNumber: (() => {
-        if (propertyType === "apartment" && formState.apartmentLocation) {
+        if (isApartmentCategory(category) && formState.apartmentLocation) {
           const floors =
             typeof formState.modNumberOfFloors === "number"
               ? formState.modNumberOfFloors
@@ -544,22 +501,6 @@ export function ManualAddPanel({
           </Grid.Col>
         </Grid>
 
-        {categoryFallback && (
-          <Alert
-            icon={<IconInfoCircle size={16} />}
-            color="yellow"
-            variant="light"
-            p="xs"
-          >
-            <Text size="sm">
-              No <strong>Apartment</strong> archetype is available. Using{" "}
-              <strong>{categoryFallback}</strong> as the closest match.
-              Simulation results will represent the entire building, not an
-              individual unit.
-            </Text>
-          </Alert>
-        )}
-
         {periodFallbackMessage && (
           <Alert
             icon={<IconAlertTriangle size={16} />}
@@ -588,7 +529,7 @@ export function ManualAddPanel({
               required
             />
           </Grid.Col>
-          {propertyType === "apartment" && (
+          {isApartmentCategory(category) && (
             <Grid.Col span={6}>
               <Select
                 label="Apartment Location"

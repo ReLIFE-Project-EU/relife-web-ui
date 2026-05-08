@@ -3,13 +3,11 @@ import {
   compareConstructionPeriods,
   constructionPeriodsEqual,
   toAPIPropertyType,
-  fromAPIPropertyType,
   toAPIEnergyClass,
   fromAPIEnergyClass,
   deriveConstructionYear,
   deriveConstructionPeriod,
   normalizeConstructionPeriod,
-  type APIPropertyType,
   type APIEnergyClass,
 } from "../../../src/utils/apiMappings";
 
@@ -18,49 +16,16 @@ describe("apiMappings", () => {
 
   describe("toAPIPropertyType", () => {
     test.each([
-      ["apartment", "Apartment"],
-      ["detached", "Detached House"],
-      ["semi-detached", "Maisonette"],
-      ["terraced", "Building"],
-    ] as const)("maps UI type %s → API %s", (ui, expected) => {
+      ["Single Family House", "Detached House"],
+      ["Multi family House", "Apartment Complex"],
+      ["Apartment", "Apartment"],
+    ] as const)("maps archetype category %s → API %s", (ui, expected) => {
       expect(toAPIPropertyType(ui)).toBe(expected);
     });
 
-    test("returns 'Other' for unknown UI types", () => {
+    test("returns 'Other' for unknown categories", () => {
       expect(toAPIPropertyType("unknown")).toBe("Other");
     });
-  });
-
-  describe("fromAPIPropertyType", () => {
-    test.each([
-      ["Apartment", "apartment"],
-      ["Detached House", "detached"],
-      ["Maisonette", "semi-detached"],
-      ["Building", "terraced"],
-      ["Loft", "apartment"],
-      ["Studio / Bedsit", "apartment"],
-      ["Villa", "detached"],
-      ["Other", "detached"],
-      ["Apartment Complex", "apartment"],
-    ] as const)("maps API type %s → UI %s", (api, expected) => {
-      expect(fromAPIPropertyType(api)).toBe(expected);
-    });
-
-    test("returns 'detached' for unknown API types", () => {
-      expect(fromAPIPropertyType("NonExistent" as APIPropertyType)).toBe(
-        "detached",
-      );
-    });
-  });
-
-  describe("property type round-trip", () => {
-    test.each(["apartment", "detached", "semi-detached", "terraced"])(
-      "UI→API→UI is identity for %s",
-      (uiType) => {
-        const apiType = toAPIPropertyType(uiType);
-        expect(fromAPIPropertyType(apiType)).toBe(uiType);
-      },
-    );
   });
 
   // ── EPC Class ──────────────────────────────────────────────────────────────

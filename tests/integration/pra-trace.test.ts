@@ -55,14 +55,14 @@ const TEST_BUILDING: PRABuilding = {
   id: "test-building-001",
   name: "Test Apartment (Athens)",
   source: "manual",
-  category: "Multi family House", // Note: will be mapped by archetype matching
+  category: "Multi family House",
   country: "GR",
   lat: 37.981,
   lng: 23.728,
   floorArea: 85,
   constructionPeriod: "1971-1990",
   numberOfFloors: 5,
-  propertyType: "apartment", // Maps to buildingType via toBuildingInfo()
+  propertyType: "Multi family House",
   floorNumber: 2,
   estimatedCapex: 10_000, // Per-building CAPEX — takes precedence over global
   annualMaintenanceCost: 200, // Per-building maintenance cost

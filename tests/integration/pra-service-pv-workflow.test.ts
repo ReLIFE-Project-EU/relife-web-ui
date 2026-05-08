@@ -52,7 +52,7 @@ const BUILDING_A: PRABuilding = {
   floorArea: 85,
   constructionPeriod: "1971-1990",
   numberOfFloors: 5,
-  propertyType: "apartment",
+  propertyType: "Multi family House",
   floorNumber: 2,
   validationStatus: "valid",
 };
@@ -68,7 +68,7 @@ const BUILDING_B: PRABuilding = {
   floorArea: 100,
   constructionPeriod: "1971-1990",
   numberOfFloors: 4,
-  propertyType: "apartment",
+  propertyType: "Multi family House",
   floorNumber: 3,
   validationStatus: "valid",
 };

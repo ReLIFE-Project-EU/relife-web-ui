@@ -27,6 +27,7 @@ import { CONSTRUCTION_PERIODS } from "../../../../utils/apiMappings";
 import {
   CSV_OPTIONAL_COLUMNS,
   CSV_REQUIRED_COLUMNS,
+  CSV_VALID_CATEGORIES,
 } from "../../../portfolio-advisor/constants";
 import { CSV_VALID_MEASURE_IDS } from "../../../portfolio-advisor/services/csvParser";
 
@@ -50,8 +51,8 @@ const CSV_COLUMN_DETAILS: Record<
   },
   category: {
     description:
-      "Displayed building category. If you also provide archetype_name, this must match that archetype's category.",
-    example: "Office",
+      "Archetype category. Must be one of the accepted values listed below. If you also provide archetype_name, this must match that archetype's category.",
+    example: "Single Family House",
   },
   country: {
     description:
@@ -74,11 +75,6 @@ const CSV_COLUMN_DETAILS: Record<
   number_of_floors: {
     description: "Integer value between 1 and 100.",
     example: "12",
-  },
-  property_type: {
-    description:
-      "Use apartment, detached, semi-detached, or terraced. Other values import, but map to Other in financial analysis.",
-    example: "detached",
   },
   archetype_name: {
     description:
@@ -297,7 +293,25 @@ export function CSVUploadHelp() {
 
             <Divider label="Accepted values" labelPosition="left" c="teal.8" />
 
-            <SimpleGrid cols={{ base: 1, md: 2 }} spacing="sm">
+            <SimpleGrid cols={{ base: 1, md: 3 }} spacing="sm">
+              <Box
+                p="sm"
+                style={{
+                  backgroundColor: "rgba(255, 255, 255, 0.82)",
+                  borderRadius: "var(--mantine-radius-md)",
+                  border: "1px solid var(--mantine-color-teal-1)",
+                }}
+              >
+                <Text size="sm" fw={600} mb={6}>
+                  category accepted values
+                </Text>
+                <Group gap="xs">
+                  {CSV_VALID_CATEGORIES.map((cat) => (
+                    <Code key={cat}>{cat}</Code>
+                  ))}
+                </Group>
+              </Box>
+
               <Box
                 p="sm"
                 style={{

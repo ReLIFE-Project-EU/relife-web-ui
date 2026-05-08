@@ -55,7 +55,7 @@ const mockBuilding = {
   country: "Greece",
   lat: 37.98,
   lng: 23.73,
-  buildingType: "apartment",
+  buildingType: "Single Family House",
   constructionPeriod: "1961-1980",
   floorArea: 100,
   numberOfFloors: 2,
@@ -183,6 +183,53 @@ describe("FinancialService", () => {
         lng: 23.73,
         floor_area: 100,
         construction_year: 1970,
+      }),
+    );
+  });
+
+  test("ARV request derives construction_year from constructionPeriod when constructionYear is null", async () => {
+    const service = new FinancialService();
+    const buildingWithoutYear = {
+      ...mockBuilding,
+      constructionYear: null,
+      constructionPeriod: "2000-2010",
+    };
+
+    await service.calculateForAllScenarios(
+      [renovatedScenario],
+      mockFundingOptions,
+      100,
+      mockEstimation,
+      packageFinancialInputs,
+      buildingWithoutYear,
+    );
+
+    expect(mockCalculateARV).toHaveBeenCalledWith(
+      expect.objectContaining({
+        construction_year: 2005,
+      }),
+    );
+  });
+
+  test("ARV request maps Single Family House to Detached House property_type", async () => {
+    const service = new FinancialService();
+    const sfhBuilding = {
+      ...mockBuilding,
+      buildingType: "Single Family House",
+    };
+
+    await service.calculateForAllScenarios(
+      [renovatedScenario],
+      mockFundingOptions,
+      100,
+      mockEstimation,
+      packageFinancialInputs,
+      sfhBuilding,
+    );
+
+    expect(mockCalculateARV).toHaveBeenCalledWith(
+      expect.objectContaining({
+        property_type: "Detached House",
       }),
     );
   });

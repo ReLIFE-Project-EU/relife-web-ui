@@ -88,8 +88,7 @@ const APARTMENT_LOCATION_OPTIONS = [
 ] as const;
 
 function isApartmentLikeCategory(category: string): boolean {
-  const normalized = category.toLowerCase();
-  return normalized.includes("apartment");
+  return category === "Multi family House" || category === "Apartment";
 }
 
 function mapApartmentLocationToFloorNumber(

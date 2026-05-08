@@ -18,9 +18,7 @@ import {
 } from "@mantine/core";
 import {
   IconArrowRight,
-  IconBuilding,
   IconBuildingCommunity,
-  IconBuildingSkyscraper,
   IconCalendarEvent,
   IconHome,
   IconInfoCircle,
@@ -38,12 +36,8 @@ import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 type IconType = ComponentType<{ size?: number; stroke?: number }>;
 
 function getCategoryIcon(category: string): IconType {
-  const lower = category.toLowerCase();
-  if (lower.includes("apartment") || lower.includes("block"))
+  if (category === "Apartment" || category === "Multi family House")
     return IconBuildingCommunity;
-  if (lower.includes("multi")) return IconBuilding;
-  if (lower.includes("terraced") || lower.includes("row"))
-    return IconBuildingSkyscraper;
   return IconHome;
 }
 

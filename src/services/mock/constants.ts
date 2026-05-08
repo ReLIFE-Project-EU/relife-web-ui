@@ -218,14 +218,6 @@ export const MOCK_PERIOD_FACTOR: Record<string, number> = {
   "post-2010": 0.7,
 };
 
-// Building type impact (apartments generally more efficient due to shared walls)
-export const MOCK_BUILDING_TYPE_FACTOR: Record<string, number> = {
-  apartment: 0.85,
-  terraced: 0.95,
-  "semi-detached": 1.0,
-  detached: 1.15,
-};
-
 // Heating technology efficiency (lower = better)
 export const MOCK_HEATING_EFFICIENCY: Record<string, number> = {
   "heat-pump-ground": 0.5,

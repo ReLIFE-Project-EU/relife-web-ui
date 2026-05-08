@@ -5,8 +5,8 @@ import { parseCSV } from "../../../src/features/portfolio-advisor/services/csvPa
 
 describe("csvParser", () => {
   test("accepts construction periods with an en dash and normalizes them", () => {
-    const csv = `building_name,lat,lng,category,country,floor_area,construction_period,number_of_floors,property_type
-Building A,48.8566,2.3522,Single Family House,France,120,1946–1969,2,detached`;
+    const csv = `building_name,lat,lng,category,country,floor_area,construction_period,number_of_floors
+Building A,48.8566,2.3522,Single Family House,France,120,1946–1969,2`;
 
     const result = parseCSV(csv);
 
@@ -16,8 +16,8 @@ Building A,48.8566,2.3522,Single Family House,France,120,1946–1969,2,detached`
   });
 
   test("reports missing required columns including construction_period or construction_year", () => {
-    const csv = `building_name,lat,lng,category,country,floor_area,number_of_floors,property_type
-B,1,1,x,y,100,2,detached`;
+    const csv = `building_name,lat,lng,category,country,floor_area,number_of_floors
+B,1,1,x,y,100,2`;
 
     const result = parseCSV(csv);
 
@@ -28,8 +28,8 @@ B,1,1,x,y,100,2,detached`;
   });
 
   test("accepts construction_year instead of construction_period", () => {
-    const csv = `building_name,lat,lng,category,country,floor_area,construction_year,number_of_floors,property_type
-B,48.8,2.3,Single Family House,France,120,1960,2,detached`;
+    const csv = `building_name,lat,lng,category,country,floor_area,construction_year,number_of_floors
+B,48.8,2.3,Single Family House,France,120,1960,2`;
 
     const result = parseCSV(csv);
 
@@ -39,8 +39,8 @@ B,48.8,2.3,Single Family House,France,120,1960,2,detached`;
   });
 
   test("parses semicolon-delimited measures", () => {
-    const csv = `building_name,lat,lng,category,country,floor_area,construction_period,number_of_floors,property_type,measures
-B,48.8,2.3,Single Family House,France,120,1971-1990,2,detached,wall-insulation; windows ;PV`;
+    const csv = `building_name,lat,lng,category,country,floor_area,construction_period,number_of_floors,measures
+B,48.8,2.3,Single Family House,France,120,1971-1990,2,wall-insulation; windows ;PV`;
 
     const result = parseCSV(csv);
 
@@ -52,6 +52,37 @@ B,48.8,2.3,Single Family House,France,120,1971-1990,2,detached,wall-insulation; 
     ]);
   });
 
+  test("rejects invalid category values", () => {
+    const csv = `building_name,lat,lng,category,country,floor_area,construction_period,number_of_floors
+B,48.8,2.3,Unknown,France,120,1971-1990,2`;
+
+    const result = parseCSV(csv);
+
+    expect(result.buildings).toHaveLength(0);
+    expect(result.errors.some((e) => e.includes("category"))).toBe(true);
+  });
+
+  test("normalizes category casing and whitespace to canonical form", () => {
+    const csv = `building_name,lat,lng,category,country,floor_area,construction_period,number_of_floors
+B,48.8,2.3,  multi  family   house  ,France,120,1971-1990,2`;
+
+    const result = parseCSV(csv);
+
+    expect(result.errors).toEqual([]);
+    expect(result.buildings[0].category).toBe("Multi family House");
+    expect(result.buildings[0].propertyType).toBe("Multi family House");
+  });
+
+  test("derives propertyType from category", () => {
+    const csv = `building_name,lat,lng,category,country,floor_area,construction_period,number_of_floors
+B,48.8,2.3,Multi family House,France,120,1971-1990,2`;
+
+    const result = parseCSV(csv);
+
+    expect(result.errors).toEqual([]);
+    expect(result.buildings[0].propertyType).toBe("Multi family House");
+  });
+
   test("parses the shipped portfolio_example.csv without errors", () => {
     const text = readFileSync(
       join(process.cwd(), "public/portfolio_example.csv"),
@@ -60,7 +91,7 @@ B,48.8,2.3,Single Family House,France,120,1971-1990,2,detached,wall-insulation; 
     const result = parseCSV(text);
 
     expect(result.errors).toEqual([]);
-    expect(result.buildings.length).toBeGreaterThanOrEqual(4);
+    expect(result.buildings.length).toBeGreaterThanOrEqual(3);
     expect(result.buildings.every((b) => b.validationStatus === "valid")).toBe(
       true,
     );

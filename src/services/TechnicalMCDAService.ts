@@ -47,7 +47,6 @@ const NEUTRALIZED_KPI_KEYS: McdaKpiKey[] = [
   "st_coverage_kpi",
   "embodied_carbon_kpi",
   "gwp_kpi",
-  "thermal_comfort_air_temp_kpi",
   "thermal_comfort_humidity_kpi",
 ];
 
@@ -207,7 +206,7 @@ export function deriveTechnologyKpis(
     net_energy_export_kpi: scenario.pvGridExport ?? 0,
     embodied_carbon_kpi: 0,
     gwp_kpi: 0,
-    thermal_comfort_air_temp_kpi: 0,
+    thermal_comfort_air_temp_kpi: scenario.comfortIndex,
     thermal_comfort_humidity_kpi: 0,
     ii_kpi: financial?.capitalExpenditure ?? 0,
     aoc_kpi: annualMaintenanceCost ?? 0,
