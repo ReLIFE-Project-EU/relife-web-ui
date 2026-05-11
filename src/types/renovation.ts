@@ -140,11 +140,15 @@ export interface EstimationResult {
    * Archetype used for the estimation.
    * Persisted here so it can be reused for renovation simulations (Step 2),
    * ensuring consistent baseline.
+   *
+   * `matchStrategy` records how EnergyService selected this archetype; it
+   * feeds the audit log and `validateEstimation` (src/services/estimationValidation.ts).
    */
   archetype?: {
     category: string;
     country: string;
     name: string;
+    matchStrategy: import("../services/archetypeMatching").ArchetypeMatchStrategy;
   };
 
   /** Modified BUI/system payloads (only present when building.isModified = true).

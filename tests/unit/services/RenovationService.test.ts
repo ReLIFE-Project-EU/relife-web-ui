@@ -66,6 +66,7 @@ vi.mock("../../../src/services/mock/data/renovationMeasures", () => ({
 }));
 
 import { RenovationService } from "../../../src/services/RenovationService";
+import { ArchetypeMatchStrategy } from "../../../src/services/archetypeMatching";
 import {
   PV_DEFAULTS,
   pvKwpFromFloorArea,
@@ -121,7 +122,12 @@ const mockEstimation: EstimationResult = {
   deliveredEnergyCost: 4250,
   primaryEnergy: 22000,
   archetypeFloorArea: 100,
-  archetype: { category: "SFH", country: "Greece", name: "GR_SFH_1961_1980" },
+  archetype: {
+    category: "SFH",
+    country: "Greece",
+    name: "GR_SFH_1961_1980",
+    matchStrategy: ArchetypeMatchStrategy.EXACT_FULL,
+  },
 };
 
 const stubECMResponse = {

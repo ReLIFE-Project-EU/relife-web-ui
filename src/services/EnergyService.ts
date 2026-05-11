@@ -39,6 +39,15 @@ import {
 import { countryNamesEqual, normalizeCountryName } from "../utils/countries";
 import { normalizeConstructionPeriod } from "../utils/apiMappings";
 import { auditLog, type AuditCtx } from "../utils/auditLogger";
+import {
+  ArchetypeMatchStrategy,
+  extractArchetypePeriod,
+} from "./archetypeMatching";
+
+interface ResolvedArchetype {
+  archetype: ArchetypeInfo;
+  strategy: ArchetypeMatchStrategy;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Custom Error Types
@@ -275,12 +284,16 @@ export class EnergyService implements IEnergyService {
 
   /**
    * Resolve a user-selected archetype to an ArchetypeInfo from the available list.
-   * Falls back to findMatchingArchetype if the exact archetype is no longer available.
+   * Returns the strategy alongside the archetype so downstream code (audit log,
+   * validateEstimation) can act on it. If the selected archetype is missing
+   * from the live catalogue, returns the original payload with
+   * SELECTED_NOT_FOUND — falling back to `findMatchingArchetype` here would
+   * discard the user's intent silently.
    */
   private async resolveSelectedArchetype(
     selected: NonNullable<BuildingInfo["selectedArchetype"]>,
     auditCtx?: AuditCtx,
-  ): Promise<ArchetypeInfo> {
+  ): Promise<ResolvedArchetype> {
     const archetypes = await this.getArchetypes();
     const match = archetypes.find(
       (a) =>
@@ -288,21 +301,29 @@ export class EnergyService implements IEnergyService {
         a.category === selected.category &&
         countryNamesEqual(a.country, selected.country),
     );
-    if (match) return match;
+    if (match) {
+      return {
+        archetype: match,
+        strategy: ArchetypeMatchStrategy.USER_SELECTED,
+      };
+    }
 
     auditLog.warn(
       "energy",
       "energy.archetype.fallback",
       {
-        reason: "selected-archetype-not-found",
+        reason: ArchetypeMatchStrategy.SELECTED_NOT_FOUND,
         requested: selected,
       },
       auditCtx,
     );
     return {
-      name: selected.name,
-      category: selected.category,
-      country: selected.country,
+      archetype: {
+        name: selected.name,
+        category: selected.category,
+        country: selected.country,
+      },
+      strategy: ArchetypeMatchStrategy.SELECTED_NOT_FOUND,
     };
   }
 
@@ -322,18 +343,60 @@ export class EnergyService implements IEnergyService {
   private async findMatchingArchetype(
     building: BuildingInfo,
     auditCtx?: AuditCtx,
-  ): Promise<ArchetypeInfo> {
+  ): Promise<ResolvedArchetype> {
     const archetypes = await this.getArchetypes();
     const { buildingType } = building;
     const country = normalizeCountryName(building.country) ?? building.country;
+    const requestedPeriod = normalizeConstructionPeriod(
+      building.constructionPeriod,
+    );
 
-    // Priority 1: Exact match (country + category)
-    const exactMatch = archetypes.find(
+    // Priority 1: Exact match (country + category). Period-aware: prefer an
+    // archetype whose parsed period matches the requested period; if none does,
+    // fall back to any same-country/same-category archetype but classify the
+    // strategy as EXACT_CATEGORY_PERIOD_MISMATCH so downstream code can surface
+    // the gap.
+    const sameCountryAndCategory = archetypes.filter(
       (a) =>
         countryNamesEqual(a.country, country) && a.category === buildingType,
     );
-    if (exactMatch) {
-      return exactMatch;
+    if (sameCountryAndCategory.length > 0) {
+      const periodMatch = requestedPeriod
+        ? sameCountryAndCategory.find(
+            (a) => extractArchetypePeriod(a.name) === requestedPeriod,
+          )
+        : undefined;
+      if (periodMatch) {
+        return {
+          archetype: periodMatch,
+          strategy: ArchetypeMatchStrategy.EXACT_FULL,
+        };
+      }
+
+      const chosen = sameCountryAndCategory[0];
+      auditLog.warn(
+        "energy",
+        "energy.archetype.fallback",
+        {
+          reason: ArchetypeMatchStrategy.EXACT_CATEGORY_PERIOD_MISMATCH,
+          requested: {
+            country,
+            category: buildingType,
+            period: requestedPeriod,
+          },
+          chosen: {
+            country: chosen.country,
+            category: chosen.category,
+            name: chosen.name,
+            period: extractArchetypePeriod(chosen.name),
+          },
+        },
+        auditCtx,
+      );
+      return {
+        archetype: chosen,
+        strategy: ArchetypeMatchStrategy.EXACT_CATEGORY_PERIOD_MISMATCH,
+      };
     }
 
     // Priority 2: Same country, any category
@@ -345,7 +408,7 @@ export class EnergyService implements IEnergyService {
         "energy",
         "energy.archetype.fallback",
         {
-          reason: "no-exact-category-match",
+          reason: ArchetypeMatchStrategy.COUNTRY_ANY_CATEGORY,
           requested: { country, category: buildingType },
           chosen: {
             country: countryMatch.country,
@@ -355,7 +418,10 @@ export class EnergyService implements IEnergyService {
         },
         auditCtx,
       );
-      return countryMatch;
+      return {
+        archetype: countryMatch,
+        strategy: ArchetypeMatchStrategy.COUNTRY_ANY_CATEGORY,
+      };
     }
 
     // Priority 3: Similar climate region + matching category
@@ -373,7 +439,7 @@ export class EnergyService implements IEnergyService {
           "energy",
           "energy.archetype.fallback",
           {
-            reason: "climate-region-category-match",
+            reason: ArchetypeMatchStrategy.REGION_CATEGORY_MATCH,
             requested: { country, category: buildingType },
             chosen: {
               country: regionMatch.country,
@@ -384,7 +450,10 @@ export class EnergyService implements IEnergyService {
           },
           auditCtx,
         );
-        return regionMatch;
+        return {
+          archetype: regionMatch,
+          strategy: ArchetypeMatchStrategy.REGION_CATEGORY_MATCH,
+        };
       }
 
       // Any match in region
@@ -398,7 +467,7 @@ export class EnergyService implements IEnergyService {
           "energy",
           "energy.archetype.fallback",
           {
-            reason: "climate-region-any-match",
+            reason: ArchetypeMatchStrategy.REGION_ANY_MATCH,
             requested: { country, category: buildingType },
             chosen: {
               country: anyRegionMatch.country,
@@ -409,7 +478,10 @@ export class EnergyService implements IEnergyService {
           },
           auditCtx,
         );
-        return anyRegionMatch;
+        return {
+          archetype: anyRegionMatch,
+          strategy: ArchetypeMatchStrategy.REGION_ANY_MATCH,
+        };
       }
     }
 
@@ -420,6 +492,7 @@ export class EnergyService implements IEnergyService {
   private buildEstimationFromSimulation(params: {
     simulationResponse: SimulateDirectResponse;
     archetype: ArchetypeInfo;
+    matchStrategy: ArchetypeMatchStrategy;
     building: BuildingInfo;
     archetypeArea: number;
     userArea: number;
@@ -432,6 +505,7 @@ export class EnergyService implements IEnergyService {
     const {
       simulationResponse,
       archetype,
+      matchStrategy,
       building,
       archetypeArea,
       userArea,
@@ -550,6 +624,7 @@ export class EnergyService implements IEnergyService {
         category: archetype.category,
         country: archetype.country,
         name: archetype.name,
+        matchStrategy,
       },
       ...(validationNotes && validationNotes.length > 0
         ? { validationNotes }
@@ -600,7 +675,7 @@ export class EnergyService implements IEnergyService {
       auditCtx,
     );
 
-    const archetype = building.selectedArchetype
+    const { archetype, strategy: matchStrategy } = building.selectedArchetype
       ? await this.resolveSelectedArchetype(
           building.selectedArchetype,
           auditCtx,
@@ -616,6 +691,7 @@ export class EnergyService implements IEnergyService {
           category: archetype.category,
           country: archetype.country,
         },
+        matchStrategy,
         viaUserSelection: !!building.selectedArchetype,
         countryMismatch:
           !!building.country &&
@@ -674,6 +750,7 @@ export class EnergyService implements IEnergyService {
         const referenceEstimation = this.buildEstimationFromSimulation({
           simulationResponse: referenceSimulation,
           archetype,
+          matchStrategy,
           building: {
             ...building,
             floorArea: archetypeDetails.floorArea,
@@ -692,6 +769,7 @@ export class EnergyService implements IEnergyService {
         const result = this.buildEstimationFromSimulation({
           simulationResponse: customSimulation,
           archetype,
+          matchStrategy,
           building,
           archetypeArea:
             building.modifications.floorArea ?? archetypeDetails.floorArea,
@@ -758,6 +836,7 @@ export class EnergyService implements IEnergyService {
       const result = this.buildEstimationFromSimulation({
         simulationResponse,
         archetype,
+        matchStrategy,
         building,
         archetypeArea: archetypeDetails.floorArea,
         userArea: building.floorArea || DEFAULT_FLOOR_AREA,
