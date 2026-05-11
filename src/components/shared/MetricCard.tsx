@@ -36,7 +36,7 @@ export function MetricCard({
       <Text size="xs" c="dimmed" mb={4}>
         {label}
       </Text>
-      <Text size="lg" fw={600}>
+      <Text component="div" size="lg" fw={600}>
         {value}
       </Text>
     </Box>

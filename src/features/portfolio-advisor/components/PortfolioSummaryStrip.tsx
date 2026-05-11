@@ -144,6 +144,7 @@ function Cell({
         {label}
       </Text>
       <Text
+        component="div"
         size="sm"
         fw={600}
         style={{
