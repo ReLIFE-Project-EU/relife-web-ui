@@ -146,10 +146,7 @@ function emit(
   if (!ENABLED) return;
   if (LEVEL_RANK[level] < LEVEL_RANK[MIN_LEVEL]) return;
 
-  const ctx =
-    explicitCtx ??
-    ambientCtx ??
-    makeCtx("unknown", "anonymous");
+  const ctx = explicitCtx ?? ambientCtx ?? makeCtx("unknown", "anonymous");
 
   const entry: AuditEvent = {
     ts: new Date().toISOString(),

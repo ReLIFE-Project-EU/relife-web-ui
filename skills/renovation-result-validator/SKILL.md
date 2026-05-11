@@ -81,6 +81,7 @@ Before auditing results, determine which service implementations are in use.
 ### Step 1: Locate Service Injection Points
 
 Read the provider file for the appropriate tool:
+
 - **HRA**: `src/features/home-assistant/context/ServiceContext.tsx`
 - **PRA**: `src/features/portfolio-advisor/context/ServiceContext.tsx`
 
@@ -95,6 +96,7 @@ that tests or specialized flows can override the default bundle.
 
 Read the `FinancialService` constructor call to identify the `output_level`
 parameter.
+
 - `"private"` → HRA mode (basic metrics)
 - `"professional"` → PRA mode (detailed analysis with percentiles)
 - `"public"` or `"complete"` → extended outputs
@@ -104,6 +106,7 @@ This determines which fields will be available in the API response.
 ### Step 3: Locate Backend Service Source
 
 Check for local clones:
+
 - `external-services/relife-financial-service/`
 - `external-services/relife-forecasting-service/`
 - `external-services/relife-technical-service/`
@@ -114,6 +117,7 @@ reasoning. The upstream GitHub URLs are in `AGENTS.md` § Backend API contracts.
 ### Step 4: Determine MCDA Execution Path
 
 Read the MCDA service implementation used by the tool:
+
 - **MockMCDAService** (frontend-local TOPSIS) → `src/services/mock/MockMCDAService.ts`
 - **TechnicalMCDAService** (backend TOPSIS API) → `src/services/TechnicalMCDAService.ts`
 
@@ -163,6 +167,7 @@ Read the HRA reducer or wizard flow:
 `src/features/home-assistant/context/homeAssistantReducer.ts`
 
 Verify that services are called in the documented order:
+
 1. Building → Energy estimation (`estimateEPC`)
 2. Energy estimation → Renovation evaluation (`evaluateScenarios`)
 3. Renovation scenarios → Financial calculation (`calculateForAllScenarios`)
@@ -176,6 +181,7 @@ Read the `EnergyService` implementation:
 `src/services/EnergyService.ts`
 
 Answer these questions by reading the code (not assuming):
+
 - How is the archetype resolved? Is there a fallback chain (selected → matching → climate region)?
 - What building parameters are sent to the Forecasting API?
 - How is the area scale factor computed? What is the ratio?
@@ -195,6 +201,7 @@ Read the `RenovationService` implementation:
 `src/services/RenovationService.ts`
 
 Answer these questions:
+
 - How are renovation measures mapped to ECM parameters (U-values, COP, PV config)?
 - What U-value targets are applied per measure?
 - What are the default system parameters (heat pump COP, PV defaults)?
@@ -210,6 +217,7 @@ Read the `FinancialService` implementation:
 `src/services/FinancialService.ts`
 
 Answer these questions:
+
 - How are energy savings computed? Is it delivered energy difference, thermal needs difference, or something else?
 - Is there a feature flag or constant controlling the savings semantic?
 - How are funding options applied to CAPEX? (subsidy percentage? loan percentage?)
@@ -227,6 +235,7 @@ Read the frontend financial calculation utilities:
 `src/utils/financialCalculations.ts`
 
 Answer these questions:
+
 - What is the NPV formula? Discount rate? Summation bounds?
 - What is the IRR algorithm? Tolerance? Max iterations?
 - What is the simple payback formula? Guard against zero savings?
@@ -239,6 +248,7 @@ Answer these questions:
 Read the active MCDA service (determined in Service Environment Detection).
 
 **If frontend-local (MockMCDAService)** → read `src/services/mock/MockMCDAService.ts`:
+
 - How are criteria values extracted from scenario + financial data?
 - What normalization is applied to ROI? NPV? What caps?
 - Is the TOPSIS implementation correct? (weighted matrix → ideal points → distances → closeness)
@@ -246,6 +256,7 @@ Read the active MCDA service (determined in Service Environment Detection).
 - How are baseline energy needs used for normalization?
 
 **If backend API (TechnicalMCDAService)** → read `src/services/TechnicalMCDAService.ts`:
+
 - How are KPI values mapped to scenario fields?
 - Which fields are neutralized (set to constant or 0)?
 - How are min/max bounds derived for normalization?
@@ -255,6 +266,7 @@ Read the active MCDA service (determined in Service Environment Detection).
 ### HRA-7: Validate Specific Output Values
 
 For each displayed output value, trace backward through the code to identify:
+
 1. Which function produced this value?
 2. What inputs went into that function?
 3. Are those inputs consistent with what the user provided?
@@ -264,6 +276,7 @@ For each displayed output value, trace backward through the code to identify:
 
 For screenshots or UI-visible values, locate the component that renders the
 label/value before judging the number. Start from:
+
 - `src/features/home-assistant/components/steps/ResultsStep.tsx`
 - `src/features/home-assistant/components/results/`
 
@@ -285,6 +298,7 @@ Read the `PortfolioAnalysisService` implementation:
 `src/features/portfolio-advisor/services/PortfolioAnalysisService.ts`
 
 Answer these questions:
+
 - How are `PRABuilding` objects converted to `BuildingInfo`?
 - What fields are mapped? What defaults are applied?
 - How is CAPEX resolved? Per-building override? Global override? Null?
@@ -298,6 +312,7 @@ Read the component that displays portfolio-level metrics:
 `src/features/portfolio-advisor/components/steps/ResultsStep.tsx`
 
 Answer these questions:
+
 - How are average NPV, average ROI, and total metrics computed?
 - Are they simple averages or weighted (by floor area? investment? energy?)
 - Are buildings with error status excluded from averages? Silent or visible?
@@ -310,6 +325,7 @@ Read the PRA constants file:
 `src/features/portfolio-advisor/constants.ts`
 
 Answer these questions:
+
 - What financing schemes are available?
 - How do they differ from HRA funding options?
 - Is the scheme correctly applied to all buildings uniformly?
@@ -317,6 +333,7 @@ Answer these questions:
 ### PRA-4: Validate Cross-Building Statistical Consistency
 
 For each financial indicator across all buildings:
+
 - Are there extreme outliers? (e.g., one building with NPV 100× the mean)
 - Do similar building types produce similar results? If not, why not?
 - Are there buildings with zero or negative energy savings? Why?
@@ -387,50 +404,61 @@ in the data pipeline, not merely describe the symptom.
 ## HRA/PRA Result Validation Report
 
 ### Tool: [HRA | PRA]
+
 ### Data Source: [Structured | Screenshot]
+
 ### Audit Depth: [Quick | Deep]
 
 ### 0. Skill-Codebase Discrepancies
+
 [Any places where the actual code differs from what this skill's protocol describes.
 This section validates that the skill itself remains accurate.]
 
 ### 1. Service Environment
+
 - **Services active**: [Real | Mock] for each service
 - **Output level**: [private | professional | public | complete]
 - **Backend source available**: [Yes | No] for each service
 - **MCDA path**: [Frontend-local TOPSIS | Backend Technical API]
 
 ### 2. Input Quality Assessment
+
 - Missing or null fields that trigger fallback behavior
 - Contradictory or extreme input values
 - Archetype country mismatches (fallback detection)
 
 ### 3. Pipeline Execution Trace
+
 [Step-by-step: which services ran, in what order, with what inputs/outputs.
 Reference specific file:line from the code that was read and traced.]
 
 ### 4. Computation Path Traces (One per output value)
+
 For each audited output value:
 
 **Value**: [e.g., NPV = 45,230 EUR]
 **Code path**:
-  - Input source: [file:line]
-  - Transformation 1: [file:line] — [what happens]
-  - API call: [endpoint + request body]
-  - API response normalization: [file:line] — [how response is mapped]
-  - Display formatting: [file:line] — [any final transformations]
+
+- Input source: [file:line]
+- Transformation 1: [file:line] — [what happens]
+- API call: [endpoint + request body]
+- API response normalization: [file:line] — [how response is mapped]
+- Display formatting: [file:line] — [any final transformations]
+
 **Expected range**: [derived from code trace]
 **Observed value**: [from the data/screenshot]
 **Discrepancy**: [Yes/No + magnitude if yes]
 
 ### 5. Root Cause Analysis
+
 For each anomaly, identify the layer where the issue originates:
 
-| Severity | Metric | Observed | Expected | Root Cause Layer | Evidence (file:line) | Confidence |
-|----------|--------|----------|----------|------------------|---------------------|------------|
-| HIGH     | NPV    | 45,230€  | 8,500€   | Backend computation | `config.py:45` energy price assumption differs from frontend | 85%       |
+| Severity | Metric | Observed | Expected | Root Cause Layer    | Evidence (file:line)                                         | Confidence |
+| -------- | ------ | -------- | -------- | ------------------- | ------------------------------------------------------------ | ---------- |
+| HIGH     | NPV    | 45,230€  | 8,500€   | Backend computation | `config.py:45` energy price assumption differs from frontend | 85%        |
 
 **Root cause layer must be one of:**
+
 - **Input validation** — user input not validated or sanitized
 - **Frontend mapping** — incorrect transformation before API call
 - **API layer** — wrong endpoint, wrong params, missing fields
@@ -441,29 +469,32 @@ For each anomaly, identify the layer where the issue originates:
 - **Service dependency** — upstream service returned data that downstream service wasn't prepared for
 
 ### 6. Known Disharmonies (Expected Gaps)
+
 [Any gaps that are expected given the current architecture, e.g.,
 "Frontend uses flat pricing for EPC display, backend uses stochastic pricing.
 The displayed cost will differ from financial analysis.
 This is NOT a bug — it's an intentional simplification."]
 
 ### 7. Verdict
+
 **VALID** — All outputs are consistent with inputs and code trace.
 **SUSPICIOUS** — Outputs are mathematically consistent but financially/physically implausible.
 **INVALID** — Outputs contradict inputs, code trace, or mathematical constraints.
 [Reasoning]
 
 ### 8. Recommended Actions
+
 [Specific, file-targeted actions: "Read X to verify Y", "Align constant Z in file A with parameter W in file B"]
 ```
 
 ### Confidence Scoring Guidelines
 
-| Level | Meaning | Evidence Required |
-|-------|---------|-------------------|
-| 90-100% | Definite bug | Code trace + output mismatch + no plausible explanation |
-| 70-89%  | High likelihood | Code trace is suspicious but edge case is possible |
-| 50-69%  | Unclear | Insufficient context (e.g., backend source unavailable) |
-| 10-49%  | Low confidence | Mathematical oddity, likely domain-normal |
+| Level   | Meaning         | Evidence Required                                       |
+| ------- | --------------- | ------------------------------------------------------- |
+| 90-100% | Definite bug    | Code trace + output mismatch + no plausible explanation |
+| 70-89%  | High likelihood | Code trace is suspicious but edge case is possible      |
+| 50-69%  | Unclear         | Insufficient context (e.g., backend source unavailable) |
+| 10-49%  | Low confidence  | Mathematical oddity, likely domain-normal               |
 
 ---
 

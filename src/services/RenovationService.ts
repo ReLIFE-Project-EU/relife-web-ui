@@ -245,7 +245,8 @@ export class RenovationService implements IRenovationService {
     const packageScenarios = await mapWithConcurrencyLimit(
       packages,
       FORECASTING_SCENARIO_CONCURRENCY_LIMIT,
-      (pkg) => this.evaluatePackageScenario(building, estimation, pkg, auditCtx),
+      (pkg) =>
+        this.evaluatePackageScenario(building, estimation, pkg, auditCtx),
     );
 
     auditLog.info(

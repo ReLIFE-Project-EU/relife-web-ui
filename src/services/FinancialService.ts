@@ -47,7 +47,10 @@ import { auditLog, type AuditCtx } from "../utils/auditLogger";
 const USE_SIMULATED_DELIVERED_ENERGY_FOR_FINANCE = true;
 
 function resolveConstructionYear(building: BuildingInfo): number {
-  return building.constructionYear ?? deriveConstructionYear(building.constructionPeriod);
+  return (
+    building.constructionYear ??
+    deriveConstructionYear(building.constructionPeriod)
+  );
 }
 
 function scenarioIncludesSystemMeasure(scenario: RenovationScenario): boolean {

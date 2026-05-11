@@ -347,7 +347,11 @@ export class EnergyService implements IEnergyService {
         {
           reason: "no-exact-category-match",
           requested: { country, category: buildingType },
-          chosen: { country: countryMatch.country, category: countryMatch.category, name: countryMatch.name },
+          chosen: {
+            country: countryMatch.country,
+            category: countryMatch.category,
+            name: countryMatch.name,
+          },
         },
         auditCtx,
       );
@@ -371,7 +375,11 @@ export class EnergyService implements IEnergyService {
           {
             reason: "climate-region-category-match",
             requested: { country, category: buildingType },
-            chosen: { country: regionMatch.country, category: regionMatch.category, name: regionMatch.name },
+            chosen: {
+              country: regionMatch.country,
+              category: regionMatch.category,
+              name: regionMatch.name,
+            },
             region: userRegion,
           },
           auditCtx,
@@ -392,7 +400,11 @@ export class EnergyService implements IEnergyService {
           {
             reason: "climate-region-any-match",
             requested: { country, category: buildingType },
-            chosen: { country: anyRegionMatch.country, category: anyRegionMatch.category, name: anyRegionMatch.name },
+            chosen: {
+              country: anyRegionMatch.country,
+              category: anyRegionMatch.category,
+              name: anyRegionMatch.name,
+            },
             region: userRegion,
           },
           auditCtx,
@@ -589,7 +601,10 @@ export class EnergyService implements IEnergyService {
     );
 
     const archetype = building.selectedArchetype
-      ? await this.resolveSelectedArchetype(building.selectedArchetype, auditCtx)
+      ? await this.resolveSelectedArchetype(
+          building.selectedArchetype,
+          auditCtx,
+        )
       : await this.findMatchingArchetype(building, auditCtx);
 
     auditLog.info(
