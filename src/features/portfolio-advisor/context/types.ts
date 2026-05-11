@@ -96,8 +96,16 @@ export interface PRAFinancialResults extends FinancialResults {
 
 export interface BuildingAnalysisResult {
   buildingId: string;
-  status: "pending" | "running" | "success" | "error";
+  status: "pending" | "running" | "success" | "error" | "rejected";
   error?: string;
+  /**
+   * Structured diagnostic populated when status === "rejected".
+   * Set by `PortfolioAnalysisService.analyzeBuilding` after `validateEstimation`
+   * (src/services/estimationValidation.ts) classifies the archetype match
+   * as `unusable`. Carries the strategy, scale factor, requested vs chosen
+   * archetype, and a human-readable remediation hint for the UI.
+   */
+  rejection?: import("../../../services/estimationValidation").EstimationDiagnostic;
   estimation?: EstimationResult;
   scenarios?: RenovationScenario[];
   financialResults?: PRAFinancialResults;

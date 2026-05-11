@@ -64,6 +64,7 @@ interface PortfolioStats {
   totalBuildings: number;
   successCount: number;
   errorCount: number;
+  rejectedCount: number;
   totalCapex: number;
   avgNPV: number;
   avgROI: number;
@@ -81,6 +82,7 @@ function computeStats(
   const entries = Object.values(results);
   const successful = entries.filter((r) => r.status === "success");
   const errors = entries.filter((r) => r.status === "error");
+  const rejected = entries.filter((r) => r.status === "rejected");
 
   let totalCapex = 0;
   let totalNPV = 0;
@@ -130,6 +132,7 @@ function computeStats(
     totalBuildings,
     successCount: successful.length,
     errorCount: errors.length,
+    rejectedCount: rejected.length,
     totalCapex,
     avgNPV: validFinancialCount > 0 ? totalNPV / validFinancialCount : 0,
     avgROI: validFinancialCount > 0 ? totalROI / validFinancialCount : 0,
@@ -171,6 +174,11 @@ const PortfolioSummary = memo(function PortfolioSummary({
                 {stats.errorCount > 0 && (
                   <Badge color="red" size="sm" variant="light">
                     {stats.errorCount} errors
+                  </Badge>
+                )}
+                {stats.rejectedCount > 0 && (
+                  <Badge color="orange" size="sm" variant="light">
+                    {stats.rejectedCount} rejected
                   </Badge>
                 )}
               </Group>

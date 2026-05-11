@@ -23,6 +23,7 @@ import {
 import { ErrorAlert, StepNavigation } from "../shared";
 import classes from "../results/ResultsLayout.module.css";
 import type { CashFlowData, ScenarioId } from "../../context/types";
+import { validateEstimation } from "../../../../services/estimationValidation";
 
 export function ResultsStep() {
   const { state, dispatch } = useHomeAssistant();
@@ -130,6 +131,14 @@ export function ResultsStep() {
     setSelectedDetailId(scenarioId);
   };
 
+  // Validate the archetype match. Unusable matches block the Results step
+  // with a structured diagnostic; low-confidence matches render below as a
+  // yellow banner above the recommendation while the rest of the screen still
+  // works. We compute this once per render — validateEstimation is pure.
+  const estimationDiagnostic = state.estimation
+    ? validateEstimation(state.estimation, state.building)
+    : null;
+
   if (scenarios.length === 0) {
     return (
       <Box>
@@ -146,6 +155,51 @@ export function ResultsStep() {
     );
   }
 
+  if (estimationDiagnostic?.level === "unusable") {
+    return (
+      <Stack gap="lg">
+        <Box>
+          <Title order={2} mb="xs">
+            Your renovation results
+          </Title>
+        </Box>
+        <ErrorAlert
+          color="yellow"
+          title="We can't reliably model this building"
+          error={
+            <Stack gap={6}>
+              {estimationDiagnostic.reasons.map((reason, idx) => (
+                <Text key={`${reason.code}-${idx}`} size="sm">
+                  {reason.message}
+                </Text>
+              ))}
+              {estimationDiagnostic.remediation && (
+                <Text size="sm" fw={500}>
+                  {estimationDiagnostic.remediation}
+                </Text>
+              )}
+              <Text size="xs" c="dimmed">
+                Requested: {estimationDiagnostic.requested.country} ·{" "}
+                {estimationDiagnostic.requested.category}
+                {estimationDiagnostic.requested.period
+                  ? ` · ${estimationDiagnostic.requested.period}`
+                  : ""}{" "}
+                — chosen archetype: {estimationDiagnostic.chosen.name} (scale{" "}
+                {estimationDiagnostic.areaScaleFactor.toFixed(2)}×)
+              </Text>
+            </Stack>
+          }
+        />
+        <StepNavigation
+          currentStep={2}
+          totalSteps={3}
+          onPrevious={handlePrevious}
+          previousLabel="Back to renovation options"
+        />
+      </Stack>
+    );
+  }
+
   return (
     <Stack gap="lg">
       <Box>
@@ -157,6 +211,25 @@ export function ResultsStep() {
           below. Switch profiles or packages to compare.
         </Text>
       </Box>
+
+      {estimationDiagnostic?.level === "low-confidence" && (
+        <ErrorAlert
+          color="yellow"
+          title="Low-confidence estimate"
+          error={
+            <Stack gap={4}>
+              {estimationDiagnostic.reasons.map((reason, idx) => (
+                <Text key={`${reason.code}-${idx}`} size="sm">
+                  {reason.message}
+                </Text>
+              ))}
+              {estimationDiagnostic.remediation && (
+                <Text size="sm">{estimationDiagnostic.remediation}</Text>
+              )}
+            </Stack>
+          }
+        />
+      )}
 
       <RecommendationHero
         currentScenario={currentScenario}

@@ -19,6 +19,7 @@ import type {
 } from "../../../types/renovation";
 import { deriveConstructionYear } from "../../../utils/apiMappings";
 import { auditLog, type AuditCtx } from "../../../utils/auditLogger";
+import { validateEstimation } from "../../../services/estimationValidation";
 import { PRA_CONCURRENCY_LIMIT } from "../constants";
 import type {
   BuildingAnalysisResult,
@@ -134,10 +135,13 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     const errorCount = Object.values(results).filter(
       (r) => r.status === "error",
     ).length;
+    const rejectedCount = Object.values(results).filter(
+      (r) => r.status === "rejected",
+    ).length;
     auditLog.info(
       "portfolio",
       "portfolio.run.end",
-      { successCount, errorCount, total: buildings.length },
+      { successCount, errorCount, rejectedCount, total: buildings.length },
       parentCtx,
     );
 
@@ -182,6 +186,31 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
 
     // Step 1: Estimate EPC
     const estimation = await this.energy.estimateEPC(buildingInfo, auditCtx);
+
+    // Step 1b: Validate the archetype match. If `validateEstimation` classifies
+    // the match as `unusable`, abort the pipeline here — before any ECM, ARV,
+    // or risk-assessment calls are made — and return a structured rejection.
+    // Low-confidence estimates continue through the pipeline; the diagnostic
+    // is surfaced in the UI by reading the estimation's matchStrategy directly.
+    const diagnostic = validateEstimation(estimation, buildingInfo);
+    if (diagnostic.level === "unusable") {
+      auditLog.warn(
+        "portfolio",
+        "portfolio.building.rejected",
+        {
+          buildingId: building.id,
+          buildingName: building.name,
+          diagnostic,
+        },
+        auditCtx,
+      );
+      return {
+        buildingId: building.id,
+        status: "rejected",
+        rejection: diagnostic,
+        estimation,
+      };
+    }
 
     // Step 2: Evaluate renovation scenarios
     const renovatedMeasures = selectedMeasures.filter((measureId) =>

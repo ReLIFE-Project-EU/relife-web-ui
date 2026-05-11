@@ -41,6 +41,7 @@ export type StatusFilter =
   | "running"
   | "success"
   | "error"
+  | "rejected"
   | "no-savings";
 
 type SortKey = "name" | "status" | "energyReduction" | "npv" | "roi" | "pbp";
@@ -191,6 +192,7 @@ export function BuildingResultsTable({
             { value: "all", label: "All buildings" },
             { value: "success", label: "Successful" },
             { value: "no-savings", label: "No savings" },
+            { value: "rejected", label: "Rejected" },
             { value: "error", label: "Errored" },
             { value: "pending", label: "Pending" },
             { value: "running", label: "Running" },
@@ -409,25 +411,58 @@ function ResultsRow({
         )}
       </Table.Td>
       <Table.Td>
-        <Badge
-          color={
-            result.status === "success"
-              ? "green"
+        {result.status === "rejected" && result.rejection ? (
+          <Tooltip
+            label={
+              <Stack gap={4}>
+                <Text size="xs" fw={600}>
+                  {result.rejection.reasons[0]?.message ??
+                    "Archetype match unusable."}
+                </Text>
+                {result.rejection.remediation && (
+                  <Text size="xs">{result.rejection.remediation}</Text>
+                )}
+                <Text size="xs" c="dimmed">
+                  Strategy: {result.rejection.strategy} · scale{" "}
+                  {result.rejection.areaScaleFactor.toFixed(2)}×
+                </Text>
+              </Stack>
+            }
+            multiline
+            w={320}
+            position="bottom-start"
+          >
+            <Badge
+              color="orange"
+              size="sm"
+              variant="light"
+              leftSection={<IconInfoCircle size={11} />}
+              style={{ cursor: "default" }}
+            >
+              Rejected
+            </Badge>
+          </Tooltip>
+        ) : (
+          <Badge
+            color={
+              result.status === "success"
+                ? "green"
+                : result.status === "error"
+                  ? "red"
+                  : "yellow"
+            }
+            size="sm"
+            variant="light"
+          >
+            {result.status === "success"
+              ? "Analyzed"
               : result.status === "error"
-                ? "red"
-                : "yellow"
-          }
-          size="sm"
-          variant="light"
-        >
-          {result.status === "success"
-            ? "Analyzed"
-            : result.status === "error"
-              ? "Failed"
-              : result.status === "running"
-                ? "Running"
-                : "Pending"}
-        </Badge>
+                ? "Failed"
+                : result.status === "running"
+                  ? "Running"
+                  : "Pending"}
+          </Badge>
+        )}
       </Table.Td>
       <Table.Td>
         {epcBefore ? (
@@ -514,6 +549,12 @@ function ResultsRow({
         ) : result.status === "error" ? (
           <Text size="xs" c="red">
             {(result.error ?? "").substring(0, 40)}
+          </Text>
+        ) : result.status === "rejected" ? (
+          <Text size="xs" c="orange.7">
+            {(
+              result.rejection?.reasons[0]?.message ?? "Match unusable"
+            ).substring(0, 60)}
           </Text>
         ) : (
           "-"
