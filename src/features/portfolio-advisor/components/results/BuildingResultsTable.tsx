@@ -415,10 +415,11 @@ function ResultsRow({
           <Tooltip
             label={
               <Stack gap={4}>
-                <Text size="xs" fw={600}>
-                  {result.rejection.reasons[0]?.message ??
-                    "Archetype match unusable."}
-                </Text>
+                {result.rejection.reasons.map((reason, i) => (
+                  <Text key={i} size="xs" fw={i === 0 ? 600 : 400}>
+                    {reason.message}
+                  </Text>
+                ))}
                 {result.rejection.remediation && (
                   <Text size="xs">{result.rejection.remediation}</Text>
                 )}
@@ -551,10 +552,8 @@ function ResultsRow({
             {(result.error ?? "").substring(0, 40)}
           </Text>
         ) : result.status === "rejected" ? (
-          <Text size="xs" c="orange.7">
-            {(
-              result.rejection?.reasons[0]?.message ?? "Match unusable"
-            ).substring(0, 60)}
+          <Text size="sm" c="dimmed">
+            —
           </Text>
         ) : (
           "-"
