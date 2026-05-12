@@ -77,6 +77,46 @@ tasks:
       - npm run typecheck
       - npm run typecheck:test
 
+  rse-seed:
+    desc: "Generate an RSE forecasting cache seed"
+    summary: |
+      Generate SQL for the RSE forecasting cache, or apply it directly with a
+      Supabase service-role key.
+
+      Usage:
+        task rse-seed -- --help
+        task rse-seed -- --cache-version <version> --forecasting-base-url <url>
+
+      Required flags:
+        --cache-version <version>
+        --forecasting-base-url <url> or absolute VITE_API_URL
+
+      Optional flags:
+        --archetypes '<json>'              JSON override. Defaults to all Forecasting archetypes.
+        --packages <ids>                    Comma-separated package ids. Defaults to all RSE packages.
+        --out <path>                        Write SQL to a file instead of stdout.
+        --description <text>                Store cache version notes.
+        --forecasting-service-version <id>  Store Forecasting service provenance.
+        --publish                           Mark generated SQL/applied rows as published.
+        --apply                             Apply directly to Supabase after generating SQL.
+        --dry-run                           Validate generation without database or file writes.
+        --log-level <level>                 Structured logs: debug, info, warn, error, or silent.
+
+      Logging:
+        Logs are JSON Lines on stderr. SQL and dry-run summaries stay on stdout.
+
+      Direct apply environment:
+        SUPABASE_URL or VITE_SUPABASE_URL
+        SUPABASE_KEY or SUPABASE_SERVICE_ROLE_KEY
+
+      Examples:
+        task rse-seed -- --help
+        task rse-seed -- --cache-version 2026-05-12.all --forecasting-base-url http://localhost:8080 --dry-run
+        task rse-seed -- --cache-version 2026-05-12.all --forecasting-base-url http://localhost:8080 --out .work/rse-seed.sql
+        task rse-seed -- --cache-version 2026-05-12.it-demo --archetypes '[{"country":"IT","category":"Residential","name":"Detached 1980","floorArea":100}]' --forecasting-base-url http://localhost:8080
+    cmds:
+      - npm run rse:seed -- {{.CLI_ARGS}}
+
   fetch-sources:
     desc: "Fetch source code for ReLIFE services (usage: task fetch-sources FINANCIAL_TREEISH=... FORECASTING_TREEISH=...)"
     vars:

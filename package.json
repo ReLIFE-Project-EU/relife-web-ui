@@ -16,7 +16,8 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:integration:pv-workflows": "vitest run --config vitest.pv-workflows.config.ts",
     "test:forecasting-concurrency-smoke": "vitest run --config vitest.forecasting-smoke.config.ts",
-    "trace:pra": "vitest run --config vitest.pra-trace.config.ts"
+    "trace:pra": "vitest run --config vitest.pra-trace.config.ts",
+    "rse:seed": "node --experimental-strip-types scripts/rse-cache/generate.ts"
   },
   "dependencies": {
     "@mantine/charts": "^8.3.12",

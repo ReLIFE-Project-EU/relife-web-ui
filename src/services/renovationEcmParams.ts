@@ -4,7 +4,7 @@ import type {
   ECMCustomBuildingParams,
 } from "../types/forecasting";
 import type { RenovationMeasureId } from "../types/renovation";
-import { PV_DEFAULTS, pvKwpFromFloorArea } from "./pvConfig";
+import { PV_DEFAULTS, pvKwpFromFloorArea } from "./pvConfig.ts";
 
 const U_VALUE_TARGETS: Partial<Record<RenovationMeasureId, number>> = {
   "wall-insulation": 0.25,
