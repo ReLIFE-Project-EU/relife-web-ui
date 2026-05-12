@@ -6,12 +6,7 @@
  */
 
 import { forecasting } from "../api";
-import type {
-  ECMApplicationParams,
-  ECMArchetypeParams,
-  ECMScenario,
-  ECMCustomBuildingParams,
-} from "../types/forecasting";
+import type { ECMScenario } from "../types/forecasting";
 import type {
   BuildingInfo,
   EstimationResult,
@@ -32,23 +27,13 @@ import {
   RENOVATION_MEASURES,
 } from "./mock/data/renovationMeasures";
 import { normalizeSystemSelection } from "./measureNormalization";
-import { PV_DEFAULTS, pvKwpFromFloorArea } from "./pvConfig";
+import {
+  buildECMParams,
+  MEASURE_TO_ELEMENT,
+  PV_MEASURE_ID,
+} from "./renovationEcmParams";
 import type { IRenovationService, RenovationMeasure } from "./types";
 import { auditLog, type AuditCtx } from "../utils/auditLogger";
-
-const U_VALUE_TARGETS: Partial<Record<RenovationMeasureId, number>> = {
-  "wall-insulation": 0.25,
-  "roof-insulation": 0.2,
-  "floor-insulation": 0.25,
-  windows: 1.4,
-};
-
-const MEASURE_TO_ELEMENT: Partial<Record<RenovationMeasureId, string>> = {
-  "wall-insulation": "wall",
-  "roof-insulation": "roof",
-  "floor-insulation": "slab",
-  windows: "window",
-};
 
 const ENVELOPE_PACKAGE_MEASURE_PRIORITY: RenovationMeasureId[] = [
   "wall-insulation",
@@ -61,13 +46,11 @@ const SUPPORTED_SYSTEM_SCENARIOS: RenovationMeasureId[] = [
   "condensing-boiler",
   "air-water-heat-pump",
 ];
-const PV_MEASURE_ID: RenovationMeasureId = "pv";
 const ANALYSIS_ELIGIBLE_MEASURES: RenovationMeasureId[] = [
   ...ENVELOPE_PACKAGE_MEASURE_PRIORITY,
   ...SUPPORTED_SYSTEM_SCENARIOS,
   PV_MEASURE_ID,
 ];
-const DEFAULT_HEAT_PUMP_COP = 3.2;
 const MAX_SUGGESTED_PACKAGES = 14;
 const FORECASTING_SCENARIO_CONCURRENCY_LIMIT = 2;
 
@@ -340,7 +323,25 @@ export class RenovationService implements IRenovationService {
       auditCtx,
     );
 
-    const ecmParams = this.buildECMParams(estimation, renovationPackage);
+    const ecmParams = buildECMParams(
+      renovationPackage.measureIds,
+      estimation.modifiedBui
+        ? {
+            kind: "custom",
+            modifiedBui: estimation.modifiedBui,
+            modifiedSystem: estimation.modifiedSystem,
+            floorArea: estimation.archetypeFloorArea ?? null,
+          }
+        : {
+            kind: "archetype",
+            archetype: {
+              category: estimation.archetype!.category,
+              country: estimation.archetype!.country,
+              name: estimation.archetype!.name,
+            },
+            floorArea: estimation.archetypeFloorArea ?? null,
+          },
+    );
     auditLog.debug(
       "renovation",
       "renovation.ecm.params",
@@ -535,93 +536,6 @@ export class RenovationService implements IRenovationService {
     );
 
     return scenario;
-  }
-
-  private buildECMParams(
-    estimation: EstimationResult,
-    renovationPackage: RenovationPackage,
-  ): ECMApplicationParams {
-    const elements = renovationPackage.measureIds
-      .map((measureId) => MEASURE_TO_ELEMENT[measureId])
-      .filter((element): element is string => element !== undefined)
-      .join(",");
-
-    const commonParams: Partial<ECMCustomBuildingParams & ECMArchetypeParams> =
-      {};
-
-    if (elements) {
-      commonParams.scenario_elements = elements;
-    }
-
-    const hasEnvelope = renovationPackage.measureIds.some(
-      (measureId) => MEASURE_TO_ELEMENT[measureId] !== undefined,
-    );
-    const hasPv = renovationPackage.measureIds.includes(PV_MEASURE_ID);
-    const hasGenerationChange =
-      renovationPackage.measureIds.includes("condensing-boiler") ||
-      renovationPackage.measureIds.includes("air-water-heat-pump");
-
-    if (hasPv) {
-      const pvKwp = pvKwpFromFloorArea(estimation.archetypeFloorArea);
-      if (pvKwp === null) {
-        throw new Error(
-          "PV measure requires a valid archetype floor area on the estimation",
-        );
-      }
-      commonParams.use_pv = true;
-      commonParams.pv_kwp = pvKwp;
-      commonParams.pv_tilt_deg = PV_DEFAULTS.tiltDeg;
-      commonParams.pv_azimuth_deg = PV_DEFAULTS.azimuthDeg;
-      commonParams.pv_use_pvgis = PV_DEFAULTS.usePvgis;
-      commonParams.pv_pvgis_loss_percent = PV_DEFAULTS.pvgisLossPercent;
-      commonParams.annual_pv_yield_kwh_per_kwp =
-        PV_DEFAULTS.annualYieldKwhPerKwp;
-    }
-
-    if (hasGenerationChange && !hasEnvelope && !hasPv) {
-      commonParams.include_baseline = true;
-    }
-
-    for (const measureId of renovationPackage.measureIds) {
-      if (measureId === "condensing-boiler") {
-        commonParams.uni_generation_mode = "condensing_boiler";
-      }
-      if (measureId === "air-water-heat-pump") {
-        commonParams.use_heat_pump = true;
-        commonParams.heat_pump_cop = DEFAULT_HEAT_PUMP_COP;
-      }
-
-      const target = U_VALUE_TARGETS[measureId];
-      if (target === undefined) {
-        continue;
-      }
-
-      if (measureId === "wall-insulation") {
-        commonParams.u_wall = target;
-      }
-      if (measureId === "roof-insulation") {
-        commonParams.u_roof = target;
-      }
-      if (measureId === "floor-insulation") {
-        commonParams.u_slab = target;
-      }
-      if (measureId === "windows") {
-        commonParams.u_window = target;
-      }
-    }
-
-    return estimation.modifiedBui
-      ? ({
-          bui: estimation.modifiedBui,
-          system: estimation.modifiedSystem,
-          ...commonParams,
-        } as ECMCustomBuildingParams)
-      : ({
-          category: estimation.archetype?.category,
-          country: estimation.archetype?.country,
-          name: estimation.archetype?.name,
-          ...commonParams,
-        } as ECMArchetypeParams);
   }
 
   private buildBaselineScenario(
