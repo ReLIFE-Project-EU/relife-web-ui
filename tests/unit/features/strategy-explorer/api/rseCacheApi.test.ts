@@ -156,6 +156,30 @@ describe("rseCacheApi", () => {
     ]);
   });
 
+  test("rejects unsupported payload schema versions", async () => {
+    const api = createRSECacheApi(
+      fakeClient({
+        rse_cache_versions: [cacheVersionRow],
+        rse_forecasting_cache_entries: [
+          {
+            ...cacheEntryRow,
+            payload_schema_version: 2,
+          },
+        ],
+      }),
+    );
+
+    await expect(
+      api.listEntries({
+        archetypes: [archetype],
+        packageIds: ["envelope"],
+      }),
+    ).rejects.toMatchObject({
+      name: "RSECacheApiError",
+      code: "validation",
+    } satisfies Partial<RSECacheApiError>);
+  });
+
   test("throws a feature-local error when no published cache exists", async () => {
     const api = createRSECacheApi(fakeClient({ rse_cache_versions: [] }));
 

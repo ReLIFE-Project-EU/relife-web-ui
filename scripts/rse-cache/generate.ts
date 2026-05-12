@@ -25,7 +25,6 @@ import {
   type RSEPackageId,
 } from "../../src/features/strategy-explorer/constants.ts";
 import { mapForecastingEnergyToEmissionScenarios } from "../../src/features/strategy-explorer/services/co2Mapper.ts";
-import { resolveEmissionFactorCountry } from "../../src/features/strategy-explorer/utils/emissionFactorCountry.ts";
 import type {
   RSEArchetypeRef,
   RSEEmissionComparisonSnapshot,
@@ -42,6 +41,7 @@ import type {
   ECMApplicationResponse,
   ECMScenario,
 } from "../../src/types/forecasting.ts";
+import { resolveEmissionFactorCountry } from "../../src/utils/emissionFactorCountry.ts";
 
 const UNIT_SEPARATOR = "\u001f";
 const RSE_SEED_LOGGED_ERRORS = new WeakSet<object>();
@@ -544,8 +544,9 @@ function roundTo(value: number, decimals: number): number {
 }
 
 /** Guard against corrupt or inconsistent data before it reaches the cache.
- *  Checks: (1) no negative or non-finite numbers, (2) reported savings match
- *  baseline minus renovated within a small tolerance. */
+ *  Checks: (1) no negative or non-finite absolute values, (2) reported savings
+ *  match baseline minus renovated within a small tolerance. CO2 savings may be
+ *  negative when a package increases emissions. */
 function validatePayload(
   baseline: RSEForecastingScenarioSnapshot,
   renovated: RSEForecastingScenarioSnapshot,
@@ -556,7 +557,6 @@ function validatePayload(
     renovated.annualEnergyKwh,
     baseline.co2.annualEmissionsKgCo2eq,
     renovated.co2.annualEmissionsKgCo2eq,
-    co2Comparison.savings.absoluteKgCo2eq,
   ];
 
   if (values.some((value) => !Number.isFinite(value) || value < 0)) {

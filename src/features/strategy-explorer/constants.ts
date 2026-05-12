@@ -95,7 +95,6 @@ export const RSE_INVALID_PAYBACK_YEAR_OFFSET = 1;
 export const RSE_FINANCIAL_DEFAULTS = {
   projectLifetimeYears: 20,
   financingType: "self-funded",
-  loanAmountEur: 0,
   upfrontIncentivePercentage: 0,
   lifetimeIncentiveAmountEur: 0,
   lifetimeIncentiveYears: 0,

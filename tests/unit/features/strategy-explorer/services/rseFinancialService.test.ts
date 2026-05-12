@@ -114,7 +114,7 @@ describe("computeFinancials", () => {
     expect(request.annual_maintenance_cost).toBeGreaterThanOrEqual(0);
   });
 
-  test("overrides defaults with provided financialAssumptions", async () => {
+  test("keeps MVP financing neutral even when assumptions are provided", async () => {
     await computeFinancials({
       archetype: {
         country: "IT",
@@ -127,7 +127,6 @@ describe("computeFinancials", () => {
       financialAssumptions: {
         projectLifetimeYears: 25,
         financingType: "self-funded",
-        loanAmountEur: 10_000,
         upfrontIncentivePercentage: 10,
         lifetimeIncentiveAmountEur: 500,
         lifetimeIncentiveYears: 5,
@@ -136,10 +135,37 @@ describe("computeFinancials", () => {
 
     const [request] = mockAssessRisk.mock.calls[0];
     expect(request.project_lifetime).toBe(25);
-    expect(request.loan_amount).toBe(10_000);
+    expect(request.loan_amount).toBe(0);
+    expect(request.loan_term).toBe(0);
     expect(request.upfront_incentive_percentage).toBe(10);
     expect(request.lifetime_incentive_amount).toBe(500);
     expect(request.lifetime_incentive_years).toBe(5);
+  });
+
+  test("returns an unavailable result for non-positive energy savings without calling the API", async () => {
+    const result = await computeFinancials({
+      archetype: {
+        country: "IT",
+        category: "Residential",
+        name: "Detached 1980",
+      },
+      packageId: "envelope",
+      details: makeArchetypeDetails(100),
+      annualEnergySavingsKwh: 0,
+    });
+
+    expect(mockAssessRisk).not.toHaveBeenCalled();
+    expect(result).toEqual(
+      expect.objectContaining({
+        status: "unavailable",
+        unavailableReason: "non-positive-energy-savings",
+        annualEnergySavingsKwh: 0,
+        pointForecasts: {},
+      }),
+    );
+    expect(result.unavailableMessage).toContain(
+      "does not produce positive annual energy savings",
+    );
   });
 
   test("normalises response into RSEFinancialResult shape", async () => {
@@ -163,6 +189,7 @@ describe("computeFinancials", () => {
     expect(result.capexEur).toBe(22_000);
     expect(result.annualMaintenanceEur).toBe(0);
     expect(result.annualEnergySavingsKwh).toBe(5_000);
+    expect(result.status).toBe("available");
 
     expect(result.pointForecasts).toEqual({
       NPV: 15_000,
@@ -229,6 +256,8 @@ describe("computeFinancialsBatch", () => {
 
     expect(mockAssessRisk).toHaveBeenCalledTimes(2);
     expect(results).toHaveLength(2);
+    expect(results[0].status).toBe("available");
+    expect(results[1].status).toBe("available");
     expect(results[0].packageId).toBe("envelope");
     expect(results[1].packageId).toBe("combined");
   });

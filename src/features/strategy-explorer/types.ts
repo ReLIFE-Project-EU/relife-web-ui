@@ -166,7 +166,6 @@ export interface RSEEmissionSavingResult {
 export interface RSEFinancialAssumptions {
   projectLifetimeYears: number;
   financingType: typeof RSE_FINANCIAL_DEFAULTS.financingType;
-  loanAmountEur: number;
   upfrontIncentivePercentage: number;
   lifetimeIncentiveAmountEur: number;
   lifetimeIncentiveYears: number;
@@ -178,6 +177,9 @@ export interface RSEFinancialResult {
   capexEur: number;
   annualMaintenanceEur: number;
   annualEnergySavingsKwh: number;
+  status: "available" | "unavailable";
+  unavailableReason?: "non-positive-energy-savings";
+  unavailableMessage?: string;
   pointForecasts: {
     NPV?: number;
     IRR?: number;

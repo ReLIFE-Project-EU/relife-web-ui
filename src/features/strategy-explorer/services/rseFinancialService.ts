@@ -16,6 +16,9 @@ import type {
 } from "../types";
 import { computePackageCost } from "./rsePackageCatalog";
 
+export const RSE_NON_POSITIVE_ENERGY_SAVINGS_REASON =
+  "non-positive-energy-savings" as const;
+
 /**
  * Input for computing financial results for a single (archetype, package)
  * combination.
@@ -44,7 +47,6 @@ export async function computeFinancials(
   const assumptions = input.financialAssumptions ?? {
     projectLifetimeYears: RSE_FINANCIAL_DEFAULTS.projectLifetimeYears,
     financingType: RSE_FINANCIAL_DEFAULTS.financingType,
-    loanAmountEur: RSE_FINANCIAL_DEFAULTS.loanAmountEur,
     upfrontIncentivePercentage:
       RSE_FINANCIAL_DEFAULTS.upfrontIncentivePercentage,
     lifetimeIncentiveAmountEur:
@@ -57,6 +59,21 @@ export async function computeFinancials(
     input.details,
   );
 
+  if (input.annualEnergySavingsKwh <= 0) {
+    return {
+      archetype: input.archetype,
+      packageId: input.packageId,
+      capexEur,
+      annualMaintenanceEur,
+      annualEnergySavingsKwh: input.annualEnergySavingsKwh,
+      status: "unavailable",
+      unavailableReason: RSE_NON_POSITIVE_ENERGY_SAVINGS_REASON,
+      unavailableMessage:
+        "Financial indicators are unavailable because this package does not produce positive annual energy savings for this archetype.",
+      pointForecasts: {},
+    };
+  }
+
   const riskRequest: RiskAssessmentRequest = {
     capex: capexEur,
     annual_maintenance_cost: annualMaintenanceEur,
@@ -64,7 +81,7 @@ export async function computeFinancials(
     project_lifetime: assumptions.projectLifetimeYears,
     output_level: RSE_FINANCIAL_OUTPUT_LEVEL,
     indicators: ["IRR", "NPV", "PBP", "DPP", "ROI"],
-    loan_amount: assumptions.loanAmountEur,
+    loan_amount: 0,
     loan_term: 0,
     upfront_incentive_percentage: assumptions.upfrontIncentivePercentage,
     lifetime_incentive_amount: assumptions.lifetimeIncentiveAmountEur,
@@ -100,6 +117,7 @@ function normalizeRiskResponse(
     capexEur,
     annualMaintenanceEur,
     annualEnergySavingsKwh: input.annualEnergySavingsKwh,
+    status: "available",
     pointForecasts: {
       NPV: pf.NPV,
       IRR: pf.IRR,

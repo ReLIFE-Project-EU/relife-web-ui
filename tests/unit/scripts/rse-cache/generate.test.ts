@@ -162,6 +162,40 @@ describe("generateRSECacheSeedSql", () => {
       percentage: 45,
     });
   });
+
+  test("allows negative CO2 savings when a package increases emissions", async () => {
+    const { client } = makeForecastingClient({
+      scenarios: [
+        makeScenario("baseline", 8_000, { thermalKwh: 8_000 }),
+        makeScenario("wall", 12_000, { thermalKwh: 12_000 }),
+      ],
+    });
+
+    const result = await generateRSECacheSeedSql(
+      {
+        cacheVersion: "1.test.negative-savings",
+        generatedAt: "2026-05-12T10:04:00.000Z",
+        targets: [
+          {
+            archetype: {
+              country: "IT",
+              category: "Residential",
+              name: "Detached 1980",
+              floorArea: 100,
+            },
+            packageId: "envelope",
+          },
+        ],
+      },
+      client,
+    );
+
+    expect(result.entries[0].payload.co2Comparison.savings).toEqual({
+      absoluteKgCo2eq: -800,
+      absoluteTonCo2eq: -0.8,
+      percentage: -50,
+    });
+  });
 });
 
 describe("resolveSeedArchetypes", () => {

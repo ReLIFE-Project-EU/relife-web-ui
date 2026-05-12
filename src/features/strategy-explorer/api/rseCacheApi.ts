@@ -1,4 +1,5 @@
 import { supabase } from "../../../auth";
+import { RSE_CACHE_PAYLOAD_SCHEMA_VERSION } from "../constants";
 import type {
   RSEArchetypeRef,
   RSECo2Method,
@@ -217,6 +218,13 @@ function toPublishedVersion(row: RSECacheVersionRow): RSEPublishedCacheVersion {
 function toCacheEntry(
   row: RSEForecastingCacheEntryRow,
 ): RSEForecastingCacheEntry {
+  if (row.payload_schema_version !== RSE_CACHE_PAYLOAD_SCHEMA_VERSION) {
+    throw new RSECacheApiError(
+      `Unsupported RSE cache payload schema version: ${row.payload_schema_version}.`,
+      "validation",
+    );
+  }
+
   const payload = parsePayload(row.payload);
 
   return {
@@ -229,8 +237,7 @@ function toCacheEntry(
         name: row.archetype_name,
       },
     },
-    payloadSchemaVersion:
-      row.payload_schema_version as RSEForecastingCacheEntry["payloadSchemaVersion"],
+    payloadSchemaVersion: RSE_CACHE_PAYLOAD_SCHEMA_VERSION,
     baseline: payload.baseline,
     renovated: payload.renovated,
     co2Comparison: payload.co2Comparison,

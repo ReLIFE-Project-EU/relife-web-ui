@@ -1,4 +1,3 @@
-import { resolveEmissionFactorCountry } from "../features/strategy-explorer/utils/emissionFactorCountry";
 import { ServiceType } from "../types/common";
 import type {
   ArchetypeInfo,
@@ -29,6 +28,7 @@ import {
   request,
   uploadRequest,
 } from "./client";
+import { resolveEmissionFactorCountry } from "../utils/emissionFactorCountry";
 
 export const forecasting = {
   ...createServiceApi(ServiceType.FORECASTING),

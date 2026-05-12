@@ -1,11 +1,10 @@
 import {
-  RSE_DEFAULT_EMISSION_FACTOR_COUNTRY,
   RSE_EMISSION_ENERGY_SOURCES,
   RSE_FORECASTING_CO2_FIELD_PATHS,
   RSE_MVP_THERMAL_EMISSION_SOURCE,
-  RSE_SUPPORTED_EMISSION_FACTOR_COUNTRIES,
-} from "../constants";
+} from "../constants.ts";
 import type { RSEEmissionScenarioInput } from "../types";
+import { resolveEmissionFactorCountry } from "../../../utils/emissionFactorCountry.ts";
 
 /**
  * Walk a dotted path through a nested object; return undefined if any segment
@@ -48,18 +47,6 @@ function readRequiredNumber(source: unknown, path: string): number {
   }
 
   return value;
-}
-
-/**
- * Fall back to the default emission-factor country when the archetype country
- * is not supported by the Forecasting service.
- */
-function resolveEmissionFactorCountry(country: string): string {
-  return RSE_SUPPORTED_EMISSION_FACTOR_COUNTRIES.includes(
-    country as (typeof RSE_SUPPORTED_EMISSION_FACTOR_COUNTRIES)[number],
-  )
-    ? country
-    : RSE_DEFAULT_EMISSION_FACTOR_COUNTRY;
 }
 
 /**
