@@ -8,8 +8,12 @@
  * counterpart to src/features/strategy-explorer/api/rseCacheApi.ts.
  */
 import { writeFile } from "node:fs/promises";
+import { Writable } from "node:stream";
 
 import { createClient } from "@supabase/supabase-js";
+import { Command, CommanderError } from "commander";
+import pino, { type DestinationStream, type Logger as PinoLogger } from "pino";
+import pinoPretty from "pino-pretty";
 
 import {
   RSE_CACHE_PAYLOAD_SCHEMA_VERSION,
@@ -53,26 +57,33 @@ const RSE_SEED_LOG_LEVELS = [
 type RSESeedLogLevel = (typeof RSE_SEED_LOG_LEVELS)[number];
 type RSESeedLogFields = Record<string, unknown>;
 
+const RSE_SEED_LOG_FORMATS = ["json", "pretty", "auto"] as const;
+type RSESeedLogFormat = (typeof RSE_SEED_LOG_FORMATS)[number];
+type RSESeedResolvedLogFormat = "json" | "pretty";
+
+/** Default stderr sink for CLI runs (stable reference for TTY / format detection). */
+function defaultSeedStderr(text: string): void {
+  process.stderr.write(text);
+}
+
 export interface RSESeedLogger {
   debug: (event: string, message: string, fields?: RSESeedLogFields) => void;
   info: (event: string, message: string, fields?: RSESeedLogFields) => void;
   warn: (event: string, message: string, fields?: RSESeedLogFields) => void;
   error: (event: string, message: string, fields?: RSESeedLogFields) => void;
+  child?: (fields: RSESeedLogFields) => RSESeedLogger;
 }
 
-const RSE_SEED_LOG_LEVEL_RANK = {
-  debug: 10,
-  info: 20,
-  warn: 30,
-  error: 40,
-  silent: Number.POSITIVE_INFINITY,
-} as const satisfies Record<RSESeedLogLevel, number>;
+const createSilentSeedLogger = (): RSESeedLogger => {
+  const logger: RSESeedLogger = {
+    debug: () => undefined,
+    info: () => undefined,
+    warn: () => undefined,
+    error: () => undefined,
+    child: () => logger,
+  };
 
-const NOOP_SEED_LOGGER: RSESeedLogger = {
-  debug: () => undefined,
-  info: () => undefined,
-  warn: () => undefined,
-  error: () => undefined,
+  return logger;
 };
 
 /** Archetype reference plus the floor area required by the ECM simulator. */
@@ -155,6 +166,10 @@ export interface RSESeedCliDeps {
     supabaseUrl: string,
     serviceRoleKey: string,
   ) => Promise<void>;
+  verifySupabase?: (
+    supabaseUrl: string,
+    serviceRoleKey: string,
+  ) => Promise<void>;
   makeForecastingClient: (
     baseUrl: string,
     logger?: RSESeedLogger,
@@ -174,7 +189,7 @@ export async function generateRSECacheSeedSql(
 ): Promise<RSEGeneratedSeed> {
   const entries: RSESeedEntryRow[] = [];
   const targetKeys = new Set<string>();
-  const logger = options.logger ?? NOOP_SEED_LOGGER;
+  const logger = options.logger ?? createSilentSeedLogger();
   const targetTotal = options.targets.length;
 
   for (const [index, target] of options.targets.entries()) {
@@ -186,6 +201,7 @@ export async function generateRSECacheSeedSql(
       targetIndex,
       targetTotal,
     };
+    const targetLogger = childSeedLogger(logger, targetFields);
 
     if (targetKeys.has(key)) {
       throw new Error(`Duplicate seed target: ${key}`);
@@ -193,8 +209,7 @@ export async function generateRSECacheSeedSql(
     targetKeys.add(key);
 
     const measureIds = RSE_MVP_PACKAGE_MEASURE_IDS[target.packageId];
-    logger.debug("seed.target.start", "Generating seed target", {
-      ...targetFields,
+    targetLogger.debug("seed.target.start", "Generating seed target", {
       measureIds,
     });
     const ecmParams = {
@@ -205,13 +220,16 @@ export async function generateRSECacheSeedSql(
       }),
       include_baseline: true,
     };
-    logger.debug("forecasting.ecm.request_summary", "ECM request summary", {
-      ...targetFields,
-      measureIds,
-      includeBaseline: true,
-      source: "archetype",
-      floorArea: target.archetype.floorArea,
-    });
+    targetLogger.debug(
+      "forecasting.ecm.request_summary",
+      "ECM request summary",
+      {
+        measureIds,
+        includeBaseline: true,
+        source: "archetype",
+        floorArea: target.archetype.floorArea,
+      },
+    );
     const ecmResponse = await forecastingClient.simulateECM(ecmParams);
     const payload = await buildPayload({
       target,
@@ -219,7 +237,7 @@ export async function generateRSECacheSeedSql(
       forecastingServiceVersion: options.forecastingServiceVersion,
       ecmResponse,
       forecastingClient,
-      logger,
+      logger: targetLogger,
     });
 
     entries.push({
@@ -232,8 +250,7 @@ export async function generateRSECacheSeedSql(
       payload,
     });
 
-    logger.debug("seed.target.success", "Generated seed target", {
-      ...targetFields,
+    targetLogger.debug("seed.target.success", "Generated seed target", {
       elapsedMs: Date.now() - targetStartedAt,
       entryCount: entries.length,
     });
@@ -275,13 +292,11 @@ async function buildPayload(params: {
 }): Promise<RSEForecastingCachePayload> {
   const baselineScenario = pickBaselineScenario(params.ecmResponse);
   const renovatedScenario = pickRenovatedScenario(params.ecmResponse);
-  const targetFields = targetLogFields(params.target);
 
   params.logger.debug(
     "forecasting.ecm.response_summary",
     "ECM response summary",
     {
-      ...targetFields,
       scenarioCount: params.ecmResponse.scenarios.length,
       baselineScenarioId: baselineScenario.scenario_id,
       renovatedScenarioId: renovatedScenario.scenario_id,
@@ -299,35 +314,27 @@ async function buildPayload(params: {
     renovatedScenario,
   );
   params.logger.debug("co2.inputs.summary", "CO2 input summary", {
-    ...targetFields,
     scenario: "baseline",
     carrierCount: baselineInputs.length,
     carriers: summarizeCo2Inputs(baselineInputs),
   });
   params.logger.debug("co2.inputs.summary", "CO2 input summary", {
-    ...targetFields,
     scenario: "renovated",
     carrierCount: renovatedInputs.length,
     carriers: summarizeCo2Inputs(renovatedInputs),
   });
-  const baselineComponents = await calculateEmissionComponents(
-    baselineInputs,
-    params.forecastingClient,
-    params.logger,
-    {
-      ...targetFields,
-      scenario: "baseline",
-    },
-  );
-  const renovatedComponents = await calculateEmissionComponents(
-    renovatedInputs,
-    params.forecastingClient,
-    params.logger,
-    {
-      ...targetFields,
-      scenario: "renovated",
-    },
-  );
+  const [baselineComponents, renovatedComponents] = await Promise.all([
+    calculateEmissionComponents(
+      baselineInputs,
+      params.forecastingClient,
+      childSeedLogger(params.logger, { scenario: "baseline" }),
+    ),
+    calculateEmissionComponents(
+      renovatedInputs,
+      params.forecastingClient,
+      childSeedLogger(params.logger, { scenario: "renovated" }),
+    ),
+  ]);
 
   const baseline = toScenarioSnapshot(
     baselineScenario,
@@ -345,7 +352,6 @@ async function buildPayload(params: {
 
   validatePayload(baseline, renovated, co2Comparison);
   params.logger.debug("co2.results.summary", "CO2 result summary", {
-    ...targetFields,
     baselineAnnualConsumptionKwh: baseline.co2.annualConsumptionKwh,
     renovatedAnnualConsumptionKwh: renovated.co2.annualConsumptionKwh,
     baselineAnnualEmissionsKgCo2eq: baseline.co2.annualEmissionsKgCo2eq,
@@ -356,7 +362,6 @@ async function buildPayload(params: {
   params.logger.debug(
     "seed.payload.validation_success",
     "RSE cache payload validated",
-    targetFields,
   );
 
   return {
@@ -495,36 +500,32 @@ async function calculateEmissionComponents(
   inputs: RSEEmissionScenarioInput[],
   forecastingClient: RSEForecastingSeedClient,
   logger: RSESeedLogger,
-  fields: RSESeedLogFields,
 ): Promise<RSEEmissionResult[]> {
-  const components: RSEEmissionResult[] = [];
+  return Promise.all(
+    inputs.map(async (input) => {
+      const startedAt = Date.now();
 
-  for (const input of inputs) {
-    const startedAt = Date.now();
+      logger.debug("co2.calculate.start", "Calculating CO2 component", {
+        inputName: input.name,
+        energySource: input.energy_source,
+        annualConsumptionKwh: input.annual_consumption_kwh,
+        country: input.country,
+      });
 
-    logger.debug("co2.calculate.start", "Calculating CO2 component", {
-      ...fields,
-      inputName: input.name,
-      energySource: input.energy_source,
-      annualConsumptionKwh: input.annual_consumption_kwh,
-      country: input.country,
-    });
+      const component = await forecastingClient.calculateEmissions(input);
 
-    const component = await forecastingClient.calculateEmissions(input);
-    components.push(component);
+      logger.debug("co2.calculate.success", "Calculated CO2 component", {
+        inputName: input.name,
+        energySource: input.energy_source,
+        annualConsumptionKwh: component.annual_consumption_kwh,
+        annualEmissionsKgCo2eq: component.annual_emissions_kg_co2eq,
+        emissionFactorKgPerKwh: component.emission_factor_kg_per_kwh,
+        elapsedMs: Date.now() - startedAt,
+      });
 
-    logger.debug("co2.calculate.success", "Calculated CO2 component", {
-      ...fields,
-      inputName: input.name,
-      energySource: input.energy_source,
-      annualConsumptionKwh: component.annual_consumption_kwh,
-      annualEmissionsKgCo2eq: component.annual_emissions_kg_co2eq,
-      emissionFactorKgPerKwh: component.emission_factor_kg_per_kwh,
-      elapsedMs: Date.now() - startedAt,
-    });
-  }
-
-  return components;
+      return component;
+    }),
+  );
 }
 
 /** Convert a single ECM scenario plus its CO2 comparison results into the
@@ -660,69 +661,76 @@ function validatePayload(
   }
 }
 
-const RSE_CACHE_VERSION_COLUMNS = [
-  "cache_version",
-  "status",
-  "description",
-  "generated_by",
-  "forecasting_service_version",
-  "co2_method",
-] as const satisfies readonly (keyof RSESeedVersionRow)[];
-
-const RSE_CACHE_VERSION_UPDATE_COLUMNS = [
-  "status",
-  "description",
-  "generated_by",
-  "forecasting_service_version",
-  "co2_method",
-] as const satisfies readonly (keyof RSESeedVersionRow)[];
-
-const RSE_CACHE_ENTRY_COLUMNS = [
-  "cache_version",
-  "archetype_country",
-  "archetype_category",
-  "archetype_name",
-  "package_id",
-  "payload_schema_version",
-  "payload",
-] as const satisfies readonly (keyof RSESeedEntryRow)[];
-
-const RSE_CACHE_ENTRY_CONFLICT_COLUMNS = [
-  "cache_version",
-  "archetype_country",
-  "archetype_category",
-  "archetype_name",
-  "package_id",
-] as const satisfies readonly (keyof RSESeedEntryRow)[];
-
-const RSE_CACHE_ENTRY_UPDATE_COLUMNS = [
-  "payload_schema_version",
-  "payload",
-] as const satisfies readonly (keyof RSESeedEntryRow)[];
-
 type SqlColumn<Row> = Extract<keyof Row, string>;
 type SqlSerializers<Row> = {
   [Column in SqlColumn<Row>]: (value: Row[Column]) => string;
 };
 
-const RSE_CACHE_VERSION_SQL_SERIALIZERS = {
-  cache_version: sqlString,
-  status: sqlString,
-  description: sqlNullableString,
-  generated_by: sqlString,
-  forecasting_service_version: sqlNullableString,
-  co2_method: sqlString,
-} satisfies SqlSerializers<RSESeedVersionRow>;
+interface SqlTableDescriptor<Row extends object> {
+  table: string;
+  columns: readonly SqlColumn<Row>[];
+  serializers: SqlSerializers<Row>;
+  conflictColumns: readonly SqlColumn<Row>[];
+  updateColumns?: readonly SqlColumn<Row>[];
+}
 
-const RSE_CACHE_ENTRY_SQL_SERIALIZERS = {
-  cache_version: sqlString,
-  archetype_country: sqlString,
-  archetype_category: sqlString,
-  archetype_name: sqlString,
-  package_id: sqlString,
-  payload_schema_version: sqlInteger,
-  payload: sqlJson,
-} satisfies SqlSerializers<RSESeedEntryRow>;
+const RSE_CACHE_VERSION_TABLE = {
+  table: "public.rse_cache_versions",
+  columns: [
+    "cache_version",
+    "status",
+    "description",
+    "generated_by",
+    "forecasting_service_version",
+    "co2_method",
+  ],
+  serializers: {
+    cache_version: sqlString,
+    status: sqlString,
+    description: sqlNullableString,
+    generated_by: sqlString,
+    forecasting_service_version: sqlNullableString,
+    co2_method: sqlString,
+  },
+  conflictColumns: ["cache_version"],
+  updateColumns: [
+    "status",
+    "description",
+    "generated_by",
+    "forecasting_service_version",
+    "co2_method",
+  ],
+} as const satisfies SqlTableDescriptor<RSESeedVersionRow>;
+
+const RSE_CACHE_ENTRY_TABLE = {
+  table: "public.rse_forecasting_cache_entries",
+  columns: [
+    "cache_version",
+    "archetype_country",
+    "archetype_category",
+    "archetype_name",
+    "package_id",
+    "payload_schema_version",
+    "payload",
+  ],
+  serializers: {
+    cache_version: sqlString,
+    archetype_country: sqlString,
+    archetype_category: sqlString,
+    archetype_name: sqlString,
+    package_id: sqlString,
+    payload_schema_version: sqlInteger,
+    payload: sqlJson,
+  },
+  conflictColumns: [
+    "cache_version",
+    "archetype_country",
+    "archetype_category",
+    "archetype_name",
+    "package_id",
+  ],
+  updateColumns: ["payload_schema_version", "payload"],
+} as const satisfies SqlTableDescriptor<RSESeedEntryRow>;
 
 /** Produce an idempotent SQL script that upserts the version row and all
  *  entry rows, then optionally publishes the version. SQL output is kept for
@@ -738,12 +746,8 @@ function renderSeedSql(
     "BEGIN;",
     "",
     renderInsert({
-      table: "public.rse_cache_versions",
+      ...RSE_CACHE_VERSION_TABLE,
       row: version,
-      columns: RSE_CACHE_VERSION_COLUMNS,
-      serializers: RSE_CACHE_VERSION_SQL_SERIALIZERS,
-      conflictColumns: ["cache_version"],
-      updateColumns: RSE_CACHE_VERSION_UPDATE_COLUMNS,
     }),
     "",
   ];
@@ -751,12 +755,8 @@ function renderSeedSql(
   for (const entry of entries) {
     lines.push(
       renderInsert({
-        table: "public.rse_forecasting_cache_entries",
+        ...RSE_CACHE_ENTRY_TABLE,
         row: entry,
-        columns: RSE_CACHE_ENTRY_COLUMNS,
-        serializers: RSE_CACHE_ENTRY_SQL_SERIALIZERS,
-        conflictColumns: RSE_CACHE_ENTRY_CONFLICT_COLUMNS,
-        updateColumns: RSE_CACHE_ENTRY_UPDATE_COLUMNS,
       }),
     );
   }
@@ -778,6 +778,32 @@ function renderSeedSql(
   return lines.join("\n");
 }
 
+function createSupabaseClient(supabaseUrl: string, serviceRoleKey: string) {
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+}
+
+/** Quick connectivity/auth check. Ignores missing-table errors (42P01) so
+ *  the check works even before migrations are run. */
+async function verifySupabase(
+  supabaseUrl: string,
+  serviceRoleKey: string,
+): Promise<void> {
+  const client = createSupabaseClient(supabaseUrl, serviceRoleKey);
+  const { error } = await client
+    .from("rse_cache_versions")
+    .select("cache_version", { head: true })
+    .limit(1);
+
+  if (error && error.code !== "42P01") {
+    throw new Error(`Supabase connectivity check failed: ${error.message}`);
+  }
+}
+
 /** Write the generated seed directly to Supabase using a service-role client.
  *  Only used when the --apply CLI flag is passed; otherwise SQL is emitted to stdout/file. */
 async function applySeed(
@@ -785,12 +811,7 @@ async function applySeed(
   supabaseUrl: string,
   serviceRoleKey: string,
 ): Promise<void> {
-  const client = createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
+  const client = createSupabaseClient(supabaseUrl, serviceRoleKey);
 
   const { error: versionError } = await client
     .from("rse_cache_versions")
@@ -837,20 +858,28 @@ function requirePrimaryEnergySummary(
 
 /** Read a dotted path from an object; throw if the value is not a finite number. */
 function readRequiredNumber(source: unknown, path: string): number {
-  const value = readPath(source, path);
-
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    throw new Error(`Expected numeric value at ${path}`);
-  }
-
-  return value;
+  return readNumber(source, path, "required");
 }
 
 /** Read a dotted path; return undefined when missing, but still throw on wrong type. */
 function readOptionalNumber(source: unknown, path: string): number | undefined {
+  return readNumber(source, path, "optional");
+}
+
+function readNumber(source: unknown, path: string, mode: "required"): number;
+function readNumber(
+  source: unknown,
+  path: string,
+  mode: "optional",
+): number | undefined;
+function readNumber(
+  source: unknown,
+  path: string,
+  mode: "required" | "optional",
+): number | undefined {
   const value = readPath(source, path);
 
-  if (value === undefined || value === null) {
+  if (mode === "optional" && (value === undefined || value === null)) {
     return undefined;
   }
 
@@ -866,22 +895,34 @@ function readRequiredRecord(
   source: unknown,
   path: string,
 ): Record<string, unknown> {
-  const value = readPath(source, path);
-
-  if (!isRecord(value)) {
-    throw new Error(`Expected object value at ${path}`);
-  }
-
-  return value;
+  return readRecord(source, path, "required");
 }
 
 function readOptionalRecord(
   source: unknown,
   path: string,
 ): Record<string, unknown> | undefined {
+  return readRecord(source, path, "optional");
+}
+
+function readRecord(
+  source: unknown,
+  path: string,
+  mode: "required",
+): Record<string, unknown>;
+function readRecord(
+  source: unknown,
+  path: string,
+  mode: "optional",
+): Record<string, unknown> | undefined;
+function readRecord(
+  source: unknown,
+  path: string,
+  mode: "required" | "optional",
+): Record<string, unknown> | undefined {
   const value = readPath(source, path);
 
-  if (value === undefined || value === null) {
+  if (mode === "optional" && (value === undefined || value === null)) {
     return undefined;
   }
 
@@ -1076,7 +1117,7 @@ export async function resolveSeedArchetypes(
   value: string | undefined,
   forecastingClient: RSEForecastingSeedClient,
   preloadedArchetypes?: ArchetypeInfo[],
-  logger: RSESeedLogger = NOOP_SEED_LOGGER,
+  logger: RSESeedLogger = createSilentSeedLogger(),
 ): Promise<RSESeedArchetype[]> {
   const archetypes =
     value !== undefined
@@ -1100,83 +1141,163 @@ export async function resolveSeedArchetypes(
     );
   }
 
-  const resolved: RSESeedArchetype[] = [];
+  const resolved = await Promise.all(
+    archetypes.map(async (archetype) => {
+      const startedAt = Date.now();
 
-  for (const archetype of archetypes) {
-    const startedAt = Date.now();
-
-    logger.debug("archetypes.details.start", "Fetching archetype details", {
-      country: archetype.country,
-      category: archetype.category,
-      name: archetype.name,
-    });
-
-    const details = await forecastingClient.getArchetypeDetails(archetype);
-    const floorArea = readPath(details.bui, "building.net_floor_area");
-
-    if (
-      typeof floorArea !== "number" ||
-      !Number.isFinite(floorArea) ||
-      floorArea <= 0
-    ) {
-      throw new Error(
-        `Forecasting archetype ${archetype.country}/${archetype.category}/${archetype.name} is missing a positive bui.building.net_floor_area`,
-      );
-    }
-
-    resolved.push({
-      ...archetype,
-      floorArea,
-    });
-
-    logger.debug(
-      "archetypes.details.success",
-      "Resolved archetype floor area",
-      {
+      logger.debug("archetypes.details.start", "Fetching archetype details", {
         country: archetype.country,
         category: archetype.category,
         name: archetype.name,
+      });
+
+      const details = await forecastingClient.getArchetypeDetails(archetype);
+      const floorArea = readPath(details.bui, "building.net_floor_area");
+
+      if (
+        typeof floorArea !== "number" ||
+        !Number.isFinite(floorArea) ||
+        floorArea <= 0
+      ) {
+        throw new Error(
+          `Forecasting archetype ${archetype.country}/${archetype.category}/${archetype.name} is missing a positive bui.building.net_floor_area`,
+        );
+      }
+
+      logger.debug(
+        "archetypes.details.success",
+        "Resolved archetype floor area",
+        {
+          country: archetype.country,
+          category: archetype.category,
+          name: archetype.name,
+          floorArea,
+          elapsedMs: Date.now() - startedAt,
+        },
+      );
+
+      return {
+        ...archetype,
         floorArea,
-        elapsedMs: Date.now() - startedAt,
-      },
-    );
-  }
+      };
+    }),
+  );
 
   return resolved;
 }
 
-function hasHelpFlag(argv: string[]): boolean {
-  return argv.includes("--help") || argv.includes("-h");
+interface RSESeedCliOptions {
+  cacheVersion: string;
+  forecastingBaseUrl?: string;
+  archetypes?: string;
+  packages: RSEPackageId[];
+  out?: string;
+  description?: string;
+  forecastingServiceVersion?: string;
+  publish: boolean;
+  apply: boolean;
+  dryRun: boolean;
+  logLevel?: RSESeedLogLevel;
+  logFormat?: RSESeedLogFormat;
 }
 
-function renderCliHelp(): string {
-  return `RSE forecasting cache seed generator
+function parseCliOptions(
+  argv: string[],
+  deps: Pick<RSESeedCliDeps, "stdout" | "stderr">,
+): RSESeedCliOptions | null {
+  const program = buildCliProgram(deps);
 
-Usage:
-  task rse-seed -- --cache-version <version> --forecasting-base-url <url> [options]
-  npm run rse:seed -- --cache-version <version> --forecasting-base-url <url> [options]
+  try {
+    program.parse(argv, { from: "user" });
+  } catch (error) {
+    if (error instanceof CommanderError && error.exitCode === 0) {
+      return null;
+    }
 
-Required:
-  --cache-version <version>              Cache batch identifier, for example 2026-05-12.it-demo.
-  --forecasting-base-url <url>           Absolute Forecasting/API base URL. If omitted, absolute VITE_API_URL is used.
+    throw error;
+  }
 
-Options:
-  --archetypes '<json>'                  JSON array override with country, category, and name.
-                                         If omitted, all Forecasting-supported archetypes are discovered.
-                                         Floor areas are always fetched from the Forecasting service.
-  --packages <ids>                       Comma-separated package ids. Defaults to all RSE packages.
-  --out <path>                           Write generated SQL to a file instead of stdout.
-  --description <text>                   Store a description on the cache version row.
-  --forecasting-service-version <id>     Store Forecasting service provenance.
-  --publish                              Mark generated SQL/applied rows as published.
-  --apply                                Apply directly to Supabase after generating SQL.
-  --dry-run                              Validate generation and print a summary without writing files or Supabase rows.
-  --log-level <level>                    Structured log level: debug, info, warn, error, or silent. Defaults to info.
-  --help, -h                             Show this help.
+  return program.opts<RSESeedCliOptions>();
+}
+
+function buildCliProgram(
+  deps: Pick<RSESeedCliDeps, "stdout" | "stderr">,
+): Command {
+  return new Command()
+    .name("rse-seed")
+    .description("RSE forecasting cache seed generator")
+    .usage("--cache-version <version> --forecasting-base-url <url> [options]")
+    .exitOverride()
+    .configureOutput({
+      writeOut: deps.stdout,
+      writeErr: deps.stderr ?? (() => undefined),
+    })
+    .allowExcessArguments(false)
+    .requiredOption(
+      "--cache-version <version>",
+      "Cache batch identifier, for example 2026-05-12.it-demo.",
+    )
+    .option(
+      "--forecasting-base-url <url>",
+      "Absolute Forecasting/API base URL. If omitted, absolute VITE_API_URL is used.",
+    )
+    .option(
+      "--archetypes <json>",
+      "JSON array override with country, category, and name.",
+    )
+    .option(
+      "--packages <ids>",
+      "Comma-separated package ids. Defaults to all RSE packages.",
+      parsePackageIds,
+      [...RSE_PACKAGE_IDS],
+    )
+    .option("--out <path>", "Write generated SQL to a file instead of stdout.")
+    .option(
+      "--description <text>",
+      "Store a description on the cache version row.",
+    )
+    .option(
+      "--forecasting-service-version <id>",
+      "Optional provenance label you choose (e.g. git tag, image tag, release id). Stored on the cache version row and copied into each entry payload provenance; not read from the Forecasting API and does not affect simulations. Omit for NULL / omitted field.",
+    )
+    .option("--publish", "Mark generated SQL/applied rows as published.", false)
+    .option(
+      "--apply",
+      "Apply directly to Supabase after generating SQL.",
+      false,
+    )
+    .option(
+      "--dry-run",
+      "Validate generation and print a summary without writing files or Supabase rows.",
+      false,
+    )
+    .option(
+      "--log-level <level>",
+      "Structured log level: debug, info, warn, error, or silent. Defaults to info.",
+      parseLogLevel,
+    )
+    .option(
+      "--log-format <format>",
+      "stderr log rendering: json (JSON Lines), pretty (human-readable), or auto (pretty when stderr is a TTY).",
+      parseLogFormat,
+    )
+    .addHelpText(
+      "after",
+      `
 
 Logging:
-  Structured logs are emitted as JSON Lines on stderr. SQL and dry-run summaries stay on stdout.
-  RSE_SEED_LOG_LEVEL can set the default log level; --log-level takes precedence.
+  Logs go to stderr; SQL and dry-run summaries stay on stdout.
+  With --log-format auto (default when omitted), JSON Lines are used unless stderr is a TTY, then pino-pretty is used.
+  RSE_SEED_LOG_LEVEL sets the default log level; --log-level takes precedence.
+  RSE_SEED_LOG_FORMAT sets the default log format when --log-format is omitted (json, pretty, or auto).
+
+Provenance:
+  --forecasting-service-version  Optional string you supply for traceability only (e.g. Forecasting repo tag, container
+                                   digest, or build id). The generator does not fetch it from the Forecasting service.
+                                   When set: written to public.rse_cache_versions.forecasting_service_version and to
+                                   each entry JSONB payload under provenance.forecastingServiceVersion. When omitted:
+                                   the column is NULL and provenance.forecastingServiceVersion is omitted from payloads.
+                                   Does not change ECM, CO2, or SQL upsert behavior beyond those stored values.
 
 Direct apply environment:
   SUPABASE_URL or VITE_SUPABASE_URL
@@ -1187,50 +1308,8 @@ Examples:
   task rse-seed -- --cache-version 2026-05-12.all --forecasting-base-url http://localhost:8080 --dry-run
   task rse-seed -- --cache-version 2026-05-12.all --forecasting-base-url http://localhost:8080 --out .work/rse-seed.sql
   task rse-seed -- --cache-version 2026-05-12.it-demo --archetypes '[{"country":"IT","category":"Residential","name":"Detached 1980"}]' --forecasting-base-url http://localhost:8080
-`;
-}
-
-/** Simple --flag value / --flag=value parser used by the CLI main. */
-function parseArgs(argv: string[]): Record<string, string | boolean> {
-  const args: Record<string, string | boolean> = {};
-
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index];
-
-    if (!arg.startsWith("--")) {
-      throw new Error(`Unexpected positional argument: ${arg}`);
-    }
-
-    const rawKey = arg.slice(2);
-    const equalsIndex = rawKey.indexOf("=");
-
-    if (equalsIndex >= 0) {
-      args[rawKey.slice(0, equalsIndex)] = rawKey.slice(equalsIndex + 1);
-      continue;
-    }
-
-    const key = rawKey;
-    const next = argv[index + 1];
-
-    if (!next || next.startsWith("--")) {
-      args[key] = true;
-      continue;
-    }
-
-    args[key] = next;
-    index += 1;
-  }
-
-  return args;
-}
-
-/** Extract a string flag from parsed CLI args; return undefined for booleans or missing keys. */
-function getStringArg(
-  args: Record<string, string | boolean>,
-  key: string,
-): string | undefined {
-  const value = args[key];
-  return typeof value === "string" ? value : undefined;
+`,
+    );
 }
 
 function parseLogLevel(value: string | undefined): RSESeedLogLevel {
@@ -1247,57 +1326,144 @@ function parseLogLevel(value: string | undefined): RSESeedLogLevel {
   );
 }
 
+export function parseLogFormat(value: string | undefined): RSESeedLogFormat {
+  if (!value || value.trim() === "") {
+    return "auto";
+  }
+
+  if (RSE_SEED_LOG_FORMATS.includes(value as RSESeedLogFormat)) {
+    return value as RSESeedLogFormat;
+  }
+
+  throw new Error(
+    `Unsupported --log-format: ${value}. Expected one of ${RSE_SEED_LOG_FORMATS.join(", ")}`,
+  );
+}
+
+function resolveSeedLogFormat(
+  format: RSESeedLogFormat,
+  sink: (text: string) => void,
+): RSESeedResolvedLogFormat {
+  if (format === "json") {
+    return "json";
+  }
+
+  if (format === "pretty") {
+    return "pretty";
+  }
+
+  return sink === defaultSeedStderr && process.stderr.isTTY ? "pretty" : "json";
+}
+
+function createSinkWritable(sink: (text: string) => void): Writable {
+  return new Writable({
+    write(chunk, _encoding, callback): void {
+      sink(typeof chunk === "string" ? chunk : chunk.toString());
+      callback();
+    },
+  });
+}
+
 function createSeedLogger(params: {
   level: RSESeedLogLevel;
   sink: (text: string) => void;
   now: () => Date;
+  format: RSESeedResolvedLogFormat;
 }): RSESeedLogger {
-  const shouldLog = (level: Exclude<RSESeedLogLevel, "silent">) =>
-    RSE_SEED_LOG_LEVEL_RANK[level] >= RSE_SEED_LOG_LEVEL_RANK[params.level];
-  const log =
+  if (params.level === "silent") {
+    return createSilentSeedLogger();
+  }
+
+  const serializers = {
+    error: (value: unknown) =>
+      value instanceof Error
+        ? { name: value.name, message: value.message }
+        : value,
+  };
+
+  if (params.format === "pretty") {
+    const prettyStream = pinoPretty({
+      colorize: process.stderr.isTTY,
+      translateTime: "SYS:iso",
+      ignore: "pid,hostname",
+      messageKey: "message",
+      destination: createSinkWritable(params.sink),
+      sync: true,
+    });
+
+    const logger = pino(
+      {
+        base: null,
+        level: params.level,
+        messageKey: "message",
+        timestamp: pino.stdTimeFunctions.isoTime,
+        formatters: {
+          level: (label) => ({ level: label }),
+        },
+        serializers,
+      },
+      prettyStream,
+    );
+
+    return toSeedLogger(logger);
+  }
+
+  const logger = pino(
+    {
+      base: null,
+      level: params.level,
+      messageKey: "message",
+      timestamp: () => `,"timestamp":"${params.now().toISOString()}"`,
+      formatters: {
+        level: (label) => ({ level: label }),
+      },
+      serializers,
+    },
+    {
+      write: (message: string) => params.sink(message),
+    } satisfies DestinationStream,
+  );
+
+  return toSeedLogger(logger);
+}
+
+function toSeedLogger(logger: PinoLogger): RSESeedLogger {
+  const wrap =
     (level: Exclude<RSESeedLogLevel, "silent">) =>
     (event: string, message: string, fields: RSESeedLogFields = {}) => {
-      if (!shouldLog(level)) {
-        return;
-      }
-
-      params.sink(
-        `${JSON.stringify({
-          timestamp: params.now().toISOString(),
-          level,
-          event,
-          message,
-          ...sanitizeLogFields(fields),
-        })}\n`,
-      );
+      logger[level]({ event, ...fields }, message);
     };
 
   return {
-    debug: log("debug"),
-    info: log("info"),
-    warn: log("warn"),
-    error: log("error"),
+    debug: wrap("debug"),
+    info: wrap("info"),
+    warn: wrap("warn"),
+    error: wrap("error"),
+    child: (fields) => toSeedLogger(logger.child(fields)),
   };
 }
 
-function sanitizeLogFields(fields: RSESeedLogFields): RSESeedLogFields {
-  const sanitized: RSESeedLogFields = {};
-
-  for (const [key, value] of Object.entries(fields)) {
-    if (value === undefined) {
-      continue;
-    }
-
-    sanitized[key] = value instanceof Error ? serializeError(value) : value;
+function childSeedLogger(
+  logger: RSESeedLogger,
+  fields: RSESeedLogFields,
+): RSESeedLogger {
+  if (logger.child) {
+    return logger.child(fields);
   }
 
-  return sanitized;
-}
+  const wrap =
+    (level: Exclude<RSESeedLogLevel, "silent">) =>
+    (event: string, message: string, extraFields: RSESeedLogFields = {}) => {
+      logger[level](event, message, { ...fields, ...extraFields });
+    };
 
-function serializeError(error: Error): { name: string; message: string } {
   return {
-    name: error.name,
-    message: error.message,
+    debug: wrap("debug"),
+    info: wrap("info"),
+    warn: wrap("warn"),
+    error: wrap("error"),
+    child: (childFields) =>
+      childSeedLogger(logger, { ...fields, ...childFields }),
   };
 }
 
@@ -1367,7 +1533,7 @@ async function verifyForecastingApi(
  *  Param keys are camelCase in TypeScript but snake_case in query strings. */
 export function makeFetchForecastingClient(
   baseUrl: string,
-  logger: RSESeedLogger = NOOP_SEED_LOGGER,
+  logger: RSESeedLogger = createSilentSeedLogger(),
 ): RSEForecastingSeedClient {
   const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
 
@@ -1461,11 +1627,10 @@ export function makeFetchForecastingClient(
 async function jsonRequest<T>(
   url: string,
   init: RequestInit,
-  logger: RSESeedLogger = NOOP_SEED_LOGGER,
+  logger: RSESeedLogger = createSilentSeedLogger(),
 ): Promise<T> {
   const method = init.method ?? "GET";
-  const endpoint = sanitizeRequestUrl(url);
-  const queryParams = sanitizeRequestQuery(url);
+  const { endpoint, queryParams } = splitRequestUrl(url);
   const startedAt = Date.now();
   let response: Response;
 
@@ -1526,17 +1691,10 @@ async function jsonRequest<T>(
   return response.json() as Promise<T>;
 }
 
-function sanitizeRequestUrl(url: string): string {
-  try {
-    const parsed = new URL(url);
-
-    return parsed.pathname;
-  } catch {
-    return url.split("?")[0];
-  }
-}
-
-function sanitizeRequestQuery(url: string): Record<string, string> | undefined {
+function splitRequestUrl(url: string): {
+  endpoint: string;
+  queryParams?: Record<string, string>;
+} {
   try {
     const parsed = new URL(url);
     const queryParams: Record<string, string> = {};
@@ -1545,9 +1703,15 @@ function sanitizeRequestQuery(url: string): Record<string, string> | undefined {
       queryParams[key] = value;
     }
 
-    return Object.keys(queryParams).length > 0 ? queryParams : undefined;
+    return {
+      endpoint: parsed.pathname,
+      queryParams:
+        Object.keys(queryParams).length > 0 ? queryParams : undefined,
+    };
   } catch {
-    return undefined;
+    return {
+      endpoint: url.split("?")[0],
+    };
   }
 }
 
@@ -1599,47 +1763,45 @@ export async function runRSESeedCli(
   deps: RSESeedCliDeps = {
     env: process.env,
     stdout: (text) => process.stdout.write(text),
-    stderr: (text) => process.stderr.write(text),
+    stderr: defaultSeedStderr,
     writeFile,
     applySeed,
     makeForecastingClient: makeFetchForecastingClient,
     now: () => new Date(),
   },
 ): Promise<void> {
-  if (hasHelpFlag(argv)) {
-    deps.stdout(renderCliHelp());
+  const options = parseCliOptions(argv, deps);
+
+  if (!options) {
     return;
   }
 
-  const args = parseArgs(argv);
+  const stderrSink = deps.stderr ?? (() => undefined);
+  const logFormat = parseLogFormat(
+    options.logFormat ?? deps.env.RSE_SEED_LOG_FORMAT,
+  );
   const logger = createSeedLogger({
-    level: parseLogLevel(
-      getStringArg(args, "log-level") ?? deps.env.RSE_SEED_LOG_LEVEL,
-    ),
-    sink: deps.stderr ?? (() => undefined),
+    level: options.logLevel ?? parseLogLevel(deps.env.RSE_SEED_LOG_LEVEL),
+    sink: stderrSink,
     now: deps.now,
+    format: resolveSeedLogFormat(logFormat, stderrSink),
   });
-  const cacheVersion = getStringArg(args, "cache-version");
-  const dryRun = args["dry-run"] === true;
+  const cacheVersion = options.cacheVersion;
+  const dryRun = options.dryRun;
+  const out = options.out;
 
   try {
-    if (!cacheVersion) {
-      throw new Error(
-        "--cache-version is required. Run with --help for usage.",
-      );
-    }
-
-    if (dryRun && args.apply === true) {
+    if (dryRun && options.apply) {
       throw new Error("--dry-run cannot be combined with --apply");
     }
 
-    if (dryRun && getStringArg(args, "out")) {
+    if (dryRun && out) {
       throw new Error("--dry-run cannot be combined with --out");
     }
 
-    const packageIds = parsePackageIds(getStringArg(args, "packages"));
+    const packageIds = options.packages;
     const forecastingBaseUrl =
-      getStringArg(args, "forecasting-base-url") ?? deps.env.VITE_API_URL;
+      options.forecastingBaseUrl ?? deps.env.VITE_API_URL;
 
     if (!forecastingBaseUrl || forecastingBaseUrl.startsWith("/")) {
       throw new Error(
@@ -1647,9 +1809,9 @@ export async function runRSESeedCli(
       );
     }
 
-    const publish = args.publish === true;
-    const apply = args.apply === true;
-    const supabaseUrl = deps.env.SUPABASE_URL ?? deps.env.VITE_SUPABASE_URL;
+    const publish = options.publish;
+    const apply = options.apply;
+    const supabaseUrl = deps.env.VITE_SUPABASE_URL ?? deps.env.SUPABASE_URL;
 
     logger.info("rse_seed.service_urls", "RSE seed service targets", {
       forecastingBaseUrl: sanitizeServiceUrl(forecastingBaseUrl),
@@ -1662,8 +1824,29 @@ export async function runRSESeedCli(
       dryRun,
       publish,
       apply,
-      hasOutFile: getStringArg(args, "out") !== undefined,
+      hasOutFile: out !== undefined,
     });
+
+    if (apply) {
+      const serviceRoleKey =
+        deps.env.SUPABASE_KEY ?? deps.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      if (!supabaseUrl || !serviceRoleKey) {
+        throw new Error(
+          "SUPABASE_URL and SUPABASE_KEY are required for --apply",
+        );
+      }
+
+      logger.info(
+        "supabase.connectivity.start",
+        "Checking Supabase connectivity",
+      );
+      await (deps.verifySupabase ?? verifySupabase)(
+        supabaseUrl,
+        serviceRoleKey,
+      );
+      logger.info("supabase.connectivity.success", "Supabase is reachable");
+    }
 
     const forecastingClient = deps.makeForecastingClient(
       forecastingBaseUrl,
@@ -1675,11 +1858,11 @@ export async function runRSESeedCli(
     );
 
     logger.info("archetypes.resolve.start", "Resolving seed archetypes", {
-      explicitOverride: getStringArg(args, "archetypes") !== undefined,
+      explicitOverride: options.archetypes !== undefined,
     });
 
     const archetypes = await resolveSeedArchetypes(
-      getStringArg(args, "archetypes"),
+      options.archetypes,
       forecastingClient,
       availableArchetypes,
       logger,
@@ -1704,11 +1887,8 @@ export async function runRSESeedCli(
         cacheVersion,
         targets,
         generatedAt: deps.now().toISOString(),
-        forecastingServiceVersion: getStringArg(
-          args,
-          "forecasting-service-version",
-        ),
-        description: getStringArg(args, "description"),
+        forecastingServiceVersion: options.forecastingServiceVersion,
+        description: options.description,
         publish,
         logger,
       },
@@ -1738,8 +1918,6 @@ export async function runRSESeedCli(
       });
       return;
     }
-
-    const out = getStringArg(args, "out");
 
     if (out) {
       logger.info("seed.sql.write.start", "Writing generated SQL to file", {
@@ -1800,8 +1978,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     if (!wasErrorLogged(error)) {
       createSeedLogger({
         level: "info",
-        sink: (text) => process.stderr.write(text),
+        sink: defaultSeedStderr,
         now: () => new Date(),
+        format: resolveSeedLogFormat("auto", defaultSeedStderr),
       }).error("rse_seed.failure", "RSE cache seed command failed", {
         error: error instanceof Error ? error : new Error(String(error)),
       });

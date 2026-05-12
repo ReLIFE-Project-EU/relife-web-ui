@@ -453,6 +453,7 @@ describe("runRSESeedCli", () => {
     });
     const errors: string[] = [];
     const applied: RSEGeneratedSeed[] = [];
+    const verified: Array<{ url: string; key: string }> = [];
 
     await runRSESeedCli(
       [
@@ -476,6 +477,9 @@ describe("runRSESeedCli", () => {
         writeFile: async () => undefined,
         applySeed: async (generated) => {
           applied.push(generated);
+        },
+        verifySupabase: async (url, key) => {
+          verified.push({ url, key });
         },
         makeForecastingClient: () => client,
         now: () => new Date("2026-05-12T10:04:00.000Z"),
@@ -504,7 +508,96 @@ describe("runRSESeedCli", () => {
         supabaseApplyEnabled: true,
       }),
     );
+    expect(verified).toHaveLength(1);
+    expect(verified[0]).toEqual({
+      url: "https://example.supabase.co?apikey=secret",
+      key: "service-role-key",
+    });
     expect(applied).toHaveLength(1);
+  });
+
+  test("fails fast when Supabase connectivity check fails", async () => {
+    const { client, simulateCalls } = makeForecastingClient({
+      scenarios: [
+        makeScenario("baseline", 12_000, { thermalKwh: 12_000 }),
+        makeScenario("wall", 8_000, { thermalKwh: 8_000 }),
+      ],
+    });
+    const applied: RSEGeneratedSeed[] = [];
+
+    await expect(
+      runRSESeedCli(
+        [
+          "--cache-version",
+          "1.test.apply-fail",
+          "--archetypes",
+          '[{"country":"IT","category":"Residential","name":"Detached 1980"}]',
+          "--forecasting-base-url",
+          "http://forecasting.test",
+          "--packages",
+          "envelope",
+          "--apply",
+        ],
+        {
+          env: {
+            SUPABASE_URL: "https://example.supabase.co",
+            SUPABASE_KEY: "bad-key",
+          },
+          stdout: () => undefined,
+          writeFile: async () => undefined,
+          applySeed: async (generated) => {
+            applied.push(generated);
+          },
+          verifySupabase: async () => {
+            throw new Error("auth failed");
+          },
+          makeForecastingClient: () => client,
+          now: () => new Date("2026-05-12T10:04:00.000Z"),
+        },
+      ),
+    ).rejects.toThrow("auth failed");
+
+    expect(simulateCalls).toEqual([]);
+    expect(applied).toEqual([]);
+  });
+
+  test("fails fast when Supabase env vars are missing for --apply", async () => {
+    const { client, simulateCalls } = makeForecastingClient({
+      scenarios: [
+        makeScenario("baseline", 12_000, { thermalKwh: 12_000 }),
+        makeScenario("wall", 8_000, { thermalKwh: 8_000 }),
+      ],
+    });
+    const applied: RSEGeneratedSeed[] = [];
+
+    await expect(
+      runRSESeedCli(
+        [
+          "--cache-version",
+          "1.test.apply-no-env",
+          "--archetypes",
+          '[{"country":"IT","category":"Residential","name":"Detached 1980"}]',
+          "--forecasting-base-url",
+          "http://forecasting.test",
+          "--packages",
+          "envelope",
+          "--apply",
+        ],
+        {
+          env: {},
+          stdout: () => undefined,
+          writeFile: async () => undefined,
+          applySeed: async (generated) => {
+            applied.push(generated);
+          },
+          makeForecastingClient: () => client,
+          now: () => new Date("2026-05-12T10:04:00.000Z"),
+        },
+      ),
+    ).rejects.toThrow("SUPABASE_URL and SUPABASE_KEY are required for --apply");
+
+    expect(simulateCalls).toEqual([]);
+    expect(applied).toEqual([]);
   });
 
   test("emits useful debug events for a one-target dry run", async () => {
