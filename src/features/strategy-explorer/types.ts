@@ -186,6 +186,7 @@ export interface RSEFinancialResult {
     DPP?: number;
   };
   percentiles?: Record<string, Record<string, number>>;
+  probabilities?: Record<string, number>;
 }
 
 export interface RSEPackageAggregate {
