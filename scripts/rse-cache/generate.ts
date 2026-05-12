@@ -18,15 +18,14 @@ import pinoPretty from "pino-pretty";
 import {
   RSE_CACHE_PAYLOAD_SCHEMA_VERSION,
   RSE_CO2_METHODS,
-  RSE_DEFAULT_EMISSION_FACTOR_COUNTRY,
-  RSE_EMISSION_ENERGY_SOURCES,
   RSE_FORECASTING_CO2_FIELD_PATHS,
   RSE_MVP_PACKAGE_MEASURE_IDS,
   RSE_MVP_THERMAL_EMISSION_SOURCE,
   RSE_PACKAGE_IDS,
-  RSE_SUPPORTED_EMISSION_FACTOR_COUNTRIES,
   type RSEPackageId,
 } from "../../src/features/strategy-explorer/constants.ts";
+import { mapForecastingEnergyToEmissionScenarios } from "../../src/features/strategy-explorer/services/co2Mapper.ts";
+import { resolveEmissionFactorCountry } from "../../src/features/strategy-explorer/utils/emissionFactorCountry.ts";
 import type {
   RSEArchetypeRef,
   RSEEmissionComparisonSnapshot,
@@ -303,15 +302,19 @@ async function buildPayload(params: {
     },
   );
 
-  const baselineInputs = buildCo2Inputs(
-    "baseline",
-    params.target.archetype,
-    baselineScenario,
+  const baselineInputs = mapForecastingEnergyToEmissionScenarios(
+    baselineScenario.results,
+    {
+      scenarioNamePrefix: "baseline",
+      archetypeCountry: params.target.archetype.country,
+    },
   );
-  const renovatedInputs = buildCo2Inputs(
-    "renovated",
-    params.target.archetype,
-    renovatedScenario,
+  const renovatedInputs = mapForecastingEnergyToEmissionScenarios(
+    renovatedScenario.results,
+    {
+      scenarioNamePrefix: "renovated",
+      archetypeCountry: params.target.archetype.country,
+    },
   );
   params.logger.debug("co2.inputs.summary", "CO2 input summary", {
     scenario: "baseline",
@@ -409,91 +412,6 @@ function pickRenovatedScenario(response: ECMApplicationResponse): ECMScenario {
   }
 
   return scenario;
-}
-
-/**
- * Map an ECM scenario into CO2 emission inputs for Forecasting /calculate.
- *
- * The MVP assumes natural-gas thermal heating.  Electricity is split into
- * grid-import and PV self-consumption when PV data is present; otherwise
- * the full electric total is treated as grid electricity.
- */
-function buildCo2Inputs(
-  prefix: string,
-  archetype: RSEArchetypeRef,
-  scenario: ECMScenario,
-): RSEEmissionScenarioInput[] {
-  const country = resolveEmissionFactorCountry(archetype.country);
-  const thermalKwh = readRequiredNumber(
-    scenario.results,
-    RSE_FORECASTING_CO2_FIELD_PATHS.thermalKwh,
-  );
-  const electricHeatFallbackKwh =
-    readOptionalNumber(
-      scenario.results,
-      RSE_FORECASTING_CO2_FIELD_PATHS.electricHeatFallbackKwh,
-    ) ?? 0;
-  const electricCoolFallbackKwh =
-    readOptionalNumber(
-      scenario.results,
-      RSE_FORECASTING_CO2_FIELD_PATHS.electricCoolFallbackKwh,
-    ) ?? 0;
-  const electricTotalKwh =
-    readOptionalNumber(
-      scenario.results,
-      RSE_FORECASTING_CO2_FIELD_PATHS.electricTotalKwh,
-    ) ?? electricHeatFallbackKwh + electricCoolFallbackKwh;
-  const pvSelfConsumption = readOptionalNumber(
-    scenario.results,
-    RSE_FORECASTING_CO2_FIELD_PATHS.pvSelfConsumptionKwh,
-  );
-  const pvGridImport = readOptionalNumber(
-    scenario.results,
-    RSE_FORECASTING_CO2_FIELD_PATHS.pvGridImportKwh,
-  );
-  const hasPvData =
-    pvSelfConsumption !== undefined || pvGridImport !== undefined;
-  const pvSelfConsumptionKwh = pvSelfConsumption ?? 0;
-  const pvGridImportKwh = hasPvData
-    ? (pvGridImport ?? 0) +
-      Math.max(0, electricTotalKwh - pvSelfConsumptionKwh - (pvGridImport ?? 0))
-    : electricTotalKwh;
-  const inputs: RSEEmissionScenarioInput[] = [];
-
-  if (thermalKwh > 0) {
-    inputs.push({
-      name: `${prefix}:thermal`,
-      energy_source: RSE_MVP_THERMAL_EMISSION_SOURCE,
-      annual_consumption_kwh: thermalKwh,
-      country,
-    });
-  }
-
-  if (pvGridImportKwh > 0) {
-    inputs.push({
-      name: `${prefix}:grid-electricity`,
-      energy_source: "grid_electricity",
-      annual_consumption_kwh: pvGridImportKwh,
-      country,
-    });
-  }
-
-  if (pvSelfConsumptionKwh > 0) {
-    inputs.push({
-      name: `${prefix}:pv-self-consumption`,
-      energy_source: "solar_pv",
-      annual_consumption_kwh: pvSelfConsumptionKwh,
-      country,
-    });
-  }
-
-  for (const input of inputs) {
-    if (!RSE_EMISSION_ENERGY_SOURCES.includes(input.energy_source)) {
-      throw new Error(`Unsupported CO2 energy source: ${input.energy_source}`);
-    }
-  }
-
-  return inputs;
 }
 
 async function calculateEmissionComponents(
@@ -957,16 +875,6 @@ function sumInputs(
   return inputs
     .filter((input) => input.energy_source === energySource)
     .reduce((total, input) => total + input.annual_consumption_kwh, 0);
-}
-
-/** Fall back to the default emission-factor country when the archetype country
- *  is not supported by the Forecasting service. */
-function resolveEmissionFactorCountry(country: string): string {
-  return RSE_SUPPORTED_EMISSION_FACTOR_COUNTRIES.includes(
-    country as (typeof RSE_SUPPORTED_EMISSION_FACTOR_COUNTRIES)[number],
-  )
-    ? country
-    : RSE_DEFAULT_EMISSION_FACTOR_COUNTRY;
 }
 
 /** Escape a string for PostgreSQL single-quoted literals. */
