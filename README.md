@@ -212,31 +212,27 @@ sequenceDiagram
     participant FCAST as Forecasting API
     participant FIN as Financial API
 
-    alt VITE_ENABLE_RSE_WIZARD is false
-        UI->>UI: Static landing from StrategyExplorerLanding only
-        UI->>UI: No Forecasting Financial or Technical calls
-    else Wizard enabled default in src/config.ts
-        UI->>RSE: Open wizard goal portfolio and packages
-        RSE->>FCAST: listArchetypes and getArchetypeDetails via BuildingService
-        FCAST-->>RSE: Archetype catalog and BUI or system payloads
-        UI->>RSE: Run strategy comparison
-        RSE->>RSE: expandPortfolio refetches archetype details as needed
-        RSE->>RSE: Supabase reads rse_cache_versions and rse_forecasting_cache_entries not live ECM
-        RSE->>RSE: Package energy and CO2 from published cache matrix only
-        loop Each archetype and package with positive savings
-            RSE->>FIN: POST financial risk-assessment professional level no ARV in this tool
-            FIN-->>RSE: IRR NPV PBP DPP ROI percentiles and probabilities
-        end
-        RSE->>RSE: rankPackages applies weighted scores in browser not Technical API
-        RSE-->>UI: Aggregates rankings and scenario tables
+    UI->>RSE: Open wizard goal portfolio and packages
+    RSE->>FCAST: listArchetypes and getArchetypeDetails via BuildingService
+    FCAST-->>RSE: Archetype catalog and BUI or system payloads
+    UI->>RSE: Run strategy comparison
+    RSE->>RSE: expandPortfolio refetches archetype details as needed
+    RSE->>RSE: Supabase reads rse_cache_versions and rse_forecasting_cache_entries not live ECM
+    RSE->>RSE: Package energy and CO2 from published cache matrix only
+    loop Each archetype and package with positive savings
+        RSE->>FIN: POST financial risk-assessment professional level no ARV in this tool
+        FIN-->>RSE: IRR NPV PBP DPP ROI percentiles and probabilities
     end
+    RSE->>RSE: rankPackages applies weighted scores in browser not Technical API
+    RSE-->>UI: Aggregates rankings and scenario tables
 ```
 
 #### Flow Diagram
 
 ```mermaid
 flowchart LR
-    PolicyInput["POLICYMAKER INPUT<br/>---<br/>Renovation goal and budget or energy focus<br/>Archetype portfolio with counts per archetype<br/>Renovation packages to compare<br/>---<br/>Wizard gated by VITE_ENABLE_RSE_WIZARD in src/config.ts"]
+    PolicyInput["POLICYMAKER INPUT<br/>---<br/>Renovation goal and budget or energy focus<br/>Archetype portfolio with counts per archetype<br/>Renovation packages to compare"]
+    LandingPage["LANDING PAGE<br/>---<br/>Static info page at /strategy-explorer<br/>CTA links to /strategy-explorer/tool"]
 
     DB[("ReLIFE Database<br/>---<br/>Supabase tables rse_cache_versions<br/>rse_forecasting_cache_entries<br/>---<br/>Precomputed baseline and renovated energy and CO2 per archetype and package")]
 
@@ -248,6 +244,7 @@ flowchart LR
 
     PolicyUI["STRATEGY EXPLORER RESULTS UI<br/>---<br/>Per-package and portfolio aggregates<br/>Rankings and financial indicator tables"]
 
+    LandingPage --> PolicyInput
     PolicyInput --> Forecasting
     PolicyInput --> DB
     PolicyInput --> Financial
@@ -255,7 +252,6 @@ flowchart LR
     Forecasting --> PolicyUI
     Financial --> PolicyUI
     Technical -. not-executed .-> PolicyUI
-    PolicyInput --> PolicyUI
 
     style PolicyInput fill:#f0f0f0
     style DB fill:#d4edda
@@ -267,7 +263,7 @@ flowchart LR
 
 **Implementation status**
 
-- Default route behavior is the multi-step wizard in `src/features/strategy-explorer/StrategyExplorer.tsx`, mounted when `ENABLE_RSE_WIZARD` is true in `src/config.ts` (defaults true unless `VITE_ENABLE_RSE_WIZARD` is the string `false`). The legacy static landing in `src/routes/StrategyExplorerLanding.tsx` is shown only when that flag disables the wizard.
+- The Strategy Explorer follows the same landing/tool route pattern as the other tools: `/strategy-explorer` serves a static landing page, and `/strategy-explorer/tool` mounts the multi-step wizard in `src/features/strategy-explorer/StrategyExplorer.tsx`.
 - Forecasting is **partial**: `src/features/strategy-explorer/services/archetypePortfolioService.ts` uses `BuildingService` for archetype metadata only. Per-package energy and CO2 for the comparison run come from the published Supabase cache loaded by `src/features/strategy-explorer/api/rseCacheApi.ts` and `src/features/strategy-explorer/services/rseForecastingCacheService.ts`, not from live `simulateECM` calls in the browser.
 - Financial is **real** for the wizard run path: `src/features/strategy-explorer/services/rseFinancialService.ts` calls `financial.assessRisk` with concurrency limits orchestrated by `src/features/strategy-explorer/services/rseWorkflowService.ts`. ARV is intentionally skipped for RSE.
 - Technical API is **not used**; rankings are computed locally in `src/features/strategy-explorer/services/rseRankingService.ts`.

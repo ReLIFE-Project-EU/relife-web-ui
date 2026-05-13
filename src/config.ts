@@ -45,10 +45,6 @@ export const APP_CONFIG = {
   description: "ReLIFE Platform Web Interface",
 };
 
-// Feature flags
-export const ENABLE_RSE_WIZARD =
-  import.meta.env.VITE_ENABLE_RSE_WIZARD !== "false";
-
 // Build helper functions for generating URLs and other derived config values
 export function getKeycloakLogoutUrl(): string | undefined {
   const { url, realm, clientId } = KEYCLOAK_CONFIG;

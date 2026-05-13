@@ -10,6 +10,7 @@ import { MyPortfolios } from "./routes/MyPortfolios";
 import { PortfolioAdvisorLanding } from "./routes/PortfolioAdvisorLanding";
 import { PortfolioAdvisorTool } from "./routes/PortfolioAdvisorTool";
 import { StrategyExplorerLanding } from "./routes/StrategyExplorerLanding";
+import { StrategyExplorerTool } from "./routes/StrategyExplorerTool";
 
 function App() {
   return (
@@ -26,6 +27,10 @@ function App() {
         <Route
           path="/strategy-explorer"
           element={<StrategyExplorerLanding />}
+        />
+        <Route
+          path="/strategy-explorer/tool"
+          element={<StrategyExplorerTool />}
         />
 
         {/* Group 2: Portfolio Advisor (Financial Institutions, ESCOs) */}

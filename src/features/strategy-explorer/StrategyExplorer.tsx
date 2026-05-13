@@ -5,27 +5,22 @@ import {
   Card,
   Container,
   Group,
-  List,
   Loader,
-  SimpleGrid,
   Stack,
   Stepper,
   Text,
-  ThemeIcon,
   Title,
 } from "@mantine/core";
 import {
   IconBuildingCommunity,
   IconChartAreaLine,
   IconChartBar,
-  IconMap,
   IconPresentation,
   IconRefresh,
 } from "@tabler/icons-react";
 import { useRef } from "react";
 import { useSyncGlobalLoading } from "../../contexts/global-loading";
 import { useWizardStepScroll } from "../../hooks/useWizardStepScroll";
-import { relifeConcepts } from "../../constants/relifeConcepts";
 import { formatNumber } from "../../utils/formatters";
 import { StrategyExplorerProvider } from "./context";
 import {
@@ -39,89 +34,6 @@ import { ResultsStep } from "./components/ResultsStep";
 
 /** Scroll margin used by both the scroll anchor and the sticky summary strip. */
 const WIZARD_TOP_SCROLL_MARGIN = 96;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Intro Panel (preserves original landing copy)
-// ─────────────────────────────────────────────────────────────────────────────
-
-const plannedFeatures = [
-  {
-    icon: IconBuildingCommunity,
-    title: "Building Stock Analysis",
-    description:
-      "Analyze national and regional building stock characteristics, typologies, and renovation potential.",
-  },
-  {
-    icon: IconChartAreaLine,
-    title: "Regional Projections",
-    description:
-      "Simulate renovation scenarios across regions with climate projections for 2030 and 2050.",
-  },
-  {
-    icon: IconMap,
-    title: "Geographic Insights",
-    description:
-      "Visualize building stock data and renovation opportunities across different geographic areas.",
-  },
-  {
-    icon: IconPresentation,
-    title: "Policy Dashboard",
-    description: `Track policy impacts using shared indicators such as ${relifeConcepts["annual-building-thermal-needs"].label.toLowerCase()}, ${relifeConcepts["estimated-epc"].label.toLowerCase()}, and financial outcomes.`,
-  },
-];
-
-function IntroPanel() {
-  return (
-    <Stack gap="xl" mb="xl">
-      <Box>
-        <Badge color="blue" size="lg" mb="md">
-          Group 1: Policymakers & Researchers
-        </Badge>
-        <Title order={1} mb="sm">
-          Renovation Strategy Explorer
-        </Title>
-        <Text c="dimmed" size="lg" maw={700} mb="lg">
-          Comprehensive tools for analyzing building stock at national and
-          regional levels. Develop evidence-based renovation strategies and
-          track policy impacts across Europe.
-        </Text>
-      </Box>
-
-      <Card withBorder radius="md" p="lg" bg="blue.0">
-        <Title order={4} mb="sm">
-          Designed for
-        </Title>
-        <List spacing="xs">
-          <List.Item>Policymakers and public authorities</List.Item>
-          <List.Item>Urban planners and regional administrators</List.Item>
-          <List.Item>Researchers and academic institutions</List.Item>
-          <List.Item>Energy agencies and regulatory bodies</List.Item>
-        </List>
-      </Card>
-
-      <Box>
-        <Title order={2} mb="lg">
-          Planned Features
-        </Title>
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-          {plannedFeatures.map((feature) => (
-            <Card key={feature.title} withBorder radius="md" p="lg">
-              <ThemeIcon size={44} radius="md" variant="light" color="blue">
-                <feature.icon size={24} />
-              </ThemeIcon>
-              <Title order={4} mt="md" mb="xs">
-                {feature.title}
-              </Title>
-              <Text size="sm" c="dimmed">
-                {feature.description}
-              </Text>
-            </Card>
-          ))}
-        </SimpleGrid>
-      </Box>
-    </Stack>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Summary Strip
@@ -326,8 +238,6 @@ function StrategyExplorerWizard() {
           aria-hidden
           style={{ scrollMarginTop: WIZARD_TOP_SCROLL_MARGIN }}
         />
-
-        {state.currentStep === 0 && <IntroPanel />}
 
         <SummaryStrip />
 

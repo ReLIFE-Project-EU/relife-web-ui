@@ -14,41 +14,40 @@ import {
 import {
   IconArrowRight,
   IconBuildingCommunity,
-  IconChartAreaLine,
-  IconMap,
-  IconPresentation,
+  IconChartBar,
+  IconListDetails,
+  IconTarget,
 } from "@tabler/icons-react";
-import { ENABLE_RSE_WIZARD } from "../config";
-import { StrategyExplorer } from "../features/strategy-explorer";
-import { relifeConcepts } from "../constants/relifeConcepts";
+import { Link } from "react-router-dom";
 
-const plannedFeatures = [
+const features = [
+  {
+    icon: IconListDetails,
+    title: "Portfolio Builder",
+    description:
+      "Compose a representative building portfolio by selecting archetypes from different countries and categories, with adjustable building counts.",
+  },
+  {
+    icon: IconTarget,
+    title: "Goal Setting",
+    description:
+      "Define your strategic objective: maximize renovations within a budget, prioritize energy savings, or focus on emission reduction.",
+  },
   {
     icon: IconBuildingCommunity,
-    title: "Building Stock Analysis",
+    title: "Package Comparison",
     description:
-      "Analyze national and regional building stock characteristics, typologies, and renovation potential.",
+      "Compare predefined renovation packages with different measure combinations and strategies.",
   },
   {
-    icon: IconChartAreaLine,
-    title: "Regional Projections",
+    icon: IconChartBar,
+    title: "Ranked Results",
     description:
-      "Simulate renovation scenarios across regions with climate projections for 2030 and 2050.",
-  },
-  {
-    icon: IconMap,
-    title: "Geographic Insights",
-    description:
-      "Visualize building stock data and renovation opportunities across different geographic areas.",
-  },
-  {
-    icon: IconPresentation,
-    title: "Policy Dashboard",
-    description: `Track policy impacts using shared indicators such as ${relifeConcepts["annual-building-thermal-needs"].label.toLowerCase()}, ${relifeConcepts["estimated-epc"].label.toLowerCase()}, and financial outcomes.`,
+      "View rankings and aggregated metrics including energy savings, CO₂ reduction, and buildings within budget based on your selected goal.",
   },
 ];
 
-function OldLanding() {
+export function StrategyExplorerLanding() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="xl">
@@ -66,12 +65,13 @@ function OldLanding() {
             track policy impacts across Europe.
           </Text>
           <Button
+            component={Link}
+            to="/strategy-explorer/tool"
             size="lg"
             color="blue"
             rightSection={<IconArrowRight size={18} />}
-            disabled
           >
-            Coming Soon
+            Start Strategy Analysis
           </Button>
         </Box>
 
@@ -88,13 +88,13 @@ function OldLanding() {
           </List>
         </Card>
 
-        {/* Planned Features */}
+        {/* Features */}
         <Box>
           <Title order={2} mb="lg">
-            Planned Features
+            Features
           </Title>
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-            {plannedFeatures.map((feature) => (
+            {features.map((feature) => (
               <Card key={feature.title} withBorder radius="md" p="lg">
                 <ThemeIcon size={44} radius="md" variant="light" color="blue">
                   <feature.icon size={24} />
@@ -112,12 +112,4 @@ function OldLanding() {
       </Stack>
     </Container>
   );
-}
-
-export function StrategyExplorerLanding() {
-  if (ENABLE_RSE_WIZARD) {
-    return <StrategyExplorer />;
-  }
-
-  return <OldLanding />;
 }
