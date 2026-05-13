@@ -17,12 +17,22 @@ cmd_launch() {
   # Resolve project root relative to this script's location
   local root_dir
   root_dir="$(cd "$(dirname "$0")/../.." && pwd)"
+  local abs_log="${root_dir}/${log}"
+
+  # Quoted args for a login shell so PATH matches interactive SSH (linuxbrew, nvm, fnm, …).
+  # Ensure the first `node` on PATH supports --experimental-strip-types (Node 22+); npm uses that binary.
+  # pipefail: if task rse-seed fails, the pipeline exit status is non-zero (tee alone would mask it).
+  local seed_args
+  seed_args="$(printf '%q ' "$@")"
+  local escaped_log inner
+  escaped_log="$(printf '%q' "$abs_log")"
+  inner="set -o pipefail; task rse-seed -- ${seed_args} 2>&1 | tee ${escaped_log}"
 
   tmux new-session -d -s "$SESSION_NAME" -c "$root_dir" \
-    "task rse-seed -- \"$@\" 2>&1 | tee '$log'"
+    bash -lc "eval $(printf '%q' "$inner")"
 
   echo "Session: $SESSION_NAME"
-  echo "Log:     $log"
+  echo "Log:     $abs_log"
   echo "Attach:  task rse-seed:tmux-attach"
   echo "Kill:    task rse-seed:tmux-kill"
 }

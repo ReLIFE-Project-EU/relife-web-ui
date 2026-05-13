@@ -128,14 +128,17 @@ tasks:
 
       Output is tee'd to .work/rse-seed-logs/<timestamp>.log.
       See also: rse-seed:tmux-attach, rse-seed:tmux-kill, rse-seed:tmux-status
+
+      After attach: default tmux prefix is Ctrl+B; press Ctrl+B then D to detach
+      without stopping the seed job.
     cmds:
       - ./scripts/rse-cache/tmux.sh launch {{.CLI_ARGS}}
 
   rse-seed:tmux-attach:
-    desc: "Attach to the running rse-seed tmux session"
+    desc: "Attach to the running rse-seed tmux session (press Ctrl+B then D to detach without stopping the job)"
     summary: |
       Interactively attach to the active rse-seed session.
-      Press Ctrl+B then D to detach without stopping the job.
+      Detach without stopping the job: default prefix Ctrl+B, then D (lowercase).
     cmds:
       - ./scripts/rse-cache/tmux.sh attach
 
