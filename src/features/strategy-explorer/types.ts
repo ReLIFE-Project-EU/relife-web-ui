@@ -1,4 +1,5 @@
 import type { RenovationMeasureId } from "../../types/renovation";
+import type { ArchetypeDetails } from "../../types/archetype";
 import type {
   RSE_CACHE_PAYLOAD_SCHEMA_VERSION,
   RSE_COST_BASIS,
@@ -11,6 +12,7 @@ import type {
   RSECostSource,
   RSEEmissionEnergySource,
   RSEPackageId,
+  RSEUnavailableReason,
 } from "./constants";
 
 export type {
@@ -22,6 +24,7 @@ export type {
   RSEEmissionEnergySource,
   RSEPackageId,
   RSESupportedEmissionFactorCountry,
+  RSEUnavailableReason,
 } from "./constants";
 
 export interface RSEArchetypeRef {
@@ -37,6 +40,10 @@ export interface RSEArchetypeSelection {
 
 export interface RSEPortfolioDefinition {
   selections: RSEArchetypeSelection[];
+}
+
+export interface RSEExpandedPortfolioSelection extends RSEArchetypeSelection {
+  details: ArchetypeDetails;
 }
 
 export type RSERenovationGoal =
@@ -87,6 +94,7 @@ export interface RSEForecastingCacheEntry {
 
 export interface RSEForecastingScenarioSnapshot {
   annualEnergyKwh: number;
+  /** Low-confidence frontend display convenience only. Not a legal EPC. */
   displayEpcClass: string;
   primaryEnergyUni11300Summary: Record<string, unknown>;
   pvHpSummary?: Record<string, unknown>;
@@ -127,6 +135,27 @@ export interface RSECacheEntryProvenance {
   co2Method: RSECo2Method;
   emissionFactorCountry: string;
   notes?: string;
+}
+
+export interface RSESimulationResult {
+  key: RSEForecastingCacheKey;
+  archetype: RSEArchetypeRef;
+  packageId: RSEPackageId;
+  cacheVersion: string;
+  baselineAnnualEnergyKwh: number;
+  renovatedAnnualEnergyKwh: number;
+  annualEnergySavingsKwh: number;
+  annualEnergySavingsPercentage: number;
+  baselineAnnualEmissionsTonCo2eq: number;
+  renovatedAnnualEmissionsTonCo2eq: number;
+  annualCo2ReductionTon: number;
+  annualCo2ReductionPercentage: number;
+  /** Low-confidence frontend display convenience only. Not a legal EPC. */
+  baselineDisplayEpcClass: string;
+  /** Low-confidence frontend display convenience only. Not a legal EPC. */
+  renovatedDisplayEpcClass: string;
+  generatedAt: string;
+  provenance: RSECacheEntryProvenance;
 }
 
 /**
@@ -178,7 +207,7 @@ export interface RSEFinancialResult {
   annualMaintenanceEur: number;
   annualEnergySavingsKwh: number;
   status: "available" | "unavailable";
-  unavailableReason?: "non-positive-energy-savings";
+  unavailableReason?: RSEUnavailableReason;
   unavailableMessage?: string;
   pointForecasts: {
     NPV?: number;
@@ -237,6 +266,6 @@ export interface RSEWorkflowResult {
   unavailableCombinations: Array<{
     archetype: RSEArchetypeRef;
     packageId: RSEPackageId;
-    reason: string;
+    reason: RSEUnavailableReason;
   }>;
 }

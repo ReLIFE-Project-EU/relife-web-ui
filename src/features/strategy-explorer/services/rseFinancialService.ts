@@ -7,6 +7,7 @@ import type {
 import {
   RSE_FINANCIAL_DEFAULTS,
   RSE_FINANCIAL_OUTPUT_LEVEL,
+  RSE_UNAVAILABLE_REASONS,
   type RSEPackageId,
 } from "../constants";
 import type {
@@ -17,7 +18,7 @@ import type {
 import { computePackageCost } from "./rsePackageCatalog";
 
 export const RSE_NON_POSITIVE_ENERGY_SAVINGS_REASON =
-  "non-positive-energy-savings" as const;
+  RSE_UNAVAILABLE_REASONS.nonPositiveEnergySavings;
 
 /**
  * Input for computing financial results for a single (archetype, package)

@@ -92,6 +92,19 @@ export const RSE_BUDGET_FIT_ROUNDING = "floor";
 
 export const RSE_INVALID_PAYBACK_YEAR_OFFSET = 1;
 
+export const RSE_UNAVAILABLE_REASONS = {
+  missingCacheEntry: "missing-cache-entry",
+  emptyPortfolio: "empty-portfolio",
+  incompleteArchetypeRef: "incomplete-archetype-ref",
+  duplicateArchetype: "duplicate-archetype",
+  invalidBuildingCount: "invalid-building-count",
+  invalidFloorArea: "invalid-floor-area",
+  invalidCacheEntry: "invalid-cache-entry",
+  nonPositiveEnergySavings: "non-positive-energy-savings",
+} as const;
+export type RSEUnavailableReason =
+  (typeof RSE_UNAVAILABLE_REASONS)[keyof typeof RSE_UNAVAILABLE_REASONS];
+
 export const RSE_FINANCIAL_DEFAULTS = {
   projectLifetimeYears: 20,
   financingType: "self-funded",

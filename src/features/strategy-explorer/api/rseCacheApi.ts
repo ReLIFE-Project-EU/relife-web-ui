@@ -1,11 +1,15 @@
 import { supabase } from "../../../auth";
-import { RSE_CACHE_PAYLOAD_SCHEMA_VERSION } from "../constants";
+import {
+  RSE_CACHE_PAYLOAD_SCHEMA_VERSION,
+  RSE_UNAVAILABLE_REASONS,
+} from "../constants";
 import type {
   RSEArchetypeRef,
   RSECo2Method,
   RSEForecastingCacheEntry,
   RSEForecastingCacheKey,
   RSEPackageId,
+  RSEUnavailableReason,
 } from "../types";
 
 /** Feature-local error codes so callers can distinguish
@@ -53,7 +57,7 @@ export interface RSECacheAvailability {
   missing: Array<{
     archetype: RSEArchetypeRef;
     packageId: RSEPackageId;
-    reason: string;
+    reason: RSEUnavailableReason;
   }>;
 }
 
@@ -82,11 +86,39 @@ interface RSEForecastingCachePayload {
   provenance: RSEForecastingCacheEntry["provenance"];
 }
 
-const MISSING_CACHE_ENTRY_REASON = "missing-cache-entry";
-
 /** Default instance backed by the global Supabase client.
  *  Use createRSECacheApi directly in tests with a fake client. */
 export const rseCacheApi = createRSECacheApi(supabase);
+
+export function buildRSECacheAvailability(input: {
+  archetypes: RSEArchetypeRef[];
+  packageIds: RSEPackageId[];
+  cacheVersion: string;
+  entries: RSEForecastingCacheEntry[];
+}): RSECacheAvailability {
+  const availableKeyStrings = new Set(
+    input.entries.map((entry) => keyOf(entry.key)),
+  );
+
+  return {
+    available: input.entries.map((entry) => entry.key),
+    missing: buildExpectedKeys(
+      input.archetypes,
+      input.packageIds,
+      input.cacheVersion,
+    )
+      .filter((key) => !availableKeyStrings.has(key))
+      .map((key) => {
+        const { archetype, packageId } = parseKey(key);
+
+        return {
+          archetype,
+          packageId,
+          reason: RSE_UNAVAILABLE_REASONS.missingCacheEntry,
+        };
+      }),
+  };
+}
 
 /** Factory so tests can inject a fake Supabase client without mocking modules.
  *  Only SELECT queries are exposed; writes live in scripts/rse-cache/generate.ts. */
@@ -181,28 +213,13 @@ export function createRSECacheApi(client: Pick<typeof supabase, "from">) {
       const cacheVersion =
         request.cacheVersion ?? (await this.getPublishedVersion()).cacheVersion;
       const entries = await this.listEntries({ ...request, cacheVersion });
-      const availableKeyStrings = new Set(
-        entries.map((entry) => keyOf(entry.key)),
-      );
 
-      return {
-        available: entries.map((entry) => entry.key),
-        missing: buildExpectedKeys(
-          request.archetypes,
-          request.packageIds,
-          cacheVersion,
-        )
-          .filter((key) => !availableKeyStrings.has(key))
-          .map((key) => {
-            const { archetype, packageId } = parseKey(key);
-
-            return {
-              archetype,
-              packageId,
-              reason: MISSING_CACHE_ENTRY_REASON,
-            };
-          }),
-      };
+      return buildRSECacheAvailability({
+        archetypes: request.archetypes,
+        packageIds: request.packageIds,
+        cacheVersion,
+        entries,
+      });
     },
   };
 }
