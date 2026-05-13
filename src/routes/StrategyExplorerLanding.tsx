@@ -18,6 +18,8 @@ import {
   IconMap,
   IconPresentation,
 } from "@tabler/icons-react";
+import { ENABLE_RSE_WIZARD } from "../config";
+import { StrategyExplorer } from "../features/strategy-explorer";
 import { relifeConcepts } from "../constants/relifeConcepts";
 
 const plannedFeatures = [
@@ -46,7 +48,7 @@ const plannedFeatures = [
   },
 ];
 
-export const StrategyExplorerLanding = () => {
+function OldLanding() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="xl">
@@ -110,4 +112,12 @@ export const StrategyExplorerLanding = () => {
       </Stack>
     </Container>
   );
-};
+}
+
+export function StrategyExplorerLanding() {
+  if (ENABLE_RSE_WIZARD) {
+    return <StrategyExplorer />;
+  }
+
+  return <OldLanding />;
+}

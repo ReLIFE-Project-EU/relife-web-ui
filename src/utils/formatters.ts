@@ -156,3 +156,15 @@ export function formatYears(value: number): string {
   const rounded = Math.round(value * 10) / 10;
   return `${rounded} ${rounded === 1 ? "year" : "years"}`;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CO₂ Formatting
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Format CO₂ value in tonnes.
+ * Example: 1250 -> "1,250 t CO₂e"
+ */
+export function formatTonnageCo2(value: number): string {
+  return `${formatNumber(value)} t CO₂e`;
+}
