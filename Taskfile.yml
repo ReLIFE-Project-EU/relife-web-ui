@@ -117,6 +117,38 @@ tasks:
     cmds:
       - npm run rse:seed -- {{.CLI_ARGS}}
 
+  rse-seed:tmux:
+    desc: "Run the RSE cache seed generator in a detached tmux session"
+    summary: |
+      Launches `task rse-seed` inside a detached tmux session so it survives SSH
+      disconnects. Only one session is allowed at a time.
+
+      Usage:
+        task rse-seed:tmux -- --cache-version <version> --forecasting-base-url <url> [options]
+
+      Output is tee'd to .work/rse-seed-logs/<timestamp>.log.
+      See also: rse-seed:tmux-attach, rse-seed:tmux-kill, rse-seed:tmux-status
+    cmds:
+      - ./scripts/rse-cache/tmux.sh launch {{.CLI_ARGS}}
+
+  rse-seed:tmux-attach:
+    desc: "Attach to the running rse-seed tmux session"
+    summary: |
+      Interactively attach to the active rse-seed session.
+      Press Ctrl+B then D to detach without stopping the job.
+    cmds:
+      - ./scripts/rse-cache/tmux.sh attach
+
+  rse-seed:tmux-kill:
+    desc: "Stop the running rse-seed tmux session"
+    cmds:
+      - ./scripts/rse-cache/tmux.sh kill
+
+  rse-seed:tmux-status:
+    desc: "Check whether the rse-seed tmux session is running"
+    cmds:
+      - ./scripts/rse-cache/tmux.sh status
+
   fetch-sources:
     desc: "Fetch source code for ReLIFE services (usage: task fetch-sources FINANCIAL_TREEISH=... FORECASTING_TREEISH=...)"
     vars:

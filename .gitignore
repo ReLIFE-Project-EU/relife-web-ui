@@ -23,6 +23,9 @@ scorecard.png
 # External services source code
 external-services/
 
+# Background task logs
+.work/
+
 ### Vite React
 ##############
 
