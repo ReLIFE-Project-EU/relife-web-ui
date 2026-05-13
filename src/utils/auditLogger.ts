@@ -20,7 +20,7 @@
 
 export type AuditLevel = "debug" | "info" | "warn" | "error";
 
-export type AuditScope = "hra" | "pra" | "unknown";
+export type AuditScope = "hra" | "pra" | "rse" | "unknown";
 
 export type AuditCategory =
   | "env"

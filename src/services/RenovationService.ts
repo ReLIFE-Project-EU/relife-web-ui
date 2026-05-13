@@ -34,6 +34,7 @@ import {
 } from "./renovationEcmParams";
 import type { IRenovationService, RenovationMeasure } from "./types";
 import { auditLog, type AuditCtx } from "../utils/auditLogger";
+import { mapWithConcurrencyLimit } from "../utils/concurrency";
 
 const ENVELOPE_PACKAGE_MEASURE_PRIORITY: RenovationMeasureId[] = [
   "wall-insulation",
@@ -53,33 +54,6 @@ const ANALYSIS_ELIGIBLE_MEASURES: RenovationMeasureId[] = [
 ];
 const MAX_SUGGESTED_PACKAGES = 14;
 const FORECASTING_SCENARIO_CONCURRENCY_LIMIT = 2;
-
-async function mapWithConcurrencyLimit<TItem, TResult>(
-  items: readonly TItem[],
-  limit: number,
-  mapper: (item: TItem) => Promise<TResult>,
-): Promise<TResult[]> {
-  const results = new Array<TResult>(items.length);
-  let nextIndex = 0;
-
-  async function runWorker(): Promise<void> {
-    while (true) {
-      const currentIndex = nextIndex;
-      nextIndex += 1;
-
-      if (currentIndex >= items.length) {
-        return;
-      }
-
-      results[currentIndex] = await mapper(items[currentIndex]);
-    }
-  }
-
-  const workerCount = Math.min(limit, items.length);
-  await Promise.all(Array.from({ length: workerCount }, () => runWorker()));
-
-  return results;
-}
 
 export class RenovationService implements IRenovationService {
   getMeasures(): RenovationMeasure[] {
