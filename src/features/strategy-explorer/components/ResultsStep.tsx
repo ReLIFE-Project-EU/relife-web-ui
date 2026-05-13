@@ -172,7 +172,7 @@ function RankingTable({
       <Title order={4} mb="md">
         Package Rankings
       </Title>
-      <Table>
+      <Table data-testid="rse-ranking-table">
         <Table.Thead>
           <Table.Tr>
             <Table.Th>Rank</Table.Th>
