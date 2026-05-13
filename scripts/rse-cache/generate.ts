@@ -7,7 +7,7 @@
  * it, and emits SQL (or writes directly to Supabase).  This is the write-side
  * counterpart to src/features/strategy-explorer/api/rseCacheApi.ts.
  */
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { Writable } from "node:stream";
 
 import { createClient } from "@supabase/supabase-js";
@@ -1100,6 +1100,8 @@ interface RSESeedCliOptions {
   archetypes?: string;
   packages: RSEPackageId[];
   out?: string;
+  outJson?: string;
+  fromJson?: string;
   description?: string;
   forecastingServiceVersion?: string;
   publish: boolean;
@@ -1180,6 +1182,14 @@ function buildCliProgram(
       false,
     )
     .option(
+      "--out-json <path>",
+      "Write the generated seed as JSON for later replay.",
+    )
+    .option(
+      "--from-json <path>",
+      "Load a previously generated seed JSON and skip generation.",
+    )
+    .option(
       "--log-level <level>",
       "Structured log level: debug, info, warn, error, or silent. Defaults to info.",
       parseLogLevel,
@@ -1211,11 +1221,20 @@ Direct apply environment:
   SUPABASE_URL or VITE_SUPABASE_URL
   SUPABASE_KEY or SUPABASE_SERVICE_ROLE_KEY
 
+Artifact workflow:
+  --out-json <path>               Serialize the generated seed (version + entries) to JSON for later replay.
+  --from-json <path>              Load a previously generated seed JSON and skip the Forecasting service entirely.
+                                    --cache-version must match the artifact. --publish overrides the stored status.
+                                    Cannot be combined with --forecasting-base-url, --archetypes, --dry-run, or --out-json.
+
 Examples:
   task rse-seed -- --help
   task rse-seed -- --cache-version 2026-05-12.all --forecasting-base-url http://localhost:8080 --dry-run
   task rse-seed -- --cache-version 2026-05-12.all --forecasting-base-url http://localhost:8080 --out .work/rse-seed.sql
   task rse-seed -- --cache-version 2026-05-12.it-demo --archetypes '[{"country":"IT","category":"Residential","name":"Detached 1980"}]' --forecasting-base-url http://localhost:8080
+  task rse-seed -- --cache-version 2026-05-12.all --forecasting-base-url http://localhost:8080 --out-json artifact.json
+  task rse-seed -- --cache-version 2026-05-12.all --from-json artifact.json --apply
+  task rse-seed -- --cache-version 2026-05-12.all --from-json artifact.json --out review.sql
 `,
     );
 }
@@ -1707,14 +1726,26 @@ export async function runRSESeedCli(
       throw new Error("--dry-run cannot be combined with --out");
     }
 
-    const packageIds = options.packages;
-    const forecastingBaseUrl =
-      options.forecastingBaseUrl ?? deps.env.VITE_API_URL;
-
-    if (!forecastingBaseUrl || forecastingBaseUrl.startsWith("/")) {
+    if (options.fromJson && options.forecastingBaseUrl) {
       throw new Error(
-        "--forecasting-base-url or absolute VITE_API_URL is required for CLI generation",
+        "--from-json cannot be combined with --forecasting-base-url",
       );
+    }
+
+    if (options.fromJson && options.archetypes) {
+      throw new Error("--from-json cannot be combined with --archetypes");
+    }
+
+    if (options.fromJson && options.dryRun) {
+      throw new Error("--from-json cannot be combined with --dry-run");
+    }
+
+    if (options.fromJson && options.outJson) {
+      throw new Error("--from-json cannot be combined with --out-json");
+    }
+
+    if (options.outJson && options.dryRun) {
+      throw new Error("--out-json cannot be combined with --dry-run");
     }
 
     const publish = options.publish;
@@ -1722,9 +1753,15 @@ export async function runRSESeedCli(
     const supabaseUrl = deps.env.VITE_SUPABASE_URL ?? deps.env.SUPABASE_URL;
 
     logger.info("rse_seed.service_urls", "RSE seed service targets", {
-      forecastingBaseUrl: sanitizeServiceUrl(forecastingBaseUrl),
+      forecastingBaseUrl: options.fromJson
+        ? null
+        : sanitizeServiceUrl(
+            options.forecastingBaseUrl ?? deps.env.VITE_API_URL ?? "",
+          ),
       supabaseUrl: apply ? sanitizeServiceUrl(supabaseUrl) : null,
       supabaseApplyEnabled: apply,
+      fromJson: options.fromJson ?? null,
+      outJson: options.outJson ?? null,
     });
 
     logger.info("rse_seed.start", "Starting RSE cache seed generation", {
@@ -1733,6 +1770,8 @@ export async function runRSESeedCli(
       publish,
       apply,
       hasOutFile: out !== undefined,
+      fromJson: options.fromJson ?? null,
+      outJson: options.outJson ?? null,
     });
 
     if (apply) {
@@ -1756,57 +1795,143 @@ export async function runRSESeedCli(
       logger.info("supabase.connectivity.success", "Supabase is reachable");
     }
 
-    const forecastingClient = deps.makeForecastingClient(
-      forecastingBaseUrl,
-      logger,
-    );
-    const availableArchetypes = await verifyForecastingApi(
-      forecastingClient,
-      logger,
-    );
+    let generated: RSEGeneratedSeed;
+    let archetypeCount = 0;
+    let packageCount = 0;
 
-    logger.info("archetypes.resolve.start", "Resolving seed archetypes", {
-      explicitOverride: options.archetypes !== undefined,
-    });
+    if (options.fromJson) {
+      logger.info("seed.load.start", "Loading RSE cache seed from JSON", {
+        fromJson: options.fromJson,
+      });
 
-    const archetypes = await resolveSeedArchetypes(
-      options.archetypes,
-      forecastingClient,
-      availableArchetypes,
-      logger,
-    );
+      const artifactJson = await readFile(options.fromJson, "utf-8");
+      const artifact = JSON.parse(artifactJson) as unknown;
 
-    logger.info("archetypes.resolve.success", "Resolved seed archetypes", {
-      archetypeCount: archetypes.length,
-    });
+      if (
+        !isRecord(artifact) ||
+        !isRecord(artifact.version) ||
+        typeof artifact.version.cache_version !== "string" ||
+        !Array.isArray(artifact.entries)
+      ) {
+        throw new Error(
+          "--from-json file must contain {version: {cache_version: string}, entries: Array}",
+        );
+      }
 
-    const targets = archetypes.flatMap((archetype) =>
-      packageIds.map((packageId) => ({ archetype, packageId })),
-    );
+      if (artifact.version.cache_version !== cacheVersion) {
+        throw new Error(
+          `--cache-version ${cacheVersion} does not match loaded artifact version ${String(artifact.version.cache_version)}`,
+        );
+      }
 
-    logger.info("seed.generate.start", "Generating RSE cache seed", {
-      archetypeCount: archetypes.length,
-      packageCount: packageIds.length,
-      targetCount: targets.length,
-    });
+      const loadedVersion: RSESeedVersionRow = {
+        ...(artifact.version as unknown as RSESeedVersionRow),
+        status: publish ? "published" : "draft",
+      };
 
-    const generated = await generateRSECacheSeedSql(
-      {
-        cacheVersion,
-        targets,
-        generatedAt: deps.now().toISOString(),
-        forecastingServiceVersion: options.forecastingServiceVersion,
-        description: options.description,
-        publish,
+      generated = {
+        version: loadedVersion,
+        entries: artifact.entries as RSESeedEntryRow[],
+        sql: renderSeedSql(
+          loadedVersion,
+          artifact.entries as RSESeedEntryRow[],
+          publish,
+        ),
+      };
+
+      archetypeCount = new Set(
+        generated.entries.map(
+          (entry) =>
+            `${entry.archetype_country}/${entry.archetype_category}/${entry.archetype_name}`,
+        ),
+      ).size;
+      packageCount = new Set(generated.entries.map((entry) => entry.package_id))
+        .size;
+
+      logger.info("seed.load.success", "Loaded RSE cache seed from JSON", {
+        fromJson: options.fromJson,
+        entryCount: generated.entries.length,
+        cacheVersion: loadedVersion.cache_version,
+        status: loadedVersion.status,
+      });
+    } else {
+      const packageIds = options.packages;
+      const forecastingBaseUrl =
+        options.forecastingBaseUrl ?? deps.env.VITE_API_URL;
+
+      if (!forecastingBaseUrl || forecastingBaseUrl.startsWith("/")) {
+        throw new Error(
+          "--forecasting-base-url or absolute VITE_API_URL is required for CLI generation",
+        );
+      }
+
+      const forecastingClient = deps.makeForecastingClient(
+        forecastingBaseUrl,
         logger,
-      },
-      forecastingClient,
-    );
+      );
+      const availableArchetypes = await verifyForecastingApi(
+        forecastingClient,
+        logger,
+      );
 
-    logger.info("seed.generate.success", "Generated RSE cache seed", {
-      entryCount: generated.entries.length,
-      sqlBytes: generated.sql.length,
-    });
+      logger.info("archetypes.resolve.start", "Resolving seed archetypes", {
+        explicitOverride: options.archetypes !== undefined,
+      });
+
+      const archetypes = await resolveSeedArchetypes(
+        options.archetypes,
+        forecastingClient,
+        availableArchetypes,
+        logger,
+      );
+
+      logger.info("archetypes.resolve.success", "Resolved seed archetypes", {
+        archetypeCount: archetypes.length,
+      });
+
+      const targets = archetypes.flatMap((archetype) =>
+        packageIds.map((packageId) => ({ archetype, packageId })),
+      );
+
+      logger.info("seed.generate.start", "Generating RSE cache seed", {
+        archetypeCount: archetypes.length,
+        packageCount: packageIds.length,
+        targetCount: targets.length,
+      });
+
+      generated = await generateRSECacheSeedSql(
+        {
+          cacheVersion,
+          targets,
+          generatedAt: deps.now().toISOString(),
+          forecastingServiceVersion: options.forecastingServiceVersion,
+          description: options.description,
+          publish,
+          logger,
+        },
+        forecastingClient,
+      );
+
+      archetypeCount = archetypes.length;
+      packageCount = packageIds.length;
+
+      logger.info("seed.generate.success", "Generated RSE cache seed", {
+        entryCount: generated.entries.length,
+        sqlBytes: generated.sql.length,
+      });
+    }
+
+    if (options.outJson) {
+      const artifact = {
+        version: generated.version,
+        entries: generated.entries,
+      };
+      await deps.writeFile(options.outJson, JSON.stringify(artifact, null, 2));
+      logger.info("seed.json.write.success", "Wrote seed artifact to JSON", {
+        outJson: options.outJson,
+        entryCount: generated.entries.length,
+      });
+    }
 
     if (dryRun) {
       logger.info("seed.dry_run.success", "RSE seed dry run completed", {
@@ -1815,8 +1940,8 @@ export async function runRSESeedCli(
       deps.stdout(
         renderDryRunSummary({
           generated,
-          archetypeCount: archetypes.length,
-          packageCount: packageIds.length,
+          archetypeCount,
+          packageCount,
           publish,
         }),
       );
