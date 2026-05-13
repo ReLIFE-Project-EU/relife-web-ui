@@ -2,11 +2,23 @@ import { describe, expect, test } from "vitest";
 import {
   buildArchetypeSelectionLabels,
   compareArchetypesForSelection,
+  formatArchetypeCategoryLabel,
   formatArchetypeSelectionLabel,
   getArchetypeSelectionLabel,
 } from "../../../src/utils/archetypeLabels";
 
 describe("archetypeLabels", () => {
+  describe("formatArchetypeCategoryLabel", () => {
+    test("expands known archetype category codes", () => {
+      expect(formatArchetypeCategoryLabel("SFH")).toBe("Single-Family House");
+      expect(formatArchetypeCategoryLabel("MFH")).toBe("Multi-Family House");
+    });
+
+    test("keeps unknown categories unchanged", () => {
+      expect(formatArchetypeCategoryLabel("office")).toBe("office");
+    });
+  });
+
   describe("formatArchetypeSelectionLabel", () => {
     test("prefixes the canonical country for legacy Austrian archetypes", () => {
       expect(formatArchetypeSelectionLabel("Austria", "SFH_0_1945")).toBe(

@@ -49,7 +49,26 @@ vi.mock(
         { country: "IT", category: "SFH", name: "ref-a" },
         { country: "IT", category: "SFH", name: "ref-b" },
       ]),
-      getArchetypeDetails: vi.fn().mockResolvedValue({ floorArea: 100 }),
+      getArchetypeDetails: vi.fn().mockResolvedValue({
+        country: "IT",
+        category: "SFH",
+        name: "ref-a",
+        floorArea: 100,
+        numberOfFloors: 2,
+        floorHeight: 3,
+        totalWindowArea: 20,
+        thermalProperties: {
+          wallUValue: 0.4,
+          roofUValue: 0.3,
+          windowUValue: 1.4,
+        },
+        setpoints: {
+          heatingSetpoint: 20,
+          heatingSetback: 16,
+          coolingSetpoint: 26,
+          coolingSetback: 30,
+        },
+      }),
       validatePortfolio: vi.fn((def) => def),
       expandPortfolio: vi.fn().mockResolvedValue([
         {
@@ -171,13 +190,16 @@ describe("StrategyExplorer integration", () => {
 
     // Fill in portfolio row
     await user.click(countryCombo);
-    await user.click(screen.getByText("IT"));
+    await user.click(screen.getByText("Italy"));
 
     await user.click(categoryCombo);
-    await user.click(screen.getByText("SFH"));
+    await user.click(screen.getByText("Single-Family House"));
 
     await user.click(archetypeCombo);
-    await user.click(screen.getByText("ref-a"));
+    await user.click(screen.getByText("Italy · ref-a"));
+
+    expect(await screen.findByText("Floor area")).toBeTruthy();
+    expect(screen.getByText("100 m²")).toBeTruthy();
 
     const buildingCountInput = screen.getByPlaceholderText(/^Count$/i);
     await user.clear(buildingCountInput);
