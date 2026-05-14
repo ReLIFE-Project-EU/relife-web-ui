@@ -150,11 +150,6 @@ async function runWorkflowWithDependencies(
         { missing: cacheResolution.missing },
         auditCtx,
       );
-      return emptyWorkflowResult(
-        normalizedRequest,
-        cacheResolution.cacheVersion,
-        cacheResolution.missing,
-      );
     }
 
     const normalized = normalizeCacheEntries(
@@ -170,10 +165,18 @@ async function runWorkflowWithDependencies(
         { unavailable: normalized.unavailable },
         auditCtx,
       );
+    }
+
+    const unavailableCombinations = [
+      ...cacheResolution.missing,
+      ...normalized.unavailable,
+    ];
+
+    if (normalized.simulations.length === 0) {
       return emptyWorkflowResult(
         normalizedRequest,
         cacheResolution.cacheVersion,
-        normalized.unavailable,
+        unavailableCombinations,
       );
     }
 
@@ -246,19 +249,37 @@ async function runWorkflowWithDependencies(
       auditCtx,
     );
 
-    const packageAggregates = packageIds.map((packageId) =>
-      aggregatePackage({
-        packageId,
-        portfolio,
-        simulations: normalized.simulations.filter(
-          (result) => result.packageId === packageId,
+    const packageAggregates = packageIds.flatMap((packageId) => {
+      const simulations = normalized.simulations.filter(
+        (result) => result.packageId === packageId,
+      );
+
+      if (simulations.length === 0) {
+        return [];
+      }
+
+      const availableKeys = new Set(
+        simulations.map((simulation) =>
+          rseArchetypePackageKey(simulation.archetype, simulation.packageId),
         ),
-        financials: financials.filter(
-          (result) => result.packageId === packageId,
-        ),
-        goal: request.goal,
-      }),
-    );
+      );
+
+      return [
+        aggregatePackage({
+          packageId,
+          portfolio: portfolio.filter((selection) =>
+            availableKeys.has(
+              rseArchetypePackageKey(selection.archetype, packageId),
+            ),
+          ),
+          simulations,
+          financials: financials.filter(
+            (result) => result.packageId === packageId,
+          ),
+          goal: request.goal,
+        }),
+      ];
+    });
 
     auditLog.debug(
       "pipeline",
@@ -287,7 +308,7 @@ async function runWorkflowWithDependencies(
       cacheVersion: cacheResolution.cacheVersion,
       packageAggregates,
       rankings,
-      unavailableCombinations: [],
+      unavailableCombinations,
     };
   } finally {
     auditLog.endRun();

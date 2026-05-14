@@ -7,7 +7,8 @@
  * it, and emits SQL (or writes directly to Supabase).  This is the write-side
  * counterpart to src/features/strategy-explorer/api/rseCacheApi.ts.
  */
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import { Writable } from "node:stream";
 
 import { createClient } from "@supabase/supabase-js";
@@ -35,6 +36,7 @@ import type {
 } from "../../src/features/strategy-explorer/types.ts";
 import { getEPCClass } from "../../src/services/energyUtils.ts";
 import { buildECMParams } from "../../src/services/renovationEcmParams.ts";
+import type { RenovationMeasureId } from "../../src/types/renovation.ts";
 import type {
   ArchetypeInfo,
   ECMApplicationParams,
@@ -44,6 +46,14 @@ import type {
 import { resolveEmissionFactorCountry } from "../../src/utils/emissionFactorCountry.ts";
 
 const UNIT_SEPARATOR = "\u001f";
+const DEFAULT_RSE_SEED_CHECKPOINT_DIR = ".work/rse-cache/checkpoints";
+const DEFAULT_RSE_SEED_FAILURE_DIR = ".work/rse-cache/failures";
+const DEFAULT_RSE_SEED_MAX_ATTEMPTS = 4;
+const DEFAULT_RSE_SEED_RETRY_INITIAL_DELAY_MS = 30_000;
+const DEFAULT_RSE_SEED_RETRY_MAX_DELAY_MS = 300_000;
+const RETRYABLE_HTTP_STATUSES = new Set([
+  408, 409, 425, 429, 500, 502, 503, 504,
+]);
 const RSE_SEED_LOGGED_ERRORS = new WeakSet<object>();
 const RSE_SEED_LOG_LEVELS = [
   "debug",
@@ -132,6 +142,50 @@ export interface RSEGeneratedSeed {
   sql: string;
 }
 
+export interface RSESeedTargetFailure {
+  target: RSESeedTarget;
+  targetKey: string;
+  targetIndex: number;
+  targetTotal: number;
+  measureIds: readonly RenovationMeasureId[];
+  attempts: number;
+  elapsedMs: number;
+  failedAt: string;
+  error: {
+    name: string;
+    message: string;
+    retryable: boolean;
+    status?: number;
+  };
+}
+
+export interface RSESeedRunCoverage {
+  targetTotal: number;
+  succeeded: number;
+  failed: number;
+  skipped: number;
+  missing: number;
+  complete: boolean;
+}
+
+export interface RSESeedRunMetadata {
+  cacheVersion: string;
+  targetFingerprint: string;
+  packageIds: RSEPackageId[];
+  archetypes: RSESeedArchetype[];
+  forecastingBaseUrl: string | null;
+  generatedAt: string;
+  checkpointSchemaVersion: 1;
+}
+
+export interface RSESeedRunState {
+  metadata: RSESeedRunMetadata;
+  version: RSESeedVersionRow;
+  entries: RSESeedEntryRow[];
+  failures: RSESeedTargetFailure[];
+  coverage: RSESeedRunCoverage;
+}
+
 /** Options passed to the generator from the CLI or a test fixture. */
 export interface RSESeedGeneratorOptions {
   cacheVersion: string;
@@ -176,6 +230,30 @@ export interface RSESeedCliDeps {
   now: () => Date;
 }
 
+class RSESeedPartialFailureError extends Error {
+  readonly state: RSESeedRunState;
+
+  constructor(state: RSESeedRunState) {
+    super(
+      `RSE seed generation completed with ${state.coverage.failed} failed target(s).`,
+    );
+    this.name = "RSESeedPartialFailureError";
+    this.state = state;
+    Object.setPrototypeOf(this, RSESeedPartialFailureError.prototype);
+  }
+}
+
+class ForecastingHttpError extends Error {
+  readonly status?: number;
+
+  constructor(message: string, status?: number) {
+    super(message);
+    this.name = "ForecastingHttpError";
+    this.status = status;
+    Object.setPrototypeOf(this, ForecastingHttpError.prototype);
+  }
+}
+
 /** Orchestrate the full seed generation pipeline:
  *  1. Simulate ECM for each (archetype, package) via the Forecasting service.
  *  2. Build and validate the cache payload.
@@ -208,46 +286,17 @@ export async function generateRSECacheSeedSql(
     targetKeys.add(key);
 
     const measureIds = RSE_MVP_PACKAGE_MEASURE_IDS[target.packageId];
-    targetLogger.debug("seed.target.start", "Generating seed target", {
-      measureIds,
-    });
-    const ecmParams = {
-      ...buildECMParams(measureIds, {
-        kind: "archetype",
-        archetype: target.archetype,
-        floorArea: target.archetype.floorArea,
-      }),
-      include_baseline: true,
-    };
-    targetLogger.debug(
-      "forecasting.ecm.request_summary",
-      "ECM request summary",
-      {
-        measureIds,
-        includeBaseline: true,
-        source: "archetype",
-        floorArea: target.archetype.floorArea,
-      },
-    );
-    const ecmResponse = await forecastingClient.simulateECM(ecmParams);
-    const payload = await buildPayload({
+    const entry = await generateSeedEntryForTarget({
+      cacheVersion: options.cacheVersion,
       target,
       generatedAt: options.generatedAt,
       forecastingServiceVersion: options.forecastingServiceVersion,
-      ecmResponse,
       forecastingClient,
       logger: targetLogger,
+      measureIds,
     });
 
-    entries.push({
-      cache_version: options.cacheVersion,
-      archetype_country: target.archetype.country,
-      archetype_category: target.archetype.category,
-      archetype_name: target.archetype.name,
-      package_id: target.packageId,
-      payload_schema_version: RSE_CACHE_PAYLOAD_SCHEMA_VERSION,
-      payload,
-    });
+    entries.push(entry);
 
     targetLogger.debug("seed.target.success", "Generated seed target", {
       elapsedMs: Date.now() - targetStartedAt,
@@ -275,6 +324,307 @@ export async function generateRSECacheSeedSql(
     version,
     entries,
     sql: renderSeedSql(version, entries, options.publish ?? false),
+  };
+}
+
+async function generateRSECacheSeedRun(params: {
+  cacheVersion: string;
+  targets: RSESeedTarget[];
+  packageIds: RSEPackageId[];
+  archetypes: RSESeedArchetype[];
+  generatedAt: string;
+  forecastingBaseUrl: string;
+  forecastingServiceVersion?: string;
+  description?: string;
+  publish: boolean;
+  partialPublish: boolean;
+  logger: RSESeedLogger;
+  forecastingClient: RSEForecastingSeedClient;
+  checkpointPath: string;
+  existingState: RSESeedRunState | null;
+  writeFile: (path: string, contents: string) => Promise<void>;
+  now: () => Date;
+  maxAttempts: number;
+  retryInitialDelayMs: number;
+  retryMaxDelayMs: number;
+}): Promise<RSESeedRunState> {
+  const entries = [...(params.existingState?.entries ?? [])];
+  const failures = [...(params.existingState?.failures ?? [])];
+  const completedKeys = new Set(entries.map(entryTargetKey));
+  const priorFailureKeys = new Set(
+    failures.map((failure) => failure.targetKey),
+  );
+  const currentFailures: RSESeedTargetFailure[] = [];
+  let skipped = 0;
+
+  for (const [index, target] of params.targets.entries()) {
+    const key = targetKey(target);
+    const targetIndex = index + 1;
+    const targetTotal = params.targets.length;
+    const targetFields = {
+      ...targetLogFields(target),
+      targetIndex,
+      targetTotal,
+    };
+    const targetLogger = childSeedLogger(params.logger, targetFields);
+
+    if (completedKeys.has(key)) {
+      skipped += 1;
+      targetLogger.debug(
+        "seed.target.skip",
+        "Skipping checkpointed seed target",
+      );
+      continue;
+    }
+
+    const measureIds = RSE_MVP_PACKAGE_MEASURE_IDS[target.packageId];
+    const startedAt = Date.now();
+
+    try {
+      const entry = await retrySeedTarget({
+        maxAttempts: params.maxAttempts,
+        retryInitialDelayMs: params.retryInitialDelayMs,
+        retryMaxDelayMs: params.retryMaxDelayMs,
+        logger: targetLogger,
+        run: () =>
+          generateSeedEntryForTarget({
+            cacheVersion: params.cacheVersion,
+            target,
+            generatedAt: params.generatedAt,
+            forecastingServiceVersion: params.forecastingServiceVersion,
+            forecastingClient: params.forecastingClient,
+            logger: targetLogger,
+            measureIds,
+          }),
+      });
+      entries.push(entry);
+      completedKeys.add(key);
+      priorFailureKeys.delete(key);
+      await writeCheckpoint();
+    } catch (error) {
+      const seedError = toSeedError(error);
+      const failure: RSESeedTargetFailure = {
+        target,
+        targetKey: key,
+        targetIndex,
+        targetTotal,
+        measureIds,
+        attempts: params.maxAttempts,
+        elapsedMs: Date.now() - startedAt,
+        failedAt: params.now().toISOString(),
+        error: seedError,
+      };
+      currentFailures.push(failure);
+      targetLogger.error("seed.target.failure", "Seed target failed", {
+        attempts: params.maxAttempts,
+        elapsedMs: failure.elapsedMs,
+        error: new Error(seedError.message),
+      });
+      await writeCheckpoint();
+    }
+
+    if (targetIndex % 25 === 0 || targetIndex === targetTotal) {
+      params.logger.info("seed.generate.progress", "RSE cache seed progress", {
+        completedTargets: entries.length,
+        failedTargets: currentFailures.length,
+        skippedTargets: skipped,
+        targetTotal,
+      });
+    }
+  }
+
+  const unresolvedFailures = [
+    ...failures.filter((failure) => !completedKeys.has(failure.targetKey)),
+    ...currentFailures,
+  ].filter((failure, index, all) => {
+    return (
+      all.findIndex((item) => item.targetKey === failure.targetKey) === index
+    );
+  });
+  const state = makeState(unresolvedFailures);
+  await writeCheckpointState(state);
+
+  return state;
+
+  function makeState(stateFailures: RSESeedTargetFailure[]): RSESeedRunState {
+    return buildRunState({
+      cacheVersion: params.cacheVersion,
+      description: params.description,
+      forecastingServiceVersion: params.forecastingServiceVersion,
+      generatedAt: params.generatedAt,
+      forecastingBaseUrl: params.forecastingBaseUrl,
+      targets: params.targets,
+      packageIds: params.packageIds,
+      archetypes: params.archetypes,
+      entries,
+      failures: stateFailures,
+      skipped,
+      publish: params.publish,
+      partialPublish: params.partialPublish,
+    });
+  }
+
+  async function writeCheckpoint(): Promise<void> {
+    const state = makeState([
+      ...failures.filter((failure) => !completedKeys.has(failure.targetKey)),
+      ...currentFailures,
+    ]);
+    await writeCheckpointState(state);
+  }
+
+  async function writeCheckpointState(state: RSESeedRunState): Promise<void> {
+    await writeJsonFile(params.checkpointPath, state, params.writeFile);
+    params.logger.debug("seed.checkpoint.write", "Wrote RSE seed checkpoint", {
+      checkpointPath: params.checkpointPath,
+      coverage: state.coverage,
+    });
+  }
+}
+
+async function retrySeedTarget<T>(params: {
+  maxAttempts: number;
+  retryInitialDelayMs: number;
+  retryMaxDelayMs: number;
+  logger: RSESeedLogger;
+  run: () => Promise<T>;
+}): Promise<T> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= params.maxAttempts; attempt += 1) {
+    try {
+      return await params.run();
+    } catch (error) {
+      lastError = error;
+      const retryable = isRetryableSeedError(error);
+      if (!retryable || attempt >= params.maxAttempts) {
+        throw error;
+      }
+
+      const delayMs = retryDelayMs({
+        attempt,
+        initialDelayMs: params.retryInitialDelayMs,
+        maxDelayMs: params.retryMaxDelayMs,
+      });
+      params.logger.warn("seed.target.retry", "Retrying seed target", {
+        attempt,
+        maxAttempts: params.maxAttempts,
+        delayMs,
+        error: error instanceof Error ? error : new Error(String(error)),
+      });
+      await sleep(delayMs);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
+function retryDelayMs(params: {
+  attempt: number;
+  initialDelayMs: number;
+  maxDelayMs: number;
+}): number {
+  const exponential = params.initialDelayMs * 2 ** (params.attempt - 1);
+  const jitter = Math.trunc(
+    Math.random() * Math.min(1_000, params.initialDelayMs),
+  );
+
+  return Math.min(params.maxDelayMs, exponential + jitter);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableSeedError(error: unknown): boolean {
+  if (error instanceof ForecastingHttpError) {
+    return (
+      error.status === undefined || RETRYABLE_HTTP_STATUSES.has(error.status)
+    );
+  }
+
+  if (error instanceof SyntaxError) {
+    return true;
+  }
+
+  return error instanceof TypeError;
+}
+
+function toSeedError(error: unknown): RSESeedTargetFailure["error"] {
+  if (error instanceof ForecastingHttpError) {
+    return {
+      name: error.name,
+      message: error.message,
+      retryable: isRetryableSeedError(error),
+      status: error.status,
+    };
+  }
+
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      retryable: isRetryableSeedError(error),
+    };
+  }
+
+  return {
+    name: "Error",
+    message: String(error),
+    retryable: false,
+  };
+}
+
+async function generateSeedEntryForTarget(params: {
+  cacheVersion: string;
+  target: RSESeedTarget;
+  generatedAt: string;
+  forecastingServiceVersion?: string;
+  forecastingClient: RSEForecastingSeedClient;
+  logger: RSESeedLogger;
+  measureIds?: readonly RenovationMeasureId[];
+}): Promise<RSESeedEntryRow> {
+  const measureIds =
+    params.measureIds ?? RSE_MVP_PACKAGE_MEASURE_IDS[params.target.packageId];
+
+  params.logger.debug("seed.target.start", "Generating seed target", {
+    measureIds,
+  });
+  const ecmParams = {
+    ...buildECMParams(measureIds, {
+      kind: "archetype",
+      archetype: params.target.archetype,
+      floorArea: params.target.archetype.floorArea,
+    }),
+    include_baseline: true,
+  };
+  params.logger.debug(
+    "forecasting.ecm.request_summary",
+    "ECM request summary",
+    {
+      measureIds,
+      includeBaseline: true,
+      source: "archetype",
+      floorArea: params.target.archetype.floorArea,
+    },
+  );
+  const ecmResponse = await params.forecastingClient.simulateECM(ecmParams);
+  const payload = await buildPayload({
+    target: params.target,
+    generatedAt: params.generatedAt,
+    forecastingServiceVersion: params.forecastingServiceVersion,
+    ecmResponse,
+    forecastingClient: params.forecastingClient,
+    logger: params.logger,
+  });
+
+  return {
+    cache_version: params.cacheVersion,
+    archetype_country: params.target.archetype.country,
+    archetype_category: params.target.archetype.category,
+    archetype_name: params.target.archetype.name,
+    package_id: params.target.packageId,
+    payload_schema_version: RSE_CACHE_PAYLOAD_SCHEMA_VERSION,
+    payload,
   };
 }
 
@@ -933,6 +1283,278 @@ function targetKey(target: RSESeedTarget): string {
   ].join(UNIT_SEPARATOR);
 }
 
+function entryTargetKey(entry: RSESeedEntryRow): string {
+  return [
+    entry.archetype_country,
+    entry.archetype_category,
+    entry.archetype_name,
+    entry.package_id,
+  ].join(UNIT_SEPARATOR);
+}
+
+function targetFingerprint(targets: RSESeedTarget[]): string {
+  return JSON.stringify(targets.map(targetKey).sort());
+}
+
+function defaultCheckpointPath(cacheVersion: string): string {
+  return `${DEFAULT_RSE_SEED_CHECKPOINT_DIR}/${safePathSegment(cacheVersion)}.json`;
+}
+
+function defaultFailuresPath(cacheVersion: string): string {
+  return `${DEFAULT_RSE_SEED_FAILURE_DIR}/${safePathSegment(cacheVersion)}.json`;
+}
+
+function safePathSegment(value: string): string {
+  return value.replace(/[^a-zA-Z0-9._-]+/g, "_");
+}
+
+function buildSeedVersion(params: {
+  cacheVersion: string;
+  description?: string;
+  forecastingServiceVersion?: string;
+  publish: boolean;
+  partialPublish: boolean;
+  coverage?: RSESeedRunCoverage;
+}): RSESeedVersionRow {
+  const description =
+    params.partialPublish && params.coverage
+      ? appendCoverageDescription(params.description, params.coverage)
+      : (params.description ?? null);
+
+  return {
+    cache_version: params.cacheVersion,
+    status: params.publish || params.partialPublish ? "published" : "draft",
+    description,
+    generated_by: "offline-pipeline",
+    forecasting_service_version: params.forecastingServiceVersion ?? null,
+    co2_method: RSE_CO2_METHODS[0],
+  };
+}
+
+function appendCoverageDescription(
+  description: string | undefined,
+  coverage: RSESeedRunCoverage,
+): string {
+  const coverageNote = `Partial RSE cache coverage: ${coverage.succeeded}/${coverage.targetTotal} targets succeeded, ${coverage.failed} failed.`;
+
+  return description ? `${description}\n\n${coverageNote}` : coverageNote;
+}
+
+function computeCoverage(params: {
+  targetTotal: number;
+  entries: RSESeedEntryRow[];
+  failures: RSESeedTargetFailure[];
+  skipped: number;
+}): RSESeedRunCoverage {
+  const succeeded = params.entries.length;
+  const failed = params.failures.length;
+  const missing = Math.max(0, params.targetTotal - succeeded - failed);
+
+  return {
+    targetTotal: params.targetTotal,
+    succeeded,
+    failed,
+    skipped: params.skipped,
+    missing,
+    complete: succeeded === params.targetTotal && failed === 0,
+  };
+}
+
+function buildRunState(params: {
+  cacheVersion: string;
+  description?: string;
+  forecastingServiceVersion?: string;
+  generatedAt: string;
+  forecastingBaseUrl: string | null;
+  targets: RSESeedTarget[];
+  packageIds: RSEPackageId[];
+  archetypes: RSESeedArchetype[];
+  entries: RSESeedEntryRow[];
+  failures: RSESeedTargetFailure[];
+  skipped: number;
+  publish: boolean;
+  partialPublish: boolean;
+}): RSESeedRunState {
+  const coverage = computeCoverage({
+    targetTotal: params.targets.length,
+    entries: params.entries,
+    failures: params.failures,
+    skipped: params.skipped,
+  });
+
+  return {
+    metadata: {
+      cacheVersion: params.cacheVersion,
+      targetFingerprint: targetFingerprint(params.targets),
+      packageIds: params.packageIds,
+      archetypes: params.archetypes,
+      forecastingBaseUrl: sanitizeServiceUrl(params.forecastingBaseUrl ?? ""),
+      generatedAt: params.generatedAt,
+      checkpointSchemaVersion: 1,
+    },
+    version: buildSeedVersion({
+      cacheVersion: params.cacheVersion,
+      description: params.description,
+      forecastingServiceVersion: params.forecastingServiceVersion,
+      publish: params.publish,
+      partialPublish: params.partialPublish,
+      coverage,
+    }),
+    entries: params.entries,
+    failures: params.failures,
+    coverage,
+  };
+}
+
+function generatedFromState(
+  state: RSESeedRunState,
+  publish: boolean,
+  partialPublish: boolean,
+  description?: string,
+  forecastingServiceVersion?: string,
+): RSEGeneratedSeed {
+  const version = buildSeedVersion({
+    cacheVersion: state.metadata.cacheVersion,
+    description: description ?? state.version.description ?? undefined,
+    forecastingServiceVersion:
+      forecastingServiceVersion ??
+      state.version.forecasting_service_version ??
+      undefined,
+    publish,
+    partialPublish,
+    coverage: state.coverage,
+  });
+
+  return {
+    version,
+    entries: state.entries,
+    sql: renderSeedSql(version, state.entries, publish || partialPublish),
+  };
+}
+
+async function readRunState(path: string): Promise<RSESeedRunState | null> {
+  try {
+    const artifact = JSON.parse(await readFile(path, "utf-8")) as unknown;
+
+    return parseRunStateArtifact(artifact);
+  } catch (error) {
+    if (isNodeErrorWithCode(error, "ENOENT")) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+function parseRunStateArtifact(artifact: unknown): RSESeedRunState {
+  if (
+    isRecord(artifact) &&
+    isRecord(artifact.metadata) &&
+    isRecord(artifact.version) &&
+    typeof artifact.version.cache_version === "string" &&
+    Array.isArray(artifact.entries)
+  ) {
+    const failures = Array.isArray(artifact.failures)
+      ? (artifact.failures as RSESeedTargetFailure[])
+      : [];
+    const coverage = isRecord(artifact.coverage)
+      ? (artifact.coverage as unknown as RSESeedRunCoverage)
+      : computeCoverage({
+          targetTotal:
+            typeof artifact.metadata.targetTotal === "number"
+              ? artifact.metadata.targetTotal
+              : artifact.entries.length + failures.length,
+          entries: artifact.entries as RSESeedEntryRow[],
+          failures,
+          skipped: 0,
+        });
+
+    return {
+      metadata: artifact.metadata as unknown as RSESeedRunMetadata,
+      version: artifact.version as unknown as RSESeedVersionRow,
+      entries: artifact.entries as RSESeedEntryRow[],
+      failures,
+      coverage,
+    };
+  }
+
+  if (
+    isRecord(artifact) &&
+    isRecord(artifact.version) &&
+    typeof artifact.version.cache_version === "string" &&
+    Array.isArray(artifact.entries)
+  ) {
+    const entries = artifact.entries as RSESeedEntryRow[];
+    const failures = Array.isArray(artifact.failures)
+      ? (artifact.failures as RSESeedTargetFailure[])
+      : [];
+
+    return {
+      metadata: {
+        cacheVersion: artifact.version.cache_version,
+        targetFingerprint: "",
+        packageIds: [],
+        archetypes: [],
+        forecastingBaseUrl: null,
+        generatedAt: new Date(0).toISOString(),
+        checkpointSchemaVersion: 1,
+      },
+      version: artifact.version as unknown as RSESeedVersionRow,
+      entries,
+      failures,
+      coverage: computeCoverage({
+        targetTotal: entries.length + failures.length,
+        entries,
+        failures,
+        skipped: 0,
+      }),
+    };
+  }
+
+  throw new Error(
+    "--from-json/checkpoint file must contain {version: {cache_version: string}, entries: Array}",
+  );
+}
+
+function assertCompatibleCheckpoint(params: {
+  state: RSESeedRunState;
+  cacheVersion: string;
+  targets: RSESeedTarget[];
+}): void {
+  if (params.state.metadata.cacheVersion !== params.cacheVersion) {
+    throw new Error(
+      `Checkpoint cache version ${params.state.metadata.cacheVersion} does not match --cache-version ${params.cacheVersion}`,
+    );
+  }
+
+  const expectedFingerprint = targetFingerprint(params.targets);
+  if (
+    params.state.metadata.targetFingerprint &&
+    params.state.metadata.targetFingerprint !== expectedFingerprint
+  ) {
+    throw new Error(
+      "Checkpoint target set does not match the requested archetypes/packages. Use --fresh or a different --checkpoint path.",
+    );
+  }
+}
+
+async function writeJsonFile(
+  path: string,
+  value: unknown,
+  write: (path: string, contents: string) => Promise<void>,
+): Promise<void> {
+  await mkdir(dirname(path), { recursive: true });
+  await write(path, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function isNodeErrorWithCode(error: unknown, code: string): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === code
+  );
+}
+
 function targetLogFields(target: RSESeedTarget): RSESeedLogFields {
   return {
     archetypeCountry: target.archetype.country,
@@ -1102,11 +1724,19 @@ interface RSESeedCliOptions {
   out?: string;
   outJson?: string;
   fromJson?: string;
+  checkpoint?: string;
+  failuresOut?: string;
   description?: string;
   forecastingServiceVersion?: string;
   publish: boolean;
+  publishPartial: boolean;
   apply: boolean;
   dryRun: boolean;
+  fresh: boolean;
+  status: boolean;
+  maxAttempts: number;
+  retryInitialDelayMs: number;
+  retryMaxDelayMs: number;
   logLevel?: RSESeedLogLevel;
   logFormat?: RSESeedLogFormat;
 }
@@ -1190,6 +1820,47 @@ function buildCliProgram(
       "Load a previously generated seed JSON and skip generation.",
     )
     .option(
+      "--checkpoint <path>",
+      "Checkpoint path. Defaults to .work/rse-cache/checkpoints/<cache-version>.json.",
+    )
+    .option(
+      "--failures-out <path>",
+      "Write failed target details to a separate JSON file.",
+    )
+    .option(
+      "--fresh",
+      "Ignore a compatible checkpoint and start generation from scratch.",
+      false,
+    )
+    .option(
+      "--status",
+      "Print checkpoint status without calling Forecasting.",
+      false,
+    )
+    .option(
+      "--publish-partial",
+      "Explicitly publish an incomplete cache version with coverage metadata.",
+      false,
+    )
+    .option(
+      "--max-attempts <n>",
+      "Attempts per seed target before recording a failure. Defaults to 4.",
+      parsePositiveInteger,
+      DEFAULT_RSE_SEED_MAX_ATTEMPTS,
+    )
+    .option(
+      "--retry-initial-delay-ms <n>",
+      "Initial retry delay per target. Defaults to 30000.",
+      parseNonNegativeInteger,
+      DEFAULT_RSE_SEED_RETRY_INITIAL_DELAY_MS,
+    )
+    .option(
+      "--retry-max-delay-ms <n>",
+      "Maximum retry delay per target. Defaults to 300000.",
+      parseNonNegativeInteger,
+      DEFAULT_RSE_SEED_RETRY_MAX_DELAY_MS,
+    )
+    .option(
       "--log-level <level>",
       "Structured log level: debug, info, warn, error, or silent. Defaults to info.",
       parseLogLevel,
@@ -1199,44 +1870,72 @@ function buildCliProgram(
       "stderr log rendering: json (JSON Lines), pretty (human-readable), or auto (pretty when stderr is a TTY).",
       parseLogFormat,
     )
-    .addHelpText(
-      "after",
-      `
+    .addHelpText("after", buildCliHelpText());
+}
 
+const CLI_HELP_LOGGING = `
 Logging:
-  Logs go to stderr; SQL and dry-run summaries stay on stdout.
-  With --log-format auto (default when omitted), JSON Lines are used unless stderr is a TTY, then pino-pretty is used.
-  RSE_SEED_LOG_LEVEL sets the default log level; --log-level takes precedence.
-  RSE_SEED_LOG_FORMAT sets the default log format when --log-format is omitted (json, pretty, or auto).
+  Logs go to stderr; SQL and summaries stay on stdout.
+  RSE_SEED_LOG_LEVEL and RSE_SEED_LOG_FORMAT provide defaults for log flags.
+`;
 
-Provenance:
-  --forecasting-service-version  Optional string you supply for traceability only (e.g. Forecasting repo tag, container
-                                   digest, or build id). The generator does not fetch it from the Forecasting service.
-                                   When set: written to public.rse_cache_versions.forecasting_service_version and to
-                                   each entry JSONB payload under provenance.forecastingServiceVersion. When omitted:
-                                   the column is NULL and provenance.forecastingServiceVersion is omitted from payloads.
-                                   Does not change ECM, CO2, or SQL upsert behavior beyond those stored values.
+const CLI_HELP_RESILIENCE = `
+Resilience:
+  Generation checkpoints by default and auto-resumes compatible runs.
+  Use --fresh to ignore a checkpoint. Use --status to inspect checkpoint coverage.
+`;
 
-Direct apply environment:
-  SUPABASE_URL or VITE_SUPABASE_URL
-  SUPABASE_KEY or SUPABASE_SERVICE_ROLE_KEY
+const CLI_HELP_PUBLICATION = `
+Publication:
+  --apply writes successful rows as a draft, even when incomplete.
+  --publish requires complete coverage.
+  --publish-partial deliberately publishes incomplete coverage and records it in the version description.
+`;
 
-Artifact workflow:
-  --out-json <path>               Serialize the generated seed (version + entries) to JSON for later replay.
-  --from-json <path>              Load a previously generated seed JSON and skip the Forecasting service entirely.
-                                    --cache-version must match the artifact. --publish overrides the stored status.
-                                    Cannot be combined with --forecasting-base-url, --archetypes, --dry-run, or --out-json.
+const CLI_HELP_ARTIFACTS = `
+Artifacts:
+  --out-json writes the current run state for replay.
+  --from-json skips Forecasting and may be combined with --apply, --publish, or --publish-partial.
+`;
 
+const CLI_HELP_EXAMPLES = `
 Examples:
-  task rse-seed -- --help
-  task rse-seed -- --cache-version 2026-05-12.all --forecasting-base-url http://localhost:8080 --dry-run
-  task rse-seed -- --cache-version 2026-05-12.all --forecasting-base-url http://localhost:8080 --out .work/rse-seed.sql
-  task rse-seed -- --cache-version 2026-05-12.it-demo --archetypes '[{"country":"IT","category":"Residential","name":"Detached 1980"}]' --forecasting-base-url http://localhost:8080
-  task rse-seed -- --cache-version 2026-05-12.all --forecasting-base-url http://localhost:8080 --out-json artifact.json
-  task rse-seed -- --cache-version 2026-05-12.all --from-json artifact.json --apply
-  task rse-seed -- --cache-version 2026-05-12.all --from-json artifact.json --out review.sql
-`,
-    );
+  task rse-seed -- --cache-version 2026-05-12.all --forecasting-base-url http://localhost:8080
+  task rse-seed -- --cache-version 2026-05-12.all --status
+  task rse-seed -- --cache-version 2026-05-12.all --from-json .work/rse-cache/checkpoints/2026-05-12.all.json --apply
+  task rse-seed -- --cache-version 2026-05-12.all --from-json artifact.json --apply --publish
+  task rse-seed -- --cache-version 2026-05-12.all --from-json checkpoint.json --apply --publish-partial
+`;
+
+function buildCliHelpText(): string {
+  return [
+    "",
+    CLI_HELP_LOGGING,
+    CLI_HELP_RESILIENCE,
+    CLI_HELP_PUBLICATION,
+    CLI_HELP_ARTIFACTS,
+    CLI_HELP_EXAMPLES,
+  ].join("\n");
+}
+
+function parsePositiveInteger(value: string): number {
+  const parsed = Number(value);
+
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`Expected a positive integer, received ${value}`);
+  }
+
+  return parsed;
+}
+
+function parseNonNegativeInteger(value: string): number {
+  const parsed = Number(value);
+
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error(`Expected a non-negative integer, received ${value}`);
+  }
+
+  return parsed;
 }
 
 function parseLogLevel(value: string | undefined): RSESeedLogLevel {
@@ -1582,7 +2281,7 @@ async function jsonRequest<T>(
       },
     );
 
-    throw new Error(
+    throw new ForecastingHttpError(
       `${method} ${endpoint} failed: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
@@ -1600,7 +2299,10 @@ async function jsonRequest<T>(
       },
     );
 
-    throw new Error(`${method} ${endpoint} failed with ${response.status}`);
+    throw new ForecastingHttpError(
+      `${method} ${endpoint} failed with ${response.status}`,
+      response.status,
+    );
   }
 
   logger.debug(
@@ -1615,7 +2317,26 @@ async function jsonRequest<T>(
     },
   );
 
-  return response.json() as Promise<T>;
+  try {
+    return (await response.json()) as T;
+  } catch (error) {
+    logger.debug(
+      "forecasting.http.failure",
+      "Forecasting HTTP response JSON parsing failed",
+      {
+        method,
+        endpoint,
+        queryParams,
+        status: response.status,
+        elapsedMs: Date.now() - startedAt,
+        error: error instanceof Error ? error : new Error(String(error)),
+      },
+    );
+    throw new ForecastingHttpError(
+      `${method} ${endpoint} returned invalid JSON`,
+      response.status,
+    );
+  }
 }
 
 function splitRequestUrl(url: string): {
@@ -1685,6 +2406,34 @@ function renderDryRunSummary(params: {
   ].join("\n");
 }
 
+function renderStatusSummary(
+  checkpointPath: string,
+  state: RSESeedRunState | null,
+): string {
+  if (!state) {
+    return [
+      "RSE seed checkpoint not found.",
+      `Checkpoint: ${checkpointPath}`,
+      "",
+    ].join("\n");
+  }
+
+  return [
+    "RSE seed checkpoint status.",
+    `Checkpoint: ${checkpointPath}`,
+    `Cache version: ${state.version.cache_version}`,
+    `Status: ${state.version.status}`,
+    `Targets: ${state.coverage.succeeded}/${state.coverage.targetTotal} succeeded`,
+    `Failures: ${state.coverage.failed}`,
+    `Skipped on last run: ${state.coverage.skipped}`,
+    `Complete: ${state.coverage.complete ? "yes" : "no"}`,
+    state.coverage.complete
+      ? "Next: task rse-seed -- --cache-version <version> --from-json <checkpoint> --apply --publish"
+      : "Next: rerun the generation command to resume, or use --from-json <checkpoint> --apply --publish-partial",
+    "",
+  ].join("\n");
+}
+
 export async function runRSESeedCli(
   argv: string[],
   deps: RSESeedCliDeps = {
@@ -1716,6 +2465,8 @@ export async function runRSESeedCli(
   const cacheVersion = options.cacheVersion;
   const dryRun = options.dryRun;
   const out = options.out;
+  const checkpointPath =
+    options.checkpoint ?? defaultCheckpointPath(cacheVersion);
 
   try {
     if (dryRun && options.apply) {
@@ -1748,7 +2499,18 @@ export async function runRSESeedCli(
       throw new Error("--out-json cannot be combined with --dry-run");
     }
 
+    if (options.publish && options.publishPartial) {
+      throw new Error("--publish cannot be combined with --publish-partial");
+    }
+
+    if (options.status) {
+      const state = await readRunState(checkpointPath);
+      deps.stdout(renderStatusSummary(checkpointPath, state));
+      return;
+    }
+
     const publish = options.publish;
+    const partialPublish = options.publishPartial;
     const apply = options.apply;
     const supabaseUrl = deps.env.VITE_SUPABASE_URL ?? deps.env.SUPABASE_URL;
 
@@ -1762,16 +2524,19 @@ export async function runRSESeedCli(
       supabaseApplyEnabled: apply,
       fromJson: options.fromJson ?? null,
       outJson: options.outJson ?? null,
+      checkpoint: options.fromJson ? null : checkpointPath,
     });
 
     logger.info("rse_seed.start", "Starting RSE cache seed generation", {
       cacheVersion,
       dryRun,
       publish,
+      partialPublish,
       apply,
       hasOutFile: out !== undefined,
       fromJson: options.fromJson ?? null,
       outJson: options.outJson ?? null,
+      checkpoint: options.fromJson ? null : checkpointPath,
     });
 
     if (apply) {
@@ -1796,6 +2561,7 @@ export async function runRSESeedCli(
     }
 
     let generated: RSEGeneratedSeed;
+    let runState: RSESeedRunState | null = null;
     let archetypeCount = 0;
     let packageCount = 0;
 
@@ -1804,40 +2570,23 @@ export async function runRSESeedCli(
         fromJson: options.fromJson,
       });
 
-      const artifactJson = await readFile(options.fromJson, "utf-8");
-      const artifact = JSON.parse(artifactJson) as unknown;
+      runState = parseRunStateArtifact(
+        JSON.parse(await readFile(options.fromJson, "utf-8")) as unknown,
+      );
 
-      if (
-        !isRecord(artifact) ||
-        !isRecord(artifact.version) ||
-        typeof artifact.version.cache_version !== "string" ||
-        !Array.isArray(artifact.entries)
-      ) {
+      if (runState.version.cache_version !== cacheVersion) {
         throw new Error(
-          "--from-json file must contain {version: {cache_version: string}, entries: Array}",
+          `--cache-version ${cacheVersion} does not match loaded artifact version ${runState.version.cache_version}`,
         );
       }
 
-      if (artifact.version.cache_version !== cacheVersion) {
-        throw new Error(
-          `--cache-version ${cacheVersion} does not match loaded artifact version ${String(artifact.version.cache_version)}`,
-        );
-      }
-
-      const loadedVersion: RSESeedVersionRow = {
-        ...(artifact.version as unknown as RSESeedVersionRow),
-        status: publish ? "published" : "draft",
-      };
-
-      generated = {
-        version: loadedVersion,
-        entries: artifact.entries as RSESeedEntryRow[],
-        sql: renderSeedSql(
-          loadedVersion,
-          artifact.entries as RSESeedEntryRow[],
-          publish,
-        ),
-      };
+      generated = generatedFromState(
+        runState,
+        publish,
+        partialPublish,
+        options.description,
+        options.forecastingServiceVersion,
+      );
 
       archetypeCount = new Set(
         generated.entries.map(
@@ -1851,8 +2600,9 @@ export async function runRSESeedCli(
       logger.info("seed.load.success", "Loaded RSE cache seed from JSON", {
         fromJson: options.fromJson,
         entryCount: generated.entries.length,
-        cacheVersion: loadedVersion.cache_version,
-        status: loadedVersion.status,
+        failureCount: runState.failures.length,
+        cacheVersion: generated.version.cache_version,
+        status: generated.version.status,
       });
     } else {
       const packageIds = options.packages;
@@ -1899,37 +2649,104 @@ export async function runRSESeedCli(
         targetCount: targets.length,
       });
 
-      generated = await generateRSECacheSeedSql(
-        {
+      const existingState = options.fresh
+        ? null
+        : await readRunState(checkpointPath);
+      if (existingState) {
+        assertCompatibleCheckpoint({
+          state: existingState,
           cacheVersion,
           targets,
+        });
+        logger.info("seed.resume.loaded", "Loaded RSE seed checkpoint", {
+          checkpoint: checkpointPath,
+          coverage: existingState.coverage,
+        });
+      }
+
+      if (dryRun) {
+        generated = await generateRSECacheSeedSql(
+          {
+            cacheVersion,
+            targets,
+            generatedAt: deps.now().toISOString(),
+            forecastingServiceVersion: options.forecastingServiceVersion,
+            description: options.description,
+            publish,
+            logger,
+          },
+          forecastingClient,
+        );
+      } else {
+        runState = await generateRSECacheSeedRun({
+          cacheVersion,
+          targets,
+          packageIds,
+          archetypes,
           generatedAt: deps.now().toISOString(),
+          forecastingBaseUrl,
           forecastingServiceVersion: options.forecastingServiceVersion,
           description: options.description,
           publish,
+          partialPublish,
           logger,
-        },
-        forecastingClient,
-      );
+          forecastingClient,
+          checkpointPath,
+          existingState,
+          writeFile: deps.writeFile,
+          now: deps.now,
+          maxAttempts: options.maxAttempts,
+          retryInitialDelayMs: options.retryInitialDelayMs,
+          retryMaxDelayMs: options.retryMaxDelayMs,
+        });
+        generated = generatedFromState(
+          runState,
+          publish,
+          partialPublish,
+          options.description,
+          options.forecastingServiceVersion,
+        );
+      }
 
       archetypeCount = archetypes.length;
       packageCount = packageIds.length;
 
       logger.info("seed.generate.success", "Generated RSE cache seed", {
         entryCount: generated.entries.length,
+        failureCount: runState?.failures.length ?? 0,
         sqlBytes: generated.sql.length,
       });
     }
 
+    if (runState && publish && !runState.coverage.complete) {
+      throw new Error(
+        "--publish requires complete RSE seed coverage. Use --publish-partial to publish incomplete coverage deliberately.",
+      );
+    }
+
     if (options.outJson) {
-      const artifact = {
-        version: generated.version,
-        entries: generated.entries,
-      };
-      await deps.writeFile(options.outJson, JSON.stringify(artifact, null, 2));
+      const artifact =
+        runState ??
+        ({
+          version: generated.version,
+          entries: generated.entries,
+          failures: [],
+        } satisfies Pick<RSESeedRunState, "version" | "entries" | "failures">);
+      await writeJsonFile(options.outJson, artifact, deps.writeFile);
       logger.info("seed.json.write.success", "Wrote seed artifact to JSON", {
         outJson: options.outJson,
         entryCount: generated.entries.length,
+        failureCount: runState?.failures.length ?? 0,
+      });
+    }
+
+    if (runState && runState.failures.length > 0) {
+      const failuresOut =
+        options.failuresOut ?? defaultFailuresPath(cacheVersion);
+      await writeJsonFile(failuresOut, runState.failures, deps.writeFile);
+      logger.warn("seed.failures.write.success", "Wrote RSE seed failures", {
+        failuresOut,
+        failureCount: runState.failures.length,
       });
     }
 
@@ -1978,16 +2795,30 @@ export async function runRSESeedCli(
       logger.info("seed.apply.start", "Applying RSE cache seed to Supabase", {
         entryCount: generated.entries.length,
         publish,
+        partialPublish,
       });
       await deps.applySeed(generated, supabaseUrl, serviceRoleKey);
       logger.info("seed.apply.success", "Applied RSE cache seed to Supabase", {
         entryCount: generated.entries.length,
+        status: generated.version.status,
       });
+    }
+
+    if (runState && runState.failures.length > 0 && !apply && !partialPublish) {
+      logger.error(
+        "seed.generate.partial_failure",
+        "RSE cache seed has failed targets",
+        {
+          coverage: runState.coverage,
+        },
+      );
+      throw new RSESeedPartialFailureError(runState);
     }
 
     logger.info("rse_seed.success", "RSE cache seed command completed", {
       cacheVersion,
       entryCount: generated.entries.length,
+      failureCount: runState?.failures.length ?? 0,
     });
   } catch (error) {
     logger.error("rse_seed.failure", "RSE cache seed command failed", {

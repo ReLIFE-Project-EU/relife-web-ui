@@ -209,7 +209,50 @@ describe("rseWorkflowService", () => {
     ).toEqual(["envelope", "combined"]);
   });
 
-  test("missing cache rows block financial calls", async () => {
+  test("missing cache rows are excluded while available rows continue", async () => {
+    const availableEntry = makeEntry(archetypeB, "envelope");
+    const deps = makeDependencies({
+      cacheService: {
+        resolveCacheMatrix: vi.fn().mockResolvedValue({
+          cacheVersion: "v1",
+          entries: [availableEntry],
+          available: [availableEntry.key],
+          missing: [
+            {
+              archetype: archetypeA,
+              packageId: "envelope",
+              reason: "missing-cache-entry",
+            },
+          ],
+        }),
+        normalizeEntry: vi.fn(),
+      },
+    });
+    const cacheService = deps.cacheService;
+    if (!cacheService) {
+      throw new Error("cacheService test dependency is required");
+    }
+    cacheService.normalizeEntry = vi.fn((entry: RSEForecastingCacheEntry) =>
+      makeSimulation(entry),
+    );
+
+    const result = await createRSEWorkflowService(deps).runWorkflow(
+      makeRequest(["envelope"]),
+    );
+
+    expect(deps.computeFinancials).toHaveBeenCalledTimes(1);
+    expect(result.packageAggregates).toHaveLength(1);
+    expect(result.rankings).toHaveLength(1);
+    expect(result.unavailableCombinations).toEqual([
+      {
+        archetype: archetypeA,
+        packageId: "envelope",
+        reason: "missing-cache-entry",
+      },
+    ]);
+  });
+
+  test("missing cache rows still return an empty result when nothing is available", async () => {
     const deps = makeDependencies({
       cacheService: {
         resolveCacheMatrix: vi.fn().mockResolvedValue({

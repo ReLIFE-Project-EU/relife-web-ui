@@ -930,6 +930,141 @@ describe("runRSESeedCli", () => {
       ),
     ).rejects.toThrow("--dry-run cannot be combined with --apply");
   });
+
+  test("records failed targets, continues later targets, and exits nonzero without apply", async () => {
+    const { client, simulateCalls } = makeForecastingClient({
+      detailsByName: {
+        A: makeArchetypeDetails(100),
+        B: makeArchetypeDetails(120),
+      },
+      scenarios: [
+        makeScenario("baseline", 12_000, { thermalKwh: 12_000 }),
+        makeScenario("wall", 8_000, { thermalKwh: 8_000 }),
+      ],
+      simulateFailuresByName: { A: 2 },
+    });
+    const output: string[] = [];
+    const writes: Array<{ path: string; contents: string }> = [];
+
+    await expect(
+      runRSESeedCli(
+        [
+          "--cache-version",
+          "1.test.partial",
+          "--archetypes",
+          '[{"country":"IT","category":"Residential","name":"A"},{"country":"IT","category":"Residential","name":"B"}]',
+          "--forecasting-base-url",
+          "http://forecasting.test",
+          "--packages",
+          "envelope",
+          "--max-attempts",
+          "2",
+          "--retry-initial-delay-ms",
+          "0",
+          "--retry-max-delay-ms",
+          "0",
+        ],
+        {
+          env: {},
+          stdout: (text) => output.push(text),
+          writeFile: async (path, contents) => {
+            writes.push({ path, contents });
+          },
+          applySeed: async () => undefined,
+          makeForecastingClient: () => client,
+          now: () => new Date("2026-05-12T10:04:00.000Z"),
+        },
+      ),
+    ).rejects.toThrow("failed target");
+
+    expect(simulateCalls).toHaveLength(3);
+    expect(output.join("")).toContain("INSERT INTO public.rse_cache_versions");
+    expect(
+      writes.some((write) => write.path.includes("1.test.partial.json")),
+    ).toBe(true);
+    const failureWrite = writes.find((write) =>
+      write.path.includes("failures/1.test.partial.json"),
+    );
+    expect(failureWrite?.contents).toContain('"name": "A"');
+  });
+
+  test("applies incomplete runs as draft rows", async () => {
+    const { client } = makeForecastingClient({
+      detailsByName: {
+        A: makeArchetypeDetails(100),
+        B: makeArchetypeDetails(120),
+      },
+      scenarios: [
+        makeScenario("baseline", 12_000, { thermalKwh: 12_000 }),
+        makeScenario("wall", 8_000, { thermalKwh: 8_000 }),
+      ],
+      simulateFailuresByName: { A: 2 },
+    });
+    const applied: RSEGeneratedSeed[] = [];
+
+    await runRSESeedCli(
+      [
+        "--cache-version",
+        "1.test.partial-apply",
+        "--archetypes",
+        '[{"country":"IT","category":"Residential","name":"A"},{"country":"IT","category":"Residential","name":"B"}]',
+        "--forecasting-base-url",
+        "http://forecasting.test",
+        "--packages",
+        "envelope",
+        "--max-attempts",
+        "2",
+        "--retry-initial-delay-ms",
+        "0",
+        "--retry-max-delay-ms",
+        "0",
+        "--apply",
+      ],
+      {
+        env: {
+          SUPABASE_URL: "https://example.supabase.co",
+          SUPABASE_KEY: "service-role-key",
+        },
+        stdout: () => undefined,
+        writeFile: async () => undefined,
+        applySeed: async (generated) => {
+          applied.push(generated);
+        },
+        verifySupabase: async () => undefined,
+        makeForecastingClient: () => client,
+        now: () => new Date("2026-05-12T10:04:00.000Z"),
+      },
+    );
+
+    expect(applied).toHaveLength(1);
+    expect(applied[0].version.status).toBe("draft");
+    expect(applied[0].entries).toHaveLength(1);
+  });
+
+  test("rejects mutually exclusive publish modes", async () => {
+    const { client } = makeForecastingClient();
+
+    await expect(
+      runRSESeedCli(
+        [
+          "--cache-version",
+          "1.test.publish-modes",
+          "--from-json",
+          "artifact.json",
+          "--publish",
+          "--publish-partial",
+        ],
+        {
+          env: {},
+          stdout: () => undefined,
+          writeFile: async () => undefined,
+          applySeed: async () => undefined,
+          makeForecastingClient: () => client,
+          now: () => new Date("2026-05-12T10:04:00.000Z"),
+        },
+      ),
+    ).rejects.toThrow("--publish cannot be combined with --publish-partial");
+  });
 });
 
 function makeForecastingClient(response?: {
@@ -937,6 +1072,7 @@ function makeForecastingClient(response?: {
   detailsByName?: Record<string, { bui: unknown; system: unknown }>;
   scenarios?: ReturnType<typeof makeScenario>[];
   listError?: Error;
+  simulateFailuresByName?: Record<string, number>;
 }): {
   client: RSEForecastingSeedClient;
   listCalls: string[];
@@ -980,6 +1116,13 @@ function makeForecastingClient(response?: {
       },
       async simulateECM(params) {
         simulateCalls.push(params);
+        if (
+          "name" in params &&
+          response?.simulateFailuresByName?.[params.name]
+        ) {
+          response.simulateFailuresByName[params.name] -= 1;
+          throw new TypeError("fetch failed");
+        }
 
         return {
           source: "archetype",
