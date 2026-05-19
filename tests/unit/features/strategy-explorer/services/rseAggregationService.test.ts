@@ -202,6 +202,30 @@ describe("aggregatePackage", () => {
     expect(result.financialIndicators.aggregateROI).toBeUndefined();
   });
 
+  test("aggregates cost and cache metrics when financial KPIs are unavailable", () => {
+    const result = aggregatePackage({
+      packageId: "envelope",
+      portfolio: [makePortfolio()[0]],
+      simulations: [makeSimulation("A", 0, 0.2)],
+      financials: [
+        {
+          ...makeFinancial("A", 100, {}),
+          annualEnergySavingsKwh: 0,
+          status: "unavailable",
+          unavailableReason: "non-positive-energy-savings",
+        },
+      ],
+      goal: { kind: "energy" },
+    });
+
+    expect(result.totalBuildings).toBe(1);
+    expect(result.totalCapexEur).toBe(100);
+    expect(result.totalAnnualEnergySavingsKwh).toBe(0);
+    expect(result.totalAnnualCo2ReductionTon).toBeCloseTo(0.2);
+    expect(result.financialIndicators.aggregateNPV).toBeUndefined();
+    expect(result.financialIndicators.aggregateROI).toBeUndefined();
+  });
+
   test("returns undefined aggregatePaybackYears when all PBPs are invalid", () => {
     const result = aggregatePackage({
       packageId: "envelope",

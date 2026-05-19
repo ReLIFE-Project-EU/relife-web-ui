@@ -52,7 +52,7 @@ export function aggregatePackage(
     const simulation = simulationsByKey.get(key);
     const financial = financialsByKey.get(key);
 
-    if (!simulation || !financial || financial.status !== "available") {
+    if (!simulation || !financial) {
       throw new Error(
         `Cannot aggregate unavailable RSE result for ${key}. Workflow should block unavailable combinations first.`,
       );

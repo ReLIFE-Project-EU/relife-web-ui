@@ -45,6 +45,8 @@ function makeEntry(
     packageId: RSEForecastingCacheEntry["key"]["packageId"];
     baselineAnnualEnergyKwh: number;
     renovatedAnnualEnergyKwh: number;
+    baselineSummary: Record<string, unknown>;
+    renovatedSummary: Record<string, unknown>;
     baselineTon: number;
     renovatedTon: number;
   }>,
@@ -52,6 +54,8 @@ function makeEntry(
   const packageId = overrides?.packageId ?? "envelope";
   const baselineAnnualEnergyKwh = overrides?.baselineAnnualEnergyKwh ?? 12_000;
   const renovatedAnnualEnergyKwh = overrides?.renovatedAnnualEnergyKwh ?? 8_000;
+  const baselineSummary = overrides?.baselineSummary ?? {};
+  const renovatedSummary = overrides?.renovatedSummary ?? {};
   const baselineTon = overrides?.baselineTon ?? 2.4;
   const renovatedTon = overrides?.renovatedTon ?? 1.6;
 
@@ -65,7 +69,7 @@ function makeEntry(
     baseline: {
       annualEnergyKwh: baselineAnnualEnergyKwh,
       displayEpcClass: "G",
-      primaryEnergyUni11300Summary: {},
+      primaryEnergyUni11300Summary: baselineSummary,
       co2Inputs: [],
       co2: {
         annualConsumptionKwh: baselineAnnualEnergyKwh,
@@ -85,7 +89,7 @@ function makeEntry(
     renovated: {
       annualEnergyKwh: renovatedAnnualEnergyKwh,
       displayEpcClass: "G",
-      primaryEnergyUni11300Summary: {},
+      primaryEnergyUni11300Summary: renovatedSummary,
       co2Inputs: [],
       co2: {
         annualConsumptionKwh: renovatedAnnualEnergyKwh,
@@ -216,6 +220,60 @@ describe("rseForecastingCacheService", () => {
     expect(result.annualEnergySavingsPercentage).toBeCloseTo(100 / 3);
     expect(result.annualCo2ReductionTon).toBeCloseTo(0.8);
     expect(result.annualCo2ReductionPercentage).toBeCloseTo(100 / 3);
+  });
+
+  test("uses system energy savings when thermal needs are unchanged", () => {
+    const result = normalizeEntry(
+      makeEntry({
+        packageId: "systems-heat-pump",
+        baselineAnnualEnergyKwh: 12_000,
+        renovatedAnnualEnergyKwh: 8_000,
+        baselineSummary: {
+          Q_ideal_heat_kWh: 10_000,
+          Q_ideal_cool_kWh: 500,
+          E_delivered_thermal_kWh: 10_000,
+          E_delivered_electric_total_kWh: 1_000,
+          EP_total_kWh: 12_000,
+        },
+        renovatedSummary: {
+          Q_ideal_heat_kWh: 10_000,
+          Q_ideal_cool_kWh: 500,
+          E_delivered_thermal_kWh: 0,
+          E_delivered_electric_total_kWh: 4_000,
+          EP_total_kWh: 8_000,
+          heat_pump_cop: 3.2,
+        },
+      }),
+      makeDetails(100),
+    );
+
+    expect(result.annualEnergySavingsKwh).toBe(7_000);
+    expect(result.annualEnergySavingsPercentage).toBeCloseTo(
+      (7000 / 11000) * 100,
+    );
+  });
+
+  test("rejects system-only cache entries with no before-after system delta", () => {
+    expect(() =>
+      normalizeEntry(
+        makeEntry({
+          packageId: "systems-boiler",
+          baselineSummary: {
+            Q_ideal_heat_kWh: 10_000,
+            E_delivered_thermal_kWh: 9_000,
+            E_delivered_electric_total_kWh: 500,
+            EP_total_kWh: 10_000,
+          },
+          renovatedSummary: {
+            Q_ideal_heat_kWh: 10_000,
+            E_delivered_thermal_kWh: 9_000,
+            E_delivered_electric_total_kWh: 500,
+            EP_total_kWh: 10_000,
+          },
+        }),
+        makeDetails(100),
+      ),
+    ).toThrow(RSEForecastingCacheServiceError);
   });
 
   test("does not treat cached EPC labels as authoritative", () => {
