@@ -256,16 +256,16 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
   },
   "rse-energy-saved-per-eur": {
     id: "rse-energy-saved-per-eur",
-    label: "Energy saved per euro",
+    label: "System energy saved per euro",
     description:
-      "Annual energy savings divided by total renovation cost. A higher value means more energy is saved for each euro invested.",
+      "Annual delivered system energy savings divided by total renovation cost. A higher value means more supplier energy is saved for each euro invested.",
     unit: "kWh/€",
   },
   "rse-total-energy-savings": {
     id: "rse-total-energy-savings",
-    label: "Total annual energy savings",
+    label: "Total annual system energy savings",
     description:
-      "Aggregate energy savings across the entire building stock for one renovation package.",
+      "Aggregate delivered system energy savings across the entire building stock for one renovation package.",
     unit: "kWh/year",
   },
   "rse-co2-reduced-per-eur": {

@@ -24,12 +24,14 @@ import {
   formatNumber,
   formatTonnageCo2,
 } from "../../../utils/formatters";
+import { RSE_UNAVAILABLE_REASONS } from "../constants";
 import { useStrategyExplorer } from "../hooks/useStrategyExplorer";
 import { RSE_PACKAGES } from "../services/rsePackageCatalog";
 import type {
   RSEPackageAggregate,
   RSERankingResult,
   RSERenovationGoal,
+  RSEUnavailableReason,
 } from "../types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -67,13 +69,13 @@ const RANKING_COLUMNS: Record<RSERenovationGoal["kind"], RankingColumn[]> = {
   energy: [
     {
       key: "energySavedPerEur",
-      label: "kWh saved / €",
+      label: "System kWh saved / €",
       formatter: (v) => `${formatDecimal(v)} kWh/€`,
       conceptId: "rse-energy-saved-per-eur",
     },
     {
       key: "totalAnnualEnergySavingsKwh",
-      label: "Total savings",
+      label: "Total system savings",
       formatter: formatEnergy,
       conceptId: "rse-total-energy-savings",
     },
@@ -93,6 +95,21 @@ const RANKING_COLUMNS: Record<RSERenovationGoal["kind"], RankingColumn[]> = {
     },
   ],
 };
+
+const UNAVAILABLE_REASON_LABELS: Partial<Record<RSEUnavailableReason, string>> =
+  {
+    [RSE_UNAVAILABLE_REASONS.missingCacheEntry]: "missing cache entry",
+    [RSE_UNAVAILABLE_REASONS.emptyPortfolio]: "empty portfolio",
+    [RSE_UNAVAILABLE_REASONS.incompleteArchetypeRef]:
+      "incomplete archetype reference",
+    [RSE_UNAVAILABLE_REASONS.duplicateArchetype]: "duplicate archetype",
+    [RSE_UNAVAILABLE_REASONS.invalidBuildingCount]: "invalid building count",
+    [RSE_UNAVAILABLE_REASONS.invalidFloorArea]: "invalid floor area",
+    [RSE_UNAVAILABLE_REASONS.invalidPackageData]: "invalid package data",
+    [RSE_UNAVAILABLE_REASONS.invalidCacheEntry]: "invalid cache entry",
+    [RSE_UNAVAILABLE_REASONS.nonPositiveEnergySavings]:
+      "non-positive energy savings",
+  };
 
 function getAggregateValue(
   agg: RSEPackageAggregate,
@@ -138,8 +155,8 @@ function UnavailableAlert({
       title="Unavailable combinations"
     >
       <Text size="sm" mb="sm">
-        The following archetype and package combinations are missing from the
-        cache and have been excluded from the analysis:
+        The following archetype and package combinations could not be used and
+        have been excluded from the analysis:
       </Text>
       <Stack gap={4}>
         {combinations.map((combo, i) => (
@@ -147,12 +164,17 @@ function UnavailableAlert({
             • {combo.archetype.country} / {combo.archetype.category} /{" "}
             {combo.archetype.name} —{" "}
             {RSE_PACKAGES[combo.packageId as keyof typeof RSE_PACKAGES]
-              ?.label ?? combo.packageId}
+              ?.label ?? combo.packageId}{" "}
+            ({formatUnavailableReason(combo.reason)})
           </Text>
         ))}
       </Stack>
     </Alert>
   );
+}
+
+function formatUnavailableReason(reason: string): string {
+  return UNAVAILABLE_REASON_LABELS[reason as RSEUnavailableReason] ?? reason;
 }
 
 function RankingTable({
@@ -239,7 +261,7 @@ function PackageKpiGrid({ aggregates }: { aggregates: RSEPackageAggregate[] }) {
               value={formatCurrency(agg.totalCapexEur)}
             />
             <MetricCard
-              label="Energy savings"
+              label="System energy savings"
               value={formatEnergy(agg.totalAnnualEnergySavingsKwh)}
             />
             <MetricCard
