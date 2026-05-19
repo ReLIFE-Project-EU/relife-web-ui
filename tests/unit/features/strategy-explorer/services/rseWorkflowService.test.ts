@@ -320,8 +320,59 @@ describe("rseWorkflowService", () => {
     expect(result.request.packageIds).toEqual(["envelope"]);
   });
 
-  test("unavailable financial results block aggregation and ranking", async () => {
+  test("non-positive-savings financial results stay in aggregation", async () => {
     const deps = makeDependencies({
+      computeFinancials: vi.fn(async (input) => {
+        if (input.archetype.name === "A") {
+          return {
+            archetype: input.archetype,
+            packageId: input.packageId,
+            capexEur: 100,
+            annualMaintenanceEur: 10,
+            annualEnergySavingsKwh: 0,
+            status: "unavailable" as const,
+            unavailableReason: "non-positive-energy-savings" as const,
+            pointForecasts: {},
+          };
+        }
+
+        return makeFinancial({
+          archetype: input.archetype,
+          packageId: input.packageId,
+          annualEnergySavingsKwh: input.annualEnergySavingsKwh,
+        });
+      }),
+    });
+
+    const result = await createRSEWorkflowService(deps).runWorkflow(
+      makeRequest(["envelope"]),
+    );
+
+    expect(result.packageAggregates).toHaveLength(1);
+    expect(result.rankings).toHaveLength(1);
+    expect(result.packageAggregates[0].totalBuildings).toBe(3);
+    expect(result.unavailableCombinations).toEqual([]);
+  });
+
+  test("packages with only unavailable financial KPIs still aggregate cache and cost metrics", async () => {
+    const deps = makeDependencies({
+      cacheService: {
+        resolveCacheMatrix: vi.fn().mockImplementation((request) => {
+          const entries = [
+            makeEntry(archetypeA, request.packageIds[0]),
+            makeEntry(archetypeB, request.packageIds[0]),
+          ];
+          return Promise.resolve({
+            cacheVersion: "v1",
+            entries,
+            available: entries.map((entry) => entry.key),
+            missing: [],
+          });
+        }),
+        normalizeEntry: vi.fn((entry: RSEForecastingCacheEntry) =>
+          makeSimulation(entry),
+        ),
+      },
       computeFinancials: vi.fn(async (input) => ({
         archetype: input.archetype,
         packageId: input.packageId,
@@ -338,13 +389,14 @@ describe("rseWorkflowService", () => {
       makeRequest(["envelope"]),
     );
 
-    expect(result.packageAggregates).toEqual([]);
-    expect(result.rankings).toEqual([]);
-    expect(result.unavailableCombinations[0]).toEqual({
-      archetype: archetypeA,
-      packageId: "envelope",
-      reason: "non-positive-energy-savings",
-    });
+    expect(result.packageAggregates).toHaveLength(1);
+    expect(result.packageAggregates[0].totalBuildings).toBe(3);
+    expect(result.packageAggregates[0].totalCapexEur).toBe(300);
+    expect(
+      result.packageAggregates[0].financialIndicators.aggregateROI,
+    ).toBeUndefined();
+    expect(result.rankings).toHaveLength(1);
+    expect(result.unavailableCombinations).toEqual([]);
   });
 
   test("maps package catalog data errors to typed unavailable combinations", async () => {

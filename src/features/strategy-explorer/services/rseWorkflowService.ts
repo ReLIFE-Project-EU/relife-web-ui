@@ -212,12 +212,22 @@ async function runWorkflowWithDependencies(
       async (input) =>
         computeFinancialSafely(input, dependencies.financialMapper),
     );
-    const unavailableFinancials = financialResults
-      .map((result) => result.unavailable)
-      .filter(
-        (unavailable): unavailable is RSEUnavailableCombination =>
-          unavailable !== undefined,
-      );
+    const financials: RSEFinancialResult[] = [];
+    const unavailableFinancials: RSEUnavailableCombination[] = [];
+
+    for (const result of financialResults) {
+      if (result.financial) {
+        financials.push(result.financial);
+      }
+      if (result.unavailable) {
+        unavailableFinancials.push(result.unavailable);
+      }
+      if (!result.financial && !result.unavailable) {
+        throw new RSEWorkflowError(
+          "Financial computation finished without a result.",
+        );
+      }
+    }
 
     if (unavailableFinancials.length > 0) {
       auditLog.info(
@@ -226,21 +236,30 @@ async function runWorkflowWithDependencies(
         { unavailable: unavailableFinancials },
         auditCtx,
       );
+    }
+
+    const financialKeys = new Set(
+      financials.map((financial) =>
+        rseArchetypePackageKey(financial.archetype, financial.packageId),
+      ),
+    );
+    const aggregateSimulations = normalized.simulations.filter((simulation) =>
+      financialKeys.has(
+        rseArchetypePackageKey(simulation.archetype, simulation.packageId),
+      ),
+    );
+    const unavailableCombinationsWithFinancials = [
+      ...unavailableCombinations,
+      ...unavailableFinancials,
+    ];
+
+    if (aggregateSimulations.length === 0) {
       return emptyWorkflowResult(
         normalizedRequest,
         cacheResolution.cacheVersion,
-        unavailableFinancials,
+        unavailableCombinationsWithFinancials,
       );
     }
-
-    const financials = financialResults.map((result) => {
-      if (!result.financial) {
-        throw new RSEWorkflowError(
-          "Financial computation finished without a result.",
-        );
-      }
-      return result.financial;
-    });
 
     auditLog.info(
       "financial",
@@ -250,7 +269,7 @@ async function runWorkflowWithDependencies(
     );
 
     const packageAggregates = packageIds.flatMap((packageId) => {
-      const simulations = normalized.simulations.filter(
+      const simulations = aggregateSimulations.filter(
         (result) => result.packageId === packageId,
       );
 
@@ -308,7 +327,7 @@ async function runWorkflowWithDependencies(
       cacheVersion: cacheResolution.cacheVersion,
       packageAggregates,
       rankings,
-      unavailableCombinations,
+      unavailableCombinations: unavailableCombinationsWithFinancials,
     };
   } finally {
     auditLog.endRun();
@@ -394,18 +413,6 @@ async function computeFinancialSafely(
 ): Promise<FinancialComputationResult> {
   try {
     const financial = await financialMapper(input);
-    if (financial.status === "unavailable") {
-      return {
-        unavailable: {
-          archetype: input.archetype,
-          packageId: input.packageId,
-          reason:
-            financial.unavailableReason ??
-            RSE_UNAVAILABLE_REASONS.invalidCacheEntry,
-        },
-      };
-    }
-
     return { financial };
   } catch (error) {
     if (error instanceof RSEPackageCatalogError) {
