@@ -589,29 +589,42 @@ async function generateSeedEntryForTarget(params: {
   params.logger.debug("seed.target.start", "Generating seed target", {
     measureIds,
   });
+  const baselineEcmParams = buildBaselineOnlyECMParams(params.target);
   const ecmParams = {
     ...buildECMParams(measureIds, {
       kind: "archetype",
       archetype: params.target.archetype,
       floorArea: params.target.archetype.floorArea,
     }),
-    include_baseline: true,
+    include_baseline: false,
   };
+  params.logger.debug(
+    "forecasting.ecm.baseline_request_summary",
+    "ECM baseline request summary",
+    {
+      baselineOnly: true,
+      source: "archetype",
+      floorArea: params.target.archetype.floorArea,
+    },
+  );
   params.logger.debug(
     "forecasting.ecm.request_summary",
     "ECM request summary",
     {
       measureIds,
-      includeBaseline: true,
+      includeBaseline: false,
       source: "archetype",
       floorArea: params.target.archetype.floorArea,
     },
   );
+  const baselineEcmResponse =
+    await params.forecastingClient.simulateECM(baselineEcmParams);
   const ecmResponse = await params.forecastingClient.simulateECM(ecmParams);
   const payload = await buildPayload({
     target: params.target,
     generatedAt: params.generatedAt,
     forecastingServiceVersion: params.forecastingServiceVersion,
+    baselineEcmResponse,
     ecmResponse,
     forecastingClient: params.forecastingClient,
     logger: params.logger,
@@ -628,6 +641,17 @@ async function generateSeedEntryForTarget(params: {
   };
 }
 
+function buildBaselineOnlyECMParams(
+  target: RSESeedTarget,
+): ECMApplicationParams {
+  return {
+    category: target.archetype.category,
+    country: target.archetype.country,
+    name: target.archetype.name,
+    baseline_only: true,
+  };
+}
+
 /** Turn one ECM response into a full cache payload:
  *  pick baseline/renovated scenarios, build carrier-split CO2 inputs, calculate
  *  per-carrier emissions through Forecasting, then cross-check aggregate savings. */
@@ -635,11 +659,12 @@ async function buildPayload(params: {
   target: RSESeedTarget;
   generatedAt: string;
   forecastingServiceVersion?: string;
+  baselineEcmResponse: ECMApplicationResponse;
   ecmResponse: ECMApplicationResponse;
   forecastingClient: RSEForecastingSeedClient;
   logger: RSESeedLogger;
 }): Promise<RSEForecastingCachePayload> {
-  const baselineScenario = pickBaselineScenario(params.ecmResponse);
+  const baselineScenario = pickBaselineScenario(params.baselineEcmResponse);
   const renovatedScenario = pickRenovatedScenario(params.ecmResponse);
 
   params.logger.debug(

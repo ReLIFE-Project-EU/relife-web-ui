@@ -48,7 +48,10 @@ describe("generateRSECacheSeedSql", () => {
 
     expect(result.entries).toHaveLength(1);
     expect(simulateCalls[0]).toEqual(
-      expect.objectContaining({ include_baseline: true }),
+      expect.objectContaining({ baseline_only: true }),
+    );
+    expect(simulateCalls[1]).toEqual(
+      expect.objectContaining({ include_baseline: false }),
     );
     expect(result.entries[0].payload.baseline.displayEpcClass).toBe("C");
     expect(result.sql).toContain("INSERT INTO public.rse_cache_versions");
@@ -63,6 +66,65 @@ describe("generateRSECacheSeedSql", () => {
     expect(result.sql).toContain("'Detached ''1980'''");
     expect(result.sql).toContain('"absoluteTonCo2eq":0.8');
     expect(result.sql).toContain("::jsonb");
+  });
+
+  test("stores a true baseline for system-only packages", async () => {
+    const { client, simulateCalls } = makeForecastingClient({
+      baselineScenarios: [
+        makeScenario("baseline", 12_000, {
+          thermalKwh: 10_000,
+          electricTotalKwh: 1_000,
+        }),
+      ],
+      scenarios: [
+        makeScenario("baseline", 8_000, {
+          thermalKwh: 0,
+          electricTotalKwh: 4_000,
+          heatPumpCop: 3.2,
+        }),
+        makeScenario("generation_only", 8_000, {
+          thermalKwh: 0,
+          electricTotalKwh: 4_000,
+          heatPumpCop: 3.2,
+        }),
+      ],
+    });
+
+    const result = await generateRSECacheSeedSql(
+      {
+        cacheVersion: "1.test.system",
+        generatedAt: "2026-05-12T10:04:00.000Z",
+        targets: [
+          {
+            archetype: {
+              country: "IT",
+              category: "Residential",
+              name: "Detached 1980",
+              floorArea: 100,
+            },
+            packageId: "systems-heat-pump",
+          },
+        ],
+      },
+      client,
+    );
+
+    const payload = result.entries[0].payload;
+
+    expect(simulateCalls[0]).toEqual(
+      expect.objectContaining({ baseline_only: true }),
+    );
+    expect(simulateCalls[1]).toEqual(
+      expect.objectContaining({ use_heat_pump: true }),
+    );
+    expect(payload.baseline.primaryEnergyUni11300Summary).not.toHaveProperty(
+      "heat_pump_cop",
+    );
+    expect(payload.renovated.primaryEnergyUni11300Summary).toEqual(
+      expect.objectContaining({ heat_pump_cop: 3.2 }),
+    );
+    expect(payload.baseline.co2.annualConsumptionKwh).toBe(11_000);
+    expect(payload.renovated.co2.annualConsumptionKwh).toBe(4_000);
   });
 
   test("throws when Forecasting omits the requested baseline scenario", async () => {
@@ -977,7 +1039,7 @@ describe("runRSESeedCli", () => {
       ),
     ).rejects.toThrow("failed target");
 
-    expect(simulateCalls).toHaveLength(3);
+    expect(simulateCalls).toHaveLength(4);
     expect(output.join("")).toContain("INSERT INTO public.rse_cache_versions");
     expect(
       writes.some((write) => write.path.includes("1.test.partial.json")),
@@ -1070,6 +1132,7 @@ describe("runRSESeedCli", () => {
 function makeForecastingClient(response?: {
   archetypes?: Array<{ country: string; category: string; name: string }>;
   detailsByName?: Record<string, { bui: unknown; system: unknown }>;
+  baselineScenarios?: ReturnType<typeof makeScenario>[];
   scenarios?: ReturnType<typeof makeScenario>[];
   listError?: Error;
   simulateFailuresByName?: Record<string, number>;
@@ -1141,8 +1204,13 @@ function makeForecastingClient(response?: {
             scenario_id: null,
             scenario_elements: "wall",
           },
-          n_scenarios: response?.scenarios?.length ?? 0,
-          scenarios: response?.scenarios ?? [],
+          n_scenarios:
+            (params.baseline_only
+              ? response?.baselineScenarios?.length
+              : response?.scenarios?.length) ?? 0,
+          scenarios: params.baseline_only
+            ? (response?.baselineScenarios ?? response?.scenarios ?? [])
+            : (response?.scenarios ?? []),
         };
       },
       async calculateEmissions(input) {
@@ -1200,6 +1268,7 @@ function makeScenario(
     electricTotalKwh?: number;
     pvGridImportKwh?: number;
     pvSelfConsumptionKwh?: number;
+    heatPumpCop?: number;
   },
 ) {
   const pvHp =
@@ -1233,6 +1302,9 @@ function makeScenario(
           EP_total_kWh: annualEnergyKwh,
           E_delivered_thermal_kWh: energy.thermalKwh,
           E_delivered_electric_total_kWh: energy.electricTotalKwh ?? 0,
+          ...(energy.heatPumpCop !== undefined
+            ? { heat_pump_cop: energy.heatPumpCop }
+            : {}),
         },
       },
       pv_hp: pvHp,
