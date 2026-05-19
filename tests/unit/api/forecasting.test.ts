@@ -108,6 +108,20 @@ describe("forecasting.simulateECM", () => {
     expect(params.get("heat_pump_cop")).toBe("3.2");
     expect(params.get("include_baseline")).toBe("true");
   });
+
+  test("serializes baseline-only params", async () => {
+    await forecasting.simulateECM({
+      category: "SFH",
+      country: "Greece",
+      name: "GR_SFH",
+      baseline_only: true,
+    });
+
+    const params = getSearchParams();
+    expect(params.get("baseline_only")).toBe("true");
+    expect(params.has("include_baseline")).toBe(false);
+    expect(params.has("scenario_elements")).toBe(false);
+  });
 });
 
 describe("forecasting.getEmissionFactors", () => {

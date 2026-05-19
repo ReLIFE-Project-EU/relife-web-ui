@@ -235,6 +235,9 @@ export const forecasting = {
     if (params.include_baseline !== undefined) {
       searchParams.set("include_baseline", String(params.include_baseline));
     }
+    if (params.baseline_only !== undefined) {
+      searchParams.set("baseline_only", String(params.baseline_only));
+    }
 
     const formData = new FormData();
     if (isCustom) {

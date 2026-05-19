@@ -329,6 +329,8 @@ interface ECMBaseParams {
   annual_pv_yield_kwh_per_kwp?: number;
   /** Include baseline scenario in response (omit/false for single-scenario mode) */
   include_baseline?: boolean;
+  /** Simulate only the unchanged baseline scenario. */
+  baseline_only?: boolean;
 }
 
 /**
