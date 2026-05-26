@@ -1,12 +1,13 @@
 /**
  * ResultsStep Component
- * Step 3: Portfolio analysis results display, organized in three tabs:
+ * Step 3: Portfolio analysis results display, organized in two tabs:
  *   1. Portfolio summary — aggregate metrics + EPC distribution + energy charts
  *   2. Per building     — sortable / filterable results table with row drill-down
- *   3. Report           — methodology and data-transparency disclosure
+ *   Methodology / data transparency is shown inline under Portfolio summary
  */
 
 import {
+  Accordion,
   Badge,
   Box,
   Card,
@@ -22,7 +23,6 @@ import {
 import {
   IconBuilding,
   IconChartBar,
-  IconFileText,
   IconInfoCircle,
   IconShieldCheck,
 } from "@tabler/icons-react";
@@ -280,74 +280,66 @@ const PortfolioSummary = memo(function PortfolioSummary({
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Report tab content
+// Data transparency content (shown inline under Portfolio summary)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ReportTab() {
+function DataTransparencyContent() {
   return (
-    <Card withBorder radius="md" p="lg">
-      <Group gap="xs" mb="sm">
-        <ThemeIcon color="gray" variant="light" size="sm">
-          <IconShieldCheck size={16} />
+    <List
+      size="xs"
+      spacing={6}
+      icon={
+        <ThemeIcon color="gray" variant="transparent" size="sm">
+          <IconInfoCircle size={14} />
         </ThemeIcon>
-        <Title order={4}>Data transparency</Title>
-      </Group>
-      <List
-        size="xs"
-        spacing={6}
-        icon={
-          <ThemeIcon color="gray" variant="transparent" size="sm">
-            <IconInfoCircle size={14} />
-          </ThemeIcon>
-        }
-      >
-        <List.Item>
-          <Text size="xs" c="dimmed">
-            <Text span size="xs" fw={500} c="dimmed">
-              EPC classes
-            </Text>{" "}
-            — {ConceptSentence("estimated-epc")}
-          </Text>
-        </List.Item>
-        <List.Item>
-          <Text size="xs" c="dimmed">
-            <Text span size="xs" fw={500} c="dimmed">
-              Energy reduction
-            </Text>{" "}
-            — Calculated from annual building thermal needs as (after − before)
-            / before. Negative values indicate lower modeled heating and cooling
-            needs.
-          </Text>
-        </List.Item>
-        <List.Item>
-          <Text size="xs" c="dimmed">
-            <Text span size="xs" fw={500} c="dimmed">
-              System energy consumption
-            </Text>{" "}
-            — {ConceptSentence("system-energy-consumption")} Financial savings
-            are based on reductions in this value when available.
-          </Text>
-        </List.Item>
-        <List.Item>
-          <Text size="xs" c="dimmed">
-            <Text span size="xs" fw={500} c="dimmed">
-              Energy costs
-            </Text>{" "}
-            — Use a flat tariff of EUR {ENERGY_PRICE_EUR_PER_KWH}/kWh (platform
-            assumption, not country-specific).
-          </Text>
-        </List.Item>
-        <List.Item>
-          <Text size="xs" c="dimmed">
-            <Text span size="xs" fw={500} c="dimmed">
-              Financial indicators
-            </Text>{" "}
-            (NPV, ROI, payback period) — Computed by the Financial Service using
-            Monte Carlo simulation.
-          </Text>
-        </List.Item>
-      </List>
-    </Card>
+      }
+    >
+      <List.Item>
+        <Text size="xs" c="dimmed">
+          <Text span size="xs" fw={500} c="dimmed">
+            EPC classes
+          </Text>{" "}
+          — {ConceptSentence("estimated-epc")}
+        </Text>
+      </List.Item>
+      <List.Item>
+        <Text size="xs" c="dimmed">
+          <Text span size="xs" fw={500} c="dimmed">
+            Energy reduction
+          </Text>{" "}
+          — Calculated from annual building thermal needs as (after − before) /
+          before. Negative values indicate lower modeled heating and cooling
+          needs.
+        </Text>
+      </List.Item>
+      <List.Item>
+        <Text size="xs" c="dimmed">
+          <Text span size="xs" fw={500} c="dimmed">
+            System energy consumption
+          </Text>{" "}
+          — {ConceptSentence("system-energy-consumption")} Financial savings are
+          based on reductions in this value when available.
+        </Text>
+      </List.Item>
+      <List.Item>
+        <Text size="xs" c="dimmed">
+          <Text span size="xs" fw={500} c="dimmed">
+            Energy costs
+          </Text>{" "}
+          — Use a flat tariff of EUR {ENERGY_PRICE_EUR_PER_KWH}/kWh (platform
+          assumption, not country-specific).
+        </Text>
+      </List.Item>
+      <List.Item>
+        <Text size="xs" c="dimmed">
+          <Text span size="xs" fw={500} c="dimmed">
+            Financial indicators
+          </Text>{" "}
+          (NPV, ROI, payback period) — Computed by the Financial Service using
+          Monte Carlo simulation.
+        </Text>
+      </List.Item>
+    </List>
   );
 }
 
@@ -428,13 +420,32 @@ export function ResultsStep() {
           >
             Per building
           </Tabs.Tab>
-          <Tabs.Tab value="report" leftSection={<IconFileText size={16} />}>
-            Report
-          </Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="portfolio" pt="lg">
-          <PortfolioSummary stats={stats} />
+          <Stack gap="lg">
+            <PortfolioSummary stats={stats} />
+            <Accordion
+              chevronPosition="right"
+              variant="default"
+              multiple={false}
+            >
+              <Accordion.Item value="data-transparency">
+                <Accordion.Control
+                  icon={
+                    <ThemeIcon color="gray" variant="light" size="sm">
+                      <IconShieldCheck size={16} />
+                    </ThemeIcon>
+                  }
+                >
+                  Methodology & data transparency
+                </Accordion.Control>
+                <Accordion.Panel>
+                  <DataTransparencyContent />
+                </Accordion.Panel>
+              </Accordion.Item>
+            </Accordion>
+          </Stack>
         </Tabs.Panel>
 
         <Tabs.Panel value="buildings" pt="lg">
@@ -443,10 +454,6 @@ export function ResultsStep() {
             results={state.buildingResults}
             onRowClick={setDrillRow}
           />
-        </Tabs.Panel>
-
-        <Tabs.Panel value="report" pt="lg">
-          <ReportTab />
         </Tabs.Panel>
       </Tabs>
 
