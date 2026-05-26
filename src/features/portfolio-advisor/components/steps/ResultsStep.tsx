@@ -455,6 +455,7 @@ export function ResultsStep() {
         onClose={() => setDrillRow(null)}
         building={drillRow?.building}
         result={drillRow?.result}
+        projectLifetime={state.projectLifetime}
       />
 
       {/* Navigation */}

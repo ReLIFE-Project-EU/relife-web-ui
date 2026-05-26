@@ -26,6 +26,7 @@ import {
   formatNumber,
 } from "../../../../utils/formatters";
 import { formatArchetypeName } from "../../../../utils/archetypeLabels";
+import { CashFlowChart } from "../../../../components/shared/CashFlowChart";
 import type { PRABuilding, BuildingAnalysisResult } from "../../context/types";
 import { FinancialRiskAnalytics } from "./FinancialRiskAnalytics";
 
@@ -34,6 +35,7 @@ interface BuildingDrillDownModalProps {
   onClose: () => void;
   building?: PRABuilding;
   result?: BuildingAnalysisResult;
+  projectLifetime?: number;
 }
 
 export function BuildingDrillDownModal({
@@ -41,6 +43,7 @@ export function BuildingDrillDownModal({
   onClose,
   building,
   result,
+  projectLifetime,
 }: BuildingDrillDownModalProps) {
   const archetype = result?.estimation?.archetype;
   const renovated = result?.scenarios?.find((s) => s.id === "renovated");
@@ -55,6 +58,11 @@ export function BuildingDrillDownModal({
 
   const epcBefore = result?.estimation?.estimatedEPC;
   const epcAfter = renovated?.epcClass;
+  const cashFlowData = fr?.riskAssessment?.cashFlowData;
+  const horizonYears =
+    projectLifetime ??
+    fr?.riskAssessment?.metadata.project_lifetime ??
+    undefined;
 
   if (!building || !result) {
     return null;
@@ -158,6 +166,22 @@ export function BuildingDrillDownModal({
             )}
 
             <FinancialRiskAnalytics financialResults={fr} />
+
+            {cashFlowData && cashFlowData.years.length > 0 ? (
+              <CashFlowChart
+                data={cashFlowData}
+                projectLifetime={horizonYears}
+                title="Cash flow timeline"
+              />
+            ) : fr?.riskAssessment !== null && renovated ? (
+              <Alert
+                color="gray"
+                variant="light"
+                icon={<IconInfoCircle size={16} />}
+              >
+                Detailed cash-flow timeline not available for this building.
+              </Alert>
+            ) : null}
           </>
         )}
       </Stack>

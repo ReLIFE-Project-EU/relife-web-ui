@@ -69,6 +69,13 @@ function scenarioIncludesSystemMeasure(scenario: RenovationScenario): boolean {
   );
 }
 
+/** Private output includes cash_flow_data; professional+ uses chart_metadata instead. */
+function outputLevelNeedsPrivateCashFlowSupplement(
+  outputLevel: OutputLevel,
+): boolean {
+  return outputLevel !== "private";
+}
+
 export class FinancialService implements IFinancialService {
   private readonly outputLevel: OutputLevel;
 
@@ -107,20 +114,10 @@ export class FinancialService implements IFinancialService {
   async assessRisk(
     request: RiskAssessmentRequest,
   ): Promise<RiskAssessmentResponse> {
-    const response = await financial.assessRisk({
-      annual_energy_savings: request.annual_energy_savings,
-      project_lifetime: request.project_lifetime,
-      output_level: this.outputLevel,
-      indicators: request.indicators,
-      loan_amount: request.loan_amount ?? 0,
-      loan_term: request.loan_term ?? 0,
-      upfront_incentive_percentage: request.upfront_incentive_percentage,
-      lifetime_incentive_amount: request.lifetime_incentive_amount,
-      lifetime_incentive_years: request.lifetime_incentive_years,
-      capex: request.capex,
-      annual_maintenance_cost: request.annual_maintenance_cost,
-      include_visualizations: request.include_visualizations,
-    });
+    const response = await this.requestRiskAssessment(
+      request,
+      this.outputLevel,
+    );
 
     const rawMetadata = response.metadata ?? {};
     const metadataWithoutRawPayloads = {
@@ -177,6 +174,64 @@ export class FinancialService implements IFinancialService {
       cashFlowVisualization: response.visualizations?.cash_flow_timeline,
       cashFlowData,
     };
+  }
+
+  /**
+   * Fetches timeline cash-flow arrays via a private-level risk assessment.
+   * Used when the tool's primary output level (e.g. professional for PRA)
+   * omits metadata.cash_flow_data per the Financial API contract.
+   */
+  private async fetchPrivateCashFlowData(
+    request: RiskAssessmentRequest,
+    auditCtx?: AuditCtx,
+  ): Promise<CashFlowData | undefined> {
+    auditLog.debug(
+      "financial",
+      "financial.risk.cashflow.request",
+      {
+        annual_energy_savings: request.annual_energy_savings,
+        project_lifetime: request.project_lifetime,
+        output_level: "private",
+      },
+      auditCtx,
+    );
+
+    const response = await this.requestRiskAssessment(request, "private");
+    const cashFlowData = normalizeCashFlowData(
+      (response.metadata as Record<string, unknown>).cash_flow_data,
+    );
+
+    auditLog.info(
+      "financial",
+      "financial.risk.cashflow.end",
+      {
+        hasCashFlowData: cashFlowData !== undefined,
+        yearCount: cashFlowData?.years.length,
+      },
+      auditCtx,
+    );
+
+    return cashFlowData;
+  }
+
+  private async requestRiskAssessment(
+    request: RiskAssessmentRequest,
+    outputLevel: OutputLevel,
+  ) {
+    return financial.assessRisk({
+      annual_energy_savings: request.annual_energy_savings,
+      project_lifetime: request.project_lifetime,
+      output_level: outputLevel,
+      indicators: request.indicators,
+      loan_amount: request.loan_amount ?? 0,
+      loan_term: request.loan_term ?? 0,
+      upfront_incentive_percentage: request.upfront_incentive_percentage,
+      lifetime_incentive_amount: request.lifetime_incentive_amount,
+      lifetime_incentive_years: request.lifetime_incentive_years,
+      capex: request.capex,
+      annual_maintenance_cost: request.annual_maintenance_cost,
+      include_visualizations: request.include_visualizations,
+    });
   }
 
   /**
@@ -424,11 +479,18 @@ export class FinancialService implements IFinancialService {
         { request: arvRequest as unknown as Record<string, unknown> },
         auditCtx,
       );
+      const needsCashFlowSupplement =
+        hasSavings &&
+        outputLevelNeedsPrivateCashFlowSupplement(this.outputLevel);
+
       if (hasSavings) {
         auditLog.debug(
           "financial",
           "financial.risk.request",
-          { request: riskRequest as unknown as Record<string, unknown> },
+          {
+            request: riskRequest as unknown as Record<string, unknown>,
+            supplementPrivateCashFlow: needsCashFlowSupplement,
+          },
           auditCtx,
         );
       } else {
@@ -445,10 +507,17 @@ export class FinancialService implements IFinancialService {
       }
 
       // Call APIs in parallel (risk assessment only when savings > 0)
-      const [arvResult, riskResult] = await Promise.all([
+      const [arvResult, riskResult, privateCashFlowData] = await Promise.all([
         this.calculateARV(arvRequest),
         hasSavings ? this.assessRisk(riskRequest) : Promise.resolve(null),
+        needsCashFlowSupplement
+          ? this.fetchPrivateCashFlowData(riskRequest, auditCtx)
+          : Promise.resolve(undefined),
       ]);
+
+      if (riskResult && privateCashFlowData) {
+        riskResult.cashFlowData = privateCashFlowData;
+      }
 
       const scenarioResults: FinancialResults = {
         arv: arvResult,
@@ -479,6 +548,7 @@ export class FinancialService implements IFinancialService {
           afterRenovationValue: scenarioResults.afterRenovationValue,
           arvEnergyClass: arvResult.energyClass,
           riskComputed: riskResult !== null,
+          cashFlowTimeline: riskResult?.cashFlowData !== undefined,
           probabilityKeys: riskResult?.probabilities
             ? Object.keys(riskResult.probabilities)
             : undefined,

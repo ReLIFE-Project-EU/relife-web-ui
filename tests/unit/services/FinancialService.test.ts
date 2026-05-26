@@ -371,6 +371,94 @@ describe("FinancialService", () => {
     expect(mockAssessRisk).toHaveBeenCalledWith(
       expect.objectContaining({ output_level: "professional" }),
     );
+    expect(mockAssessRisk).toHaveBeenCalledWith(
+      expect.objectContaining({ output_level: "private" }),
+    );
+  });
+
+  test("private output level does not request supplemental cash-flow call", async () => {
+    const service = new FinancialService("private");
+
+    await service.calculateForAllScenarios(
+      [renovatedScenario],
+      mockFundingOptions,
+      100,
+      mockEstimation,
+      packageFinancialInputs,
+      mockBuilding,
+    );
+
+    expect(mockAssessRisk).toHaveBeenCalledTimes(1);
+    expect(mockAssessRisk).toHaveBeenCalledWith(
+      expect.objectContaining({ output_level: "private" }),
+    );
+  });
+
+  test("professional output level merges private cash-flow timeline", async () => {
+    mockAssessRisk.mockImplementation((request: { output_level: string }) => {
+      if (request.output_level === "professional") {
+        return Promise.resolve({
+          ...stubRiskResponse,
+          probabilities: {
+            "Pr(NPV > 0)": 0.84,
+          },
+          metadata: {
+            ...stubRiskResponse.metadata,
+            chart_metadata: {
+              NPV: {
+                bins: {
+                  centers: [0],
+                  counts: [1],
+                  edges: [-500, 500],
+                },
+                statistics: {
+                  mean: 100,
+                  std: 10,
+                  P10: 0,
+                  P50: 100,
+                  P90: 200,
+                },
+              },
+            },
+          },
+        });
+      }
+
+      return Promise.resolve({
+        ...stubRiskResponse,
+        metadata: {
+          ...stubRiskResponse.metadata,
+          cash_flow_data: {
+            years: [0, 1, 2],
+            annual_inflows: [0, 500, 500],
+            annual_outflows: [10000, 200, 200],
+            annual_net_cash_flow: [-10000, 300, 300],
+            cumulative_cash_flow: [-10000, -9700, -9400],
+          },
+        },
+      });
+    });
+
+    const service = new FinancialService("professional");
+    const results = await service.calculateForAllScenarios(
+      [renovatedScenario],
+      mockFundingOptions,
+      100,
+      mockEstimation,
+      packageFinancialInputs,
+      mockBuilding,
+    );
+
+    expect(mockAssessRisk).toHaveBeenCalledTimes(2);
+    expect(results["renovated"].riskAssessment?.cashFlowData?.years).toEqual([
+      0, 1, 2,
+    ]);
+    expect(
+      results["renovated"].riskAssessment?.metadata.chart_metadata?.NPV,
+    ).toBeDefined();
+    expect(results["renovated"].riskAssessment?.probabilities).toEqual({
+      "Pr(NPV > 0)": 0.84,
+    });
   });
 
   test("normalizes professional chart metadata from risk assessment", async () => {
