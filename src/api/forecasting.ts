@@ -3,11 +3,16 @@ import type {
   ArchetypeInfo,
   BuildingPayload,
   BuildingUploadResponse,
+  CO2ComparisonResult,
+  CO2EmissionResult,
+  CO2MultiScenarioInput,
+  CO2ScenarioInput,
   CreateProjectResponse,
   ECMApplicationParams,
   ECMArchetypeParams,
   ECMCustomBuildingParams,
   ECMApplicationResponse,
+  EmissionFactorResponse,
   EPCResponse,
   PlantPayload,
   PlantTemplateResponse,
@@ -23,6 +28,7 @@ import {
   request,
   uploadRequest,
 } from "./client";
+import { resolveEmissionFactorCountry } from "../utils/emissionFactorCountry";
 
 export const forecasting = {
   ...createServiceApi(ServiceType.FORECASTING),
@@ -229,6 +235,9 @@ export const forecasting = {
     if (params.include_baseline !== undefined) {
       searchParams.set("include_baseline", String(params.include_baseline));
     }
+    if (params.baseline_only !== undefined) {
+      searchParams.set("baseline_only", String(params.baseline_only));
+    }
 
     const formData = new FormData();
     if (isCustom) {
@@ -286,4 +295,59 @@ export const forecasting = {
 
   getEPC: (projectId: string) =>
     request<EPCResponse>(`/forecasting/project/${projectId}/epc`),
+
+  // ============================================================================
+  // CO2 Emissions (GET /emission-factors, POST /calculate, POST /compare)
+  // ============================================================================
+
+  /**
+   * Return emission factors (kgCO2eq/kWh) for a given country code.
+   * Unsupported countries are resolved to the default before the HTTP call.
+   * GET /forecasting/emission-factors
+   */
+  getEmissionFactors: (country: string) => {
+    const resolvedCountry = resolveEmissionFactorCountry(country);
+    const searchParams = new URLSearchParams({ country: resolvedCountry });
+
+    return request<EmissionFactorResponse>(
+      `/forecasting/emission-factors?${searchParams.toString()}`,
+    );
+  },
+
+  /**
+   * Compute CO2e emissions for a single scenario.
+   * Unsupported countries are resolved to the default before the HTTP call.
+   * POST /forecasting/calculate
+   */
+  calculateEmissions: (req: CO2ScenarioInput) => {
+    const body = {
+      ...req,
+      country: resolveEmissionFactorCountry(req.country),
+    };
+
+    return request<CO2EmissionResult>("/forecasting/calculate", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  /**
+   * Compare scenarios by emissions.  The first scenario is treated as the
+   * baseline.  Unsupported countries are resolved to the default for every
+   * scenario before the HTTP call.
+   * POST /forecasting/compare
+   */
+  compareEmissions: (req: CO2MultiScenarioInput) => {
+    const body = {
+      scenarios: req.scenarios.map((scenario) => ({
+        ...scenario,
+        country: resolveEmissionFactorCountry(scenario.country),
+      })),
+    };
+
+    return request<CO2ComparisonResult>("/forecasting/compare", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
 };

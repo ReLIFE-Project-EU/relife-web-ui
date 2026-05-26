@@ -23,7 +23,12 @@ export type ConceptId =
   | "break-even-year"
   | "priority-profile"
   | "ranking-score"
-  | "mcda";
+  | "mcda"
+  | "rse-energy-saved-per-eur"
+  | "rse-total-energy-savings"
+  | "rse-co2-reduced-per-eur"
+  | "rse-total-co2-reduction"
+  | "rse-renovatable-buildings";
 
 export interface ReLifeConcept {
   id: ConceptId;
@@ -248,6 +253,43 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
       "Professional multi-criteria method used behind the recommendation ranking.",
     professionalDetail:
       "Multi-Criteria Decision Analysis combines technical, financial, comfort, sustainability, and energy criteria using persona weights.",
+  },
+  "rse-energy-saved-per-eur": {
+    id: "rse-energy-saved-per-eur",
+    label: "System energy saved per euro",
+    description:
+      "Annual delivered system energy savings divided by total renovation cost. A higher value means more supplier energy is saved for each euro invested.",
+    unit: "kWh/€",
+  },
+  "rse-total-energy-savings": {
+    id: "rse-total-energy-savings",
+    label: "Total annual system energy savings",
+    description:
+      "Aggregate delivered system energy savings across the entire building stock for one renovation package.",
+    unit: "kWh/year",
+  },
+  "rse-co2-reduced-per-eur": {
+    id: "rse-co2-reduced-per-eur",
+    label: "CO₂ reduced per euro",
+    description:
+      "Annual CO₂ reduction divided by total renovation cost. A higher value means more emissions are avoided for each euro invested.",
+    unit: "t CO₂e/€",
+  },
+  "rse-total-co2-reduction": {
+    id: "rse-total-co2-reduction",
+    label: "Total annual CO₂ reduction",
+    description:
+      "Aggregate CO₂ emissions reduction across the entire building stock for one renovation package.",
+    unit: "t CO₂e/year",
+  },
+  "rse-renovatable-buildings": {
+    id: "rse-renovatable-buildings",
+    label: "Renovatable buildings",
+    description:
+      "Number of buildings that can be renovated within the specified budget when using a given package.",
+    unit: "buildings",
+    caveat:
+      "Computed with proportional stock scaling, not by selecting cheapest archetypes first.",
   },
 };
 

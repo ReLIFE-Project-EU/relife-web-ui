@@ -34,6 +34,7 @@ const SOURCE_MESSAGE_OVERRIDES: Record<string, string> = {
   "Renovation.estimate": "Preparing your renovation baseline analysis",
   "Renovation.evaluate": "Evaluating renovation scenarios and impacts",
   "Renovation.rank": "Finalizing renovation recommendations",
+  "StrategyExplorer.workflow": "Running strategy comparison",
 };
 
 function humanizeToken(token: string): string {

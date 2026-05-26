@@ -329,6 +329,8 @@ interface ECMBaseParams {
   annual_pv_yield_kwh_per_kwp?: number;
   /** Include baseline scenario in response (omit/false for single-scenario mode) */
   include_baseline?: boolean;
+  /** Simulate only the unchanged baseline scenario. */
+  baseline_only?: boolean;
 }
 
 /**
@@ -361,3 +363,73 @@ export interface ECMCustomBuildingParams extends ECMBaseParams {
  * Detect mode at runtime with: 'bui' in params
  */
 export type ECMApplicationParams = ECMArchetypeParams | ECMCustomBuildingParams;
+
+// ============================================================================
+// CO2 Emission Types (GET /emission-factors, POST /calculate, POST /compare)
+// ============================================================================
+
+/**
+ * Response from GET /emission-factors
+ * Mirrors the Forecasting service emission-factors endpoint.
+ */
+export interface EmissionFactorResponse {
+  country: string;
+  emission_factors_kg_co2eq_per_kwh: Record<string, number>;
+  sources: string[];
+}
+
+/**
+ * Input payload for a single scenario emissions calculation.
+ * Mirrors the Forecasting service ScenarioInput Pydantic model.
+ */
+export interface CO2ScenarioInput {
+  name: string;
+  energy_source: string;
+  annual_consumption_kwh: number;
+  country: string;
+}
+
+/**
+ * Response model for a single emissions calculation.
+ * Mirrors the Forecasting service EmissionResult Pydantic model.
+ */
+export interface CO2EmissionResult {
+  name: string;
+  energy_source: string;
+  annual_consumption_kwh: number;
+  emission_factor_kg_per_kwh: number;
+  annual_emissions_kg_co2eq: number;
+  annual_emissions_ton_co2eq: number;
+  equivalent_trees: number;
+  equivalent_km_car: number;
+}
+
+/**
+ * Saving result for a single scenario compared to baseline.
+ * Mirrors the Forecasting service SavingResult Pydantic model.
+ */
+export interface CO2SavingResult {
+  scenario_name: string;
+  absolute_kg_co2eq: number;
+  absolute_ton_co2eq: number;
+  percentage: number;
+}
+
+/**
+ * Input payload for comparing multiple scenarios.
+ * Mirrors the Forecasting service MultiScenarioInput Pydantic model.
+ */
+export interface CO2MultiScenarioInput {
+  scenarios: CO2ScenarioInput[];
+}
+
+/**
+ * Response model for a multi-scenario comparison.
+ * Mirrors the Forecasting service ComparisonResult Pydantic model.
+ */
+export interface CO2ComparisonResult {
+  baseline: CO2EmissionResult;
+  scenarios: CO2EmissionResult[];
+  best_scenario: string;
+  savings: CO2SavingResult[];
+}

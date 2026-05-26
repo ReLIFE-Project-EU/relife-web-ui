@@ -21,6 +21,10 @@ const TYPE_CODES: Record<string, string> = {
   MFH: "Multi-Family House",
 };
 
+export function formatArchetypeCategoryLabel(category: string): string {
+  return TYPE_CODES[category] ?? category;
+}
+
 export function countryNameToCode(name: string): string | undefined {
   return getCountryCode(name);
 }

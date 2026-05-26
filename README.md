@@ -196,6 +196,7 @@ flowchart LR
 
 - Real Forecasting + Financial calls are orchestrated in `src/features/portfolio-advisor/services/PortfolioAnalysisService.ts`, triggered from `src/features/portfolio-advisor/components/steps/FinancingStep.tsx`.
 - Service wiring in `src/features/portfolio-advisor/context/ServiceContext.tsx` uses real `EnergyService`, `RenovationService`, and `FinancialService` with concurrency-limited batches.
+- `MockMCDAService` is registered on the context as `mcda` but is not invoked by `PortfolioAnalysisService`; ranking and technical pillars are not part of the analyze flow today.
 - Technical API is not called in the PRA analysis path; `src/api/technical.ts` endpoints are currently outside this runtime workflow.
 - This means portfolio energy and finance outputs are backend-backed, while technical/MCDA backend scoring remains unimplemented in the production path.
 - The flow diagram above shows the current implementation; compare with the [design flow](docs/pra-tool-design.md#sequential-flow) to identify deviations.
@@ -210,55 +211,62 @@ sequenceDiagram
     participant RSE as Renovation Strategy Explorer
     participant FCAST as Forecasting API
     participant FIN as Financial API
-    participant TECH as Technical API
 
-    UI->>RSE: Navigate to /strategy-explorer
-    RSE->>RSE: No runtime API calls from this route
-    RSE->>RSE: Forecasting API not invoked
-    RSE->>RSE: Financial API not invoked
-    RSE->>RSE: Technical API not invoked
-    RSE-->>UI: Render static landing content and disabled Coming Soon CTA
+    UI->>RSE: Open wizard goal portfolio and packages
+    RSE->>FCAST: listArchetypes and getArchetypeDetails via BuildingService
+    FCAST-->>RSE: Archetype catalog and BUI or system payloads
+    UI->>RSE: Run strategy comparison
+    RSE->>RSE: expandPortfolio refetches archetype details as needed
+    RSE->>RSE: Supabase reads rse_cache_versions and rse_forecasting_cache_entries not live ECM
+    RSE->>RSE: Package energy and CO2 from published cache matrix only
+    loop Each archetype and package with positive savings
+        RSE->>FIN: POST financial risk-assessment professional level no ARV in this tool
+        FIN-->>RSE: IRR NPV PBP DPP ROI percentiles and probabilities
+    end
+    RSE->>RSE: rankPackages applies weighted scores in browser not Technical API
+    RSE-->>UI: Aggregates rankings and scenario tables
 ```
 
 #### Flow Diagram
 
 ```mermaid
 flowchart LR
-    PolicyInput["POLICYMAKER INPUT PLACEHOLDER<br/>---<br/>User navigates to strategy page<br/>No data-capture form implemented"]
+    PolicyInput["POLICYMAKER INPUT<br/>---<br/>Renovation goal and budget or energy focus<br/>Archetype portfolio with counts per archetype<br/>Renovation packages to compare"]
+    LandingPage["LANDING PAGE<br/>---<br/>Static info page at /strategy-explorer<br/>CTA links to /strategy-explorer/tool"]
 
-    DB[("ReLIFE Database<br/>---<br/>Not used in this flow - no RSE reads or writes yet")]
+    DB[("ReLIFE Database<br/>---<br/>Supabase tables rse_cache_versions<br/>rse_forecasting_cache_entries<br/>---<br/>Precomputed baseline and renovated energy and CO2 per archetype and package")]
 
-    Forecasting["FORECASTING API STUB - NOT CALLED<br/>---<br/>No route or service invocation<br/>No request payloads implemented"]
+    Forecasting["FORECASTING API PARTIAL<br/>---<br/>GET forecasting building available<br/>POST forecasting building archetype true<br/>---<br/>Archetype catalog and detail payloads for the wizard<br/>NOTE: Live ECM simulate is not called at run time for RSE packages"]
 
-    Financial["FINANCIAL API STUB - NOT CALLED<br/>---<br/>No route or service invocation<br/>No request payloads implemented"]
+    Financial["FINANCIAL API REAL<br/>---<br/>POST financial risk-assessment only<br/>---<br/>Professional output level<br/>Skips ARV used by HRA and PRA paths"]
 
-    Technical["TECHNICAL API STUB - NOT CALLED<br/>---<br/>No route or service invocation<br/>No request payloads implemented"]
+    Technical["TECHNICAL API STUB - NOT CALLED<br/>---<br/>Package order from rseRankingService.ts<br/>---<br/>Weighted client-side score not POST mcda"]
 
-    PolicyUI["STRATEGY EXPLORER LANDING UI<br/>---<br/>Static feature cards<br/>Disabled Coming Soon button"]
+    PolicyUI["STRATEGY EXPLORER RESULTS UI<br/>---<br/>Per-package and portfolio aggregates<br/>Rankings and financial indicator tables"]
 
-    PolicyInput --> PolicyUI
-    PolicyInput -. planned-only .-> Forecasting
-    PolicyInput -. planned-only .-> Financial
-    PolicyInput -. planned-only .-> Technical
-    DB -. planned-only .-> Forecasting
-    DB -. planned-only .-> Financial
-    DB -. planned-only .-> Technical
-    Forecasting -. not-executed .-> PolicyUI
-    Financial -. not-executed .-> PolicyUI
+    LandingPage --> PolicyInput
+    PolicyInput --> Forecasting
+    PolicyInput --> DB
+    PolicyInput --> Financial
+    DB --> Financial
+    Forecasting --> PolicyUI
+    Financial --> PolicyUI
     Technical -. not-executed .-> PolicyUI
 
     style PolicyInput fill:#f0f0f0
     style DB fill:#d4edda
-    style Forecasting fill:#cfe2ff,stroke:#666,stroke-dasharray: 5 5
-    style Financial fill:#fff3cd,stroke:#666,stroke-dasharray: 5 5
+    style Forecasting fill:#cfe2ff,stroke:#4c6ef5
+    style Financial fill:#fff3cd,stroke:#a37f00
     style Technical fill:#f8d7da,stroke:#666,stroke-dasharray: 5 5
-    style PolicyUI fill:#e2e3e5
+    style PolicyUI fill:#d1ecf1
 ```
 
 **Implementation status**
 
-- The current implementation is a UI stub in `src/routes/StrategyExplorerLanding.tsx`, mounted via `src/App.tsx`.
-- The page shows static planned-feature content with a disabled CTA and no orchestration/service layer.
-- Forecasting, Financial, and Technical APIs are all uninvoked in this tool path at runtime.
-- This means Strategy Explorer is visible in navigation but remains a non-functional placeholder.
+- The Strategy Explorer follows the same landing/tool route pattern as the other tools: `/strategy-explorer` serves a static landing page, and `/strategy-explorer/tool` mounts the multi-step wizard in `src/features/strategy-explorer/StrategyExplorer.tsx`.
+- Forecasting is **partial**: `src/features/strategy-explorer/services/archetypePortfolioService.ts` uses `BuildingService` for archetype metadata only. Per-package energy and CO2 for the comparison run come from the published Supabase cache loaded by `src/features/strategy-explorer/api/rseCacheApi.ts` and `src/features/strategy-explorer/services/rseForecastingCacheService.ts`, not from live `simulateECM` calls in the browser.
+- RSE cache entries must store a true unrenovated `baseline` plus the package `renovated` scenario. RSE energy savings use delivered system energy from UNI totals, while thermal needs remain a separate building-fabric metric.
+- Financial is **real** for the wizard run path: `src/features/strategy-explorer/services/rseFinancialService.ts` calls `financial.assessRisk` with concurrency limits orchestrated by `src/features/strategy-explorer/services/rseWorkflowService.ts`. ARV is intentionally skipped for RSE.
+- Technical API is **not used**; rankings are computed locally in `src/features/strategy-explorer/services/rseRankingService.ts`.
+- Offline cache generation that feeds the database tables lives under `scripts/rse-cache/` and is outside the SPA runtime; if no published cache version exists, the workflow returns an empty or unavailable result rather than calling Forecasting for simulations.
 - The flow diagram above shows the current implementation; compare with the [design flow](docs/rse-tool-design.md#sequential-flow) to identify deviations.

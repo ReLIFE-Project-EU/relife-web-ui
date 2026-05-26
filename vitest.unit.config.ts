@@ -9,7 +9,7 @@ export default defineConfig({
     environment: "node",
     testTimeout: 10_000,
     hookTimeout: 5_000,
-    include: ["tests/unit/**/*.test.ts"],
+    include: ["tests/unit/**/*.test.ts", "tests/component/**/*.test.tsx"],
     pool: "threads",
     fileParallelism: true,
     coverage: {
