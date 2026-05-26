@@ -5,8 +5,18 @@
  */
 
 import { useEffect, useState } from "react";
-import { Alert, Box, Card, Stack, Text, Title } from "@mantine/core";
-import { IconAlertTriangle } from "@tabler/icons-react";
+import {
+  Alert,
+  Box,
+  Button,
+  Collapse,
+  Group,
+  Stack,
+  Text,
+  Title,
+} from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
+import { IconChevronDown, IconChevronUp } from "@tabler/icons-react";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 import { getRankingScenarioStatuses } from "../../../../services/TechnicalMCDAService";
@@ -16,13 +26,10 @@ import { EnergyDeepDive } from "../results/EnergyDeepDive";
 import { FinancialDeepDive } from "../results/FinancialDeepDive";
 import { RecommendationHero } from "../results/RecommendationHero";
 import { ScenarioTabs } from "../results/ScenarioTabs";
-import {
-  getEffectiveDetailScenarioId,
-  hasFinancialResultForScenario,
-} from "../results/financialSelection";
+import { getEffectiveDetailScenarioId } from "../results/financialSelection";
 import { ErrorAlert, StepNavigation } from "../shared";
 import classes from "../results/ResultsLayout.module.css";
-import type { CashFlowData, ScenarioId } from "../../context/types";
+import type { ScenarioId } from "../../context/types";
 import { validateEstimation } from "../../../../services/estimationValidation";
 
 export function ResultsStep() {
@@ -87,6 +94,7 @@ export function ResultsStep() {
   const [selectedDetailId, setSelectedDetailId] = useState<ScenarioId | null>(
     null,
   );
+  const [showCashFlow, { toggle: toggleCashFlow }] = useDisclosure(false);
   const winnerId = mcdaRanking?.[0]?.scenarioId ?? null;
 
   useEffect(() => {
@@ -109,16 +117,6 @@ export function ResultsStep() {
   const selectedResult = selectedScenario
     ? financialResults[selectedScenario.id]
     : undefined;
-  const selectedHasFinancial = selectedScenario
-    ? hasFinancialResultForScenario(financialResults, selectedScenario.id)
-    : false;
-
-  const cashFlowData: CashFlowData | undefined =
-    selectedResult?.riskAssessment?.cashFlowData ??
-    (selectedResult?.riskAssessment?.metadata.cash_flow_data as
-      | CashFlowData
-      | undefined);
-
   const handlePrevious = () => {
     dispatch({ type: "PREV_STEP" });
   };
@@ -256,67 +254,54 @@ export function ResultsStep() {
 
           <section className={classes.deep}>
             {selectedScenario && currentScenario ? (
-              <>
-                <div className={classes.deepCols}>
-                  <EnergyDeepDive
-                    current={currentScenario}
-                    selected={selectedScenario}
-                    floorArea={state.building.floorArea ?? undefined}
-                  />
-                  <FinancialDeepDive
-                    selected={selectedScenario}
-                    result={selectedResult}
-                    funding={funding}
-                  />
-                </div>
-
-                {selectedHasFinancial ? (
-                  <>
-                    <div className={classes.cashflowHead}>
-                      <div>
-                        <div className={classes.deepEyebrow}>
-                          Cash-flow timeline
-                        </div>
-                        <h3 className={classes.deepHeading}>
-                          {selectedScenario.label}
-                        </h3>
-                      </div>
-                    </div>
-                    {cashFlowData ? (
-                      <>
-                        <CashFlowChart
-                          data={cashFlowData}
-                          projectLifetime={
-                            selectedResult?.riskAssessment?.metadata
-                              .project_lifetime
-                          }
-                          scenarioLabel={selectedScenario.label}
-                        />
-                        {cashFlowData.breakeven_year === null ? (
-                          <div className={classes.warn}>
-                            <IconAlertTriangle size={16} />
-                            Does not break even within the selected project
-                            horizon.
-                          </div>
-                        ) : null}
-                      </>
-                    ) : (
-                      <Card withBorder radius="md" p="md">
-                        <Text size="sm" c="dimmed">
-                          Cash flow data is not available for{" "}
-                          {selectedScenario.label} yet.
-                        </Text>
-                      </Card>
-                    )}
-                  </>
-                ) : null}
-              </>
+              <div className={classes.deepCols}>
+                <EnergyDeepDive
+                  current={currentScenario}
+                  selected={selectedScenario}
+                  floorArea={state.building.floorArea ?? undefined}
+                />
+                <FinancialDeepDive
+                  selected={selectedScenario}
+                  result={selectedResult}
+                  funding={funding}
+                />
+              </div>
             ) : (
               <Text c="dimmed" size="sm">
                 Select a package above to inspect its details.
               </Text>
             )}
           </section>
+        </Stack>
+      ) : null}
+
+      {selectedResult?.riskAssessment?.cashFlowData ? (
+        <Stack gap="xs">
+          <Group>
+            <Button
+              variant="subtle"
+              size="xs"
+              onClick={toggleCashFlow}
+              leftSection={
+                showCashFlow ? (
+                  <IconChevronUp size={14} />
+                ) : (
+                  <IconChevronDown size={14} />
+                )
+              }
+            >
+              {showCashFlow
+                ? "Hide cash flow timeline"
+                : "Show cash flow timeline"}
+            </Button>
+          </Group>
+          <Collapse in={showCashFlow}>
+            <CashFlowChart
+              data={selectedResult.riskAssessment.cashFlowData}
+              projectLifetime={state.building.projectLifetime ?? undefined}
+              scenarioLabel={selectedScenario?.label}
+            />
+          </Collapse>
         </Stack>
       ) : null}
 

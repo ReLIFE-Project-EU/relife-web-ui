@@ -590,34 +590,6 @@
   margin-bottom: 4px;
 }
 
-.warn {
-  margin-top: var(--mantine-spacing-sm);
-  background: var(--mantine-color-red-0);
-  border: 1px solid var(--mantine-color-red-2);
-  border-radius: var(--mantine-radius-md);
-  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
-  display: flex;
-  align-items: center;
-  gap: var(--mantine-spacing-xs);
-  color: var(--mantine-color-red-9);
-  font-weight: 600;
-  font-size: 14px;
-}
-
-/* Cashflow header */
-.cashflowHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: var(--mantine-spacing-xl) 0 var(--mantine-spacing-xs);
-  gap: var(--mantine-spacing-md);
-  flex-wrap: wrap;
-}
-
-.cashflowHead .deepHeading {
-  margin: 4px 0 0;
-}
-
 /* ───────── Compare-all card ───────── */
 .compareCard {
   padding: var(--mantine-spacing-lg);
