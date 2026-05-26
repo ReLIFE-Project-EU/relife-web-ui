@@ -323,7 +323,38 @@ export interface RiskAssessmentMetadata {
   loan_rate_percent?: number;
   output_level: string;
   cash_flow_data?: CashFlowData;
+  chart_metadata?: Partial<
+    Record<FinancialRiskIndicator, FinancialChartMetadata>
+  >;
   [key: string]: unknown;
+}
+
+export type FinancialRiskIndicator = "NPV" | "IRR" | "ROI" | "PBP" | "DPP";
+
+export interface FinancialChartBinData {
+  centers: number[];
+  counts: number[];
+  edges: number[];
+}
+
+export interface FinancialChartStatistics {
+  mean: number;
+  std: number;
+  P10: number;
+  P50: number;
+  P90: number;
+}
+
+export interface FinancialChartConfig {
+  xlabel?: string;
+  ylabel?: string;
+  title?: string;
+}
+
+export interface FinancialChartMetadata {
+  bins: FinancialChartBinData;
+  statistics: FinancialChartStatistics;
+  chart_config?: FinancialChartConfig;
 }
 
 export interface CashFlowData {

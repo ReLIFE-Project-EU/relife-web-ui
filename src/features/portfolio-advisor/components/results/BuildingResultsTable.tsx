@@ -18,6 +18,7 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import {
+  IconArrowRight,
   IconChevronDown,
   IconChevronUp,
   IconInfoCircle,
@@ -32,7 +33,6 @@ import {
   formatDecimal,
   formatEnergyPerYear,
 } from "../../../../utils/formatters";
-import { formatArchetypeName } from "../../../../utils/archetypeLabels";
 import type { PRABuilding, BuildingAnalysisResult } from "../../context/types";
 
 export type StatusFilter =
@@ -44,7 +44,7 @@ export type StatusFilter =
   | "rejected"
   | "no-savings";
 
-type SortKey = "name" | "status" | "energyReduction" | "npv" | "roi" | "pbp";
+type SortKey = "name" | "energyReduction" | "npv" | "roi" | "pbp";
 
 interface SortState {
   key: SortKey;
@@ -119,8 +119,6 @@ function applySort(rows: RowVm[], sort: SortState): RowVm[] {
       switch (sort.key) {
         case "name":
           return r.building.name.toLowerCase();
-        case "status":
-          return r.result.status;
         case "energyReduction":
           return r.energyReduction ?? Infinity;
         case "npv":
@@ -178,7 +176,7 @@ export function BuildingResultsTable({
         ? { key, dir: current.dir === "asc" ? "desc" : "asc" }
         : {
             key,
-            dir: key === "name" || key === "status" ? "asc" : "desc",
+            dir: key === "name" ? "asc" : "desc",
           },
     );
   };
@@ -214,7 +212,7 @@ export function BuildingResultsTable({
         </Group>
       </Group>
 
-      <Table.ScrollContainer minWidth={1100}>
+      <Table.ScrollContainer minWidth={820}>
         <Table striped highlightOnHover withTableBorder={false}>
           <Table.Thead>
             <Table.Tr>
@@ -225,33 +223,12 @@ export function BuildingResultsTable({
                 onSort={toggleSort}
               />
               <Table.Th>
-                <Text fz="sm" fw={700}>
-                  Matched archetype
-                </Text>
-              </Table.Th>
-              <SortableTh
-                label="Status"
-                sortKey="status"
-                sort={sort}
-                onSort={toggleSort}
-              />
-              <Table.Th>
                 <Group gap={4} wrap="nowrap">
                   <Text fz="sm" fw={700}>
                     Estimated EPC
                   </Text>
                   <Text span size="xs" c="dimmed">
-                    before
-                  </Text>
-                </Group>
-              </Table.Th>
-              <Table.Th>
-                <Group gap={4} wrap="nowrap">
-                  <Text fz="sm" fw={700}>
-                    Estimated EPC
-                  </Text>
-                  <Text span size="xs" c="dimmed">
-                    after
+                    before → after
                   </Text>
                 </Group>
               </Table.Th>
@@ -355,8 +332,6 @@ function ResultsRow({
     deliveredBefore > 0
       ? calculatePercentChange(deliveredBefore, deliveredAfter)
       : undefined;
-  const archetype = result.estimation?.archetype;
-  const wasAutoMatched = !building.archetypeName && !!archetype;
 
   return (
     <Table.Tr
@@ -368,134 +343,39 @@ function ResultsRow({
           <Text size="sm" fw={500}>
             {building.name}
           </Text>
-          {noSavings && (
-            <Tooltip
-              label="This building's current specifications already meet the targets for the selected renovation measures. No energy savings could be computed, so financial indicators are not meaningful."
-              multiline
-              w={300}
-              position="bottom-start"
-            >
-              <Badge
-                color="yellow"
-                variant="light"
-                size="sm"
-                leftSection={<IconInfoCircle size={11} />}
-                style={{ cursor: "default" }}
-              >
-                Already at renovation target
-              </Badge>
-            </Tooltip>
-          )}
+          <RowStatusBadge row={row} />
         </Stack>
       </Table.Td>
       <Table.Td>
-        {archetype ? (
-          <Tooltip
-            label={`${archetype.category} · ${archetype.country} · ${archetype.name}`}
-            multiline
-            w={260}
-          >
-            <Stack gap={4} style={{ cursor: "default" }}>
-              <Text size="sm">{formatArchetypeName(archetype.name)}</Text>
-              {wasAutoMatched && (
-                <Badge color="gray" variant="light" size="xs">
-                  Auto
-                </Badge>
-              )}
-            </Stack>
-          </Tooltip>
-        ) : (
-          <Text size="sm" c="dimmed">
-            —
-          </Text>
-        )}
-      </Table.Td>
-      <Table.Td>
-        {result.status === "rejected" && result.rejection ? (
-          <Tooltip
-            label={
-              <Stack gap={4}>
-                {result.rejection.reasons.map((reason, i) => (
-                  <Text key={i} size="xs" fw={i === 0 ? 600 : 400}>
-                    {reason.message}
-                  </Text>
-                ))}
-                {result.rejection.remediation && (
-                  <Text size="xs">{result.rejection.remediation}</Text>
-                )}
-                <Text size="xs" c="dimmed">
-                  Strategy: {result.rejection.strategy} · scale{" "}
-                  {result.rejection.areaScaleFactor.toFixed(2)}×
-                </Text>
-              </Stack>
-            }
-            multiline
-            w={320}
-            position="bottom-start"
-          >
-            <Badge
-              color="orange"
-              size="sm"
-              variant="light"
-              leftSection={<IconInfoCircle size={11} />}
-              style={{ cursor: "default" }}
-            >
-              Rejected
-            </Badge>
-          </Tooltip>
-        ) : (
-          <Badge
-            color={
-              result.status === "success"
-                ? "green"
-                : result.status === "error"
-                  ? "red"
-                  : "yellow"
-            }
-            size="sm"
-            variant="light"
-          >
-            {result.status === "success"
-              ? "Analyzed"
-              : result.status === "error"
-                ? "Failed"
-                : result.status === "running"
-                  ? "Running"
-                  : "Pending"}
-          </Badge>
-        )}
-      </Table.Td>
-      <Table.Td>
-        {epcBefore ? (
+        {epcBefore || epcAfter ? (
           <Group gap="xs" wrap="nowrap">
-            <EPCBadge
-              epcClass={epcBefore}
-              size="sm"
-              energyIntensity={intensityBefore}
-              estimated
-            />
-            {intensityBefore !== undefined && (
-              <Text size="xs" c="dimmed">
-                {Math.round(intensityBefore)} kWh/m²/y
+            {epcBefore ? (
+              <EPCBadge
+                epcClass={epcBefore}
+                size="sm"
+                energyIntensity={intensityBefore}
+                estimated
+              />
+            ) : (
+              <Text size="sm" c="dimmed">
+                —
               </Text>
             )}
-          </Group>
-        ) : (
-          "-"
-        )}
-      </Table.Td>
-      <Table.Td>
-        {epcAfter ? (
-          <Group gap="xs" wrap="nowrap">
-            <EPCBadge
-              epcClass={epcAfter}
-              size="sm"
-              energyIntensity={intensityAfter}
-              estimated
+            <IconArrowRight
+              size={14}
+              color="var(--mantine-color-gray-5)"
+              aria-hidden
             />
-            {intensityAfter !== undefined && (
-              <Text size="xs" c="dimmed">
-                {Math.round(intensityAfter)} kWh/m²/y
+            {epcAfter ? (
+              <EPCBadge
+                epcClass={epcAfter}
+                size="sm"
+                energyIntensity={intensityAfter}
+                estimated
+              />
+            ) : (
+              <Text size="sm" c="dimmed">
+                —
               </Text>
             )}
           </Group>
@@ -581,6 +461,85 @@ function ResultsRow({
       </Table.Td>
     </Table.Tr>
   );
+}
+
+function RowStatusBadge({ row }: { row: RowVm }) {
+  const { result, noSavings } = row;
+
+  if (noSavings) {
+    return (
+      <Tooltip
+        label="This building's current specifications already meet the targets for the selected renovation measures. No energy savings could be computed, so financial indicators are not meaningful."
+        multiline
+        w={300}
+        position="bottom-start"
+      >
+        <Badge
+          color="yellow"
+          variant="light"
+          size="sm"
+          leftSection={<IconInfoCircle size={11} />}
+          style={{ cursor: "default" }}
+        >
+          Already at renovation target
+        </Badge>
+      </Tooltip>
+    );
+  }
+
+  if (result.status === "rejected" && result.rejection) {
+    return (
+      <Tooltip
+        label={
+          <Stack gap={4}>
+            {result.rejection.reasons.map((reason, i) => (
+              <Text key={i} size="xs" fw={i === 0 ? 600 : 400}>
+                {reason.message}
+              </Text>
+            ))}
+            {result.rejection.remediation && (
+              <Text size="xs">{result.rejection.remediation}</Text>
+            )}
+            <Text size="xs" c="dimmed">
+              Strategy: {result.rejection.strategy} · scale{" "}
+              {result.rejection.areaScaleFactor.toFixed(2)}×
+            </Text>
+          </Stack>
+        }
+        multiline
+        w={320}
+        position="bottom-start"
+      >
+        <Badge
+          color="orange"
+          size="sm"
+          variant="light"
+          leftSection={<IconInfoCircle size={11} />}
+          style={{ cursor: "default" }}
+        >
+          Rejected
+        </Badge>
+      </Tooltip>
+    );
+  }
+
+  if (result.status === "error") {
+    return (
+      <Badge color="red" size="sm" variant="light">
+        Failed
+      </Badge>
+    );
+  }
+
+  if (result.status === "running" || result.status === "pending") {
+    return (
+      <Badge color="yellow" size="sm" variant="light">
+        {result.status === "running" ? "Running" : "Pending"}
+      </Badge>
+    );
+  }
+
+  return null;
 }
 
 function SortableTh({

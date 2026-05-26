@@ -278,6 +278,11 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
 
       // Prefer the dedicated probabilities field mapped by FinancialService
       const riskAssessment = renovatedResults.riskAssessment;
+      if (riskAssessment?.metadata.chart_metadata) {
+        praFinancialResults.chartMetadata =
+          riskAssessment.metadata.chart_metadata;
+      }
+
       if (
         riskAssessment?.probabilities &&
         Object.keys(riskAssessment.probabilities).length > 0

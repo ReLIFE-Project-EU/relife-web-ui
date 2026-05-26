@@ -4,7 +4,9 @@
 
 import type {
   EstimationResult,
+  FinancialChartMetadata,
   FinancialResults,
+  FinancialRiskIndicator,
   FinancingType,
   FundingOptions,
   LoanDetails,
@@ -59,35 +61,15 @@ export interface PRABuilding {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Professional Output Types
-// ─────────────────────────────────────────────────────────────────────────────
-
-export interface ChartBinData {
-  centers: number[];
-  counts: number[];
-  edges: number[];
-}
-
-export interface ChartStatistics {
-  mean: number;
-  std: number;
-  P10: number;
-  P50: number;
-  P90: number;
-}
-
-export interface KPIChartMetadata {
-  bins: ChartBinData;
-  statistics: ChartStatistics;
-}
-
 export interface ProfessionalProbabilities {
   [key: string]: number; // "Pr(NPV > 0)", "Pr(PBP < Ny)", "Pr(DPP < Ny)"
 }
 
 export interface PRAFinancialResults extends FinancialResults {
   probabilities?: ProfessionalProbabilities;
-  chartMetadata?: Record<string, KPIChartMetadata>;
+  chartMetadata?: Partial<
+    Record<FinancialRiskIndicator, FinancialChartMetadata>
+  >;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

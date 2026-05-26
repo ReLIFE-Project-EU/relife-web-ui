@@ -373,6 +373,101 @@ describe("FinancialService", () => {
     );
   });
 
+  test("normalizes professional chart metadata from risk assessment", async () => {
+    mockAssessRisk.mockResolvedValue({
+      ...stubRiskResponse,
+      metadata: {
+        ...stubRiskResponse.metadata,
+        chart_metadata: {
+          NPV: {
+            bins: {
+              centers: [-1000, 0, 1000],
+              counts: [2, 5, 3],
+              edges: [-1500, -500, 500, 1500],
+            },
+            statistics: {
+              mean: 100,
+              std: 250,
+              P10: -500,
+              P50: 100,
+              P90: 750,
+            },
+            chart_config: {
+              xlabel: "NPV",
+              ylabel: "Frequency",
+              title: "NPV Distribution",
+            },
+          },
+        },
+      },
+    });
+
+    const service = new FinancialService("professional");
+    const result = await service.assessRisk({
+      annual_energy_savings: 4000,
+      project_lifetime: 20,
+      output_level: "professional",
+      capex: 10000,
+      annual_maintenance_cost: 300,
+    });
+
+    expect(result.metadata.chart_metadata?.NPV).toEqual({
+      bins: {
+        centers: [-1000, 0, 1000],
+        counts: [2, 5, 3],
+        edges: [-1500, -500, 500, 1500],
+      },
+      statistics: {
+        mean: 100,
+        std: 250,
+        P10: -500,
+        P50: 100,
+        P90: 750,
+      },
+      chart_config: {
+        xlabel: "NPV",
+        ylabel: "Frequency",
+        title: "NPV Distribution",
+      },
+    });
+  });
+
+  test("skips malformed professional chart metadata", async () => {
+    mockAssessRisk.mockResolvedValue({
+      ...stubRiskResponse,
+      metadata: {
+        ...stubRiskResponse.metadata,
+        chart_metadata: {
+          NPV: {
+            bins: {
+              centers: [-1000, 0],
+              counts: [2],
+              edges: [-1500, -500, 500],
+            },
+            statistics: {
+              mean: 100,
+              std: 250,
+              P10: -500,
+              P50: 100,
+              P90: 750,
+            },
+          },
+        },
+      },
+    });
+
+    const service = new FinancialService("professional");
+    const result = await service.assessRisk({
+      annual_energy_savings: 4000,
+      project_lifetime: 20,
+      output_level: "professional",
+      capex: 10000,
+      annual_maintenance_cost: 300,
+    });
+
+    expect(result.metadata.chart_metadata).toBeUndefined();
+  });
+
   test("uses package-specific CAPEX and maintenance values for each scenario", async () => {
     const service = new FinancialService();
 

@@ -15,6 +15,8 @@ import type {
   BuildingInfo,
   CashFlowData,
   EstimationResult,
+  FinancialChartMetadata,
+  FinancialRiskIndicator,
   FinancialResults,
   FundingOptions,
   PackageFinancialInputsById,
@@ -45,6 +47,13 @@ import type {
 import { auditLog, type AuditCtx } from "../utils/auditLogger";
 
 const USE_SIMULATED_DELIVERED_ENERGY_FOR_FINANCE = true;
+const FINANCIAL_RISK_INDICATORS: FinancialRiskIndicator[] = [
+  "NPV",
+  "IRR",
+  "ROI",
+  "PBP",
+  "DPP",
+];
 
 function resolveConstructionYear(building: BuildingInfo): number {
   return (
@@ -114,8 +123,16 @@ export class FinancialService implements IFinancialService {
     });
 
     const rawMetadata = response.metadata ?? {};
+    const metadataWithoutRawPayloads = {
+      ...(rawMetadata as Record<string, unknown>),
+    };
+    delete metadataWithoutRawPayloads.cash_flow_data;
+    delete metadataWithoutRawPayloads.chart_metadata;
     const cashFlowData = normalizeCashFlowData(
       (rawMetadata as Record<string, unknown>).cash_flow_data,
+    );
+    const chartMetadata = normalizeChartMetadata(
+      (rawMetadata as Record<string, unknown>).chart_metadata,
     );
 
     // Map percentiles if available (included in public+ output levels, or when API returns them)
@@ -134,7 +151,7 @@ export class FinancialService implements IFinancialService {
         SuccessRate: response.point_forecasts.SuccessRate ?? 0,
       },
       metadata: {
-        ...rawMetadata,
+        ...metadataWithoutRawPayloads,
         n_sims: response.metadata.n_sims as number | undefined,
         project_lifetime:
           (response.metadata.project_lifetime as number) ??
@@ -153,6 +170,7 @@ export class FinancialService implements IFinancialService {
           | undefined,
         output_level: this.outputLevel,
         ...(cashFlowData ? { cash_flow_data: cashFlowData } : {}),
+        ...(chartMetadata ? { chart_metadata: chartMetadata } : {}),
       },
       probabilities: response.probabilities ?? undefined,
       percentiles,
@@ -530,6 +548,102 @@ function normalizeCashFlowData(raw: unknown): CashFlowData | undefined {
         ? (data.loan_term as number | null)
         : undefined,
   };
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function normalizeNumberArray(raw: unknown): number[] | undefined {
+  if (!Array.isArray(raw)) {
+    return undefined;
+  }
+
+  const values = raw.map((value) => Number(value));
+  return values.every(Number.isFinite) ? values : undefined;
+}
+
+function normalizeChartMetadata(
+  raw: unknown,
+): Partial<Record<FinancialRiskIndicator, FinancialChartMetadata>> | undefined {
+  if (!raw || typeof raw !== "object") {
+    return undefined;
+  }
+
+  const source = raw as Record<string, unknown>;
+  const result: Partial<
+    Record<FinancialRiskIndicator, FinancialChartMetadata>
+  > = {};
+
+  for (const indicator of FINANCIAL_RISK_INDICATORS) {
+    const entry = source[indicator];
+    if (!entry || typeof entry !== "object") {
+      continue;
+    }
+
+    const metadata = entry as Record<string, unknown>;
+    const bins = metadata.bins as Record<string, unknown> | undefined;
+    const statistics = metadata.statistics as
+      | Record<string, unknown>
+      | undefined;
+    if (!bins || !statistics) {
+      continue;
+    }
+
+    const centers = normalizeNumberArray(bins.centers);
+    const counts = normalizeNumberArray(bins.counts);
+    const edges = normalizeNumberArray(bins.edges);
+    if (
+      !centers ||
+      !counts ||
+      !edges ||
+      centers.length === 0 ||
+      centers.length !== counts.length
+    ) {
+      continue;
+    }
+
+    const { mean, std, P10, P50, P90 } = statistics;
+    if (
+      !isFiniteNumber(mean) ||
+      !isFiniteNumber(std) ||
+      !isFiniteNumber(P10) ||
+      !isFiniteNumber(P50) ||
+      !isFiniteNumber(P90)
+    ) {
+      continue;
+    }
+
+    const chartConfig =
+      metadata.chart_config && typeof metadata.chart_config === "object"
+        ? (metadata.chart_config as Record<string, unknown>)
+        : undefined;
+
+    result[indicator] = {
+      bins: { centers, counts, edges },
+      statistics: { mean, std, P10, P50, P90 },
+      ...(chartConfig
+        ? {
+            chart_config: {
+              xlabel:
+                typeof chartConfig.xlabel === "string"
+                  ? chartConfig.xlabel
+                  : undefined,
+              ylabel:
+                typeof chartConfig.ylabel === "string"
+                  ? chartConfig.ylabel
+                  : undefined,
+              title:
+                typeof chartConfig.title === "string"
+                  ? chartConfig.title
+                  : undefined,
+            },
+          }
+        : {}),
+    };
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
 }
 
 /**

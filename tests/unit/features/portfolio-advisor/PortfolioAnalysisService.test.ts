@@ -268,6 +268,76 @@ describe("PortfolioAnalysisService", () => {
     });
   });
 
+  test("copies professional chart metadata into PRA financial results", async () => {
+    mockCalculateForAllScenarios.mockResolvedValue({
+      renovated: {
+        ...financialResults.renovated,
+        riskAssessment: {
+          pointForecasts: {
+            NPV: 5000,
+            IRR: 0.05,
+            ROI: 0.2,
+            PBP: 8,
+            DPP: 10,
+            MonthlyAvgSavings: 40,
+            SuccessRate: 0.8,
+          },
+          metadata: {
+            project_lifetime: 20,
+            capex: 10000,
+            loan_amount: 0,
+            output_level: "professional",
+            chart_metadata: {
+              NPV: {
+                bins: {
+                  centers: [-1000, 0, 1000],
+                  counts: [2, 5, 3],
+                  edges: [-1500, -500, 500, 1500],
+                },
+                statistics: {
+                  mean: 100,
+                  std: 250,
+                  P10: -500,
+                  P50: 100,
+                  P90: 750,
+                },
+              },
+            },
+          },
+          probabilities: {
+            "Pr(NPV > 0)": 0.8,
+          },
+        },
+      },
+    });
+
+    const results = await service.analyzePortfolio({
+      buildings: [createBuilding()],
+      selectedMeasures: ["wall-insulation"],
+      financingScheme: "equity",
+      funding,
+      projectLifetime: 20,
+      onProgress: vi.fn(),
+      globalCapex: 12000,
+      globalMaintenanceCost: 500,
+    });
+
+    expect(results["building-1"].financialResults?.chartMetadata?.NPV).toEqual({
+      bins: {
+        centers: [-1000, 0, 1000],
+        counts: [2, 5, 3],
+        edges: [-1500, -500, 500, 1500],
+      },
+      statistics: {
+        mean: 100,
+        std: 250,
+        P10: -500,
+        P50: 100,
+        P90: 750,
+      },
+    });
+  });
+
   test("unsupported-only selections fail before scenario evaluation", async () => {
     const results = await service.analyzePortfolio({
       buildings: [createBuilding()],
