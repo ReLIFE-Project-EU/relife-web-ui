@@ -19,31 +19,31 @@ import {
   IconTarget,
 } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
+import { relifeConcepts } from "../constants/relifeConcepts";
 
 const features = [
   {
     icon: IconListDetails,
-    title: "Portfolio Builder",
+    title: "Archetype Portfolio Builder",
     description:
-      "Compose a representative building portfolio by selecting archetypes from different countries and categories, with adjustable building counts.",
+      "Select available country/category/archetype combinations and assign building counts to define a representative stock.",
   },
   {
     icon: IconTarget,
-    title: "Goal Setting",
+    title: "Objective Selection",
     description:
-      "Define your strategic objective: maximize renovations within a budget, prioritize energy savings, or focus on emission reduction.",
+      "Choose the ranking objective: budget-limited renovations, delivered system energy savings, or CO₂ reduction.",
   },
   {
     icon: IconBuildingCommunity,
     title: "Package Comparison",
     description:
-      "Compare predefined renovation packages with different measure combinations and strategies.",
+      "Select predefined renovation packages; only archetype/package combinations available in the published forecasting cache are included.",
   },
   {
     icon: IconChartBar,
     title: "Ranked Results",
-    description:
-      "View rankings and aggregated metrics including energy savings, CO₂ reduction, and buildings within budget based on your selected goal.",
+    description: `View goal-specific package rankings with total investment, annual ${relifeConcepts["rse-total-energy-savings"].label.toLowerCase()}, ${relifeConcepts["rse-total-co2-reduction"].label.toLowerCase()}, and buildings within budget where applicable.`,
   },
 ];
 

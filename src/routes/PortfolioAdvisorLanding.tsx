@@ -16,7 +16,7 @@ import {
   IconCalculator,
   IconChartBar,
   IconListDetails,
-  IconScale,
+  IconTool,
 } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
 import { relifeConcepts } from "../constants/relifeConcepts";
@@ -24,25 +24,26 @@ import { relifeConcepts } from "../constants/relifeConcepts";
 const features = [
   {
     icon: IconListDetails,
-    title: "Portfolio Manager",
+    title: "Building Portfolio Input",
     description:
-      "Input and manage building portfolios with batch CSV import and manual entry.",
+      "Add buildings manually or with CSV import, including location, archetype/category, floor area, construction period, floors, and optional per-building cost or measure overrides.",
   },
   {
-    icon: IconCalculator,
-    title: "Financial Analysis",
-    description: `Professional outputs for ${relifeConcepts.npv.label}, ${relifeConcepts.irr.label}, ${relifeConcepts.roi.label}, ${relifeConcepts["payback-period"].label}, and Monte Carlo risk assessment.`,
-  },
-  {
-    icon: IconScale,
-    title: "Recommendation Ranking",
-    description: `${relifeConcepts.mcda.description} It balances energy, renewables, sustainability, comfort, and financial viability.`,
+    icon: IconTool,
+    title: "Renovation Package Setup",
+    description:
+      "Select supported measures for the portfolio, or override them per building, then analyze the resulting renovated scenario for each building.",
   },
   {
     icon: IconChartBar,
-    title: "Comparative Analytics",
+    title: "Financial & Risk Outputs",
+    description: `Review ${relifeConcepts.npv.label}, ${relifeConcepts.roi.label}, ${relifeConcepts["payback-period"].label}, investment, energy/EPC shifts, and Monte Carlo risk ranges or probabilities when the Financial Service returns them.`,
+  },
+  {
+    icon: IconCalculator,
+    title: "Portfolio Summary & Drill-Downs",
     description:
-      "Compare renovation scenarios across your portfolio with risk profiles and aggregated metrics.",
+      "Use aggregate metrics, status filters, sortable per-building rows, and drill-down panels to inspect successful, rejected, or failed analyses.",
   },
 ];
 

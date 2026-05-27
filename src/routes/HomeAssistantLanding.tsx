@@ -19,31 +19,30 @@ import {
   IconListCheck,
 } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
+import { relifeConcepts } from "../constants/relifeConcepts";
 
 const features = [
   {
     icon: IconHome2,
-    title: "My Building",
+    title: "Building Profile",
     description:
-      "Enter your building details including location, type, systems, and more to estimate energy performance.",
+      "Place your home on the map, select its type and construction period, then review the matched reference archetype before estimating energy performance.",
   },
   {
     icon: IconListCheck,
     title: "Renovation Options",
     description:
-      "Browse available renovation measures with clear explanations of each intervention and expected impact.",
+      "Select supported envelope, heating-system, and PV measures. The tool builds comparable packages and asks for package CAPEX and annual maintenance inputs before analysis.",
   },
   {
     icon: IconCoin,
-    title: "Cost & Savings",
-    description:
-      "Configure funding options (loans, subsidies, on-bill) and see financial indicators like NPV, ROI, and payback time.",
+    title: "Funding & Financial Indicators",
+    description: `Model self-funded or loan-financed renovation with optional incentives, then compare ${relifeConcepts.npv.label}, ${relifeConcepts.roi.label}, and ${relifeConcepts["payback-period"].label} when available.`,
   },
   {
     icon: IconBulb,
-    title: "Personalized Recommendations",
-    description:
-      "Get ranked renovation suggestions based on your priorities: comfort, cost savings, or environmental impact.",
+    title: "Priority-Based Ranking",
+    description: `Rank comparable packages using the selected ${relifeConcepts["priority-profile"].label.toLowerCase()}: Environmentally Conscious, Comfort-Driven, or Cost-Optimization Oriented.`,
   },
 ];
 
