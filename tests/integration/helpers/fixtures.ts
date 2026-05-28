@@ -15,17 +15,22 @@ export const FALLBACK_ARCHETYPE = {
 };
 
 /**
- * ARV request fixture (from financial.json OpenAPI examples)
+ * ARV request fixture.
+ *
+ * Uses Italy (Latin A–G EPC scale) — the backend currently rejects Greece
+ * because its EPC scale uses Greek letters that the internal Latin→Greek
+ * mapping in relife-financial-service can't produce for these consumption
+ * values. Swap back to Greece once that upstream bug is fixed.
  */
 export const ARV_REQUEST = {
-  lat: 37.981,
-  lng: 23.728,
+  lat: 41.9028,
+  lng: 12.4964,
   floor_area: 85.0,
   construction_year: 1985,
   floor_number: 2,
   number_of_floors: 5,
   property_type: "Apartment",
-  target_country: "Greece",
+  target_country: "Italy",
   energy_consumption_before: 180,
   energy_consumption_after: 95,
   renovated_last_5_years: true,
