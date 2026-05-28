@@ -25,7 +25,9 @@ export const ARV_REQUEST = {
   floor_number: 2,
   number_of_floors: 5,
   property_type: "Apartment",
-  energy_class: "Β", // Greek label (post-renovation B class)
+  target_country: "Greece",
+  energy_consumption_before: 180,
+  energy_consumption_after: 95,
   renovated_last_5_years: true,
 };
 

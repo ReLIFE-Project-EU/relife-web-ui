@@ -292,7 +292,7 @@ export interface ARVResult {
   pricePerSqm: number; // EUR/m²
   totalPrice: number; // EUR
   floorArea: number; // Echo of input
-  energyClass: string; // Echo of input (Greek label)
+  energyClass: string; // Resolved Greek EPC label
   metadata?: Record<string, unknown>;
 }
 

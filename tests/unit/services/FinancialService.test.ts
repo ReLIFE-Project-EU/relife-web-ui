@@ -23,10 +23,14 @@ vi.mock("../../../src/api", () => ({
 import { FinancialService } from "../../../src/services/FinancialService";
 
 const stubARVResponse = {
-  price_per_sqm: 2000,
-  total_price: 200000,
+  after: {
+    price_per_sqm: 2000,
+    total_price: 200000,
+    greek_epc_class: "\u0394",
+  },
+  before: null,
+  uplift: null,
   floor_area: 100,
-  energy_class: "\u0394",
   metadata: {},
 };
 
@@ -115,6 +119,23 @@ const renovatedScenario = {
   measures: ["Wall Insulation"],
 } as RenovationScenario;
 
+const currentScenario = {
+  id: "current" as ScenarioId,
+  packageId: "current",
+  label: "Current",
+  epcClass: "D",
+  annualEnergyNeeds: 15000,
+  annualEnergyCost: 3750,
+  heatingCoolingNeeds: 15000,
+  deliveredTotal: 11000,
+  deliveredEnergyCost: 2750,
+  primaryEnergy: 16500,
+  flexibilityIndex: 50,
+  comfortIndex: 70,
+  measureIds: [],
+  measures: [],
+} as RenovationScenario;
+
 const secondScenario = {
   ...renovatedScenario,
   id: "package-windows" as ScenarioId,
@@ -148,7 +169,7 @@ describe("FinancialService", () => {
     mockAssessRisk.mockResolvedValue(stubRiskResponse);
   });
 
-  test("ARV request includes Greek EPC class for renovated scenario", async () => {
+  test("ARV request includes national EPC country and renovated energy intensity", async () => {
     const service = new FinancialService();
 
     await service.calculateForAllScenarios(
@@ -161,7 +182,37 @@ describe("FinancialService", () => {
     );
 
     expect(mockCalculateARV).toHaveBeenCalledWith(
-      expect.objectContaining({ energy_class: "\u0392" }),
+      expect.objectContaining({
+        target_country: "Greece",
+        energy_consumption_before: 110,
+        energy_consumption_after: 70,
+      }),
+    );
+  });
+
+  test("current ARV request uses current energy intensity without before value", async () => {
+    const service = new FinancialService();
+
+    await service.calculateForAllScenarios(
+      [currentScenario],
+      mockFundingOptions,
+      100,
+      mockEstimation,
+      packageFinancialInputs,
+      mockBuilding,
+    );
+
+    expect(mockCalculateARV).toHaveBeenCalledWith(
+      expect.objectContaining({
+        target_country: "Greece",
+        energy_consumption_after: 110,
+        renovated_last_5_years: false,
+      }),
+    );
+    expect(mockCalculateARV).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        energy_consumption_before: expect.anything(),
+      }),
     );
   });
 
@@ -303,7 +354,10 @@ describe("FinancialService", () => {
       expect.objectContaining({ annual_energy_savings: 2000 }),
     );
     expect(mockCalculateARV).toHaveBeenCalledWith(
-      expect.objectContaining({ energy_class: "\u0394" }),
+      expect.objectContaining({
+        energy_consumption_before: 110,
+        energy_consumption_after: 90,
+      }),
     );
   });
 
@@ -459,6 +513,114 @@ describe("FinancialService", () => {
     expect(results["renovated"].riskAssessment?.probabilities).toEqual({
       "Pr(NPV > 0)": 0.84,
     });
+  });
+
+  test("professional output preserves risk results when private cash-flow supplement fails", async () => {
+    mockAssessRisk.mockImplementation((request: { output_level: string }) => {
+      if (request.output_level === "private") {
+        return Promise.reject(new Error("cash-flow unavailable"));
+      }
+
+      return Promise.resolve({
+        ...stubRiskResponse,
+        probabilities: {
+          "Pr(NPV > 0)": 0.84,
+        },
+        metadata: {
+          ...stubRiskResponse.metadata,
+          chart_metadata: {
+            NPV: {
+              bins: {
+                centers: [0],
+                counts: [1],
+                edges: [-500, 500],
+              },
+              statistics: {
+                mean: 100,
+                std: 10,
+                P10: 0,
+                P50: 100,
+                P90: 200,
+              },
+            },
+          },
+        },
+      });
+    });
+
+    const service = new FinancialService("professional");
+    const results = await service.calculateForAllScenarios(
+      [renovatedScenario],
+      mockFundingOptions,
+      100,
+      mockEstimation,
+      packageFinancialInputs,
+      mockBuilding,
+    );
+
+    expect(mockAssessRisk).toHaveBeenCalledTimes(2);
+    expect(results["renovated"].riskAssessment?.cashFlowData).toBeUndefined();
+    expect(results["renovated"].riskAssessment?.probabilities).toEqual({
+      "Pr(NPV > 0)": 0.84,
+    });
+    expect(results["renovated"].netPresentValue).toBe(5000);
+  });
+
+  test("professional output ignores malformed private cash-flow timeline", async () => {
+    mockAssessRisk.mockImplementation((request: { output_level: string }) => {
+      if (request.output_level === "private") {
+        return Promise.resolve({
+          ...stubRiskResponse,
+          metadata: {
+            ...stubRiskResponse.metadata,
+            cash_flow_data: {
+              years: [0, Number.NaN],
+              annual_inflows: [0, 500],
+              annual_outflows: [10000, 200],
+            },
+          },
+        });
+      }
+
+      return Promise.resolve({
+        ...stubRiskResponse,
+        metadata: {
+          ...stubRiskResponse.metadata,
+          chart_metadata: {
+            NPV: {
+              bins: {
+                centers: [0],
+                counts: [1],
+                edges: [-500, 500],
+              },
+              statistics: {
+                mean: 100,
+                std: 10,
+                P10: 0,
+                P50: 100,
+                P90: 200,
+              },
+            },
+          },
+        },
+      });
+    });
+
+    const service = new FinancialService("professional");
+    const results = await service.calculateForAllScenarios(
+      [renovatedScenario],
+      mockFundingOptions,
+      100,
+      mockEstimation,
+      packageFinancialInputs,
+      mockBuilding,
+    );
+
+    expect(mockAssessRisk).toHaveBeenCalledTimes(2);
+    expect(results["renovated"].riskAssessment?.cashFlowData).toBeUndefined();
+    expect(
+      results["renovated"].riskAssessment?.metadata.chart_metadata?.NPV,
+    ).toBeDefined();
   });
 
   test("normalizes professional chart metadata from risk assessment", async () => {

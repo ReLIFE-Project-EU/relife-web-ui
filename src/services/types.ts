@@ -27,11 +27,7 @@ import type {
   RiskAssessmentPointForecasts,
   ScenarioId,
 } from "../types/renovation";
-import type {
-  APIEnergyClass,
-  APIPropertyType,
-  OutputLevel,
-} from "../utils/apiMappings";
+import type { APIPropertyType, OutputLevel } from "../utils/apiMappings";
 import type { AuditCtx } from "../utils/auditLogger";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -328,7 +324,9 @@ export interface ARVRequest {
   floor_number?: number | null; // Optional, for apartments (0 = ground floor)
   number_of_floors: number; // 1-100
   property_type: APIPropertyType; // API enum value
-  energy_class: APIEnergyClass; // Greek EPC label (after renovation)
+  target_country: string; // National EPC scale to apply
+  energy_consumption_before?: number | null; // kWh/m²/year before renovation
+  energy_consumption_after: number; // kWh/m²/year after renovation/current state
   renovated_last_5_years?: boolean; // Default: true
 }
 

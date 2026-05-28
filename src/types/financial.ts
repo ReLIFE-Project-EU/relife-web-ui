@@ -30,12 +30,6 @@ export type PropertyType =
   | "Detached House"
   | "Apartment Complex";
 
-/**
- * Energy Performance Certificate (EPC) classes.
- * Greek labels ordered from worst (Η) to best (Α+).
- */
-export type EnergyClass = "Η" | "Ζ" | "Ε" | "Δ" | "Γ" | "Β" | "Β+" | "Α" | "Α+";
-
 // ============================================================================
 // Risk Assessment (Monte Carlo Simulation)
 // ============================================================================
@@ -110,7 +104,7 @@ export interface RiskAssessmentResponse {
 
 /**
  * Request model for After Renovation Value prediction.
- * Uses trained LightGBM model on Greek property market data.
+ * Uses trained LightGBM model on property market data.
  */
 export interface ARVRequest {
   /** Latitude of the property location in decimal degrees. */
@@ -134,28 +128,56 @@ export interface ARVRequest {
   /** Type of property. */
   property_type: PropertyType;
 
-  /** Energy class after renovation (EPC label from energy analysis). */
-  energy_class: EnergyClass;
+  /** Country whose national EPC scale should be used. */
+  target_country: string;
+
+  /** Pre-renovation consumption in kWh/m²/year, when available. */
+  energy_consumption_before?: number | null;
+
+  /** Post-renovation/current consumption in kWh/m²/year. */
+  energy_consumption_after: number;
 
   /** Whether property has been renovated within last 5 years. Default true. */
   renovated_last_5_years?: boolean;
 }
 
-/**
- * Response model for After Renovation Value prediction.
- */
-export interface ARVResponse {
+export interface ARVValueSnapshot {
   /** Predicted price per square meter in euros. */
   price_per_sqm: number;
 
   /** Total predicted property value in euros. */
   total_price: number;
 
+  /** Resolved Greek EPC class used as model input. */
+  greek_epc_class: string;
+
+  /** EPC mapping chain details, when available. */
+  epc_resolution?: Record<string, unknown>;
+}
+
+export interface ARVUplift {
+  /** Absolute increase in total property value in euros. */
+  price_increase: number;
+
+  /** Percentage increase in total property value. */
+  price_increase_pct: number;
+}
+
+/**
+ * Response model for After Renovation Value prediction.
+ */
+export interface ARVResponse {
+  /** Predicted value at post-renovation/current energy consumption. */
+  after: ARVValueSnapshot;
+
+  /** Predicted value at pre-renovation energy consumption, when requested. */
+  before?: ARVValueSnapshot | null;
+
+  /** Value increase from before to after renovation, when requested. */
+  uplift?: ARVUplift | null;
+
   /** Floor area used in calculation (m²). */
   floor_area: number;
-
-  /** Energy class used in prediction. */
-  energy_class: string;
 
   /** Additional metadata about the prediction (model version, timestamp, etc.). */
   metadata?: Record<string, unknown>;

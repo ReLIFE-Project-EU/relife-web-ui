@@ -444,10 +444,8 @@ describe.sequential("HRA Workflow", () => {
 
     // Validate response shape
     const shapeErrors = validateResponseShape(response.body, [
-      "price_per_sqm",
-      "total_price",
+      "after",
       "floor_area",
-      "energy_class",
     ]);
 
     if (shapeErrors.length > 0) {
@@ -463,16 +461,22 @@ describe.sequential("HRA Workflow", () => {
     }
 
     const body = response.body as {
-      price_per_sqm: number;
-      total_price: number;
+      after: {
+        price_per_sqm: number;
+        total_price: number;
+        greek_epc_class: string;
+      };
       floor_area: number;
-      energy_class: string;
     };
 
     // Validate numeric ranges
     const numericErrors = [
-      ...validateNumber(body.price_per_sqm, "price_per_sqm", { min: 0 }),
-      ...validateNumber(body.total_price, "total_price", { min: 0 }),
+      ...validateNumber(body.after.price_per_sqm, "after.price_per_sqm", {
+        min: 0,
+      }),
+      ...validateNumber(body.after.total_price, "after.total_price", {
+        min: 0,
+      }),
       ...validateNumber(body.floor_area, "floor_area", { min: 0 }),
     ];
 
@@ -490,14 +494,14 @@ describe.sequential("HRA Workflow", () => {
     expect(numericErrors).toEqual([]);
 
     // Validate calculation: total_price ≈ price_per_sqm * floor_area
-    const expectedTotal = body.price_per_sqm * body.floor_area;
+    const expectedTotal = body.after.price_per_sqm * body.floor_area;
     const tolerance = expectedTotal * 0.01; // 1% tolerance
-    const diff = Math.abs(body.total_price - expectedTotal);
+    const diff = Math.abs(body.after.total_price - expectedTotal);
 
     expect(diff).toBeLessThan(tolerance);
 
     console.log(
-      `ARV: ${body.total_price.toFixed(2)} EUR (${body.price_per_sqm.toFixed(2)} EUR/m²)`,
+      `ARV: ${body.after.total_price.toFixed(2)} EUR (${body.after.price_per_sqm.toFixed(2)} EUR/m²)`,
     );
   });
 

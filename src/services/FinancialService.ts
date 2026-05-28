@@ -28,7 +28,6 @@ import type {
 import {
   deriveConstructionYear,
   fromAPIEnergyClass,
-  toAPIEnergyClass,
   toAPIPropertyType,
   type APIEnergyClass,
   type OutputLevel,
@@ -62,11 +61,12 @@ function resolveConstructionYear(building: BuildingInfo): number {
   );
 }
 
-function scenarioIncludesSystemMeasure(scenario: RenovationScenario): boolean {
-  return scenario.measureIds.some(
-    (measureId) =>
-      measureId === "condensing-boiler" || measureId === "air-water-heat-pump",
-  );
+function resolveArvEnergyIntensity(
+  annualEnergyTotal: number | undefined,
+  fallbackAnnualEnergyNeeds: number,
+  floorArea: number,
+): number {
+  return (annualEnergyTotal ?? fallbackAnnualEnergyNeeds) / floorArea;
 }
 
 /** Private output includes cash_flow_data; professional+ uses chart_metadata instead. */
@@ -95,16 +95,25 @@ export class FinancialService implements IFinancialService {
       floor_number: request.floor_number,
       number_of_floors: request.number_of_floors,
       property_type: request.property_type,
-      energy_class: request.energy_class,
+      target_country: request.target_country,
+      energy_consumption_before: request.energy_consumption_before,
+      energy_consumption_after: request.energy_consumption_after,
       renovated_last_5_years: request.renovated_last_5_years ?? true,
     });
 
     return {
-      pricePerSqm: response.price_per_sqm,
-      totalPrice: response.total_price,
+      pricePerSqm: response.after.price_per_sqm,
+      totalPrice: response.after.total_price,
       floorArea: response.floor_area,
-      energyClass: fromAPIEnergyClass(response.energy_class as APIEnergyClass),
-      metadata: response.metadata,
+      energyClass: fromAPIEnergyClass(
+        response.after.greek_epc_class as APIEnergyClass,
+      ),
+      metadata: {
+        ...response.metadata,
+        before: response.before,
+        uplift: response.uplift,
+        epcResolution: response.after.epc_resolution,
+      },
     };
   }
 
@@ -196,22 +205,37 @@ export class FinancialService implements IFinancialService {
       auditCtx,
     );
 
-    const response = await this.requestRiskAssessment(request, "private");
-    const cashFlowData = normalizeCashFlowData(
-      (response.metadata as Record<string, unknown>).cash_flow_data,
-    );
+    try {
+      const response = await this.requestRiskAssessment(request, "private");
+      const cashFlowData = normalizeCashFlowData(
+        (response.metadata as Record<string, unknown>).cash_flow_data,
+      );
 
-    auditLog.info(
-      "financial",
-      "financial.risk.cashflow.end",
-      {
-        hasCashFlowData: cashFlowData !== undefined,
-        yearCount: cashFlowData?.years.length,
-      },
-      auditCtx,
-    );
+      auditLog.info(
+        "financial",
+        "financial.risk.cashflow.end",
+        {
+          hasCashFlowData: cashFlowData !== undefined,
+          yearCount: cashFlowData?.years.length,
+        },
+        auditCtx,
+      );
 
-    return cashFlowData;
+      return cashFlowData;
+    } catch (error) {
+      auditLog.warn(
+        "financial",
+        "financial.risk.cashflow.failed",
+        {
+          message:
+            error instanceof Error
+              ? error.message
+              : "Private cash-flow supplement failed",
+        },
+        auditCtx,
+      );
+      return undefined;
+    }
   }
 
   private async requestRiskAssessment(
@@ -292,6 +316,12 @@ export class FinancialService implements IFinancialService {
       parentAuditCtx,
     );
 
+    const baselineEnergyIntensity = resolveArvEnergyIntensity(
+      resolvedCurrentEstimation.deliveredTotal,
+      resolvedCurrentEstimation.annualEnergyNeeds,
+      resolvedFloorArea,
+    );
+
     for (const scenario of scenarios) {
       const auditCtx = parentAuditCtx?.child({ scenarioId: scenario.id });
       auditLog.info(
@@ -314,9 +344,8 @@ export class FinancialService implements IFinancialService {
           number_of_floors: resolvedBuilding.numberOfFloors ?? 1,
           floor_number: resolvedBuilding.floorNumber,
           property_type: toAPIPropertyType(resolvedBuilding.buildingType),
-          energy_class: toAPIEnergyClass(
-            resolvedCurrentEstimation.estimatedEPC,
-          ),
+          target_country: resolvedBuilding.country,
+          energy_consumption_after: baselineEnergyIntensity,
           renovated_last_5_years: false, // Current state, not recently renovated
         };
         auditLog.debug(
@@ -387,13 +416,6 @@ export class FinancialService implements IFinancialService {
           ? resolvedFundingOptions.loan.duration
           : 0;
 
-      // Keep ARV conservative for scenarios that include a system measure.
-      // Those scenarios may improve modeled consumption without producing a
-      // directly comparable EPC uplift in the current HRA flow.
-      const arvEnergyClass = scenarioIncludesSystemMeasure(scenario)
-        ? toAPIEnergyClass(resolvedCurrentEstimation.estimatedEPC)
-        : toAPIEnergyClass(scenario.epcClass);
-
       // ARV Request for renovated scenario
       const arvRequest: ARVRequest = {
         lat: resolvedBuilding.lat ?? 0,
@@ -403,7 +425,13 @@ export class FinancialService implements IFinancialService {
         number_of_floors: resolvedBuilding.numberOfFloors ?? 1,
         floor_number: resolvedBuilding.floorNumber,
         property_type: toAPIPropertyType(resolvedBuilding.buildingType),
-        energy_class: arvEnergyClass,
+        target_country: resolvedBuilding.country,
+        energy_consumption_before: baselineEnergyIntensity,
+        energy_consumption_after: resolveArvEnergyIntensity(
+          scenario.deliveredTotal,
+          scenario.annualEnergyNeeds,
+          resolvedFloorArea,
+        ),
         renovated_last_5_years: resolvedBuilding.renovatedLast5Years,
       };
 
@@ -450,7 +478,6 @@ export class FinancialService implements IFinancialService {
             resolvedFundingOptions.incentives.upfrontPercentage,
           lifetimeIncentiveAmount: lifetimeAmount,
           lifetimeIncentiveYears: lifetimeYears,
-          arvUsesCurrentEPC: scenarioIncludesSystemMeasure(scenario),
         },
         auditCtx,
       );
@@ -580,24 +607,24 @@ function normalizeCashFlowData(raw: unknown): CashFlowData | undefined {
     return undefined;
   }
 
-  const years = (data.years as unknown[]).map((y) => Number(y));
-  const inflows = Array.isArray(data.annual_inflows)
-    ? (data.annual_inflows as unknown[]).map((v) => Number(v))
-    : [];
-  const outflows = Array.isArray(data.annual_outflows)
-    ? (data.annual_outflows as unknown[]).map((v) => Number(v))
-    : [];
-  const net = Array.isArray(data.annual_net_cash_flow)
-    ? (data.annual_net_cash_flow as unknown[]).map((v) => Number(v))
-    : years.map((_, idx) => (inflows[idx] ?? 0) - (outflows[idx] ?? 0));
+  const years = normalizeNumberArray(data.years);
+  if (!years || years.length === 0) {
+    return undefined;
+  }
 
-  const cumulative = Array.isArray(data.cumulative_cash_flow)
-    ? (data.cumulative_cash_flow as unknown[]).map((v) => Number(v))
-    : net.reduce<number[]>((acc, value, idx) => {
-        const prev = idx === 0 ? 0 : acc[idx - 1];
-        acc.push(prev + value);
-        return acc;
-      }, []);
+  const inflows = normalizeNumberArray(data.annual_inflows) ?? [];
+  const outflows = normalizeNumberArray(data.annual_outflows) ?? [];
+  const net =
+    normalizeNumberArray(data.annual_net_cash_flow) ??
+    years.map((_, idx) => (inflows[idx] ?? 0) - (outflows[idx] ?? 0));
+
+  const cumulative =
+    normalizeNumberArray(data.cumulative_cash_flow) ??
+    net.reduce<number[]>((acc, value, idx) => {
+      const prev = idx === 0 ? 0 : acc[idx - 1];
+      acc.push(prev + value);
+      return acc;
+    }, []);
 
   return {
     years,
