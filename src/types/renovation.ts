@@ -206,20 +206,11 @@ export interface LoanDetails {
   percentage: number;
   /** Loan duration in years */
   duration: number;
-  /**
-   * Annual interest rate as a decimal fraction (e.g., 0.05 = 5%).
-   * Note: uses 0–1 convention — unlike `percentage` above which uses 0–100.
-   */
-  interestRate: number;
 }
 
 export interface IncentiveDetails {
-  /** Upfront incentive as a percentage of CAPEX (0-100). */
+  /** Upfront incentive as a percentage of CAPEX (0-100). Folded into CAPEX before risk assessment. */
   upfrontPercentage: number;
-  /** Annual OPEX reduction in euros per year. */
-  lifetimeAmount: number;
-  /** Duration of the annual OPEX reduction in years. */
-  lifetimeYears: number;
 }
 
 export interface FundingOptions {
@@ -317,10 +308,7 @@ export interface RiskAssessmentMetadata {
   n_sims?: number; // Number of Monte Carlo simulations (optional - only show if API returns it)
   project_lifetime: number;
   capex: number; // Used CAPEX value returned by the Financial API metadata
-  loan_amount: number;
   annual_maintenance_cost?: number;
-  annual_loan_payment?: number;
-  loan_rate_percent?: number;
   output_level: string;
   cash_flow_data?: CashFlowData;
   chart_metadata?: Partial<
@@ -409,7 +397,6 @@ export interface FinancialResults {
     metadata: RiskAssessmentMetadata;
     probabilities?: Record<string, number>; // Pr(*) success metrics (professional+ output levels)
     percentiles?: RiskAssessmentPercentiles; // Available when output_level > "private"
-    cashFlowVisualization?: string; // base64 PNG (included for private level)
     cashFlowData?: CashFlowData;
   } | null;
 

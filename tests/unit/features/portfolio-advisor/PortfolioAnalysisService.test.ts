@@ -77,11 +77,9 @@ const financialResults: Record<string, FinancialResults> = {
 
 const funding: FundingOptions = {
   financingType: "self-funded",
-  loan: { percentage: 0, duration: 0, interestRate: 0 },
+  loan: { percentage: 0, duration: 0 },
   incentives: {
     upfrontPercentage: 0,
-    lifetimeAmount: 0,
-    lifetimeYears: 0,
   },
 };
 
@@ -285,7 +283,6 @@ describe("PortfolioAnalysisService", () => {
           metadata: {
             project_lifetime: 20,
             capex: 10000,
-            loan_amount: 0,
             output_level: "professional",
             chart_metadata: {
               NPV: {

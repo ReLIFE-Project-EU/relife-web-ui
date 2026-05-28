@@ -530,9 +530,9 @@ describe.sequential("HRA Workflow", () => {
     assertHttpStatus(response, 200, ctx, requestPayload);
     expect(response.status).toBe(200);
 
-    // Validate response shape
+    // New multi-scheme response shape: results keyed by scheme_type + metadata.
     const shapeErrors = validateResponseShape(response.body, [
-      "point_forecasts",
+      "results",
       "metadata",
     ]);
 
@@ -548,56 +548,66 @@ describe.sequential("HRA Workflow", () => {
       expect(shapeErrors).toEqual([]);
     }
 
+    type SchemeResult = {
+      summary: {
+        percentiles: Record<string, Record<string, number>>;
+        n_sims: number;
+      };
+      cashflow_distributions: { years: number[] };
+    };
     const body = response.body as {
-      point_forecasts: Record<string, number>;
+      results: Record<string, SchemeResult>;
       metadata: Record<string, unknown>;
     };
 
-    // Validate point_forecasts has required indicators
+    const errors: string[] = [];
+
+    // We requested a single equity scheme; it must be present.
+    const scheme = body.results.equity;
+    if (!scheme) {
+      errors.push(
+        `Missing equity scheme in results (got: ${Object.keys(body.results).join(", ")})`,
+      );
+    }
+
+    // summary.percentiles must expose each KPI with at least P50.
+    const percentiles = scheme?.summary.percentiles ?? {};
     const requiredIndicators = ["NPV", "IRR", "ROI", "PBP", "DPP"];
-    const missingIndicators = requiredIndicators.filter(
-      (indicator) => !(indicator in body.point_forecasts),
-    );
+    for (const indicator of requiredIndicators) {
+      if (!(indicator in percentiles)) {
+        errors.push(`Missing summary.percentiles.${indicator}`);
+      } else if (typeof percentiles[indicator].P50 !== "number") {
+        errors.push(`summary.percentiles.${indicator}.P50 is not a number`);
+      }
+    }
 
-    if (missingIndicators.length > 0) {
+    // Private output still ships per-year cash-flow distributions.
+    if (
+      !scheme?.cashflow_distributions ||
+      !Array.isArray(scheme.cashflow_distributions.years)
+    ) {
+      errors.push("Missing cashflow_distributions.years");
+    }
+
+    if (typeof scheme?.summary.n_sims !== "number") {
+      errors.push("summary.n_sims is not a number");
+    }
+
+    if (errors.length > 0) {
       console.error(
         formatStepFailure({
           ...ctx,
           request: requestBody,
           response: { status: response.status, body: response.body },
-          validationErrors: [
-            `Missing point_forecasts indicators: ${missingIndicators.join(", ")}`,
-          ],
+          validationErrors: errors,
         }),
       );
     }
 
-    expect(missingIndicators).toEqual([]);
-
-    // Validate metadata has expected fields
-    const metadataErrors: string[] = [];
-    if (typeof body.metadata.n_sims !== "number" || body.metadata.n_sims <= 0) {
-      metadataErrors.push("metadata.n_sims is not a positive number");
-    }
-    if (typeof body.metadata.project_lifetime !== "number") {
-      metadataErrors.push("metadata.project_lifetime is not a number");
-    }
-
-    if (metadataErrors.length > 0) {
-      console.error(
-        formatStepFailure({
-          ...ctx,
-          request: requestBody,
-          response: { status: response.status, body: response.body },
-          validationErrors: metadataErrors,
-        }),
-      );
-    }
-
-    expect(metadataErrors).toEqual([]);
+    expect(errors).toEqual([]);
 
     console.log(
-      `Risk assessment complete: NPV=${body.point_forecasts.NPV.toFixed(2)}, IRR=${(body.point_forecasts.IRR * 100).toFixed(2)}%`,
+      `Risk assessment complete: NPV(P50)=${percentiles.NPV?.P50?.toFixed(2)}, IRR(P50)=${((percentiles.IRR?.P50 ?? 0) * 100).toFixed(2)}%`,
     );
   });
 });

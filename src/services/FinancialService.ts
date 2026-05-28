@@ -13,16 +13,11 @@ import { financial } from "../api";
 import type {
   ARVResult,
   BuildingInfo,
-  CashFlowData,
   EstimationResult,
-  FinancialChartMetadata,
-  FinancialRiskIndicator,
   FinancialResults,
   FundingOptions,
   PackageFinancialInputsById,
-  PercentileData,
   RenovationScenario,
-  RiskAssessmentPercentiles,
   ScenarioId,
 } from "../types/renovation";
 import {
@@ -32,10 +27,8 @@ import {
   type APIEnergyClass,
   type OutputLevel,
 } from "../utils/apiMappings";
-import {
-  applyFundingReduction,
-  sanitizeLifetimeIncentives,
-} from "../utils/financialCalculations";
+import { applyFundingReduction } from "../utils/financialCalculations";
+import { buildSchemes, mapWireRiskResponse } from "./riskAssessmentAdapter";
 import type {
   ARVRequest,
   CalculateFinancialScenariosRequest,
@@ -46,13 +39,6 @@ import type {
 import { auditLog, type AuditCtx } from "../utils/auditLogger";
 
 const USE_SIMULATED_DELIVERED_ENERGY_FOR_FINANCE = true;
-const FINANCIAL_RISK_INDICATORS: FinancialRiskIndicator[] = [
-  "NPV",
-  "IRR",
-  "ROI",
-  "PBP",
-  "DPP",
-];
 
 function resolveConstructionYear(building: BuildingInfo): number {
   return (
@@ -67,13 +53,6 @@ function resolveArvEnergyIntensity(
   floorArea: number,
 ): number {
   return (annualEnergyTotal ?? fallbackAnnualEnergyNeeds) / floorArea;
-}
-
-/** Private output includes cash_flow_data; professional+ uses chart_metadata instead. */
-function outputLevelNeedsPrivateCashFlowSupplement(
-  outputLevel: OutputLevel,
-): boolean {
-  return outputLevel !== "private";
 }
 
 export class FinancialService implements IFinancialService {
@@ -118,144 +97,53 @@ export class FinancialService implements IFinancialService {
   }
 
   /**
-   * Perform risk assessment via POST /risk-assessment
+   * Perform risk assessment via POST /risk-assessment.
+   *
+   * Builds the single financing scheme from the resolved loan inputs (equity
+   * or bank_loan) and maps the per-scheme wire response back into the internal
+   * shape via the shared adapter. The upfront incentive is already folded into
+   * `request.capex` by `applyFundingReduction`.
    */
   async assessRisk(
     request: RiskAssessmentRequest,
   ): Promise<RiskAssessmentResponse> {
-    const response = await this.requestRiskAssessment(
-      request,
-      this.outputLevel,
-    );
+    const { schemes, schemeType } = buildSchemes({
+      loanAmount: request.loan_amount ?? 0,
+      loanTerm: request.loan_term ?? 0,
+    });
 
-    const rawMetadata = response.metadata ?? {};
-    const metadataWithoutRawPayloads = {
-      ...(rawMetadata as Record<string, unknown>),
-    };
-    delete metadataWithoutRawPayloads.cash_flow_data;
-    delete metadataWithoutRawPayloads.chart_metadata;
-    const cashFlowData = normalizeCashFlowData(
-      (rawMetadata as Record<string, unknown>).cash_flow_data,
-    );
-    const chartMetadata = normalizeChartMetadata(
-      (rawMetadata as Record<string, unknown>).chart_metadata,
-    );
+    const wire = await financial.assessRisk({
+      capex: request.capex ?? 0,
+      annual_energy_savings: request.annual_energy_savings,
+      annual_maintenance_cost: request.annual_maintenance_cost,
+      project_lifetime: request.project_lifetime,
+      output_level: this.outputLevel,
+      indicators: request.indicators,
+      schemes,
+    });
 
-    // Map percentiles if available (included in public+ output levels, or when API returns them)
-    const percentiles = response.percentiles
-      ? normalizePercentiles(response.percentiles)
-      : undefined;
+    const mapped = mapWireRiskResponse(wire, {
+      schemeType,
+      projectLifetime: request.project_lifetime,
+    });
 
     return {
-      pointForecasts: {
-        NPV: response.point_forecasts.NPV ?? 0,
-        IRR: response.point_forecasts.IRR ?? 0,
-        ROI: response.point_forecasts.ROI ?? 0,
-        PBP: response.point_forecasts.PBP ?? 0,
-        DPP: response.point_forecasts.DPP ?? 0,
-        MonthlyAvgSavings: response.point_forecasts.MonthlyAvgSavings ?? 0,
-        SuccessRate: response.point_forecasts.SuccessRate ?? 0,
-      },
+      pointForecasts: mapped.pointForecasts,
       metadata: {
-        ...metadataWithoutRawPayloads,
-        n_sims: response.metadata.n_sims as number | undefined,
-        project_lifetime:
-          (response.metadata.project_lifetime as number) ??
-          request.project_lifetime,
-        capex: (response.metadata.capex as number) ?? request.capex ?? 0,
-        loan_amount:
-          (response.metadata.loan_amount as number) ?? request.loan_amount ?? 0,
-        annual_maintenance_cost: response.metadata.annual_maintenance_cost as
-          | number
-          | undefined,
-        annual_loan_payment: response.metadata.annual_loan_payment as
-          | number
-          | undefined,
-        loan_rate_percent: response.metadata.loan_rate_percent as
-          | number
-          | undefined,
+        n_sims: mapped.metadata.n_sims,
+        project_lifetime: mapped.metadata.project_lifetime,
+        capex: mapped.metadata.capex || (request.capex ?? 0),
+        annual_maintenance_cost: request.annual_maintenance_cost,
         output_level: this.outputLevel,
-        ...(cashFlowData ? { cash_flow_data: cashFlowData } : {}),
-        ...(chartMetadata ? { chart_metadata: chartMetadata } : {}),
+        ...(mapped.cashFlowData ? { cash_flow_data: mapped.cashFlowData } : {}),
+        ...(mapped.chartMetadata
+          ? { chart_metadata: mapped.chartMetadata }
+          : {}),
       },
-      probabilities: response.probabilities ?? undefined,
-      percentiles,
-      cashFlowVisualization: response.visualizations?.cash_flow_timeline,
-      cashFlowData,
+      probabilities: mapped.probabilities,
+      percentiles: mapped.percentiles,
+      cashFlowData: mapped.cashFlowData,
     };
-  }
-
-  /**
-   * Fetches timeline cash-flow arrays via a private-level risk assessment.
-   * Used when the tool's primary output level (e.g. professional for PRA)
-   * omits metadata.cash_flow_data per the Financial API contract.
-   */
-  private async fetchPrivateCashFlowData(
-    request: RiskAssessmentRequest,
-    auditCtx?: AuditCtx,
-  ): Promise<CashFlowData | undefined> {
-    auditLog.debug(
-      "financial",
-      "financial.risk.cashflow.request",
-      {
-        annual_energy_savings: request.annual_energy_savings,
-        project_lifetime: request.project_lifetime,
-        output_level: "private",
-      },
-      auditCtx,
-    );
-
-    try {
-      const response = await this.requestRiskAssessment(request, "private");
-      const cashFlowData = normalizeCashFlowData(
-        (response.metadata as Record<string, unknown>).cash_flow_data,
-      );
-
-      auditLog.info(
-        "financial",
-        "financial.risk.cashflow.end",
-        {
-          hasCashFlowData: cashFlowData !== undefined,
-          yearCount: cashFlowData?.years.length,
-        },
-        auditCtx,
-      );
-
-      return cashFlowData;
-    } catch (error) {
-      auditLog.warn(
-        "financial",
-        "financial.risk.cashflow.failed",
-        {
-          message:
-            error instanceof Error
-              ? error.message
-              : "Private cash-flow supplement failed",
-        },
-        auditCtx,
-      );
-      return undefined;
-    }
-  }
-
-  private async requestRiskAssessment(
-    request: RiskAssessmentRequest,
-    outputLevel: OutputLevel,
-  ) {
-    return financial.assessRisk({
-      annual_energy_savings: request.annual_energy_savings,
-      project_lifetime: request.project_lifetime,
-      output_level: outputLevel,
-      indicators: request.indicators,
-      loan_amount: request.loan_amount ?? 0,
-      loan_term: request.loan_term ?? 0,
-      upfront_incentive_percentage: request.upfront_incentive_percentage,
-      lifetime_incentive_amount: request.lifetime_incentive_amount,
-      lifetime_incentive_years: request.lifetime_incentive_years,
-      capex: request.capex,
-      annual_maintenance_cost: request.annual_maintenance_cost,
-      include_visualizations: request.include_visualizations,
-    });
   }
 
   /**
@@ -404,11 +292,6 @@ export class FinancialService implements IFinancialService {
         renovationCost,
         resolvedFundingOptions,
       );
-      const { lifetimeAmount, lifetimeYears } = sanitizeLifetimeIncentives(
-        resolvedFundingOptions.incentives.lifetimeAmount,
-        resolvedFundingOptions.incentives.lifetimeYears,
-        resolvedBuilding.projectLifetime,
-      );
 
       // Calculate loan term based on financing type
       const loanTerm =
@@ -476,8 +359,6 @@ export class FinancialService implements IFinancialService {
           loanTerm,
           upfrontIncentivePercentage:
             resolvedFundingOptions.incentives.upfrontPercentage,
-          lifetimeIncentiveAmount: lifetimeAmount,
-          lifetimeIncentiveYears: lifetimeYears,
         },
         auditCtx,
       );
@@ -490,10 +371,6 @@ export class FinancialService implements IFinancialService {
         annual_maintenance_cost: annualMaintenanceCost,
         loan_amount: loanAmount,
         loan_term: loanTerm,
-        upfront_incentive_percentage:
-          resolvedFundingOptions.incentives.upfrontPercentage,
-        lifetime_incentive_amount: lifetimeAmount,
-        lifetime_incentive_years: lifetimeYears,
       };
 
       // The risk-assessment endpoint requires annual_energy_savings > 0.
@@ -506,17 +383,12 @@ export class FinancialService implements IFinancialService {
         { request: arvRequest as unknown as Record<string, unknown> },
         auditCtx,
       );
-      const needsCashFlowSupplement =
-        hasSavings &&
-        outputLevelNeedsPrivateCashFlowSupplement(this.outputLevel);
-
       if (hasSavings) {
         auditLog.debug(
           "financial",
           "financial.risk.request",
           {
             request: riskRequest as unknown as Record<string, unknown>,
-            supplementPrivateCashFlow: needsCashFlowSupplement,
           },
           auditCtx,
         );
@@ -534,17 +406,10 @@ export class FinancialService implements IFinancialService {
       }
 
       // Call APIs in parallel (risk assessment only when savings > 0)
-      const [arvResult, riskResult, privateCashFlowData] = await Promise.all([
+      const [arvResult, riskResult] = await Promise.all([
         this.calculateARV(arvRequest),
         hasSavings ? this.assessRisk(riskRequest) : Promise.resolve(null),
-        needsCashFlowSupplement
-          ? this.fetchPrivateCashFlowData(riskRequest, auditCtx)
-          : Promise.resolve(undefined),
       ]);
-
-      if (riskResult && privateCashFlowData) {
-        riskResult.cashFlowData = privateCashFlowData;
-      }
 
       const scenarioResults: FinancialResults = {
         arv: arvResult,
@@ -595,199 +460,4 @@ export class FinancialService implements IFinancialService {
 
     return results as Record<ScenarioId, FinancialResults>;
   }
-}
-
-function normalizeCashFlowData(raw: unknown): CashFlowData | undefined {
-  if (!raw || typeof raw !== "object") {
-    return undefined;
-  }
-
-  const data = raw as Record<string, unknown>;
-  if (!Array.isArray(data.years)) {
-    return undefined;
-  }
-
-  const years = normalizeNumberArray(data.years);
-  if (!years || years.length === 0) {
-    return undefined;
-  }
-
-  const inflows = normalizeNumberArray(data.annual_inflows) ?? [];
-  const outflows = normalizeNumberArray(data.annual_outflows) ?? [];
-  const net =
-    normalizeNumberArray(data.annual_net_cash_flow) ??
-    years.map((_, idx) => (inflows[idx] ?? 0) - (outflows[idx] ?? 0));
-
-  const cumulative =
-    normalizeNumberArray(data.cumulative_cash_flow) ??
-    net.reduce<number[]>((acc, value, idx) => {
-      const prev = idx === 0 ? 0 : acc[idx - 1];
-      acc.push(prev + value);
-      return acc;
-    }, []);
-
-  return {
-    years,
-    initial_investment:
-      typeof data.initial_investment === "number"
-        ? data.initial_investment
-        : undefined,
-    annual_inflows: inflows,
-    annual_outflows: outflows,
-    annual_net_cash_flow: net,
-    cumulative_cash_flow: cumulative,
-    breakeven_year:
-      typeof data.breakeven_year === "number" || data.breakeven_year === null
-        ? (data.breakeven_year as number | null)
-        : undefined,
-    loan_term:
-      typeof data.loan_term === "number" || data.loan_term === null
-        ? (data.loan_term as number | null)
-        : undefined,
-  };
-}
-
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
-function normalizeNumberArray(raw: unknown): number[] | undefined {
-  if (!Array.isArray(raw)) {
-    return undefined;
-  }
-
-  const values = raw.map((value) => Number(value));
-  return values.every(Number.isFinite) ? values : undefined;
-}
-
-function normalizeChartMetadata(
-  raw: unknown,
-): Partial<Record<FinancialRiskIndicator, FinancialChartMetadata>> | undefined {
-  if (!raw || typeof raw !== "object") {
-    return undefined;
-  }
-
-  const source = raw as Record<string, unknown>;
-  const result: Partial<
-    Record<FinancialRiskIndicator, FinancialChartMetadata>
-  > = {};
-
-  for (const indicator of FINANCIAL_RISK_INDICATORS) {
-    const entry = source[indicator];
-    if (!entry || typeof entry !== "object") {
-      continue;
-    }
-
-    const metadata = entry as Record<string, unknown>;
-    const bins = metadata.bins as Record<string, unknown> | undefined;
-    const statistics = metadata.statistics as
-      | Record<string, unknown>
-      | undefined;
-    if (!bins || !statistics) {
-      continue;
-    }
-
-    const centers = normalizeNumberArray(bins.centers);
-    const counts = normalizeNumberArray(bins.counts);
-    const edges = normalizeNumberArray(bins.edges);
-    if (
-      !centers ||
-      !counts ||
-      !edges ||
-      centers.length === 0 ||
-      centers.length !== counts.length
-    ) {
-      continue;
-    }
-
-    const { mean, std, P10, P50, P90 } = statistics;
-    if (
-      !isFiniteNumber(mean) ||
-      !isFiniteNumber(std) ||
-      !isFiniteNumber(P10) ||
-      !isFiniteNumber(P50) ||
-      !isFiniteNumber(P90)
-    ) {
-      continue;
-    }
-
-    const chartConfig =
-      metadata.chart_config && typeof metadata.chart_config === "object"
-        ? (metadata.chart_config as Record<string, unknown>)
-        : undefined;
-
-    result[indicator] = {
-      bins: { centers, counts, edges },
-      statistics: { mean, std, P10, P50, P90 },
-      ...(chartConfig
-        ? {
-            chart_config: {
-              xlabel:
-                typeof chartConfig.xlabel === "string"
-                  ? chartConfig.xlabel
-                  : undefined,
-              ylabel:
-                typeof chartConfig.ylabel === "string"
-                  ? chartConfig.ylabel
-                  : undefined,
-              title:
-                typeof chartConfig.title === "string"
-                  ? chartConfig.title
-                  : undefined,
-            },
-          }
-        : {}),
-    };
-  }
-
-  return Object.keys(result).length > 0 ? result : undefined;
-}
-
-/**
- * Normalize percentile data from API response to internal type.
- * API returns: { NPV: { P10: x, P20: y, ... }, PBP: { ... }, ... }
- */
-function normalizePercentiles(
-  raw: Record<string, Record<string, number>> | null | undefined,
-): RiskAssessmentPercentiles | undefined {
-  if (!raw || typeof raw !== "object") {
-    return undefined;
-  }
-
-  const normalizeIndicator = (
-    data: Record<string, number> | undefined,
-  ): PercentileData | undefined => {
-    if (!data || typeof data !== "object") return undefined;
-    // Ensure at minimum P10, P50, P90 are present
-    if (
-      data.P10 === undefined ||
-      data.P50 === undefined ||
-      data.P90 === undefined
-    ) {
-      return undefined;
-    }
-    return {
-      P10: data.P10,
-      P20: data.P20,
-      P30: data.P30,
-      P40: data.P40,
-      P50: data.P50,
-      P60: data.P60,
-      P70: data.P70,
-      P80: data.P80,
-      P90: data.P90,
-    };
-  };
-
-  const result: RiskAssessmentPercentiles = {};
-
-  if (raw.NPV) result.NPV = normalizeIndicator(raw.NPV);
-  if (raw.PBP) result.PBP = normalizeIndicator(raw.PBP);
-  if (raw.ROI) result.ROI = normalizeIndicator(raw.ROI);
-  if (raw.IRR) result.IRR = normalizeIndicator(raw.IRR);
-  if (raw.DPP) result.DPP = normalizeIndicator(raw.DPP);
-
-  // Return undefined if no valid percentile data was found
-  const hasAnyData = Object.values(result).some((v) => v !== undefined);
-  return hasAnyData ? result : undefined;
 }

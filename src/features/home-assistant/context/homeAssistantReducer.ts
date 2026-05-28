@@ -74,12 +74,9 @@ const initialFunding: FundingOptions = {
   loan: {
     percentage: 80, // 80% of renovation cost
     duration: 10, // 10 years
-    interestRate: 0.05, // 5% annual rate
   },
   incentives: {
     upfrontPercentage: 0,
-    lifetimeAmount: 0,
-    lifetimeYears: 0,
   },
 };
 

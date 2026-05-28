@@ -214,26 +214,6 @@ describe("homeAssistantReducer package financial inputs", () => {
     expect(state.financialResults).toEqual({});
     expect(state.mcdaRanking).toBeNull();
   });
-
-  test("updating lifetime incentive amount stores the new value", () => {
-    const state = homeAssistantReducer(initialState, {
-      type: "UPDATE_INCENTIVE",
-      field: "lifetimeAmount",
-      value: 1200,
-    });
-
-    expect(state.funding.incentives.lifetimeAmount).toBe(1200);
-  });
-
-  test("updating lifetime incentive years stores the new value", () => {
-    const state = homeAssistantReducer(initialState, {
-      type: "UPDATE_INCENTIVE",
-      field: "lifetimeYears",
-      value: 8,
-    });
-
-    expect(state.funding.incentives.lifetimeYears).toBe(8);
-  });
 });
 
 const mockEstimation: EstimationResult = {

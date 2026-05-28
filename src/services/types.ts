@@ -339,32 +339,27 @@ export interface RiskAssessmentRequest {
   project_lifetime: number; // 1-30 years
   output_level: OutputLevel; // "private" for HRA tool
   indicators?: string[]; // Default: ["IRR", "NPV", "PBP", "DPP", "ROI"]
-  loan_amount?: number; // Default: 0
+  loan_amount?: number; // Default: 0 (drives equity vs bank_loan scheme)
   loan_term?: number; // Default: 0 (years)
-  upfront_incentive_percentage?: number; // 0-100
-  lifetime_incentive_amount?: number; // EUR/year
-  lifetime_incentive_years?: number; // years
-  // Backend fallback is planned but not currently available in the live service.
-  // HRA supplies these explicitly for now.
+  upfront_incentive_percentage?: number; // 0-100; folded into capex before the call
   capex?: number;
   annual_maintenance_cost?: number;
-  include_visualizations?: boolean; // Override for visualizations
 }
 
 /**
- * Response from POST /risk-assessment
- * Fields populated based on output_level (per API spec):
- * - private: point_forecasts, metadata (+ cash_flow_timeline viz)
- * - professional+: adds probabilities, percentiles (P10-P90)
- * - public+: adds broader percentiles (P5-P95)
- * - complete: adds all visualizations
+ * Internal (camelCase) risk-assessment result mapped from the per-scheme wire
+ * response by `riskAssessmentAdapter.mapWireRiskResponse`. Shape is preserved
+ * across the API migration so UI consumers stay unchanged.
+ * - pointForecasts: P50 of each KPI (+ derived MonthlyAvgSavings/SuccessRate)
+ * - percentiles: P10/P50/P90 per KPI
+ * - probabilities: Pr(*) success metrics (dynamic, lifetime-aware keys)
+ * - cashFlowData / chart metadata: derived from the scheme's distributions
  */
 export interface RiskAssessmentResponse {
   pointForecasts: RiskAssessmentPointForecasts;
   metadata: RiskAssessmentMetadata;
-  probabilities?: Record<string, number>; // Pr(*) success metrics (professional+ output levels)
-  percentiles?: RiskAssessmentPercentiles; // Full P10-P90 breakdown (public+ or when API returns it)
-  cashFlowVisualization?: string; // base64 PNG
+  probabilities?: Record<string, number>;
+  percentiles?: RiskAssessmentPercentiles;
   cashFlowData?: CashFlowData;
 }
 

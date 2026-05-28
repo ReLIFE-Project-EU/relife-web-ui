@@ -45,8 +45,7 @@ export const RISK_ASSESSMENT_BASE_PRIVATE = {
   output_level: "private",
   capex: 10000, // Required parameter (dataset lookup not yet implemented)
   annual_maintenance_cost: 200, // Required parameter (dataset lookup not yet implemented)
-  loan_amount: 0,
-  loan_term: 0,
+  schemes: [{ scheme_type: "equity" }],
 };
 
 /**
@@ -57,8 +56,7 @@ export const RISK_ASSESSMENT_BASE_PROFESSIONAL = {
   output_level: "professional",
   capex: 10000, // Required parameter (dataset lookup not yet implemented)
   annual_maintenance_cost: 200, // Required parameter (dataset lookup not yet implemented)
-  loan_amount: 0,
-  loan_term: 0,
+  schemes: [{ scheme_type: "equity" }],
 };
 
 /**

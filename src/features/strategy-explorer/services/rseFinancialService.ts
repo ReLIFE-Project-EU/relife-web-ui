@@ -1,4 +1,8 @@
 import { financial } from "../../../api/financial";
+import {
+  buildSchemes,
+  mapWireRiskResponse,
+} from "../../../services/riskAssessmentAdapter";
 import type { ArchetypeDetails } from "../../../types/archetype";
 import type {
   RiskAssessmentRequest,
@@ -50,9 +54,6 @@ export async function computeFinancials(
     financingType: RSE_FINANCIAL_DEFAULTS.financingType,
     upfrontIncentivePercentage:
       RSE_FINANCIAL_DEFAULTS.upfrontIncentivePercentage,
-    lifetimeIncentiveAmountEur:
-      RSE_FINANCIAL_DEFAULTS.lifetimeIncentiveAmountEur,
-    lifetimeIncentiveYears: RSE_FINANCIAL_DEFAULTS.lifetimeIncentiveYears,
   };
 
   const { capexEur, annualMaintenanceEur } = computePackageCost(
@@ -75,23 +76,33 @@ export async function computeFinancials(
     };
   }
 
+  // Fold the upfront incentive into CAPEX (the new contract has no incentive
+  // fields). RSE is always self-funded, so the scheme is always equity.
+  const effectiveCapex = Math.max(
+    0,
+    capexEur * (1 - assumptions.upfrontIncentivePercentage / 100),
+  );
+  const { schemes } = buildSchemes({ loanAmount: 0, loanTerm: 0 });
+
   const riskRequest: RiskAssessmentRequest = {
-    capex: capexEur,
+    capex: effectiveCapex,
     annual_maintenance_cost: annualMaintenanceEur,
     annual_energy_savings: input.annualEnergySavingsKwh,
     project_lifetime: assumptions.projectLifetimeYears,
     output_level: RSE_FINANCIAL_OUTPUT_LEVEL,
     indicators: ["IRR", "NPV", "PBP", "DPP", "ROI"],
-    loan_amount: 0,
-    loan_term: 0,
-    upfront_incentive_percentage: assumptions.upfrontIncentivePercentage,
-    lifetime_incentive_amount: assumptions.lifetimeIncentiveAmountEur,
-    lifetime_incentive_years: assumptions.lifetimeIncentiveYears,
+    schemes,
   };
 
   const response = await financial.assessRisk(riskRequest);
 
-  return normalizeRiskResponse(input, capexEur, annualMaintenanceEur, response);
+  return normalizeRiskResponse(
+    input,
+    capexEur,
+    annualMaintenanceEur,
+    response,
+    assumptions.projectLifetimeYears,
+  );
 }
 
 /**
@@ -109,8 +120,13 @@ function normalizeRiskResponse(
   capexEur: number,
   annualMaintenanceEur: number,
   response: RiskAssessmentResponse,
+  projectLifetime: number,
 ): RSEFinancialResult {
-  const pf = response.point_forecasts ?? {};
+  const mapped = mapWireRiskResponse(response, {
+    schemeType: "equity",
+    projectLifetime,
+  });
+  const pf = mapped.pointForecasts;
 
   return {
     archetype: input.archetype,
@@ -126,7 +142,7 @@ function normalizeRiskResponse(
       PBP: pf.PBP,
       DPP: pf.DPP,
     },
-    percentiles: response.percentiles ?? undefined,
-    probabilities: response.probabilities ?? undefined,
+    percentiles: mapped.percentiles,
+    probabilities: mapped.probabilities,
   };
 }

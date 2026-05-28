@@ -529,9 +529,9 @@ describe.sequential("PRA Workflow", () => {
     assertHttpStatus(response, 200, ctx, requestPayload);
     expect(response.status).toBe(200);
 
-    // Validate response shape (same as HRA)
+    // New multi-scheme response shape: results keyed by scheme_type + metadata.
     const shapeErrors = validateResponseShape(response.body, [
-      "point_forecasts",
+      "results",
       "metadata",
     ]);
 
@@ -547,109 +547,68 @@ describe.sequential("PRA Workflow", () => {
       expect(shapeErrors).toEqual([]);
     }
 
+    type SchemeResult = {
+      summary: {
+        percentiles: Record<string, Record<string, number>>;
+        probabilities: Record<string, number>;
+      };
+      kpi_histograms?: Record<string, unknown>;
+    };
     const body = response.body as {
-      point_forecasts: Record<string, number>;
+      results: Record<string, SchemeResult>;
       metadata: Record<string, unknown>;
-      probabilities?: Record<string, number>;
-      percentiles?: Record<string, Record<string, number>>;
     };
 
-    // Validate point_forecasts has required indicators
-    const requiredIndicators = ["NPV", "IRR", "ROI", "PBP", "DPP"];
-    const missingIndicators = requiredIndicators.filter(
-      (indicator) => !(indicator in body.point_forecasts),
-    );
-
-    if (missingIndicators.length > 0) {
-      console.error(
-        formatStepFailure({
-          ...ctx,
-          request: requestBody,
-          response: { status: response.status, body: response.body },
-          validationErrors: [
-            `Missing point_forecasts indicators: ${missingIndicators.join(", ")}`,
-          ],
-        }),
-      );
-    }
-
-    expect(missingIndicators).toEqual([]);
-
-    // PRA-specific: Validate probabilities field (professional output level)
     const professionalErrors: string[] = [];
 
-    // Check for probabilities in dedicated field OR in metadata (per PortfolioAnalysisService)
-    const hasProbabilitiesField =
-      body.probabilities && Object.keys(body.probabilities).length > 0;
-    const hasProbabilitiesInMetadata = Object.keys(body.metadata).some((key) =>
-      key.startsWith("Pr("),
+    // We requested a single equity scheme; it must be present.
+    const scheme = body.results.equity;
+    if (!scheme) {
+      professionalErrors.push(
+        `Missing equity scheme in results (got: ${Object.keys(body.results).join(", ")})`,
+      );
+    }
+
+    const percentiles = scheme?.summary.percentiles ?? {};
+    const requiredIndicators = ["NPV", "IRR", "ROI", "PBP", "DPP"];
+    const missingIndicators = requiredIndicators.filter(
+      (indicator) => !(indicator in percentiles),
     );
-
-    if (!hasProbabilitiesField && !hasProbabilitiesInMetadata) {
+    if (missingIndicators.length > 0) {
       professionalErrors.push(
-        "No probabilities found (checked both response.probabilities field and metadata)",
+        `Missing summary.percentiles indicators: ${missingIndicators.join(", ")}`,
       );
-    } else {
-      // Report where probabilities were found for debugging
-      if (hasProbabilitiesField) {
-        console.log(
-          "Probabilities found in dedicated 'probabilities' field (per OpenAPI spec)",
-        );
-      }
-      if (hasProbabilitiesInMetadata) {
-        console.log(
-          "Probabilities found in 'metadata' field (per PortfolioAnalysisService extraction logic)",
+    }
+
+    // Each indicator must expose at least P10/P50/P90.
+    const npvPercentiles = percentiles.NPV ?? {};
+    const missingNpvBands = ["P10", "P50", "P90"].filter(
+      (p) => !(p in npvPercentiles),
+    );
+    if (missingNpvBands.length > 0) {
+      professionalErrors.push(
+        `summary.percentiles.NPV missing bands: ${missingNpvBands.join(", ")}`,
+      );
+    }
+
+    // Professional output: probabilities present, with values in [0, 1].
+    const probabilities = scheme?.summary.probabilities ?? {};
+    if (Object.keys(probabilities).length === 0) {
+      professionalErrors.push("summary.probabilities is empty");
+    }
+    for (const [key, value] of Object.entries(probabilities)) {
+      if (typeof value !== "number" || value < 0 || value > 1) {
+        professionalErrors.push(
+          `probabilities.${key} is not a number in [0, 1]: ${value}`,
         );
       }
     }
 
-    // Validate probabilities values
-    if (hasProbabilitiesField) {
-      const probabilityKeys = Object.keys(body.probabilities!);
-      for (const key of probabilityKeys) {
-        const value = body.probabilities![key];
-        if (typeof value !== "number" || value < 0 || value > 1) {
-          professionalErrors.push(
-            `probabilities.${key} is not a number in [0, 1]: ${value}`,
-          );
-        }
-      }
-    }
-
-    // Check for percentiles field
-    if (!body.percentiles) {
+    // Professional output adds KPI histograms.
+    if (!scheme?.kpi_histograms) {
       professionalErrors.push(
-        "Missing 'percentiles' field (professional output level)",
+        "Missing 'kpi_histograms' (professional output level)",
       );
-    } else {
-      // Validate percentiles structure
-      const percentileKeys = Object.keys(body.percentiles);
-      if (percentileKeys.length === 0) {
-        professionalErrors.push("percentiles object is empty");
-      } else {
-        // Check that at least one indicator has P10-P90
-        const firstIndicator = percentileKeys[0];
-        const percentileData = body.percentiles[firstIndicator];
-        const expectedPercentiles = [
-          "P10",
-          "P20",
-          "P30",
-          "P40",
-          "P50",
-          "P60",
-          "P70",
-          "P80",
-          "P90",
-        ];
-        const missingPercentiles = expectedPercentiles.filter(
-          (p) => !(p in percentileData),
-        );
-        if (missingPercentiles.length > 0) {
-          professionalErrors.push(
-            `percentiles.${firstIndicator} missing keys: ${missingPercentiles.join(", ")}`,
-          );
-        }
-      }
     }
 
     if (professionalErrors.length > 0) {
@@ -666,15 +625,7 @@ describe.sequential("PRA Workflow", () => {
     expect(professionalErrors).toEqual([]);
 
     console.log(
-      `Risk assessment complete (professional): NPV=${body.point_forecasts.NPV.toFixed(2)}, IRR=${(body.point_forecasts.IRR * 100).toFixed(2)}%`,
+      `Risk assessment complete (professional): NPV(P50)=${npvPercentiles.P50?.toFixed(2)}, IRR(P50)=${((percentiles.IRR?.P50 ?? 0) * 100).toFixed(2)}%`,
     );
-
-    // Report probability values if found
-    if (body.probabilities) {
-      const probKeys = Object.keys(body.probabilities).slice(0, 3);
-      console.log(
-        `Sample probabilities: ${probKeys.map((k) => `${k}=${(body.probabilities![k] * 100).toFixed(1)}%`).join(", ")}`,
-      );
-    }
   });
 });

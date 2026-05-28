@@ -32,70 +32,115 @@ export type PropertyType =
 
 // ============================================================================
 // Risk Assessment (Monte Carlo Simulation)
+//
+// The endpoint evaluates one or more financing schemes in a single call and
+// returns per-scheme results keyed by scheme_type. The frontend currently
+// emits a single scheme per analysis (equity or bank_loan) and reads back the
+// matching entry; see src/services/riskAssessmentAdapter.ts.
 // ============================================================================
 
+/** Self-financed scheme: client pays the (post-incentive) CAPEX upfront. */
+export interface EquitySchemeInput {
+  scheme_type: "equity";
+}
+
+/** Standard amortising bank loan. Interest rate is modeled by the service. */
+export interface BankLoanSchemeInput {
+  scheme_type: "bank_loan";
+  /** Loan principal in euros (> 0). */
+  loan_amount: number;
+  /** Repayment term in years (>= 1). */
+  term_years: number;
+}
+
 /**
- * Request model for Monte Carlo risk assessment.
- * Runs 10,000 scenarios to assess financial risk and returns.
+ * One financing scheme. The backend supports 12 scheme types across 4 families;
+ * the frontend emits only these two today (others are declared upstream).
+ */
+export type SchemeInput = EquitySchemeInput | BankLoanSchemeInput;
+
+/**
+ * Request model for multi-scheme Monte Carlo risk assessment.
+ * Runs 10,000 scenarios per scheme to assess financial risk and returns.
  */
 export interface RiskAssessmentRequest {
-  /** Capital expenditure in euros. Backend fallback is planned but not available yet. */
-  capex?: number;
+  /** Total capital expenditure in euros (> 0). Upfront incentives are folded in client-side. */
+  capex: number;
 
-  /** Annual maintenance/operational cost in euros. Backend fallback is planned but not available yet. */
-  annual_maintenance_cost?: number;
-
-  /** Expected annual energy savings in kWh. Required - provided by energy simulation. */
+  /** Expected annual energy savings in kWh (> 0). Provided by energy simulation. */
   annual_energy_savings: number;
 
-  /** Project evaluation horizon in years (1-30). Required. */
+  /** Annual maintenance/operational cost in euros (>= 0). */
+  annual_maintenance_cost?: number;
+
+  /** Project evaluation horizon in years (1-30). */
   project_lifetime: number;
 
-  /** Loan amount in euros. Default 0 for all-equity financing. */
-  loan_amount?: number;
-
-  /** Loan repayment term in years. Required if loan_amount > 0. */
-  loan_term?: number;
-
-  /** Upfront capital incentive as a percentage of CAPEX (0-100). */
-  upfront_incentive_percentage?: number;
-
-  /** Annual OPEX reduction in euros per year. */
-  lifetime_incentive_amount?: number;
-
-  /** Duration of the annual OPEX reduction in years. */
-  lifetime_incentive_years?: number;
+  /** Financing schemes to evaluate. At least one required. */
+  schemes: SchemeInput[];
 
   /** Output detail level. Determines response complexity. */
   output_level: OutputLevel;
 
   /** Which financial indicators to include. Default: all (IRR, NPV, PBP, DPP, ROI). */
   indicators?: string[];
+}
 
-  /** Override to explicitly include/exclude visualizations. */
-  include_visualizations?: boolean;
+/** Percentiles for a single KPI. P5/P10/P50/P90/P95 always present; quartiles optional. */
+export interface SchemePercentiles {
+  P5?: number;
+  P10: number;
+  P25?: number;
+  P50: number;
+  P75?: number;
+  P90: number;
+  P95?: number;
+}
+
+/** Per-year percentile bands (keys "P5".."P95", each an array of length project_lifetime + 1). */
+export type CashflowFanBands = Record<string, number[]>;
+
+/** Feasible/infeasible histogram for one KPI (professional output and above). */
+export interface SchemeKpiHistogram {
+  /** 31 bin-edge values delimiting 30 bins. */
+  bin_edges: number[];
+  /** 30 counts of feasible scenarios per bin. */
+  feasible_counts: number[];
+  /** 30 counts of infeasible scenarios per bin. */
+  infeasible_counts: number[];
+  p10: number;
+  p50: number;
+  p90: number;
+  /** Threshold used to split feasible/infeasible (PBP/DPP); null otherwise. */
+  project_lifetime: number | null;
+}
+
+/** Result for a single financing scheme. */
+export interface SchemeResult {
+  scheme_id: number;
+  scheme_family: string;
+  summary: {
+    percentiles: Record<string, SchemePercentiles>;
+    probabilities: Record<string, number>;
+    disc_target_used: number;
+    n_sims: number;
+  };
+  cashflow_distributions: {
+    years: number[];
+    cash_flows: CashflowFanBands;
+    inflows: CashflowFanBands;
+    outflows: CashflowFanBands;
+  };
+  kpi_histograms?: Record<string, SchemeKpiHistogram>;
 }
 
 /**
- * Response model for risk assessment endpoint.
- * Structure varies based on output_level.
+ * Response model for multi-scheme risk assessment.
+ * `results` is keyed by the same `scheme_type` strings sent in the request.
  */
 export interface RiskAssessmentResponse {
-  /** Median (P50) value for each indicator. Always included. */
-  point_forecasts: Record<string, number>;
-
-  /** Simulation metadata: n_sims, project_lifetime, loan info, etc. */
+  results: Record<string, SchemeResult>;
   metadata: Record<string, unknown>;
-
-  /** Success probability metrics. Included in 'professional' and above. */
-  probabilities?: Record<string, number>;
-
-  /** Percentile breakdown for each indicator. Included in 'professional' and above
-   *  (P10-P90 for professional; P5-P95 for public/complete). */
-  percentiles?: Record<string, Record<string, number>>;
-
-  /** Base64-encoded PNG chart images. Only in 'complete' output_level. */
-  visualizations?: Record<string, string>;
 }
 
 // ============================================================================

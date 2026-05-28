@@ -42,41 +42,41 @@ function makeArchetypeDetails(floorArea: number): ArchetypeDetails {
   };
 }
 
-function makeFixtureResponse(
-  overrides?: Partial<{
-    pointForecasts: Record<string, number>;
-    probabilities: Record<string, number>;
-    percentiles: Record<string, Record<string, number>>;
-  }>,
-) {
+/** New multi-scheme wire response with a single equity scheme. */
+function makeFixtureResponse() {
   return {
-    point_forecasts: {
-      NPV: 15_000,
-      IRR: 0.12,
-      ROI: 0.35,
-      PBP: 8,
-      DPP: 10,
-      ...overrides?.pointForecasts,
-    },
-    metadata: { n_sims: 10_000, project_lifetime: 20 },
-    probabilities: {
-      "Pr(NPV > 0)": 0.92,
-      ...overrides?.probabilities,
-    },
-    percentiles: {
-      NPV: {
-        P10: 5_000,
-        P20: 8_000,
-        P30: 10_000,
-        P40: 12_000,
-        P50: 15_000,
-        P60: 18_000,
-        P70: 21_000,
-        P80: 25_000,
-        P90: 30_000,
+    results: {
+      equity: {
+        scheme_id: 1,
+        scheme_family: "self_financed",
+        summary: {
+          percentiles: {
+            NPV: {
+              P5: 2_000,
+              P10: 5_000,
+              P50: 15_000,
+              P90: 30_000,
+              P95: 35_000,
+            },
+            IRR: { P10: 0.05, P50: 0.12, P90: 0.2 },
+            ROI: { P10: 0.2, P50: 0.35, P90: 0.5 },
+            PBP: { P10: 6, P50: 8, P90: 12 },
+            DPP: { P10: 7, P50: 10, P90: 14 },
+          },
+          probabilities: { "Pr(NPV > 0)": 0.92 },
+          disc_target_used: 0.05,
+          n_sims: 10_000,
+        },
+        cashflow_distributions: {
+          years: [0, 1, 2],
+          cash_flows: { P50: [-1_000, 600, 600] },
+          inflows: { P50: [0, 700, 700] },
+          outflows: { P50: [0, 100, 100] },
+        },
+        kpi_histograms: {},
       },
-      ...overrides?.percentiles,
     },
+    metadata: { capex: 22_000, project_lifetime: 20, n_schemes: 1 },
   };
 }
 
@@ -86,7 +86,7 @@ describe("computeFinancials", () => {
     mockAssessRisk.mockResolvedValue(makeFixtureResponse());
   });
 
-  test("POSTs risk assessment with professional output level and default assumptions", async () => {
+  test("POSTs an equity-scheme risk assessment at professional output level", async () => {
     await computeFinancials({
       archetype: {
         country: "IT",
@@ -103,18 +103,14 @@ describe("computeFinancials", () => {
 
     expect(request.output_level).toBe("professional");
     expect(request.project_lifetime).toBe(20);
-    expect(request.loan_amount).toBe(0);
-    expect(request.loan_term).toBe(0);
-    expect(request.upfront_incentive_percentage).toBe(0);
-    expect(request.lifetime_incentive_amount).toBe(0);
-    expect(request.lifetime_incentive_years).toBe(0);
+    expect(request.schemes).toEqual([{ scheme_type: "equity" }]);
     expect(request.indicators).toEqual(["IRR", "NPV", "PBP", "DPP", "ROI"]);
     expect(request.annual_energy_savings).toBe(5_000);
     expect(request.capex).toBeGreaterThan(0);
     expect(request.annual_maintenance_cost).toBeGreaterThanOrEqual(0);
   });
 
-  test("keeps MVP financing neutral even when assumptions are provided", async () => {
+  test("stays equity-only and folds the upfront incentive into CAPEX", async () => {
     await computeFinancials({
       archetype: {
         country: "IT",
@@ -128,18 +124,14 @@ describe("computeFinancials", () => {
         projectLifetimeYears: 25,
         financingType: "self-funded",
         upfrontIncentivePercentage: 10,
-        lifetimeIncentiveAmountEur: 500,
-        lifetimeIncentiveYears: 5,
       },
     });
 
     const [request] = mockAssessRisk.mock.calls[0];
     expect(request.project_lifetime).toBe(25);
-    expect(request.loan_amount).toBe(0);
-    expect(request.loan_term).toBe(0);
-    expect(request.upfront_incentive_percentage).toBe(10);
-    expect(request.lifetime_incentive_amount).toBe(500);
-    expect(request.lifetime_incentive_years).toBe(5);
+    expect(request.schemes).toEqual([{ scheme_type: "equity" }]);
+    // 22000 gross * (1 - 0.10) = 19800 effective CAPEX.
+    expect(request.capex).toBe(19_800);
   });
 
   test("returns an unavailable result for non-positive energy savings without calling the API", async () => {
@@ -168,7 +160,7 @@ describe("computeFinancials", () => {
     );
   });
 
-  test("normalises response into RSEFinancialResult shape", async () => {
+  test("normalises the scheme result into RSEFinancialResult shape", async () => {
     const result = await computeFinancials({
       archetype: {
         country: "IT",
@@ -191,6 +183,7 @@ describe("computeFinancials", () => {
     expect(result.annualEnergySavingsKwh).toBe(5_000);
     expect(result.status).toBe("available");
 
+    // Point forecasts are the P50 of each KPI.
     expect(result.pointForecasts).toEqual({
       NPV: 15_000,
       IRR: 0.12,
@@ -199,18 +192,32 @@ describe("computeFinancials", () => {
       DPP: 10,
     });
 
-    expect(result.probabilities).toBeDefined();
     expect(result.probabilities?.["Pr(NPV > 0)"]).toBe(0.92);
-
-    expect(result.percentiles).toBeDefined();
     expect(result.percentiles?.NPV?.P10).toBe(5_000);
     expect(result.percentiles?.NPV?.P90).toBe(30_000);
   });
 
-  test("handles response missing percentiles and probabilities", async () => {
+  test("defaults missing indicators to zero and omits their percentiles", async () => {
     mockAssessRisk.mockResolvedValue({
-      point_forecasts: { NPV: 10_000, IRR: 0.1, ROI: 0.3, PBP: 9, DPP: 11 },
-      metadata: { n_sims: 10_000 },
+      results: {
+        equity: {
+          scheme_id: 1,
+          scheme_family: "self_financed",
+          summary: {
+            percentiles: { NPV: { P10: 5_000, P50: 10_000, P90: 15_000 } },
+            probabilities: {},
+            disc_target_used: 0.05,
+            n_sims: 10_000,
+          },
+          cashflow_distributions: {
+            years: [0, 1],
+            cash_flows: { P50: [-1_000, 500] },
+            inflows: { P50: [0, 500] },
+            outflows: { P50: [0, 0] },
+          },
+        },
+      },
+      metadata: { capex: 22_000, project_lifetime: 20 },
     });
 
     const result = await computeFinancials({
@@ -225,8 +232,9 @@ describe("computeFinancials", () => {
     });
 
     expect(result.pointForecasts.NPV).toBe(10_000);
-    expect(result.percentiles).toBeUndefined();
-    expect(result.probabilities).toBeUndefined();
+    expect(result.pointForecasts.IRR).toBe(0);
+    expect(result.percentiles?.NPV?.P50).toBe(10_000);
+    expect(result.percentiles?.IRR).toBeUndefined();
   });
 });
 

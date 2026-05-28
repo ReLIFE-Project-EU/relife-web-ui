@@ -107,7 +107,6 @@ const baseResult: BuildingAnalysisResult = {
       metadata: {
         project_lifetime: 20,
         capex: 10000,
-        loan_amount: 0,
         output_level: "professional",
       },
     },

@@ -5,7 +5,6 @@
  */
 
 import {
-  Alert,
   Badge,
   Card,
   Divider,
@@ -34,12 +33,6 @@ import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 export function FundingOptions() {
   const { state, dispatch } = useHomeAssistant();
   const { funding } = state;
-  const projectLifetime = state.building.projectLifetime;
-  const lifetimeIncentivesPartiallyFilled =
-    (funding.incentives.lifetimeAmount > 0 &&
-      funding.incentives.lifetimeYears === 0) ||
-    (funding.incentives.lifetimeAmount === 0 &&
-      funding.incentives.lifetimeYears > 0);
 
   const handleFinancingTypeChange = (value: FinancingType) => {
     dispatch({
@@ -100,8 +93,7 @@ export function FundingOptions() {
                     Incentives
                   </Text>
                   <Text size="xs" c="dimmed">
-                    Optional support that can lower your upfront cost or improve
-                    yearly savings.
+                    Optional support that lowers your upfront cost.
                   </Text>
                 </div>
               </Group>
@@ -127,61 +119,6 @@ export function FundingOptions() {
               clampBehavior="strict"
               size="sm"
             />
-
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <NumberInput
-                label="Yearly support"
-                description="Reduction in yearly operating costs"
-                value={funding.incentives.lifetimeAmount}
-                onChange={(value) =>
-                  handleIncentiveUpdate(
-                    "lifetimeAmount",
-                    typeof value === "number" ? value : 0,
-                  )
-                }
-                prefix="EUR "
-                min={0}
-                step={100}
-                clampBehavior="strict"
-                error={
-                  lifetimeIncentivesPartiallyFilled
-                    ? "Enter both the yearly amount and the number of years."
-                    : undefined
-                }
-                size="sm"
-              />
-
-              <NumberInput
-                label="Support duration"
-                description={`How many years it lasts, up to ${projectLifetime} years`}
-                value={funding.incentives.lifetimeYears}
-                onChange={(value) =>
-                  handleIncentiveUpdate(
-                    "lifetimeYears",
-                    typeof value === "number" ? value : 0,
-                  )
-                }
-                suffix=" years"
-                min={0}
-                max={projectLifetime}
-                step={1}
-                decimalScale={0}
-                clampBehavior="strict"
-                error={
-                  lifetimeIncentivesPartiallyFilled
-                    ? "Enter both the yearly amount and the number of years."
-                    : undefined
-                }
-                size="sm"
-              />
-            </SimpleGrid>
-
-            {lifetimeIncentivesPartiallyFilled && (
-              <Alert color="yellow" variant="light">
-                Lifetime support only works when both the amount and duration
-                are filled in.
-              </Alert>
-            )}
           </Stack>
         </Card>
 
@@ -202,7 +139,12 @@ export function FundingOptions() {
                 </div>
               </Group>
 
-              <SimpleGrid cols={{ base: 1, md: 3 }} spacing="md">
+              <Text size="xs" c="dimmed">
+                The interest rate is modeled by the Financial service from
+                market conditions, so it is not entered here.
+              </Text>
+
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                 <NumberInput
                   label="How much to borrow"
                   description="Share of the renovation cost covered by the loan"
@@ -233,24 +175,6 @@ export function FundingOptions() {
                   suffix=" years"
                   min={1}
                   max={30}
-                  size="sm"
-                />
-
-                <NumberInput
-                  label="Interest rate"
-                  description="Expected yearly interest on the loan"
-                  value={funding.loan.interestRate * 100}
-                  onChange={(value) =>
-                    handleLoanUpdate(
-                      "interestRate",
-                      typeof value === "number" ? value / 100 : 0.05,
-                    )
-                  }
-                  suffix="%"
-                  min={0}
-                  max={20}
-                  step={0.5}
-                  decimalScale={2}
                   size="sm"
                 />
               </SimpleGrid>

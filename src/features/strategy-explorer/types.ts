@@ -1,4 +1,7 @@
-import type { RenovationMeasureId } from "../../types/renovation";
+import type {
+  RenovationMeasureId,
+  RiskAssessmentPercentiles,
+} from "../../types/renovation";
 import type { ArchetypeDetails } from "../../types/archetype";
 import type {
   RSE_CACHE_PAYLOAD_SCHEMA_VERSION,
@@ -196,8 +199,6 @@ export interface RSEFinancialAssumptions {
   projectLifetimeYears: number;
   financingType: typeof RSE_FINANCIAL_DEFAULTS.financingType;
   upfrontIncentivePercentage: number;
-  lifetimeIncentiveAmountEur: number;
-  lifetimeIncentiveYears: number;
 }
 
 export interface RSEFinancialResult {
@@ -216,7 +217,7 @@ export interface RSEFinancialResult {
     PBP?: number;
     DPP?: number;
   };
-  percentiles?: Record<string, Record<string, number>>;
+  percentiles?: RiskAssessmentPercentiles;
   probabilities?: Record<string, number>;
 }
 

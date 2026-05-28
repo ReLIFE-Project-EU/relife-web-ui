@@ -112,8 +112,6 @@ export const RSE_FINANCIAL_DEFAULTS = {
   projectLifetimeYears: 20,
   financingType: "self-funded",
   upfrontIncentivePercentage: 0,
-  lifetimeIncentiveAmountEur: 0,
-  lifetimeIncentiveYears: 0,
 } as const;
 
 export const RSE_RANKING_WEIGHTS = {

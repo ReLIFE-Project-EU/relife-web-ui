@@ -116,14 +116,6 @@ function FundingPills({ funding }: { funding: FundingOptions }) {
       `${formatPercent(funding.incentives.upfrontPercentage)} upfront grant`,
     );
   }
-  if (
-    funding.incentives.lifetimeAmount > 0 &&
-    funding.incentives.lifetimeYears > 0
-  ) {
-    pills.push(
-      `${formatCurrency(funding.incentives.lifetimeAmount)}/yr · ${funding.incentives.lifetimeYears} yr lifetime`,
-    );
-  }
   return (
     <Group gap={6} wrap="wrap">
       {pills.map((pill) => (

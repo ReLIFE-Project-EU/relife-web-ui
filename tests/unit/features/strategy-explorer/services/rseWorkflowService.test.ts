@@ -38,8 +38,6 @@ function makeRequest(
       projectLifetimeYears: 20,
       financingType: "self-funded",
       upfrontIncentivePercentage: 0,
-      lifetimeIncentiveAmountEur: 0,
-      lifetimeIncentiveYears: 0,
     },
   };
 }

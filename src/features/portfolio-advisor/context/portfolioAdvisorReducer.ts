@@ -32,12 +32,9 @@ export const initialState: PortfolioAdvisorState = {
     loan: {
       percentage: 80,
       duration: 10,
-      interestRate: 0.05,
     },
     incentives: {
       upfrontPercentage: 0,
-      lifetimeAmount: 0,
-      lifetimeYears: 0,
     },
   },
   buildingResults: {},

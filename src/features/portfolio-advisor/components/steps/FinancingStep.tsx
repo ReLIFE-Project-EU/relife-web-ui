@@ -91,17 +91,6 @@ const SchemeCard = memo(function SchemeCard({
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Loan summary metrics (derived display)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function computeAnnuity(loanAmount: number, ratePct: number, years: number) {
-  if (loanAmount <= 0 || years <= 0) return 0;
-  const r = ratePct;
-  if (r === 0) return loanAmount / years;
-  return (loanAmount * r) / (1 - Math.pow(1 + r, -years));
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -169,11 +158,6 @@ export function FinancingStep() {
       ? totalCapex * (state.funding.loan.percentage / 100)
       : 0;
   const ownerEquity = totalCapex - loanAmount;
-  const annuity = computeAnnuity(
-    loanAmount,
-    state.funding.loan.interestRate,
-    state.funding.loan.duration,
-  );
 
   return (
     <Stack gap="xl">
@@ -212,7 +196,7 @@ export function FinancingStep() {
             Loan Configuration
           </Title>
           <Grid>
-            <Grid.Col span={{ base: 12, sm: 4 }}>
+            <Grid.Col span={{ base: 12, sm: 6 }}>
               <NumberInput
                 label="Loan Percentage (%)"
                 description="Share of total CAPEX financed by the loan."
@@ -231,7 +215,7 @@ export function FinancingStep() {
                 suffix="%"
               />
             </Grid.Col>
-            <Grid.Col span={{ base: 12, sm: 4 }}>
+            <Grid.Col span={{ base: 12, sm: 6 }}>
               <NumberInput
                 label="Loan Term (years)"
                 description="Repayment horizon."
@@ -249,30 +233,14 @@ export function FinancingStep() {
                 max={30}
               />
             </Grid.Col>
-            <Grid.Col span={{ base: 12, sm: 4 }}>
-              <NumberInput
-                label="Interest Rate (%)"
-                description="Effective annual rate."
-                value={state.funding.loan.interestRate * 100}
-                onChange={(val) => {
-                  if (typeof val === "number") {
-                    dispatch({
-                      type: "UPDATE_LOAN",
-                      field: "interestRate",
-                      value: val / 100,
-                    });
-                  }
-                }}
-                min={0}
-                max={30}
-                decimalScale={2}
-                suffix="%"
-              />
-            </Grid.Col>
           </Grid>
+          <Text size="xs" c="dimmed" mt="xs">
+            The loan interest rate is modeled by the Financial service from
+            market conditions and is no longer entered here.
+          </Text>
 
           {/* Loan summary — derived from existing state, no new fields */}
-          <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md" mt="lg">
+          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" mt="lg">
             <MetricCard
               label="Total CAPEX"
               value={formatCurrency(totalCapex)}
@@ -285,10 +253,6 @@ export function FinancingStep() {
             <MetricCard
               label="Owner equity"
               value={formatCurrency(ownerEquity)}
-            />
-            <MetricCard
-              label="Annual payment"
-              value={formatCurrency(annuity)}
             />
           </SimpleGrid>
         </Card>

@@ -75,11 +75,9 @@ const SELECTED_MEASURES: RenovationMeasureId[] = ["wall-insulation"];
 /** Equity (self-funded) financing — simplest case. */
 const FUNDING: FundingOptions = {
   financingType: "self-funded",
-  loan: { percentage: 0, duration: 0, interestRate: 0 },
+  loan: { percentage: 0, duration: 0 },
   incentives: {
     upfrontPercentage: 0,
-    lifetimeAmount: 0,
-    lifetimeYears: 0,
   },
 };
 

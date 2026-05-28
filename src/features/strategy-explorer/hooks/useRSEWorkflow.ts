@@ -28,9 +28,6 @@ export function useRSEWorkflow() {
           financingType: RSE_FINANCIAL_DEFAULTS.financingType,
           upfrontIncentivePercentage:
             RSE_FINANCIAL_DEFAULTS.upfrontIncentivePercentage,
-          lifetimeIncentiveAmountEur:
-            RSE_FINANCIAL_DEFAULTS.lifetimeIncentiveAmountEur,
-          lifetimeIncentiveYears: RSE_FINANCIAL_DEFAULTS.lifetimeIncentiveYears,
         },
       };
 

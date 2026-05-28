@@ -7,6 +7,7 @@ import type {
   RenovationScenario,
   ScenarioId,
 } from "../../../src/types/renovation";
+import type { RiskAssessmentRequest } from "../../../src/types/financial";
 
 const { mockCalculateARV, mockAssessRisk } = vi.hoisted(() => ({
   mockCalculateARV: vi.fn(),
@@ -26,7 +27,7 @@ const stubARVResponse = {
   after: {
     price_per_sqm: 2000,
     total_price: 200000,
-    greek_epc_class: "\u0394",
+    greek_epc_class: "Δ",
   },
   before: null,
   uplift: null,
@@ -34,26 +35,59 @@ const stubARVResponse = {
   metadata: {},
 };
 
-const stubRiskResponse = {
-  point_forecasts: {
-    NPV: 5000,
-    IRR: 0.057,
-    ROI: 0.25,
-    PBP: 8,
-    DPP: 10,
-    MonthlyAvgSavings: 50,
-    SuccessRate: 0.85,
-  },
-  metadata: {
+/** A single scheme's result in the new multi-scheme wire shape. */
+const schemeResultStub = {
+  scheme_id: 1,
+  scheme_family: "self_financed",
+  summary: {
+    percentiles: {
+      NPV: { P5: -1000, P10: 1000, P50: 5000, P90: 9000, P95: 11000 },
+      IRR: { P10: 0.03, P50: 0.057, P90: 0.09 },
+      ROI: { P10: 0.1, P50: 0.25, P90: 0.4 },
+      PBP: { P10: 6, P50: 8, P90: 12 },
+      DPP: { P10: 7, P50: 10, P90: 14 },
+    },
+    probabilities: {
+      "Pr(NPV > 0)": 0.85,
+      "Pr(PBP < 20y)": 0.9,
+      "Pr(DPP < 20y)": 0.8,
+    },
+    disc_target_used: 0.05,
     n_sims: 10000,
-    project_lifetime: 20,
-    capex: 10000,
-    loan_amount: 0,
   },
-  probabilities: null,
-  percentiles: null,
-  visualizations: null,
+  cashflow_distributions: {
+    years: [0, 1, 2],
+    cash_flows: { P50: [-10000, 300, 300] },
+    inflows: { P50: [0, 500, 500] },
+    outflows: { P50: [0, 200, 200] },
+  },
+  kpi_histograms: {
+    NPV: {
+      bin_edges: [-500, 500],
+      feasible_counts: [1],
+      infeasible_counts: [0],
+      p10: 0,
+      p50: 100,
+      p90: 200,
+      project_lifetime: null,
+    },
+  },
 };
+
+/** Build a wire response keyed by whatever scheme_type(s) the request sent. */
+function wireResponseFor(request: RiskAssessmentRequest) {
+  const results = Object.fromEntries(
+    request.schemes.map((s) => [s.scheme_type, schemeResultStub]),
+  );
+  return {
+    results,
+    metadata: {
+      capex: request.capex,
+      project_lifetime: request.project_lifetime,
+      n_schemes: request.schemes.length,
+    },
+  };
+}
 
 const mockBuilding = {
   country: "Greece",
@@ -92,14 +126,10 @@ const mockEstimation = {
   archetypeFloorArea: 100,
 } as EstimationResult;
 
-const mockFundingOptions: FundingOptions = {
+const selfFundedOptions: FundingOptions = {
   financingType: "self-funded",
-  loan: { percentage: 0, duration: 0, interestRate: 0 },
-  incentives: {
-    upfrontPercentage: 0,
-    lifetimeAmount: 0,
-    lifetimeYears: 0,
-  },
+  loan: { percentage: 0, duration: 0 },
+  incentives: { upfrontPercentage: 0 },
 };
 
 const renovatedScenario = {
@@ -166,7 +196,9 @@ describe("FinancialService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCalculateARV.mockResolvedValue(stubARVResponse);
-    mockAssessRisk.mockResolvedValue(stubRiskResponse);
+    mockAssessRisk.mockImplementation((request: RiskAssessmentRequest) =>
+      Promise.resolve(wireResponseFor(request)),
+    );
   });
 
   test("ARV request includes national EPC country and renovated energy intensity", async () => {
@@ -174,7 +206,7 @@ describe("FinancialService", () => {
 
     await service.calculateForAllScenarios(
       [renovatedScenario],
-      mockFundingOptions,
+      selfFundedOptions,
       100,
       mockEstimation,
       packageFinancialInputs,
@@ -195,7 +227,7 @@ describe("FinancialService", () => {
 
     await service.calculateForAllScenarios(
       [currentScenario],
-      mockFundingOptions,
+      selfFundedOptions,
       100,
       mockEstimation,
       packageFinancialInputs,
@@ -221,7 +253,7 @@ describe("FinancialService", () => {
 
     await service.calculateForAllScenarios(
       [renovatedScenario],
-      mockFundingOptions,
+      selfFundedOptions,
       100,
       mockEstimation,
       packageFinancialInputs,
@@ -248,7 +280,7 @@ describe("FinancialService", () => {
 
     await service.calculateForAllScenarios(
       [renovatedScenario],
-      mockFundingOptions,
+      selfFundedOptions,
       100,
       mockEstimation,
       packageFinancialInputs,
@@ -271,7 +303,7 @@ describe("FinancialService", () => {
 
     await service.calculateForAllScenarios(
       [renovatedScenario],
-      mockFundingOptions,
+      selfFundedOptions,
       100,
       mockEstimation,
       packageFinancialInputs,
@@ -290,7 +322,7 @@ describe("FinancialService", () => {
 
     await service.calculateForAllScenarios(
       [renovatedScenario],
-      mockFundingOptions,
+      selfFundedOptions,
       100,
       mockEstimation,
       packageFinancialInputs,
@@ -302,12 +334,12 @@ describe("FinancialService", () => {
     );
   });
 
-  test("finance uses delivered-energy savings consistently for envelope scenarios", async () => {
+  test("self-funded analysis sends a single equity scheme", async () => {
     const service = new FinancialService();
 
     await service.calculateForAllScenarios(
       [renovatedScenario],
-      mockFundingOptions,
+      selfFundedOptions,
       100,
       mockEstimation,
       packageFinancialInputs,
@@ -315,7 +347,7 @@ describe("FinancialService", () => {
     );
 
     expect(mockAssessRisk).toHaveBeenCalledWith(
-      expect.objectContaining({ annual_energy_savings: 4000 }),
+      expect.objectContaining({ schemes: [{ scheme_type: "equity" }] }),
     );
   });
 
@@ -338,7 +370,7 @@ describe("FinancialService", () => {
 
     await service.calculateForAllScenarios(
       [systemOnlyScenario],
-      mockFundingOptions,
+      selfFundedOptions,
       100,
       mockEstimation,
       {
@@ -371,7 +403,7 @@ describe("FinancialService", () => {
 
     const results = await service.calculateForAllScenarios(
       [highEnergyScenario],
-      mockFundingOptions,
+      selfFundedOptions,
       100,
       mockEstimation,
       {
@@ -399,7 +431,7 @@ describe("FinancialService", () => {
 
     const results = await service.calculateForAllScenarios(
       [scenarioWithoutDelivered],
-      mockFundingOptions,
+      selfFundedOptions,
       100,
       mockEstimation,
       packageFinancialInputs,
@@ -410,312 +442,43 @@ describe("FinancialService", () => {
     expect(results["renovated"].riskAssessment).toBeNull();
   });
 
-  test("output level matches constructor argument", async () => {
+  test("output level matches constructor argument with a single call", async () => {
     const service = new FinancialService("professional");
 
     await service.calculateForAllScenarios(
       [renovatedScenario],
-      mockFundingOptions,
+      selfFundedOptions,
       100,
       mockEstimation,
       packageFinancialInputs,
       mockBuilding,
     );
 
+    // No supplemental private call any more: cashflow_distributions ships at all levels.
+    expect(mockAssessRisk).toHaveBeenCalledTimes(1);
     expect(mockAssessRisk).toHaveBeenCalledWith(
       expect.objectContaining({ output_level: "professional" }),
     );
-    expect(mockAssessRisk).toHaveBeenCalledWith(
-      expect.objectContaining({ output_level: "private" }),
-    );
   });
 
-  test("private output level does not request supplemental cash-flow call", async () => {
-    const service = new FinancialService("private");
+  test("maps point forecasts, cash flow, and chart metadata from the scheme result", async () => {
+    const service = new FinancialService("professional");
 
-    await service.calculateForAllScenarios(
-      [renovatedScenario],
-      mockFundingOptions,
-      100,
-      mockEstimation,
-      packageFinancialInputs,
-      mockBuilding,
-    );
-
-    expect(mockAssessRisk).toHaveBeenCalledTimes(1);
-    expect(mockAssessRisk).toHaveBeenCalledWith(
-      expect.objectContaining({ output_level: "private" }),
-    );
-  });
-
-  test("professional output level merges private cash-flow timeline", async () => {
-    mockAssessRisk.mockImplementation((request: { output_level: string }) => {
-      if (request.output_level === "professional") {
-        return Promise.resolve({
-          ...stubRiskResponse,
-          probabilities: {
-            "Pr(NPV > 0)": 0.84,
-          },
-          metadata: {
-            ...stubRiskResponse.metadata,
-            chart_metadata: {
-              NPV: {
-                bins: {
-                  centers: [0],
-                  counts: [1],
-                  edges: [-500, 500],
-                },
-                statistics: {
-                  mean: 100,
-                  std: 10,
-                  P10: 0,
-                  P50: 100,
-                  P90: 200,
-                },
-              },
-            },
-          },
-        });
-      }
-
-      return Promise.resolve({
-        ...stubRiskResponse,
-        metadata: {
-          ...stubRiskResponse.metadata,
-          cash_flow_data: {
-            years: [0, 1, 2],
-            annual_inflows: [0, 500, 500],
-            annual_outflows: [10000, 200, 200],
-            annual_net_cash_flow: [-10000, 300, 300],
-            cumulative_cash_flow: [-10000, -9700, -9400],
-          },
-        },
-      });
+    const result = await service.assessRisk({
+      annual_energy_savings: 4000,
+      project_lifetime: 20,
+      output_level: "professional",
+      capex: 10000,
+      annual_maintenance_cost: 300,
     });
 
-    const service = new FinancialService("professional");
-    const results = await service.calculateForAllScenarios(
-      [renovatedScenario],
-      mockFundingOptions,
-      100,
-      mockEstimation,
-      packageFinancialInputs,
-      mockBuilding,
-    );
-
-    expect(mockAssessRisk).toHaveBeenCalledTimes(2);
-    expect(results["renovated"].riskAssessment?.cashFlowData?.years).toEqual([
-      0, 1, 2,
+    expect(result.pointForecasts.NPV).toBe(5000);
+    expect(result.pointForecasts.SuccessRate).toBe(0.85);
+    expect(result.cashFlowData?.cumulative_cash_flow).toEqual([
+      -10000, -9700, -9400,
     ]);
-    expect(
-      results["renovated"].riskAssessment?.metadata.chart_metadata?.NPV,
-    ).toBeDefined();
-    expect(results["renovated"].riskAssessment?.probabilities).toEqual({
-      "Pr(NPV > 0)": 0.84,
-    });
-  });
-
-  test("professional output preserves risk results when private cash-flow supplement fails", async () => {
-    mockAssessRisk.mockImplementation((request: { output_level: string }) => {
-      if (request.output_level === "private") {
-        return Promise.reject(new Error("cash-flow unavailable"));
-      }
-
-      return Promise.resolve({
-        ...stubRiskResponse,
-        probabilities: {
-          "Pr(NPV > 0)": 0.84,
-        },
-        metadata: {
-          ...stubRiskResponse.metadata,
-          chart_metadata: {
-            NPV: {
-              bins: {
-                centers: [0],
-                counts: [1],
-                edges: [-500, 500],
-              },
-              statistics: {
-                mean: 100,
-                std: 10,
-                P10: 0,
-                P50: 100,
-                P90: 200,
-              },
-            },
-          },
-        },
-      });
-    });
-
-    const service = new FinancialService("professional");
-    const results = await service.calculateForAllScenarios(
-      [renovatedScenario],
-      mockFundingOptions,
-      100,
-      mockEstimation,
-      packageFinancialInputs,
-      mockBuilding,
-    );
-
-    expect(mockAssessRisk).toHaveBeenCalledTimes(2);
-    expect(results["renovated"].riskAssessment?.cashFlowData).toBeUndefined();
-    expect(results["renovated"].riskAssessment?.probabilities).toEqual({
-      "Pr(NPV > 0)": 0.84,
-    });
-    expect(results["renovated"].netPresentValue).toBe(5000);
-  });
-
-  test("professional output ignores malformed private cash-flow timeline", async () => {
-    mockAssessRisk.mockImplementation((request: { output_level: string }) => {
-      if (request.output_level === "private") {
-        return Promise.resolve({
-          ...stubRiskResponse,
-          metadata: {
-            ...stubRiskResponse.metadata,
-            cash_flow_data: {
-              years: [0, Number.NaN],
-              annual_inflows: [0, 500],
-              annual_outflows: [10000, 200],
-            },
-          },
-        });
-      }
-
-      return Promise.resolve({
-        ...stubRiskResponse,
-        metadata: {
-          ...stubRiskResponse.metadata,
-          chart_metadata: {
-            NPV: {
-              bins: {
-                centers: [0],
-                counts: [1],
-                edges: [-500, 500],
-              },
-              statistics: {
-                mean: 100,
-                std: 10,
-                P10: 0,
-                P50: 100,
-                P90: 200,
-              },
-            },
-          },
-        },
-      });
-    });
-
-    const service = new FinancialService("professional");
-    const results = await service.calculateForAllScenarios(
-      [renovatedScenario],
-      mockFundingOptions,
-      100,
-      mockEstimation,
-      packageFinancialInputs,
-      mockBuilding,
-    );
-
-    expect(mockAssessRisk).toHaveBeenCalledTimes(2);
-    expect(results["renovated"].riskAssessment?.cashFlowData).toBeUndefined();
-    expect(
-      results["renovated"].riskAssessment?.metadata.chart_metadata?.NPV,
-    ).toBeDefined();
-  });
-
-  test("normalizes professional chart metadata from risk assessment", async () => {
-    mockAssessRisk.mockResolvedValue({
-      ...stubRiskResponse,
-      metadata: {
-        ...stubRiskResponse.metadata,
-        chart_metadata: {
-          NPV: {
-            bins: {
-              centers: [-1000, 0, 1000],
-              counts: [2, 5, 3],
-              edges: [-1500, -500, 500, 1500],
-            },
-            statistics: {
-              mean: 100,
-              std: 250,
-              P10: -500,
-              P50: 100,
-              P90: 750,
-            },
-            chart_config: {
-              xlabel: "NPV",
-              ylabel: "Frequency",
-              title: "NPV Distribution",
-            },
-          },
-        },
-      },
-    });
-
-    const service = new FinancialService("professional");
-    const result = await service.assessRisk({
-      annual_energy_savings: 4000,
-      project_lifetime: 20,
-      output_level: "professional",
-      capex: 10000,
-      annual_maintenance_cost: 300,
-    });
-
-    expect(result.metadata.chart_metadata?.NPV).toEqual({
-      bins: {
-        centers: [-1000, 0, 1000],
-        counts: [2, 5, 3],
-        edges: [-1500, -500, 500, 1500],
-      },
-      statistics: {
-        mean: 100,
-        std: 250,
-        P10: -500,
-        P50: 100,
-        P90: 750,
-      },
-      chart_config: {
-        xlabel: "NPV",
-        ylabel: "Frequency",
-        title: "NPV Distribution",
-      },
-    });
-  });
-
-  test("skips malformed professional chart metadata", async () => {
-    mockAssessRisk.mockResolvedValue({
-      ...stubRiskResponse,
-      metadata: {
-        ...stubRiskResponse.metadata,
-        chart_metadata: {
-          NPV: {
-            bins: {
-              centers: [-1000, 0],
-              counts: [2],
-              edges: [-1500, -500, 500],
-            },
-            statistics: {
-              mean: 100,
-              std: 250,
-              P10: -500,
-              P50: 100,
-              P90: 750,
-            },
-          },
-        },
-      },
-    });
-
-    const service = new FinancialService("professional");
-    const result = await service.assessRisk({
-      annual_energy_savings: 4000,
-      project_lifetime: 20,
-      output_level: "professional",
-      capex: 10000,
-      annual_maintenance_cost: 300,
-    });
-
-    expect(result.metadata.chart_metadata).toBeUndefined();
+    expect(result.metadata.chart_metadata?.NPV?.bins.centers).toEqual([0]);
+    expect(result.probabilities?.["Pr(PBP < 20y)"]).toBe(0.9);
   });
 
   test("uses package-specific CAPEX and maintenance values for each scenario", async () => {
@@ -723,7 +486,7 @@ describe("FinancialService", () => {
 
     await service.calculateForAllScenarios(
       [renovatedScenario, secondScenario],
-      mockFundingOptions,
+      selfFundedOptions,
       100,
       mockEstimation,
       packageFinancialInputs,
@@ -746,16 +509,12 @@ describe("FinancialService", () => {
     );
   });
 
-  test("applies loan amounts per scenario package", async () => {
+  test("debt financing sends a bank_loan scheme sized per package", async () => {
     const service = new FinancialService();
     const fundedOptions: FundingOptions = {
       financingType: "loan",
-      loan: { percentage: 50, duration: 12, interestRate: 0.04 },
-      incentives: {
-        upfrontPercentage: 0,
-        lifetimeAmount: 0,
-        lifetimeYears: 0,
-      },
+      loan: { percentage: 50, duration: 12 },
+      incentives: { upfrontPercentage: 0 },
     };
 
     await service.calculateForAllScenarios(
@@ -771,28 +530,28 @@ describe("FinancialService", () => {
       1,
       expect.objectContaining({
         capex: 10000,
-        loan_amount: 5000,
+        schemes: [
+          { scheme_type: "bank_loan", loan_amount: 5000, term_years: 12 },
+        ],
       }),
     );
     expect(mockAssessRisk).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
         capex: 18000,
-        loan_amount: 9000,
+        schemes: [
+          { scheme_type: "bank_loan", loan_amount: 9000, term_years: 12 },
+        ],
       }),
     );
   });
 
-  test("forwards incentive fields and sanitizes invalid lifetime incentives", async () => {
+  test("folds the upfront incentive into CAPEX and the loan amount", async () => {
     const service = new FinancialService();
     const fundedOptions: FundingOptions = {
       financingType: "loan",
-      loan: { percentage: 50, duration: 12, interestRate: 0.04 },
-      incentives: {
-        upfrontPercentage: 20,
-        lifetimeAmount: 1200,
-        lifetimeYears: 0,
-      },
+      loan: { percentage: 50, duration: 12 },
+      incentives: { upfrontPercentage: 20 },
     };
 
     await service.calculateForAllScenarios(
@@ -804,42 +563,13 @@ describe("FinancialService", () => {
       mockBuilding,
     );
 
+    // 10000 * (1 - 0.20) = 8000 effective CAPEX; loan = 8000 * 0.5 = 4000.
     expect(mockAssessRisk).toHaveBeenCalledWith(
       expect.objectContaining({
-        capex: 10000,
-        loan_amount: 4000,
-        upfront_incentive_percentage: 20,
-        lifetime_incentive_amount: 0,
-        lifetime_incentive_years: 0,
-      }),
-    );
-  });
-
-  test("clamps lifetime incentive duration to project lifetime", async () => {
-    const service = new FinancialService();
-    const fundedOptions: FundingOptions = {
-      financingType: "self-funded",
-      loan: { percentage: 0, duration: 0, interestRate: 0 },
-      incentives: {
-        upfrontPercentage: 0,
-        lifetimeAmount: 900,
-        lifetimeYears: 30,
-      },
-    };
-
-    await service.calculateForAllScenarios(
-      [renovatedScenario],
-      fundedOptions,
-      100,
-      mockEstimation,
-      packageFinancialInputs,
-      mockBuilding,
-    );
-
-    expect(mockAssessRisk).toHaveBeenCalledWith(
-      expect.objectContaining({
-        lifetime_incentive_amount: 900,
-        lifetime_incentive_years: 20,
+        capex: 8000,
+        schemes: [
+          { scheme_type: "bank_loan", loan_amount: 4000, term_years: 12 },
+        ],
       }),
     );
   });
