@@ -50,6 +50,7 @@ import {
 } from "../results/BuildingResultsTable";
 import { BuildingDrillDownModal } from "../results/BuildingDrillDownModal";
 import { EnergyChart } from "../results/EnergyChart";
+import { ResultsExportMenu } from "../results/ResultsExportMenu";
 
 function ConceptSentence(conceptId: ConceptId) {
   const concept = relifeConcepts[conceptId];
@@ -60,7 +61,7 @@ function ConceptSentence(conceptId: ConceptId) {
 // Aggregations
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface PortfolioStats {
+export interface PortfolioStats {
   totalBuildings: number;
   successCount: number;
   errorCount: number;
@@ -399,6 +400,14 @@ export function ResultsStep() {
       </Box>
 
       <ErrorAlert error={state.error} title="Analysis Error" />
+
+      <Group justify="flex-end">
+        <ResultsExportMenu
+          buildings={state.buildings}
+          results={state.buildingResults}
+          stats={stats}
+        />
+      </Group>
 
       <Tabs
         value={activeTab}
