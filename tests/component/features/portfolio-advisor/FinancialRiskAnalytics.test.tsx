@@ -87,6 +87,24 @@ const riskResults = {
             ylabel: "Frequency",
           },
         },
+        ROI: {
+          bins: {
+            centers: [0.1, 0.2, 0.3],
+            counts: [1, 4, 2],
+            edges: [0.05, 0.15, 0.25, 0.35],
+          },
+          statistics: {
+            mean: 0.2,
+            std: 0.05,
+            P10: 0.1,
+            P50: 0.2,
+            P90: 0.3,
+          },
+          chart_config: {
+            title: "ROI Distribution",
+            ylabel: "Frequency",
+          },
+        },
       },
     },
     probabilities: {
@@ -127,6 +145,24 @@ const riskResults = {
         ylabel: "Frequency",
       },
     },
+    ROI: {
+      bins: {
+        centers: [0.1, 0.2, 0.3],
+        counts: [1, 4, 2],
+        edges: [0.05, 0.15, 0.25, 0.35],
+      },
+      statistics: {
+        mean: 0.2,
+        std: 0.05,
+        P10: 0.1,
+        P50: 0.2,
+        P90: 0.3,
+      },
+      chart_config: {
+        title: "ROI Distribution",
+        ylabel: "Frequency",
+      },
+    },
   },
 } satisfies PRAFinancialResults;
 
@@ -135,11 +171,14 @@ describe("FinancialRiskAnalytics", () => {
     renderAnalytics(riskResults);
 
     expect(screen.getByText("Professional risk analytics")).toBeTruthy();
-    expect(screen.getByText("Net Present Value")).toBeTruthy();
+    expect(screen.getAllByText("Net Present Value").length).toBeGreaterThan(0);
     expect(screen.getByText("Probability thresholds")).toBeTruthy();
     expect(screen.getByText("Pr(NPV > 0)")).toBeTruthy();
     expect(screen.getByText("80.0%")).toBeTruthy();
     expect(screen.getByText("NPV Distribution")).toBeTruthy();
+    expect(
+      screen.getAllByLabelText("Select risk distribution").length,
+    ).toBeGreaterThan(0);
   });
 
   test("renders unavailable state when risk assessment is missing", () => {

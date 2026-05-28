@@ -7,6 +7,27 @@ import { Box, Card, Group, Stack, Text } from "@mantine/core";
 import type { CashFlowData } from "../../types/renovation";
 import { formatCurrency } from "../../utils/formatters";
 
+const CHART_HEIGHT = 360;
+const MAX_X_TICKS = 12;
+const Y_AXIS_WIDTH = 72;
+const LEGEND_SWATCH_WIDTH = 16;
+const LEGEND_SWATCH_HEIGHT = 8;
+const CHART_MARGIN = { top: 16, right: 16, bottom: 16, left: 16 };
+
+const CASH_FLOW_COLORS = {
+  inflows: "teal.6",
+  outflows: "red.6",
+  cumulative: "relife.8",
+  reference: "blue.6",
+} as const;
+
+const CASH_FLOW_SWATCH_COLORS = {
+  inflows: "var(--mantine-color-teal-6)",
+  outflows: "var(--mantine-color-red-6)",
+  cumulative: "var(--mantine-color-relife-8)",
+  reference: "var(--mantine-color-blue-6)",
+} as const;
+
 const compactCurrency = new Intl.NumberFormat("de-DE", {
   style: "currency",
   currency: "EUR",
@@ -22,9 +43,13 @@ interface CashFlowChartProps {
 }
 
 const series: CompositeChartSeries[] = [
-  { name: "Inflows", color: "#27ae60", type: "bar" },
-  { name: "Outflows", color: "#e74c3c", type: "bar" },
-  { name: "Net cash flow", color: "#2c3e50", type: "line" },
+  { name: "Inflows", color: CASH_FLOW_COLORS.inflows, type: "bar" },
+  { name: "Outflows", color: CASH_FLOW_COLORS.outflows, type: "bar" },
+  {
+    name: "Cumulative cash flow",
+    color: CASH_FLOW_COLORS.cumulative,
+    type: "line",
+  },
 ];
 type LegendItem = {
   name: string;
@@ -33,9 +58,12 @@ type LegendItem = {
 };
 
 const legendItems: LegendItem[] = [
-  { name: "Inflows", color: "#27ae60" },
-  { name: "Outflows", color: "#e74c3c" },
-  { name: "Net cash flow", color: "#2c3e50" },
+  { name: "Inflows", color: CASH_FLOW_SWATCH_COLORS.inflows },
+  { name: "Outflows", color: CASH_FLOW_SWATCH_COLORS.outflows },
+  {
+    name: "Cumulative cash flow",
+    color: CASH_FLOW_SWATCH_COLORS.cumulative,
+  },
 ];
 
 function toChartData(data: CashFlowData) {
@@ -44,12 +72,19 @@ function toChartData(data: CashFlowData) {
   const net = data.annual_net_cash_flow
     ? data.annual_net_cash_flow
     : inflows.map((value, idx) => value - (outflows[idx] ?? 0));
+  const cumulative =
+    data.cumulative_cash_flow ??
+    net.reduce<number[]>((acc, value, idx) => {
+      const previous = idx === 0 ? 0 : acc[idx - 1];
+      acc.push(previous + value);
+      return acc;
+    }, []);
 
   return data.years.map((year, idx) => ({
     year,
     Inflows: inflows[idx] ?? 0,
     Outflows: -(outflows[idx] ?? 0), // negative to render downward bars
-    "Net cash flow": net[idx] ?? 0,
+    "Cumulative cash flow": cumulative[idx] ?? 0,
   }));
 }
 
@@ -61,7 +96,9 @@ export function CashFlowChart({
 }: CashFlowChartProps) {
   const chartData = toChartData(data);
   const tickInterval =
-    chartData.length > 12 ? Math.ceil(chartData.length / 12) : 0;
+    chartData.length > MAX_X_TICKS
+      ? Math.ceil(chartData.length / MAX_X_TICKS)
+      : 0;
 
   const referenceLines: ChartReferenceLineProps[] = [
     { y: 0, color: "gray.5", label: "0€", labelPosition: "insideTop" },
@@ -117,7 +154,7 @@ export function CashFlowChart({
             series={series}
             withLegend={false}
             withTooltip
-            h={360}
+            h={CHART_HEIGHT}
             referenceLines={referenceLines}
             xAxisProps={{
               interval: tickInterval,
@@ -126,7 +163,7 @@ export function CashFlowChart({
             }}
             yAxisProps={{
               tickFormatter: (value: number) => compactCurrency.format(value),
-              width: 72,
+              width: Y_AXIS_WIDTH,
               label: {
                 value: "Cash flow (€)",
                 angle: -90,
@@ -142,7 +179,7 @@ export function CashFlowChart({
               labelFormatter: (label: string | number) => `Year ${label}`,
             }}
             composedChartProps={{
-              margin: { top: 16, right: 16, bottom: 16, left: 16 },
+              margin: CHART_MARGIN,
             }}
           />
           <Group gap={12} mt="xs" wrap="wrap">
@@ -150,11 +187,13 @@ export function CashFlowChart({
               <Group key={item.name} gap={6} align="center">
                 <Box
                   style={{
-                    width: 16,
-                    height: 8,
+                    width: LEGEND_SWATCH_WIDTH,
+                    height: LEGEND_SWATCH_HEIGHT,
                     background: item.color,
                     borderRadius: 4,
-                    border: item.dashed ? "1px dashed #6c757d" : undefined,
+                    border: item.dashed
+                      ? "1px dashed var(--mantine-color-gray-6)"
+                      : undefined,
                   }}
                 />
                 <Text size="xs" c="dimmed">
@@ -166,9 +205,9 @@ export function CashFlowChart({
               <Group gap={6} align="center">
                 <Box
                   style={{
-                    width: 16,
+                    width: LEGEND_SWATCH_WIDTH,
                     height: 0,
-                    borderTop: "2px dashed #228be6",
+                    borderTop: `2px dashed ${CASH_FLOW_SWATCH_COLORS.reference}`,
                   }}
                 />
                 <Text size="xs" c="dimmed">
