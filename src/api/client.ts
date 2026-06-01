@@ -24,8 +24,17 @@ function startTrackedHttpRequest(method: string, path: string): () => void {
 // Core Request Functions
 // ============================================================================
 
-async function getAuthToken(): Promise<string | null> {
+async function getAuthToken(forceRefresh = false): Promise<string | null> {
   try {
+    if (forceRefresh) {
+      const { data, error } = await supabase.auth.refreshSession();
+      if (error) {
+        console.error("Failed to refresh authentication session:", error);
+        return null;
+      }
+      return data.session?.access_token ?? null;
+    }
+
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -36,29 +45,58 @@ async function getAuthToken(): Promise<string | null> {
   }
 }
 
+/**
+ * Perform an authenticated fetch, retrying once on a 401 after forcing a
+ * Supabase token refresh. Recovers from an expired access token mid-session
+ * without surfacing a spurious auth error. supabase-js serializes concurrent
+ * refreshes internally, so parallel 401s share a single in-flight refresh.
+ */
+async function fetchWithAuth(
+  path: string,
+  init: RequestInit,
+  baseHeaders: Record<string, string>,
+): Promise<Response> {
+  const attempt = async (forceRefresh: boolean): Promise<Response> => {
+    const token = await getAuthToken(forceRefresh);
+    const headers: Record<string, string> = { ...baseHeaders };
+
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    } else if (!forceRefresh) {
+      console.warn("No auth token available for API request.");
+    }
+
+    return fetch(`${API_BASE}${path}`, { ...init, headers });
+  };
+
+  const response = await attempt(false);
+  if (response.status !== 401) {
+    return response;
+  }
+
+  auditLog.warn("api", "api.auth.retry", {
+    method: init.method ?? "GET",
+    path,
+  });
+  return attempt(true);
+}
+
 export async function request<T>(
   path: string,
   options?: RequestInit,
 ): Promise<T> {
   const method = options?.method || "GET";
   const stopTracking = startTrackedHttpRequest(method, path);
-  const token = await getAuthToken();
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...options?.headers,
-  };
-
-  if (token) {
-    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
-  } else {
-    console.warn("No auth token available for API request.");
-  }
 
   try {
-    const response = await fetch(`${API_BASE}${path}`, {
-      ...options,
-      headers,
-    });
+    const response = await fetchWithAuth(
+      path,
+      { ...options, method },
+      {
+        "Content-Type": "application/json",
+        ...(options?.headers as Record<string, string>),
+      },
+    );
 
     if (!response.ok) {
       let validationErrors;
@@ -97,19 +135,13 @@ export async function uploadRequest<T>(
 ): Promise<T> {
   const method = "POST";
   const stopTracking = startTrackedHttpRequest(method, path);
-  const token = await getAuthToken();
-  const headers: HeadersInit = {};
-
-  if (token) {
-    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
-  }
 
   try {
-    const response = await fetch(`${API_BASE}${path}`, {
-      method: "POST",
-      body: formData,
-      headers,
-    });
+    const response = await fetchWithAuth(
+      path,
+      { method: "POST", body: formData },
+      {},
+    );
 
     if (!response.ok) {
       let validationErrors;
@@ -145,15 +177,9 @@ export async function uploadRequest<T>(
 export async function downloadRequest(path: string): Promise<Blob> {
   const method = "GET";
   const stopTracking = startTrackedHttpRequest(method, path);
-  const token = await getAuthToken();
-  const headers: HeadersInit = {};
-
-  if (token) {
-    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
-  }
 
   try {
-    const response = await fetch(`${API_BASE}${path}`, { headers });
+    const response = await fetchWithAuth(path, {}, {});
 
     if (!response.ok) {
       throw new APIError(response.status, response.statusText);
