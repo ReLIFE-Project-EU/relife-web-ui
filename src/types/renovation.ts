@@ -406,7 +406,7 @@ export interface FinancialResults {
   returnOnInvestment: number; // From pointForecasts.ROI
   paybackTime: number; // From pointForecasts.PBP
   netPresentValue: number; // From pointForecasts.NPV
-  afterRenovationValue: number; // From arv.totalPrice
+  afterRenovationValue: number | null; // From arv.totalPrice; null when ARV is unavailable (e.g. unsupported country)
   // NOTE: For ranges, use riskAssessment.percentiles (actual API data) instead of fake calculations
 }
 

@@ -28,6 +28,7 @@ import {
   type OutputLevel,
 } from "../utils/apiMappings";
 import { applyFundingReduction } from "../utils/financialCalculations";
+import { APIError } from "../types/common";
 import { buildSchemes, mapWireRiskResponse } from "./riskAssessmentAdapter";
 import type {
   ARVRequest,
@@ -94,6 +95,33 @@ export class FinancialService implements IFinancialService {
         epcResolution: response.after.epc_resolution,
       },
     };
+  }
+
+  /**
+   * Best-effort ARV: ARV is a standalone, non-critical metric (not an input to
+   * NPV/IRR/ROI/payback). Some countries are not supported by the ARV model
+   * (e.g. Poland → 400), so a failure here must not abort the financial run.
+   * Returns null and records a warn instead of throwing.
+   */
+  private async tryCalculateARV(
+    request: ARVRequest,
+    auditCtx?: AuditCtx,
+  ): Promise<ARVResult | null> {
+    try {
+      return await this.calculateARV(request);
+    } catch (error) {
+      auditLog.warn(
+        "financial",
+        "financial.arv.skipped",
+        {
+          targetCountry: request.target_country,
+          reason: error instanceof APIError ? `api-${error.status}` : "error",
+          message: error instanceof Error ? error.message : String(error),
+        },
+        auditCtx,
+      );
+      return null;
+    }
   }
 
   /**
@@ -242,7 +270,7 @@ export class FinancialService implements IFinancialService {
           { request: arvRequest as unknown as Record<string, unknown> },
           auditCtx,
         );
-        const arvResult = await this.calculateARV(arvRequest);
+        const arvResult = await this.tryCalculateARV(arvRequest, auditCtx);
 
         results[scenario.id] = {
           arv: arvResult,
@@ -252,7 +280,7 @@ export class FinancialService implements IFinancialService {
           returnOnInvestment: 0,
           paybackTime: 0,
           netPresentValue: 0,
-          afterRenovationValue: arvResult.totalPrice,
+          afterRenovationValue: arvResult?.totalPrice ?? null,
         };
         auditLog.info(
           "financial",
@@ -260,9 +288,9 @@ export class FinancialService implements IFinancialService {
           {
             scenarioId: scenario.id,
             kind: "current",
-            afterRenovationValue: arvResult.totalPrice,
-            arvPricePerSqm: arvResult.pricePerSqm,
-            arvEnergyClass: arvResult.energyClass,
+            afterRenovationValue: arvResult?.totalPrice ?? null,
+            arvPricePerSqm: arvResult?.pricePerSqm,
+            arvEnergyClass: arvResult?.energyClass,
           },
           auditCtx,
         );
@@ -407,7 +435,7 @@ export class FinancialService implements IFinancialService {
 
       // Call APIs in parallel (risk assessment only when savings > 0)
       const [arvResult, riskResult] = await Promise.all([
-        this.calculateARV(arvRequest),
+        this.tryCalculateARV(arvRequest, auditCtx),
         hasSavings ? this.assessRisk(riskRequest) : Promise.resolve(null),
       ]);
 
@@ -422,7 +450,7 @@ export class FinancialService implements IFinancialService {
         returnOnInvestment: riskResult?.pointForecasts.ROI ?? 0,
         paybackTime: riskResult?.pointForecasts.PBP ?? 0,
         netPresentValue: riskResult?.pointForecasts.NPV ?? 0,
-        afterRenovationValue: arvResult.totalPrice,
+        afterRenovationValue: arvResult?.totalPrice ?? null,
         // NOTE: npvRange and paybackTimeRange removed - use actual percentiles from API instead
       };
       results[scenario.id] = scenarioResults;
@@ -438,7 +466,7 @@ export class FinancialService implements IFinancialService {
           returnOnInvestment: scenarioResults.returnOnInvestment,
           paybackTime: scenarioResults.paybackTime,
           afterRenovationValue: scenarioResults.afterRenovationValue,
-          arvEnergyClass: arvResult.energyClass,
+          arvEnergyClass: arvResult?.energyClass,
           riskComputed: riskResult !== null,
           cashFlowTimeline: riskResult?.cashFlowData !== undefined,
           probabilityKeys: riskResult?.probabilities

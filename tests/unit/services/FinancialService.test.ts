@@ -8,6 +8,7 @@ import type {
   ScenarioId,
 } from "../../../src/types/renovation";
 import type { RiskAssessmentRequest } from "../../../src/types/financial";
+import { APIError } from "../../../src/types/common";
 
 const { mockCalculateARV, mockAssessRisk } = vi.hoisted(() => ({
   mockCalculateARV: vi.fn(),
@@ -572,5 +573,41 @@ describe("FinancialService", () => {
         ],
       }),
     );
+  });
+
+  test("ARV failure (unsupported country) degrades gracefully without aborting the run", async () => {
+    // ARV model does not support every country (e.g. Poland -> 400). The
+    // financial run must still complete with all other metrics intact.
+    mockCalculateARV.mockRejectedValue(
+      new APIError(
+        400,
+        "Invalid input parameters: Unknown target_country: 'Poland'",
+      ),
+    );
+
+    const service = new FinancialService();
+
+    const results = await service.calculateForAllScenarios(
+      [currentScenario, renovatedScenario],
+      selfFundedOptions,
+      100,
+      mockEstimation,
+      packageFinancialInputs,
+      { ...mockBuilding, country: "Poland" },
+    );
+
+    // ARV is absent for every scenario, but the run resolved.
+    expect(results["current"].arv).toBeNull();
+    expect(results["current"].afterRenovationValue).toBeNull();
+    expect(results["renovated"].arv).toBeNull();
+    expect(results["renovated"].afterRenovationValue).toBeNull();
+
+    // Risk-derived metrics are still computed from the (working) risk endpoint.
+    expect(mockAssessRisk).toHaveBeenCalledTimes(1);
+    expect(results["renovated"].riskAssessment).not.toBeNull();
+    expect(results["renovated"].netPresentValue).toBe(5000);
+    expect(results["renovated"].returnOnInvestment).toBe(0.25);
+    expect(results["renovated"].paybackTime).toBe(8);
+    expect(results["renovated"].capitalExpenditure).toBe(10000);
   });
 });
