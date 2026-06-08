@@ -1,5 +1,6 @@
 import { AppShell, ScrollArea } from "@mantine/core";
 import {
+  IconBook,
   IconBriefcase,
   IconBuildingEstate,
   IconHome,
@@ -21,6 +22,8 @@ interface NavItem {
 
 const FEEDBACK_FORM_URL =
   "https://share.hsforms.com/1KTWnmHp0RjyvgJ-5yD8NcQ2i2ln";
+
+const WIKI_URL = "https://github.com/ReLIFE-Project-EU/relife-wiki/wiki";
 
 const navigationData: NavItem[] = [
   { label: "Home", icon: IconHome, link: "/" },
@@ -44,6 +47,13 @@ const navigationData: NavItem[] = [
     label: "Home Assistant",
     icon: IconHomeHeart,
     link: "/home-assistant",
+  },
+
+  {
+    label: "Wiki",
+    icon: IconBook,
+    link: WIKI_URL,
+    external: true,
   },
 
   {
