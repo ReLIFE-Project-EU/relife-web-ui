@@ -9,7 +9,7 @@ import {
   rem,
 } from "@mantine/core";
 import { Link } from "react-router-dom";
-import { IconChevronRight } from "@tabler/icons-react";
+import { IconChevronRight, IconExternalLink } from "@tabler/icons-react";
 import classes from "./NavbarLinksGroup.module.css";
 
 interface LinksGroupProps {
@@ -67,6 +67,11 @@ export function LinksGroup({
               </ThemeIcon>
               <Box ml="md">{label}</Box>
             </Box>
+            <IconExternalLink
+              stroke={1.5}
+              style={{ width: rem(16), height: rem(16) }}
+              color="var(--mantine-color-dimmed)"
+            />
           </Group>
         </UnstyledButton>
       );
