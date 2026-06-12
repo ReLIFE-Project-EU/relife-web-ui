@@ -43,6 +43,9 @@ export const RSE_MVP_PACKAGE_MEASURE_IDS = {
 export const RSE_MVP_COST_SOURCE = "mvp-assumption";
 export const RSE_SERVICE_API_COST_SOURCE = "service-api";
 
+export const RSE_MVP_COST_SOURCE_NOTE =
+  "Temporary planning assumption; authoritative CAPEX and maintenance must come from ReLIFE service/data APIs later.";
+
 export const RSE_COST_SOURCES = [
   RSE_MVP_COST_SOURCE,
   RSE_SERVICE_API_COST_SOURCE,

@@ -1,6 +1,7 @@
 import type { ArchetypeDetails } from "../../../types/archetype";
 import { pvKwpFromFloorArea } from "../../../services/pvConfig";
 import {
+  RSE_MVP_COST_SOURCE_NOTE,
   RSE_MVP_MEASURE_COST_ASSUMPTIONS,
   RSE_MVP_PACKAGE_MEASURE_IDS,
   RSE_PACKAGE_IDS,
@@ -48,8 +49,7 @@ export const RSE_PACKAGES: Record<RSEPackageId, RSEPackageDefinition> =
             capex: assumption.capex,
             annualMaintenance: assumption.annualMaintenance,
             source: "mvp-assumption" as const,
-            sourceNote:
-              "Temporary planning assumption; authoritative CAPEX and maintenance must come from ReLIFE service/data APIs later.",
+            sourceNote: RSE_MVP_COST_SOURCE_NOTE,
           };
         })
         .filter((item) => item !== undefined);

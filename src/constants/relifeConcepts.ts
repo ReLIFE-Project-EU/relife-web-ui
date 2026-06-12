@@ -258,7 +258,7 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     id: "rse-energy-saved-per-eur",
     label: "System energy saved per euro",
     description:
-      "Annual delivered system energy savings divided by total renovation cost. A higher value means more supplier energy is saved for each euro invested.",
+      "Annual delivered system energy savings divided by total upfront investment (CAPEX, excluding maintenance). A higher value means more supplier energy is saved for each euro invested.",
     unit: "kWh/€",
   },
   "rse-total-energy-savings": {
@@ -272,7 +272,7 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     id: "rse-co2-reduced-per-eur",
     label: "CO₂ reduced per euro",
     description:
-      "Annual CO₂ reduction divided by total renovation cost. A higher value means more emissions are avoided for each euro invested.",
+      "Annual CO₂ reduction divided by total upfront investment (CAPEX, excluding maintenance). A higher value means more emissions are avoided for each euro invested.",
     unit: "t CO₂e/€",
   },
   "rse-total-co2-reduction": {

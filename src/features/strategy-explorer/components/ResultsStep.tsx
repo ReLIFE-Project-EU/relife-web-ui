@@ -24,7 +24,10 @@ import {
   formatNumber,
   formatTonnageCo2,
 } from "../../../utils/formatters";
-import { RSE_UNAVAILABLE_REASONS } from "../constants";
+import {
+  RSE_MVP_COST_SOURCE_NOTE,
+  RSE_UNAVAILABLE_REASONS,
+} from "../constants";
 import { useStrategyExplorer } from "../hooks/useStrategyExplorer";
 import { RSE_PACKAGES } from "../services/rsePackageCatalog";
 import type {
@@ -339,6 +342,14 @@ export function ResultsStep() {
             goal={result.request.goal}
           />
           <PackageKpiGrid aggregates={result.packageAggregates} />
+          <Alert
+            color="blue"
+            icon={<IconInfoCircle size={16} />}
+            title="Cost assumptions"
+          >
+            Investment and maintenance figures are not authoritative.{" "}
+            {RSE_MVP_COST_SOURCE_NOTE}
+          </Alert>
         </>
       )}
 
