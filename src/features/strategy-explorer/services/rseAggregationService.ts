@@ -34,15 +34,18 @@ export function aggregatePackage(
 
   let totalBuildings = 0;
   let totalCapexEur = 0;
+  let totalEffectiveCapexEur = 0;
   let totalAnnualMaintenanceEur = 0;
   let totalAnnualEnergySavingsKwh = 0;
   let totalAnnualCo2ReductionTon = 0;
   let aggregateNPV = 0;
   let hasNPV = false;
-  let roiNetProfitEur = 0;
+  let netProfitEur = 0;
   let hasROI = false;
-  let totalPaybackYears = 0;
-  let paybackBuildingCount = 0;
+  const cashFlowContributions: Array<{
+    netByYear: number[];
+    count: number;
+  } | null> = [];
   const perArchetypeOnly: NonNullable<
     RSEPackageAggregate["financialIndicators"]["perArchetypeOnly"]
   > = {};
@@ -61,30 +64,42 @@ export function aggregatePackage(
     const buildingCount = selection.buildingCount;
     totalBuildings += buildingCount;
     totalCapexEur += financial.capexEur * buildingCount;
+    totalEffectiveCapexEur += financial.effectiveCapexEur * buildingCount;
     totalAnnualMaintenanceEur += financial.annualMaintenanceEur * buildingCount;
     totalAnnualEnergySavingsKwh +=
       simulation.annualEnergySavingsKwh * buildingCount;
     totalAnnualCo2ReductionTon +=
       simulation.annualCo2ReductionTon * buildingCount;
 
+    // Summing P50 values is an approximation (the median of a sum is not the
+    // sum of medians), acceptable here because all archetypes share the same
+    // backend macro-scenario distributions.
     if (isFiniteNumber(financial.pointForecasts.NPV)) {
       aggregateNPV += financial.pointForecasts.NPV * buildingCount;
       hasNPV = true;
     }
 
+    // The backend computes ROI against the effective (post-incentive) CAPEX,
+    // so net profit must be reconstructed on the same basis.
     if (
       isFiniteNumber(financial.pointForecasts.ROI) &&
-      financial.capexEur > 0
+      financial.effectiveCapexEur > 0
     ) {
-      roiNetProfitEur +=
-        financial.pointForecasts.ROI * financial.capexEur * buildingCount;
+      netProfitEur +=
+        financial.pointForecasts.ROI *
+        financial.effectiveCapexEur *
+        buildingCount;
       hasROI = true;
     }
 
-    if (isFiniteNumber(financial.pointForecasts.PBP)) {
-      totalPaybackYears += financial.pointForecasts.PBP * buildingCount;
-      paybackBuildingCount += buildingCount;
-    }
+    cashFlowContributions.push(
+      financial.cashFlow
+        ? {
+            netByYear: financial.cashFlow.annualNetCashFlowEur,
+            count: buildingCount,
+          }
+        : null,
+    );
 
     appendPerArchetypeMetric(
       perArchetypeOnly,
@@ -110,24 +125,25 @@ export function aggregatePackage(
     packageId: input.packageId,
     totalBuildings,
     totalCapexEur,
+    totalEffectiveCapexEur,
     totalAnnualMaintenanceEur,
     totalAnnualEnergySavingsKwh,
     totalAnnualCo2ReductionTon,
-    energySavedPerEur: divideOrZero(totalAnnualEnergySavingsKwh, totalCapexEur),
+    energySavedPerEur: divideOrZero(
+      totalAnnualEnergySavingsKwh,
+      totalEffectiveCapexEur,
+    ),
     co2ReducedTonPerEur: divideOrZero(
       totalAnnualCo2ReductionTon,
-      totalCapexEur,
+      totalEffectiveCapexEur,
     ),
     financialIndicators: {
       aggregateNPV: hasNPV ? aggregateNPV : undefined,
       aggregateROI:
-        hasROI && totalCapexEur > 0
-          ? roiNetProfitEur / totalCapexEur
+        hasROI && totalEffectiveCapexEur > 0
+          ? netProfitEur / totalEffectiveCapexEur
           : undefined,
-      aggregatePaybackYears:
-        paybackBuildingCount > 0
-          ? totalPaybackYears / paybackBuildingCount
-          : undefined,
+      aggregatePaybackYears: computePooledPaybackYears(cashFlowContributions),
       perArchetypeOnly: hasPerArchetypeMetrics(perArchetypeOnly)
         ? perArchetypeOnly
         : undefined,
@@ -135,9 +151,12 @@ export function aggregatePackage(
   };
 
   if (input.goal.kind === "financial") {
+    // Budget fit compares against the post-incentive cost. Open product
+    // question for when incentives become user-facing: if the subsidy draws
+    // from the same budget the user entered, the gross CAPEX would apply.
     const equivalent = divideOrZero(
       totalBuildings * input.goal.maxBudgetEur,
-      totalCapexEur,
+      totalEffectiveCapexEur,
     );
     aggregate.renovatableBuildingEquivalent = Math.min(
       totalBuildings,
@@ -149,6 +168,65 @@ export function aggregatePackage(
   }
 
   return aggregate;
+}
+
+/**
+ * Package payback from the pooled cash-flow series: per-archetype P50 net
+ * cash flows are scaled by building count and summed, then the break-even
+ * point is interpolated linearly within the break-even year (same convention
+ * as the backend PBP). Averaging per-archetype payback periods would weight
+ * buildings instead of euros and silently drop never-breaking-even
+ * archetypes, so it is deliberately avoided here.
+ *
+ * Returns `undefined` when any archetype lacks a cash-flow series or the
+ * pooled series never breaks even; ranking then falls back to its
+ * invalid-payback handling.
+ */
+function computePooledPaybackYears(
+  contributions: Array<{ netByYear: number[]; count: number } | null>,
+): number | undefined {
+  if (contributions.length === 0) {
+    return undefined;
+  }
+  const series: Array<{ netByYear: number[]; count: number }> = [];
+  for (const contribution of contributions) {
+    if (contribution === null) {
+      return undefined;
+    }
+    series.push(contribution);
+  }
+
+  const yearCount = series[0].netByYear.length;
+  if (
+    yearCount < 2 ||
+    series.some((entry) => entry.netByYear.length !== yearCount)
+  ) {
+    return undefined;
+  }
+
+  const pooled = new Array<number>(yearCount).fill(0);
+  for (const entry of series) {
+    for (let year = 0; year < yearCount; year++) {
+      pooled[year] += entry.netByYear[year] * entry.count;
+    }
+  }
+
+  const investment = -pooled[0];
+  if (investment <= 0) {
+    return 0;
+  }
+
+  let cumulative = 0;
+  for (let year = 1; year < yearCount; year++) {
+    const previous = cumulative;
+    cumulative += pooled[year];
+    if (cumulative >= investment) {
+      const flow = pooled[year];
+      return flow > 0 ? year - 1 + (investment - previous) / flow : year;
+    }
+  }
+
+  return undefined;
 }
 
 function appendPerArchetypeMetric(

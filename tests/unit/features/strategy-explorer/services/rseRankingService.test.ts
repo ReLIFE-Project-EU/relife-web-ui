@@ -13,6 +13,7 @@ function makeAggregate(
     packageId,
     totalBuildings: 10,
     totalCapexEur: 100_000,
+    totalEffectiveCapexEur: 100_000,
     totalAnnualMaintenanceEur: 1_000,
     totalAnnualEnergySavingsKwh: 10_000,
     totalAnnualCo2ReductionTon: 2,

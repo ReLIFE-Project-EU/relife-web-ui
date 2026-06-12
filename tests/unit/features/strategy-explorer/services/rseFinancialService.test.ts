@@ -111,7 +111,7 @@ describe("computeFinancials", () => {
   });
 
   test("stays equity-only and folds the upfront incentive into CAPEX", async () => {
-    await computeFinancials({
+    const result = await computeFinancials({
       archetype: {
         country: "IT",
         category: "Residential",
@@ -132,6 +132,9 @@ describe("computeFinancials", () => {
     expect(request.schemes).toEqual([{ scheme_type: "equity" }]);
     // 22000 gross * (1 - 0.10) = 19800 effective CAPEX.
     expect(request.capex).toBe(19_800);
+    // The result carries both bases so display and math cannot diverge.
+    expect(result.capexEur).toBe(22_000);
+    expect(result.effectiveCapexEur).toBe(19_800);
   });
 
   test("returns an unavailable result for non-positive energy savings without calling the API", async () => {
@@ -152,6 +155,8 @@ describe("computeFinancials", () => {
         status: "unavailable",
         unavailableReason: "non-positive-energy-savings",
         annualEnergySavingsKwh: 0,
+        capexEur: 22_000,
+        effectiveCapexEur: 22_000,
         pointForecasts: {},
       }),
     );
@@ -179,6 +184,7 @@ describe("computeFinancials", () => {
     });
     expect(result.packageId).toBe("envelope");
     expect(result.capexEur).toBe(22_000);
+    expect(result.effectiveCapexEur).toBe(22_000);
     expect(result.annualMaintenanceEur).toBe(0);
     expect(result.annualEnergySavingsKwh).toBe(5_000);
     expect(result.status).toBe("available");
@@ -195,6 +201,12 @@ describe("computeFinancials", () => {
     expect(result.probabilities?.["Pr(NPV > 0)"]).toBe(0.92);
     expect(result.percentiles?.NPV?.P10).toBe(5_000);
     expect(result.percentiles?.NPV?.P90).toBe(30_000);
+
+    // The P50 net cash-flow series is kept for pooled aggregate payback.
+    expect(result.cashFlow).toEqual({
+      years: [0, 1, 2],
+      annualNetCashFlowEur: [-1_000, 600, 600],
+    });
   });
 
   test("defaults missing indicators to zero and omits their percentiles", async () => {

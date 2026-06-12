@@ -60,15 +60,21 @@ function makeFinancial(
   name: string,
   capexEur: number,
   pointForecasts: RSEFinancialResult["pointForecasts"],
+  options: {
+    effectiveCapexEur?: number;
+    cashFlow?: RSEFinancialResult["cashFlow"];
+  } = {},
 ): RSEFinancialResult {
   return {
     archetype: { country: "IT", category: "Residential", name },
     packageId: "envelope",
     capexEur,
+    effectiveCapexEur: options.effectiveCapexEur ?? capexEur,
     annualMaintenanceEur: name === "A" ? 10 : 20,
     annualEnergySavingsKwh: name === "A" ? 1_000 : 2_000,
     status: "available",
     pointForecasts,
+    cashFlow: options.cashFlow,
   };
 }
 
@@ -102,6 +108,7 @@ describe("aggregatePackage", () => {
 
     expect(result.totalBuildings).toBe(4);
     expect(result.totalCapexEur).toBe(1_000);
+    expect(result.totalEffectiveCapexEur).toBe(1_000);
     expect(result.totalAnnualMaintenanceEur).toBe(70);
     expect(result.totalAnnualEnergySavingsKwh).toBe(7_000);
     expect(result.totalAnnualCo2ReductionTon).toBeCloseTo(1.7);
@@ -146,7 +153,7 @@ describe("aggregatePackage", () => {
     expect(result.renovatableBuildingsWithinBudget).toBe(1);
   });
 
-  test("computes aggregate payback years as building-count-weighted average of PBP", () => {
+  test("computes aggregate payback from the pooled cash-flow series, not a building average", () => {
     const result = aggregatePackage({
       packageId: "envelope",
       portfolio: makePortfolio(),
@@ -155,22 +162,117 @@ describe("aggregatePackage", () => {
         makeSimulation("B", 2_000, 0.5),
       ],
       financials: [
-        makeFinancial("A", 100, { IRR: 0.1, PBP: 5, DPP: 6 }),
-        makeFinancial("B", 300, { IRR: 0.2, PBP: 7, DPP: 8 }),
+        // A pays back in 1 year on its own.
+        makeFinancial(
+          "A",
+          100,
+          { IRR: 0.1, PBP: 1, DPP: 2 },
+          {
+            cashFlow: {
+              years: [0, 1, 2, 3],
+              annualNetCashFlowEur: [-100, 100, 100, 100],
+            },
+          },
+        ),
+        // B (3 buildings) pays back in 2.5 years per building.
+        makeFinancial(
+          "B",
+          1_000,
+          { IRR: 0.2, PBP: 2.5, DPP: 3 },
+          {
+            cashFlow: {
+              years: [0, 1, 2, 3],
+              annualNetCashFlowEur: [-1_000, 400, 400, 400],
+            },
+          },
+        ),
       ],
       goal: { kind: "energy" },
     });
 
-    // (5 * 1 + 7 * 3) / 4 = 6.5
-    expect(result.financialIndicators.aggregatePaybackYears).toBeCloseTo(6.5);
+    // Pooled euros: invest 3_100, recover 1_300/year -> 2 + 500/1300 years.
+    // A building-count-weighted average of PBPs would give (1 + 3 * 2.5) / 4
+    // = 2.125 — euros must dominate, not building counts.
+    expect(result.financialIndicators.aggregatePaybackYears).toBeCloseTo(
+      2 + 500 / 1_300,
+    );
+    expect(result.financialIndicators.aggregatePaybackYears).not.toBeCloseTo(
+      2.125,
+    );
     expect(result.financialIndicators.perArchetypeOnly?.IRR).toEqual({
       "IT\u001fResidential\u001fA": 0.1,
       "IT\u001fResidential\u001fB": 0.2,
     });
     expect(result.financialIndicators.perArchetypeOnly?.PBP).toEqual({
-      "IT\u001fResidential\u001fA": 5,
-      "IT\u001fResidential\u001fB": 7,
+      "IT\u001fResidential\u001fA": 1,
+      "IT\u001fResidential\u001fB": 2.5,
     });
+  });
+
+  test("a never-breaking-even archetype keeps weighing on aggregate payback", () => {
+    const result = aggregatePackage({
+      packageId: "envelope",
+      portfolio: makePortfolio(),
+      simulations: [
+        makeSimulation("A", 1_000, 0.2),
+        makeSimulation("B", 2_000, 0.5),
+      ],
+      financials: [
+        makeFinancial(
+          "A",
+          100,
+          { PBP: 1 },
+          {
+            cashFlow: {
+              years: [0, 1, 2, 3],
+              annualNetCashFlowEur: [-100, 100, 100, 100],
+            },
+          },
+        ),
+        // B never recovers its cost; the pooled series must not break even.
+        makeFinancial(
+          "B",
+          1_000,
+          {},
+          {
+            cashFlow: {
+              years: [0, 1, 2, 3],
+              annualNetCashFlowEur: [-1_000, 0, 0, 0],
+            },
+          },
+        ),
+      ],
+      goal: { kind: "energy" },
+    });
+
+    expect(result.financialIndicators.aggregatePaybackYears).toBeUndefined();
+  });
+
+  test("uses post-incentive CAPEX for €-ratios, budget fit, and aggregate ROI", () => {
+    const result = aggregatePackage({
+      packageId: "envelope",
+      portfolio: makePortfolio(),
+      simulations: [
+        makeSimulation("A", 1_000, 0.2),
+        makeSimulation("B", 2_000, 0.5),
+      ],
+      financials: [
+        makeFinancial("A", 100, { ROI: 0.5 }, { effectiveCapexEur: 90 }),
+        makeFinancial("B", 300, { ROI: 0.1 }, { effectiveCapexEur: 270 }),
+      ],
+      goal: { kind: "financial", maxBudgetEur: 450 },
+    });
+
+    expect(result.totalCapexEur).toBe(1_000);
+    expect(result.totalEffectiveCapexEur).toBe(900);
+    expect(result.energySavedPerEur).toBeCloseTo(7_000 / 900);
+    expect(result.co2ReducedTonPerEur).toBeCloseTo(1.7 / 900);
+    // Backend ROI is relative to effective CAPEX, so net profit is
+    // 0.5 * 90 + 0.1 * 270 * 3 = 126, and 126 / 900 = 0.14.
+    expect(result.financialIndicators.aggregateROI).toBeCloseTo(0.14);
+    // Budget fit: 4 buildings * 450 EUR / 900 EUR effective = 2.
+    expect(result.renovatableBuildingEquivalent).toBe(2);
+    expect(result.renovatableBuildingsWithinBudget).toBe(2);
   });
 
   test("uses safe zero ratios when CAPEX is zero", () => {
@@ -226,7 +328,7 @@ describe("aggregatePackage", () => {
     expect(result.financialIndicators.aggregateROI).toBeUndefined();
   });
 
-  test("returns undefined aggregatePaybackYears when all PBPs are invalid", () => {
+  test("returns undefined aggregatePaybackYears when any cash-flow series is missing", () => {
     const result = aggregatePackage({
       packageId: "envelope",
       portfolio: makePortfolio(),
@@ -235,8 +337,18 @@ describe("aggregatePackage", () => {
         makeSimulation("B", 2_000, 0.5),
       ],
       financials: [
-        makeFinancial("A", 100, { ROI: 0.5 }),
-        makeFinancial("B", 300, { ROI: 0.1 }),
+        makeFinancial(
+          "A",
+          100,
+          { ROI: 0.5, PBP: 1 },
+          {
+            cashFlow: {
+              years: [0, 1, 2],
+              annualNetCashFlowEur: [-100, 100, 100],
+            },
+          },
+        ),
+        makeFinancial("B", 300, { ROI: 0.1, PBP: 2 }),
       ],
       goal: { kind: "energy" },
     });

@@ -61,11 +61,21 @@ export async function computeFinancials(
     input.details,
   );
 
+  // Fold the upfront incentive into CAPEX (the new contract has no incentive
+  // fields). RSE is always self-funded, so the scheme is always equity. The
+  // effective value is the basis of every indicator the API returns; the
+  // gross value stays for display.
+  const effectiveCapexEur = Math.max(
+    0,
+    capexEur * (1 - assumptions.upfrontIncentivePercentage / 100),
+  );
+
   if (input.annualEnergySavingsKwh <= 0) {
     return {
       archetype: input.archetype,
       packageId: input.packageId,
       capexEur,
+      effectiveCapexEur,
       annualMaintenanceEur,
       annualEnergySavingsKwh: input.annualEnergySavingsKwh,
       status: "unavailable",
@@ -76,16 +86,10 @@ export async function computeFinancials(
     };
   }
 
-  // Fold the upfront incentive into CAPEX (the new contract has no incentive
-  // fields). RSE is always self-funded, so the scheme is always equity.
-  const effectiveCapex = Math.max(
-    0,
-    capexEur * (1 - assumptions.upfrontIncentivePercentage / 100),
-  );
   const { schemes } = buildSchemes({ loanAmount: 0, loanTerm: 0 });
 
   const riskRequest: RiskAssessmentRequest = {
-    capex: effectiveCapex,
+    capex: effectiveCapexEur,
     annual_maintenance_cost: annualMaintenanceEur,
     annual_energy_savings: input.annualEnergySavingsKwh,
     project_lifetime: assumptions.projectLifetimeYears,
@@ -99,6 +103,7 @@ export async function computeFinancials(
   return normalizeRiskResponse(
     input,
     capexEur,
+    effectiveCapexEur,
     annualMaintenanceEur,
     response,
     assumptions.projectLifetimeYears,
@@ -118,6 +123,7 @@ export async function computeFinancialsBatch(
 function normalizeRiskResponse(
   input: RSEFinancialServiceInput,
   capexEur: number,
+  effectiveCapexEur: number,
   annualMaintenanceEur: number,
   response: RiskAssessmentResponse,
   projectLifetime: number,
@@ -132,6 +138,7 @@ function normalizeRiskResponse(
     archetype: input.archetype,
     packageId: input.packageId,
     capexEur,
+    effectiveCapexEur,
     annualMaintenanceEur,
     annualEnergySavingsKwh: input.annualEnergySavingsKwh,
     status: "available",
@@ -144,5 +151,11 @@ function normalizeRiskResponse(
     },
     percentiles: mapped.percentiles,
     probabilities: mapped.probabilities,
+    cashFlow: mapped.cashFlowData?.annual_net_cash_flow
+      ? {
+          years: mapped.cashFlowData.years,
+          annualNetCashFlowEur: mapped.cashFlowData.annual_net_cash_flow,
+        }
+      : undefined,
   };
 }

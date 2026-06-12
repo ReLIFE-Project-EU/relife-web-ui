@@ -204,7 +204,13 @@ export interface RSEFinancialAssumptions {
 export interface RSEFinancialResult {
   archetype: RSEArchetypeRef;
   packageId: RSEPackageId;
+  /** Gross per-building CAPEX before incentives (display basis). */
   capexEur: number;
+  /**
+   * Per-building CAPEX after the upfront incentive — the value actually sent
+   * to the Financial API, so the basis of every point forecast below.
+   */
+  effectiveCapexEur: number;
   annualMaintenanceEur: number;
   annualEnergySavingsKwh: number;
   status: "available" | "unavailable";
@@ -219,6 +225,15 @@ export interface RSEFinancialResult {
   };
   percentiles?: RiskAssessmentPercentiles;
   probabilities?: Record<string, number>;
+  /**
+   * P50 per-building net cash flow by year; index 0 is the negative effective
+   * CAPEX. Used to build the pooled package cash-flow series for aggregate
+   * payback.
+   */
+  cashFlow?: {
+    years: number[];
+    annualNetCashFlowEur: number[];
+  };
 }
 
 export interface RSEPackageAggregate {
@@ -226,7 +241,10 @@ export interface RSEPackageAggregate {
   totalBuildings: number;
   renovatableBuildingsWithinBudget?: number;
   renovatableBuildingEquivalent?: number;
+  /** Gross investment before incentives (display basis). */
   totalCapexEur: number;
+  /** Post-incentive investment; basis of €-ratios, budget fit, and ROI. */
+  totalEffectiveCapexEur: number;
   totalAnnualMaintenanceEur: number;
   totalAnnualEnergySavingsKwh: number;
   totalAnnualCo2ReductionTon: number;
