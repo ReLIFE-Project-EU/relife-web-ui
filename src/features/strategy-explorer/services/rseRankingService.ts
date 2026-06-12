@@ -224,7 +224,7 @@ function packageOrder(packageId: RSEPackageAggregate["packageId"]): number {
 function explainRanking(goal: RSERenovationGoal): string {
   switch (goal.kind) {
     case "energy":
-      return "Ranks packages by annual delivered system energy saved per euro and total annual delivered system energy savings.";
+      return "Ranks packages by annual primary energy saved per euro and total annual primary energy savings.";
     case "emission":
       return "Ranks packages by annual CO2 reduction per euro and total annual CO2 reduction.";
     case "financial":

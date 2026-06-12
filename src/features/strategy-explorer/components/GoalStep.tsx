@@ -32,7 +32,7 @@ const GOAL_OPTIONS: Array<{
     kind: "energy",
     label: "Energy efficiency",
     description:
-      "Prioritize delivered system energy savings and energy saved per euro invested.",
+      "Prioritize primary energy savings and primary energy saved per euro invested.",
     icon: IconBolt,
   },
   {

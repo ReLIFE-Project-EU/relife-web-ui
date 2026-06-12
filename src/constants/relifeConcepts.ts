@@ -256,16 +256,16 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
   },
   "rse-energy-saved-per-eur": {
     id: "rse-energy-saved-per-eur",
-    label: "System energy saved per euro",
+    label: "Primary energy saved per euro",
     description:
-      "Annual delivered system energy savings divided by total upfront investment (CAPEX, excluding maintenance). A higher value means more supplier energy is saved for each euro invested.",
+      "Annual primary energy savings (UNI EP_total) divided by total upfront investment (CAPEX, excluding maintenance). Carrier-neutral so envelope and fuel-switch packages compare fairly.",
     unit: "kWh/€",
   },
   "rse-total-energy-savings": {
     id: "rse-total-energy-savings",
-    label: "Total annual system energy savings",
+    label: "Total annual primary energy savings",
     description:
-      "Aggregate delivered system energy savings across the entire building stock for one renovation package.",
+      "Aggregate primary energy savings (UNI EP_total) across the entire building stock for one renovation package.",
     unit: "kWh/year",
   },
   "rse-co2-reduced-per-eur": {

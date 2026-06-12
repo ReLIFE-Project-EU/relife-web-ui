@@ -91,13 +91,13 @@ export const RANKING_COLUMNS: Record<
   energy: [
     {
       key: "energySavedPerEur",
-      label: "System kWh saved / €",
+      label: "Primary kWh saved / €",
       formatter: (v) => `${formatDecimal(v)} kWh/€`,
       conceptId: "rse-energy-saved-per-eur",
     },
     {
       key: "totalAnnualEnergySavingsKwh",
-      label: "Total system savings",
+      label: "Total primary energy savings",
       formatter: formatEnergy,
       conceptId: "rse-total-energy-savings",
     },
@@ -164,11 +164,11 @@ export const SCORE_COMPONENT_META: Record<
   { label: string; conceptId?: ConceptId }
 > = {
   energySavedPerEur: {
-    label: "Energy saved per €",
+    label: "Primary energy saved per €",
     conceptId: "rse-energy-saved-per-eur",
   },
   totalAnnualEnergySavingsKwh: {
-    label: "Total energy savings",
+    label: "Total primary energy savings",
     conceptId: "rse-total-energy-savings",
   },
   co2ReducedTonPerEur: {
@@ -249,16 +249,16 @@ export function heroMetricsFor(
   if (goal.kind === "energy") {
     return [
       {
-        label: "Energy saved per €",
+        label: "Primary energy saved per €",
         value: `${formatDecimal(agg.energySavedPerEur)} kWh/€`,
-        hint: "per euro invested",
+        hint: "primary energy per euro invested",
         conceptId: "rse-energy-saved-per-eur",
         icon: IconBolt,
       },
       {
-        label: "Total energy savings",
+        label: "Total primary energy savings",
         value: formatEnergy(agg.totalAnnualEnergySavingsKwh),
-        hint: "per year, across portfolio",
+        hint: "primary energy per year, across portfolio",
         conceptId: "rse-total-energy-savings",
         icon: IconChartBar,
       },
