@@ -1,4 +1,5 @@
 import {
+  Badge,
   Box,
   Card,
   Checkbox,
@@ -18,6 +19,8 @@ import {
 import { useRSEWorkflow } from "../hooks/useRSEWorkflow";
 import { RSE_PACKAGES } from "../services/rsePackageCatalog";
 import type { RSEPackageId } from "../types";
+import { RSE_MEASURE_LABELS } from "./results/rseResultsVm";
+import classes from "./StrategySteps.module.css";
 
 export function PackagesStep() {
   const { state, dispatch } = useStrategyExplorer();
@@ -49,7 +52,8 @@ export function PackagesStep() {
           Renovation Packages
         </Title>
         <Text c="dimmed" size="sm">
-          Select the packages to compare across your portfolio.
+          Select the packages to compare across your portfolio. They are
+          compared head-to-head in the results.
         </Text>
       </Box>
 
@@ -68,13 +72,7 @@ export function PackagesStep() {
                 withBorder
                 radius="md"
                 p="md"
-                bg={isSelected ? "blue.0" : "white"}
-                style={{
-                  borderColor: isSelected
-                    ? "var(--mantine-color-blue-7)"
-                    : undefined,
-                  borderWidth: isSelected ? 2 : 1,
-                }}
+                className={`${classes.selectCard} ${isSelected ? classes.on : ""}`}
               >
                 <Group justify="space-between" align="center">
                   <Text fw={600}>{pkg.label}</Text>
@@ -84,9 +82,21 @@ export function PackagesStep() {
                     onClick={(e) => e.stopPropagation()}
                   />
                 </Group>
-                <Text size="sm" c="dimmed" mt={4}>
-                  {pkg.measureIds.length} measures
-                </Text>
+                <Group gap={4} mt="sm">
+                  {pkg.measureIds.map((measureId) => (
+                    <Badge
+                      key={measureId}
+                      variant="light"
+                      color="gray"
+                      radius="sm"
+                      size="sm"
+                      tt="none"
+                      fw={500}
+                    >
+                      {RSE_MEASURE_LABELS[measureId]}
+                    </Badge>
+                  ))}
+                </Group>
               </Card>
             </UnstyledButton>
           );

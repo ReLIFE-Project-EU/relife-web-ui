@@ -43,6 +43,7 @@ import {
 } from "../hooks/useStrategyExplorer";
 import { archetypePortfolioService } from "../services/archetypePortfolioService";
 import type { RSEArchetypeRef, RSEPortfolioDefinition } from "../types";
+import classes from "./StrategySteps.module.css";
 
 interface PortfolioRow {
   id: number;
@@ -199,6 +200,15 @@ export function PortfolioStep() {
     }
   };
 
+  const completedSelections = rows.filter(
+    (row) => row.country && row.category && row.name,
+  ).length;
+  const totalBuildings = rows.reduce(
+    (sum, row) =>
+      sum + (typeof row.buildingCount === "number" ? row.buildingCount : 0),
+    0,
+  );
+
   return (
     <Stack gap="xl">
       <Box>
@@ -216,85 +226,103 @@ export function PortfolioStep() {
         const selectedArchetype = findSelectedArchetype(row);
 
         return (
-          <Stack key={row.id} gap="xs">
-            <Group gap="sm" align="flex-end" wrap="wrap">
-              <Select
-                label="Country"
-                placeholder="Select country"
-                data={countries}
-                value={row.country}
-                onChange={(value) =>
-                  updateRow(row.id, { country: value ?? "" })
-                }
-                style={{ minWidth: 140 }}
-              />
-              <Select
-                label="Category"
-                placeholder="Select category"
-                data={getCategories(row.country)}
-                value={row.category}
-                onChange={(value) =>
-                  updateRow(row.id, { category: value ?? "" })
-                }
-                disabled={!row.country}
-                style={{ minWidth: 180 }}
-              />
-              <Select
-                label="Archetype"
-                placeholder="Select archetype"
-                data={getArchetypeOptions(row.country, row.category)}
-                value={row.name}
-                onChange={(value) => updateRow(row.id, { name: value ?? "" })}
-                disabled={!row.category}
-                searchable
-                nothingFoundMessage="No archetypes match your search"
-                style={{ minWidth: 280 }}
-              />
-              <NumberInput
-                label="Buildings"
-                placeholder="Count"
-                value={row.buildingCount}
-                onChange={(val) =>
-                  updateRow(row.id, {
-                    buildingCount: typeof val === "number" ? val : "",
-                  })
-                }
-                min={1}
-                step={1}
-                style={{ minWidth: 100 }}
-              />
-              <Button
-                variant="subtle"
-                color="red"
-                onClick={() => removeRow(row.id)}
-                disabled={rows.length <= 1}
-                aria-label="Remove archetype"
-              >
-                <IconTrash size={16} />
-              </Button>
-            </Group>
+          <Card
+            key={row.id}
+            withBorder
+            radius="md"
+            p="md"
+            className={classes.rowCard}
+          >
+            <Stack gap="xs">
+              <Group gap="sm" align="flex-end" wrap="wrap">
+                <Select
+                  label="Country"
+                  placeholder="Select country"
+                  data={countries}
+                  value={row.country}
+                  onChange={(value) =>
+                    updateRow(row.id, { country: value ?? "" })
+                  }
+                  style={{ minWidth: 140 }}
+                />
+                <Select
+                  label="Category"
+                  placeholder="Select category"
+                  data={getCategories(row.country)}
+                  value={row.category}
+                  onChange={(value) =>
+                    updateRow(row.id, { category: value ?? "" })
+                  }
+                  disabled={!row.country}
+                  style={{ minWidth: 180 }}
+                />
+                <Select
+                  label="Archetype"
+                  placeholder="Select archetype"
+                  data={getArchetypeOptions(row.country, row.category)}
+                  value={row.name}
+                  onChange={(value) => updateRow(row.id, { name: value ?? "" })}
+                  disabled={!row.category}
+                  searchable
+                  nothingFoundMessage="No archetypes match your search"
+                  style={{ minWidth: 280 }}
+                />
+                <NumberInput
+                  label="Buildings"
+                  placeholder="Count"
+                  value={row.buildingCount}
+                  onChange={(val) =>
+                    updateRow(row.id, {
+                      buildingCount: typeof val === "number" ? val : "",
+                    })
+                  }
+                  min={1}
+                  step={1}
+                  style={{ minWidth: 100 }}
+                />
+                <Button
+                  variant="subtle"
+                  color="red"
+                  onClick={() => removeRow(row.id)}
+                  disabled={rows.length <= 1}
+                  aria-label="Remove archetype"
+                >
+                  <IconTrash size={16} />
+                </Button>
+              </Group>
 
-            {selectedArchetype ? (
-              <SelectedArchetypeCard
-                key={archetypeKey(selectedArchetype)}
-                archetype={selectedArchetype}
-                label={getArchetypeSelectionLabel(
-                  selectedArchetype,
-                  archetypeSelectionLabels,
-                )}
-              />
-            ) : null}
-          </Stack>
+              {selectedArchetype ? (
+                <SelectedArchetypeCard
+                  key={archetypeKey(selectedArchetype)}
+                  archetype={selectedArchetype}
+                  label={getArchetypeSelectionLabel(
+                    selectedArchetype,
+                    archetypeSelectionLabels,
+                  )}
+                />
+              ) : null}
+            </Stack>
+          </Card>
         );
       })}
 
-      <Button
-        variant="light"
-        leftSection={<IconPlus size={16} />}
-        onClick={addRow}
-      >
-        Add archetype
-      </Button>
+      <Group justify="space-between" align="center">
+        <Button
+          variant="light"
+          leftSection={<IconPlus size={16} />}
+          onClick={addRow}
+        >
+          Add archetype
+        </Button>
+        {completedSelections > 0 ? (
+          <Badge variant="light" color="relife.7" size="lg" radius="sm">
+            {completedSelections}{" "}
+            {completedSelections === 1 ? "archetype" : "archetypes"} ·{" "}
+            {formatNumber(totalBuildings)}{" "}
+            {totalBuildings === 1 ? "building" : "buildings"}
+          </Badge>
+        ) : null}
+      </Group>
 
       <StepNavigation
         currentStep={0}
@@ -342,7 +370,7 @@ function SelectedArchetypeCard({
       <Stack gap="sm">
         <Group justify="space-between" align="flex-start" wrap="nowrap">
           <Group gap="sm" align="flex-start" wrap="nowrap">
-            <ThemeIcon size="lg" variant="light" color="blue">
+            <ThemeIcon size="lg" variant="light" color="relife.7">
               <IconBuildingCommunity size={18} />
             </ThemeIcon>
             <Box style={{ minWidth: 0 }}>
@@ -354,7 +382,7 @@ function SelectedArchetypeCard({
               </Text>
             </Box>
           </Group>
-          <Badge variant="light" color="blue">
+          <Badge variant="light" color="relife.7">
             {formatArchetypeCategoryLabel(archetype.category)}
           </Badge>
         </Group>

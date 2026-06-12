@@ -10,10 +10,11 @@ import {
   Title,
   UnstyledButton,
 } from "@mantine/core";
-import { IconBolt, IconCash, IconLeaf } from "@tabler/icons-react";
+import { IconBolt, IconCash, IconCheck, IconLeaf } from "@tabler/icons-react";
 import { StepNavigation } from "../../../components/shared/StepNavigation";
 import { useStrategyExplorer } from "../hooks/useStrategyExplorer";
 import type { RSERenovationGoal } from "../types";
+import classes from "./StrategySteps.module.css";
 
 const GOAL_OPTIONS: Array<{
   kind: RSERenovationGoal["kind"];
@@ -44,7 +45,12 @@ const GOAL_OPTIONS: Array<{
 
 export function GoalStep() {
   const { state, dispatch } = useStrategyExplorer();
-  const [budget, setBudget] = useState<number | "">("");
+  // Re-seed from context so the budget survives a return visit to this step.
+  const [budget, setBudget] = useState<number | "">(
+    state.goal?.kind === "financial" && state.goal.maxBudgetEur > 0
+      ? state.goal.maxBudgetEur
+      : "",
+  );
 
   const selectedGoal = state.goal;
 
@@ -98,25 +104,19 @@ export function GoalStep() {
                 withBorder
                 radius="md"
                 p="lg"
-                bg={isSelected ? "blue.0" : "white"}
-                style={{
-                  borderColor: isSelected
-                    ? "var(--mantine-color-blue-7)"
-                    : undefined,
-                  borderWidth: isSelected ? 2 : 1,
-                }}
+                className={`${classes.selectCard} ${isSelected ? classes.on : ""}`}
               >
                 <Stack gap="sm">
-                  <Group gap="sm" align="center">
+                  <Group gap="sm" align="center" wrap="nowrap">
                     <ThemeIcon
                       size={36}
                       radius="md"
-                      color={isSelected ? "blue" : "gray"}
+                      color={isSelected ? "relife.7" : "gray"}
                       variant={isSelected ? "filled" : "light"}
                     >
                       <Icon size={20} />
                     </ThemeIcon>
-                    <Box>
+                    <Box style={{ flex: 1, minWidth: 0 }}>
                       <Text fw={600} size="md">
                         {option.label}
                       </Text>
@@ -124,12 +124,24 @@ export function GoalStep() {
                         {option.description}
                       </Text>
                     </Box>
+                    {isSelected ? (
+                      <ThemeIcon
+                        size={22}
+                        radius="xl"
+                        color="relife.7"
+                        variant="filled"
+                      >
+                        <IconCheck size={14} />
+                      </ThemeIcon>
+                    ) : null}
                   </Group>
 
                   {option.kind === "financial" && isSelected && (
                     <NumberInput
-                      label="Maximum budget (EUR)"
+                      label="Maximum budget"
+                      description="Total investment ceiling across the whole building stock."
                       placeholder="e.g. 1,000,000"
+                      prefix="€ "
                       value={budget}
                       onChange={(val) => {
                         const num = typeof val === "number" ? val : "";

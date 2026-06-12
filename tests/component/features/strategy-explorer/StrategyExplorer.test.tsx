@@ -41,6 +41,10 @@ Element.prototype.scrollIntoView = vi.fn();
 // Mocks — factories are hoisted; define data inline inside them.
 // ─────────────────────────────────────────────────────────────────────────────
 
+vi.mock("@mantine/charts", () => ({
+  BarChart: () => null,
+}));
+
 vi.mock(
   "../../../../src/features/strategy-explorer/services/archetypePortfolioService",
   () => ({
@@ -250,5 +254,19 @@ describe("StrategyExplorer integration", () => {
     expect(rankingTable.textContent).toContain("1.3 kg/€");
     expect(rankingTable.textContent).toContain("0.7 kg/€");
     expect(rankingTable.textContent).not.toContain("0.0 t/€");
+
+    const scrollIntoViewMock = vi.mocked(Element.prototype.scrollIntoView);
+    scrollIntoViewMock.mockClear();
+    expect(screen.queryByText("Solar PV")).toBeNull();
+
+    const combinedRankingButton = screen.getAllByRole("button", {
+      name: /combined package/i,
+    })[0];
+    await user.click(combinedRankingButton);
+
+    expect(await screen.findByText("Solar PV")).toBeTruthy();
+    await waitFor(() => {
+      expect(scrollIntoViewMock).toHaveBeenCalled();
+    });
   });
 });

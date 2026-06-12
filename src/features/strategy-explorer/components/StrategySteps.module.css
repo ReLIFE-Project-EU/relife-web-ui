@@ -1,0 +1,33 @@
+/* Shared styles for the RSE input steps: hover/selected states for the
+ * clickable goal and package cards, and the bordered portfolio row cards.
+ * Mirrors the HRA persona-option pattern using theme tokens only. */
+
+.selectCard {
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
+}
+
+.selectCard:hover {
+  border-color: var(--mantine-color-gray-4);
+  background: var(--mantine-color-gray-0);
+}
+
+.selectCard.on {
+  border-color: var(--mantine-color-relife-7);
+  background: var(--mantine-color-relife-0);
+}
+
+.selectCard.on:hover {
+  border-color: var(--mantine-color-relife-7);
+  background: var(--mantine-color-relife-0);
+}
+
+.rowCard {
+  transition: border-color 0.12s;
+}
+
+.rowCard:hover {
+  border-color: var(--mantine-color-gray-4);
+}

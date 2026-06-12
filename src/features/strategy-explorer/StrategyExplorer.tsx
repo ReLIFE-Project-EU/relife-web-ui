@@ -250,7 +250,7 @@ function StrategyExplorerWizard() {
             label="Portfolio"
             description="Select archetypes"
             icon={<IconBuildingCommunity size={18} />}
-            color={canAccessStep(0) ? "blue" : "gray"}
+            color={canAccessStep(0) ? "relife" : "gray"}
           >
             {currentStep === 0 && <PortfolioStep />}
           </Stepper.Step>
@@ -259,7 +259,7 @@ function StrategyExplorerWizard() {
             label="Goal"
             description="Choose objective"
             icon={<IconChartAreaLine size={18} />}
-            color={canAccessStep(1) ? "blue" : "gray"}
+            color={canAccessStep(1) ? "relife" : "gray"}
           >
             {currentStep === 1 && <GoalStep />}
           </Stepper.Step>
@@ -269,7 +269,7 @@ function StrategyExplorerWizard() {
             description="Compare strategies"
             icon={<IconPresentation size={18} />}
             loading={state.isRunningWorkflow}
-            color={canAccessStep(2) ? "blue" : "gray"}
+            color={canAccessStep(2) ? "relife" : "gray"}
           >
             {currentStep === 2 && <PackagesStep />}
           </Stepper.Step>
@@ -278,7 +278,7 @@ function StrategyExplorerWizard() {
             label="Results"
             description="View rankings"
             icon={<IconChartBar size={18} />}
-            color={canAccessStep(3) ? "blue" : "gray"}
+            color={canAccessStep(3) ? "relife" : "gray"}
           >
             {currentStep === 3 && <ResultsStep />}
           </Stepper.Step>
