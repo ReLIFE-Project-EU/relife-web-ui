@@ -94,7 +94,7 @@ vi.mock(
             },
           ],
         },
-        goal: { kind: "energy" },
+        goal: { kind: "emission" },
         packageIds: ["envelope", "combined"],
         financialAssumptions: {
           projectLifetimeYears: 20,
@@ -115,7 +115,7 @@ vi.mock(
           totalAnnualEnergySavingsKwh: 50_000,
           totalAnnualCo2ReductionTon: 10,
           energySavedPerEur: 0.25,
-          co2ReducedTonPerEur: 0.00005,
+          co2ReducedTonPerEur: 0.00071,
           financialIndicators: { aggregateNPV: 50_000, aggregateROI: 0.25 },
         },
         {
@@ -127,7 +127,7 @@ vi.mock(
           totalAnnualEnergySavingsKwh: 30_000,
           totalAnnualCo2ReductionTon: 6,
           energySavedPerEur: 0.3,
-          co2ReducedTonPerEur: 0.00006,
+          co2ReducedTonPerEur: 0.0013,
           financialIndicators: { aggregateNPV: 30_000, aggregateROI: 0.3 },
         },
       ],
@@ -137,22 +137,22 @@ vi.mock(
           rank: 1,
           score: 0.95,
           scoreComponents: {
-            energySavedPerEur: 0.5,
-            totalAnnualEnergySavingsKwh: 0.45,
+            co2ReducedTonPerEur: 0.5,
+            totalAnnualCo2ReductionTon: 0.45,
           },
           explanation:
-            "Ranks packages by annual energy saved per euro and total annual energy savings.",
+            "Ranks packages by annual CO₂ reduction per euro and total annual CO₂ reduction.",
         },
         {
           packageId: "combined",
           rank: 2,
           score: 0.85,
           scoreComponents: {
-            energySavedPerEur: 0.45,
-            totalAnnualEnergySavingsKwh: 0.4,
+            co2ReducedTonPerEur: 0.45,
+            totalAnnualCo2ReductionTon: 0.4,
           },
           explanation:
-            "Ranks packages by annual energy saved per euro and total annual energy savings.",
+            "Ranks packages by annual CO₂ reduction per euro and total annual CO₂ reduction.",
         },
       ],
       unavailableCombinations: [],
@@ -214,8 +214,8 @@ describe("StrategyExplorer integration", () => {
       expect(screen.getByText(/energy efficiency/i)).toBeTruthy();
     });
 
-    // Select energy goal
-    await user.click(screen.getByText(/energy efficiency/i));
+    // Select emission goal
+    await user.click(screen.getByText(/emission reduction/i));
 
     // Advance to Packages step
     await user.click(screen.getByRole("button", { name: /choose packages/i }));
@@ -246,5 +246,9 @@ describe("StrategyExplorer integration", () => {
     const rankingTable = screen.getByTestId("rse-ranking-table");
     expect(rankingTable.textContent).toContain("1");
     expect(rankingTable.textContent).toContain("2");
+    expect(rankingTable.textContent).toContain("kg CO₂ reduced / €");
+    expect(rankingTable.textContent).toContain("1.3 kg/€");
+    expect(rankingTable.textContent).toContain("0.7 kg/€");
+    expect(rankingTable.textContent).not.toContain("0.0 t/€");
   });
 });

@@ -86,8 +86,8 @@ const RANKING_COLUMNS: Record<RSERenovationGoal["kind"], RankingColumn[]> = {
   emission: [
     {
       key: "co2ReducedTonPerEur",
-      label: "t CO₂ reduced / €",
-      formatter: (v) => `${formatDecimal(v)} t/€`,
+      label: "kg CO₂ reduced / €",
+      formatter: (v) => `${formatDecimal(v * 1000)} kg/€`,
       conceptId: "rse-co2-reduced-per-eur",
     },
     {

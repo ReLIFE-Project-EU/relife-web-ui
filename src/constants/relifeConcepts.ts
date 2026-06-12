@@ -273,7 +273,7 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     label: "CO₂ reduced per euro",
     description:
       "Annual CO₂ reduction divided by total upfront investment (CAPEX, excluding maintenance). A higher value means more emissions are avoided for each euro invested.",
-    unit: "t CO₂e/€",
+    unit: "kg CO₂e/€",
   },
   "rse-total-co2-reduction": {
     id: "rse-total-co2-reduction",
