@@ -9,6 +9,7 @@ import type { RSEPackageId } from "../types";
 import {
   CompareStrategiesTable,
   ComparisonCharts,
+  EnergyTariffPanel,
   PackageDeepDive,
   PackageTabs,
   ScoreCompositionChart,
@@ -129,6 +130,8 @@ export function ResultsStep() {
             selectedPackageId={activePackageId as RSEPackageId}
             onSelectPackage={handleSelectAndRevealPackage}
           />
+
+          <EnergyTariffPanel />
 
           <Alert
             color="blue"
