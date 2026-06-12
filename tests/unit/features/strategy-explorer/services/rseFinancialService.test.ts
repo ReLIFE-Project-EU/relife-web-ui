@@ -11,6 +11,10 @@ vi.mock("../../../../../src/api/financial", () => ({
 }));
 
 import {
+  RSE_ENERGY_TARIFF_DEFAULTS,
+  RSE_FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
+} from "../../../../../src/features/strategy-explorer/constants";
+import {
   computeFinancials,
   computeFinancialsBatch,
 } from "../../../../../src/features/strategy-explorer/services/rseFinancialService";
@@ -40,6 +44,63 @@ function makeArchetypeDetails(floorArea: number): ArchetypeDetails {
     bui: {} as unknown as ArchetypeDetails["bui"],
     system: {} as unknown as ArchetypeDetails["system"],
   };
+}
+
+function makeCarrierInput(overrides?: {
+  gasBaseline?: number;
+  gasRenovated?: number;
+  gridBaseline?: number;
+  gridRenovated?: number;
+  gasTariffEurPerKwh?: number;
+}) {
+  const gasBaseline = overrides?.gasBaseline ?? 12_000;
+  const gasRenovated = overrides?.gasRenovated ?? 8_000;
+  const gridBaseline = overrides?.gridBaseline ?? 0;
+  const gridRenovated = overrides?.gridRenovated ?? 0;
+
+  return {
+    archetype: {
+      country: "IT",
+      category: "Residential",
+      name: "Detached 1980",
+    },
+    packageId: "envelope" as const,
+    details: makeArchetypeDetails(100),
+    annualPrimaryEnergySavingsKwh: gasBaseline - gasRenovated,
+    carrierSourceBreakdown: {
+      baseline: {
+        naturalGasKwh: gasBaseline,
+        gridElectricityKwh: gridBaseline,
+      },
+      renovated: {
+        naturalGasKwh: gasRenovated,
+        gridElectricityKwh: gridRenovated,
+      },
+    },
+    financialAssumptions: {
+      projectLifetimeYears: 20,
+      financingType: "self-funded" as const,
+      upfrontIncentivePercentage: 0,
+      gasTariffEurPerKwh:
+        overrides?.gasTariffEurPerKwh ??
+        RSE_ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
+    },
+  };
+}
+
+function expectedEquivalentKwh(
+  input: ReturnType<typeof makeCarrierInput>,
+): number {
+  const gasDelta =
+    input.carrierSourceBreakdown.baseline.naturalGasKwh -
+    input.carrierSourceBreakdown.renovated.naturalGasKwh;
+  const gridDelta =
+    input.carrierSourceBreakdown.baseline.gridElectricityKwh -
+    input.carrierSourceBreakdown.renovated.gridElectricityKwh;
+  const savingsEur =
+    gasDelta * input.financialAssumptions!.gasTariffEurPerKwh +
+    gridDelta * RSE_FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH;
+  return savingsEur / RSE_FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH;
 }
 
 /** New multi-scheme wire response with a single equity scheme. */
@@ -86,17 +147,9 @@ describe("computeFinancials", () => {
     mockAssessRisk.mockResolvedValue(makeFixtureResponse());
   });
 
-  test("POSTs an equity-scheme risk assessment at professional output level", async () => {
-    await computeFinancials({
-      archetype: {
-        country: "IT",
-        category: "Residential",
-        name: "Detached 1980",
-      },
-      packageId: "envelope",
-      details: makeArchetypeDetails(100),
-      annualEnergySavingsKwh: 5_000,
-    });
+  test("POSTs carrier-aware electricity-equivalent kWh at professional output level", async () => {
+    const input = makeCarrierInput();
+    await computeFinancials(input);
 
     expect(mockAssessRisk).toHaveBeenCalledTimes(1);
     const [request] = mockAssessRisk.mock.calls[0];
@@ -105,77 +158,58 @@ describe("computeFinancials", () => {
     expect(request.project_lifetime).toBe(20);
     expect(request.schemes).toEqual([{ scheme_type: "equity" }]);
     expect(request.indicators).toEqual(["IRR", "NPV", "PBP", "DPP", "ROI"]);
-    expect(request.annual_energy_savings).toBe(5_000);
+    expect(request.annual_energy_savings).toBeCloseTo(
+      expectedEquivalentKwh(input),
+      5,
+    );
     expect(request.capex).toBeGreaterThan(0);
     expect(request.annual_maintenance_cost).toBeGreaterThanOrEqual(0);
   });
 
   test("stays equity-only and folds the upfront incentive into CAPEX", async () => {
+    const input = makeCarrierInput();
     const result = await computeFinancials({
-      archetype: {
-        country: "IT",
-        category: "Residential",
-        name: "Detached 1980",
-      },
-      packageId: "envelope",
-      details: makeArchetypeDetails(100),
-      annualEnergySavingsKwh: 5_000,
+      ...input,
       financialAssumptions: {
         projectLifetimeYears: 25,
         financingType: "self-funded",
         upfrontIncentivePercentage: 10,
+        gasTariffEurPerKwh: 0.115,
       },
     });
 
     const [request] = mockAssessRisk.mock.calls[0];
     expect(request.project_lifetime).toBe(25);
     expect(request.schemes).toEqual([{ scheme_type: "equity" }]);
-    // 22000 gross * (1 - 0.10) = 19800 effective CAPEX.
     expect(request.capex).toBe(19_800);
-    // The result carries both bases so display and math cannot diverge.
     expect(result.capexEur).toBe(22_000);
     expect(result.effectiveCapexEur).toBe(19_800);
   });
 
-  test("returns an unavailable result for non-positive energy savings without calling the API", async () => {
-    const result = await computeFinancials({
-      archetype: {
-        country: "IT",
-        category: "Residential",
-        name: "Detached 1980",
-      },
-      packageId: "envelope",
-      details: makeArchetypeDetails(100),
-      annualEnergySavingsKwh: 0,
+  test("returns unavailable when carrier-aware savings are not positive", async () => {
+    const input = makeCarrierInput({
+      gasBaseline: 8_000,
+      gasRenovated: 12_000,
+      gridBaseline: 0,
+      gridRenovated: 4_000,
     });
+
+    const result = await computeFinancials(input);
 
     expect(mockAssessRisk).not.toHaveBeenCalled();
     expect(result).toEqual(
       expect.objectContaining({
         status: "unavailable",
         unavailableReason: "non-positive-energy-savings",
-        annualEnergySavingsKwh: 0,
-        capexEur: 22_000,
-        effectiveCapexEur: 22_000,
         pointForecasts: {},
       }),
     );
-    expect(result.unavailableMessage).toContain(
-      "does not produce positive annual energy savings",
-    );
+    expect(result.unavailableMessage).toContain("carrier-aware");
   });
 
   test("normalises the scheme result into RSEFinancialResult shape", async () => {
-    const result = await computeFinancials({
-      archetype: {
-        country: "IT",
-        category: "Residential",
-        name: "Detached 1980",
-      },
-      packageId: "envelope",
-      details: makeArchetypeDetails(100),
-      annualEnergySavingsKwh: 5_000,
-    });
+    const input = makeCarrierInput();
+    const result = await computeFinancials(input);
 
     expect(result.archetype).toEqual({
       country: "IT",
@@ -186,10 +220,12 @@ describe("computeFinancials", () => {
     expect(result.capexEur).toBe(22_000);
     expect(result.effectiveCapexEur).toBe(22_000);
     expect(result.annualMaintenanceEur).toBe(0);
-    expect(result.annualEnergySavingsKwh).toBe(5_000);
+    expect(result.annualEnergySavingsKwh).toBeCloseTo(
+      expectedEquivalentKwh(input),
+      5,
+    );
     expect(result.status).toBe("available");
 
-    // Point forecasts are the P50 of each KPI.
     expect(result.pointForecasts).toEqual({
       NPV: 15_000,
       IRR: 0.12,
@@ -202,7 +238,6 @@ describe("computeFinancials", () => {
     expect(result.percentiles?.NPV?.P10).toBe(5_000);
     expect(result.percentiles?.NPV?.P90).toBe(30_000);
 
-    // The P50 net cash-flow series is kept for pooled aggregate payback.
     expect(result.cashFlow).toEqual({
       years: [0, 1, 2],
       annualNetCashFlowEur: [-1_000, 600, 600],
@@ -232,16 +267,7 @@ describe("computeFinancials", () => {
       metadata: { capex: 22_000, project_lifetime: 20 },
     });
 
-    const result = await computeFinancials({
-      archetype: {
-        country: "IT",
-        category: "Residential",
-        name: "Detached 1980",
-      },
-      packageId: "envelope",
-      details: makeArchetypeDetails(100),
-      annualEnergySavingsKwh: 5_000,
-    });
+    const result = await computeFinancials(makeCarrierInput());
 
     expect(result.pointForecasts.NPV).toBe(10_000);
     expect(result.pointForecasts.IRR).toBe(0);
@@ -258,17 +284,15 @@ describe("computeFinancialsBatch", () => {
 
   test("calls assessRisk for every input concurrently", async () => {
     const inputs = [
+      makeCarrierInput(),
       {
-        archetype: { country: "IT", category: "Residential", name: "A" },
-        packageId: "envelope" as const,
-        details: makeArchetypeDetails(100),
-        annualEnergySavingsKwh: 5_000,
-      },
-      {
-        archetype: { country: "IT", category: "Residential", name: "A" },
+        ...makeCarrierInput(),
         packageId: "combined" as const,
-        details: makeArchetypeDetails(100),
-        annualEnergySavingsKwh: 8_000,
+        annualPrimaryEnergySavingsKwh: 8_000,
+        carrierSourceBreakdown: {
+          baseline: { naturalGasKwh: 12_000, gridElectricityKwh: 0 },
+          renovated: { naturalGasKwh: 4_000, gridElectricityKwh: 0 },
+        },
       },
     ];
 

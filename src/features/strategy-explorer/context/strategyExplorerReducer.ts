@@ -1,4 +1,4 @@
-import { RSE_PACKAGE_IDS } from "../constants";
+import { RSE_ENERGY_TARIFF_DEFAULTS, RSE_PACKAGE_IDS } from "../constants";
 import type { StrategyExplorerAction, StrategyExplorerState } from "./types";
 
 export const initialState: StrategyExplorerState = {
@@ -6,6 +6,7 @@ export const initialState: StrategyExplorerState = {
   portfolio: { selections: [] },
   goal: null,
   packageIds: [...RSE_PACKAGE_IDS],
+  gasTariffEurPerKwh: RSE_ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
   availableArchetypes: [],
   workflowResult: null,
   isRunningWorkflow: false,
@@ -42,6 +43,13 @@ export function strategyExplorerReducer(
       return {
         ...state,
         packageIds: action.packageIds,
+        ...clearedWorkflowResults,
+      };
+
+    case "SET_GAS_TARIFF":
+      return {
+        ...state,
+        gasTariffEurPerKwh: action.gasTariffEurPerKwh,
         ...clearedWorkflowResults,
       };
 

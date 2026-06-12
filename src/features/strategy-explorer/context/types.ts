@@ -11,6 +11,8 @@ export interface StrategyExplorerState {
   portfolio: RSEPortfolioDefinition;
   goal: RSERenovationGoal | null;
   packageIds: RSEPackageId[];
+  /** Applied gas tariff (EUR/kWh) for carrier-aware financial valuation. */
+  gasTariffEurPerKwh: number;
   availableArchetypes: RSEArchetypeRef[];
   workflowResult: RSEWorkflowResult | null;
   isRunningWorkflow: boolean;
@@ -22,6 +24,7 @@ export type StrategyExplorerAction =
   | { type: "SET_PORTFOLIO"; portfolio: RSEPortfolioDefinition }
   | { type: "SET_GOAL"; goal: RSERenovationGoal }
   | { type: "SET_PACKAGES"; packageIds: RSEPackageId[] }
+  | { type: "SET_GAS_TARIFF"; gasTariffEurPerKwh: number }
   | { type: "SET_AVAILABLE_ARCHETYPES"; archetypes: RSEArchetypeRef[] }
   | { type: "START_WORKFLOW" }
   | { type: "WORKFLOW_COMPLETE"; result: RSEWorkflowResult }

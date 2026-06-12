@@ -117,6 +117,32 @@ export const RSE_FINANCIAL_DEFAULTS = {
   upfrontIncentivePercentage: 0,
 } as const;
 
+/**
+ * Planning tariffs for the interim carrier-aware financial translation.
+ * Gas is user-editable; electricity is read-only and must match
+ * `RSE_FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH` (backend calibration).
+ */
+export const RSE_ENERGY_TARIFF_DEFAULTS = {
+  /** EU household natural gas, representative planning value (EUR/kWh). */
+  gasEurPerKwh: 0.115,
+  gasSourceNote:
+    "Planning default based on EU household natural-gas prices.",
+} as const;
+
+/**
+ * Year-1 moderate electricity price from relife-financial-service
+ * `risk_assessment_v3.py` (`electricity_prices_data.moderate[0]`).
+ * Used to calibrate the electricity-equivalent kWh sent to the Financial API.
+ */
+export const RSE_FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH = 0.246;
+
+export const RSE_FINANCIAL_ELECTRICITY_PRICE_SOURCE_NOTE =
+  "Representative year-1 moderate electricity price from the Financial service Monte Carlo model; not user-adjustable in this tool.";
+
+/** Upstream follow-up: relife-financial-service should accept carrier-split savings. */
+export const RSE_CARRIER_PRICING_UPSTREAM_NOTE =
+  "Interim frontend translation in rseCarrierSavingsService.ts; durable fix belongs in relife-financial-service risk assessment.";
+
 export const RSE_RANKING_WEIGHTS = {
   energy: {
     savedPerEur: 0.55,

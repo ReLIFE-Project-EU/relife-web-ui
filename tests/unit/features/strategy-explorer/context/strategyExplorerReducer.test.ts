@@ -4,7 +4,10 @@ import {
   strategyExplorerReducer,
 } from "../../../../../src/features/strategy-explorer/context/strategyExplorerReducer";
 import type { StrategyExplorerState } from "../../../../../src/features/strategy-explorer/context/types";
-import { RSE_PACKAGE_IDS } from "../../../../../src/features/strategy-explorer/constants";
+import {
+  RSE_ENERGY_TARIFF_DEFAULTS,
+  RSE_PACKAGE_IDS,
+} from "../../../../../src/features/strategy-explorer/constants";
 
 const mockWorkflowResult: NonNullable<StrategyExplorerState["workflowResult"]> =
   {
@@ -16,6 +19,7 @@ const mockWorkflowResult: NonNullable<StrategyExplorerState["workflowResult"]> =
         projectLifetimeYears: 20,
         financingType: "self-funded",
         upfrontIncentivePercentage: 0,
+        gasTariffEurPerKwh: RSE_ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
       },
     },
     cacheVersion: "v1",
@@ -30,6 +34,9 @@ describe("strategyExplorerReducer", () => {
     expect(initialState.portfolio.selections).toEqual([]);
     expect(initialState.goal).toBeNull();
     expect(initialState.packageIds).toEqual([...RSE_PACKAGE_IDS]);
+    expect(initialState.gasTariffEurPerKwh).toBe(
+      RSE_ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
+    );
     expect(initialState.availableArchetypes).toEqual([]);
     expect(initialState.workflowResult).toBeNull();
     expect(initialState.isRunningWorkflow).toBe(false);
@@ -76,6 +83,15 @@ describe("strategyExplorerReducer", () => {
       kind: "financial",
       maxBudgetEur: 1_000_000,
     });
+    expect(state.workflowResult).toBeNull();
+  });
+
+  test("SET_GAS_TARIFF updates gas tariff and clears workflow result", () => {
+    const state = strategyExplorerReducer(
+      { ...initialState, workflowResult: mockWorkflowResult },
+      { type: "SET_GAS_TARIFF", gasTariffEurPerKwh: 0.12 },
+    );
+    expect(state.gasTariffEurPerKwh).toBe(0.12);
     expect(state.workflowResult).toBeNull();
   });
 

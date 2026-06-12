@@ -9,16 +9,20 @@ import type {
   RiskAssessmentResponse,
 } from "../../../types/financial";
 import {
+  RSE_ENERGY_TARIFF_DEFAULTS,
   RSE_FINANCIAL_DEFAULTS,
+  RSE_FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
   RSE_FINANCIAL_OUTPUT_LEVEL,
   RSE_UNAVAILABLE_REASONS,
   type RSEPackageId,
 } from "../constants";
 import type {
   RSEArchetypeRef,
+  RSECarrierSourceBreakdown,
   RSEFinancialAssumptions,
   RSEFinancialResult,
 } from "../types";
+import { computeCarrierFinancialEnergySavings } from "./rseCarrierSavingsService";
 import { computePackageCost } from "./rsePackageCatalog";
 
 export const RSE_NON_POSITIVE_ENERGY_SAVINGS_REASON =
@@ -32,7 +36,12 @@ export interface RSEFinancialServiceInput {
   archetype: RSEArchetypeRef;
   packageId: RSEPackageId;
   details: ArchetypeDetails;
-  annualEnergySavingsKwh: number;
+  /** Primary energy savings (display/aggregation); not sent to the Financial API. */
+  annualPrimaryEnergySavingsKwh: number;
+  carrierSourceBreakdown: {
+    baseline: RSECarrierSourceBreakdown;
+    renovated: RSECarrierSourceBreakdown;
+  };
   financialAssumptions?: RSEFinancialAssumptions;
 }
 
@@ -49,12 +58,7 @@ export interface RSEFinancialServiceInput {
 export async function computeFinancials(
   input: RSEFinancialServiceInput,
 ): Promise<RSEFinancialResult> {
-  const assumptions = input.financialAssumptions ?? {
-    projectLifetimeYears: RSE_FINANCIAL_DEFAULTS.projectLifetimeYears,
-    financingType: RSE_FINANCIAL_DEFAULTS.financingType,
-    upfrontIncentivePercentage:
-      RSE_FINANCIAL_DEFAULTS.upfrontIncentivePercentage,
-  };
+  const assumptions = resolveFinancialAssumptions(input.financialAssumptions);
 
   const { capexEur, annualMaintenanceEur } = computePackageCost(
     input.packageId,
@@ -70,18 +74,28 @@ export async function computeFinancials(
     capexEur * (1 - assumptions.upfrontIncentivePercentage / 100),
   );
 
-  if (input.annualEnergySavingsKwh <= 0) {
+  const { electricityEquivalentKwh } = computeCarrierFinancialEnergySavings(
+    input.carrierSourceBreakdown.baseline,
+    input.carrierSourceBreakdown.renovated,
+    {
+      gasTariffEurPerKwh: assumptions.gasTariffEurPerKwh,
+      electricityReferencePriceEurPerKwh:
+        RSE_FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
+    },
+  );
+
+  if (electricityEquivalentKwh <= 0) {
     return {
       archetype: input.archetype,
       packageId: input.packageId,
       capexEur,
       effectiveCapexEur,
       annualMaintenanceEur,
-      annualEnergySavingsKwh: input.annualEnergySavingsKwh,
+      annualEnergySavingsKwh: electricityEquivalentKwh,
       status: "unavailable",
       unavailableReason: RSE_NON_POSITIVE_ENERGY_SAVINGS_REASON,
       unavailableMessage:
-        "Financial indicators are unavailable because this package does not produce positive annual energy savings for this archetype.",
+        "Financial indicators are unavailable because carrier-aware annual savings (gas and grid electricity at the tariffs shown) are not positive for this archetype and package.",
       pointForecasts: {},
     };
   }
@@ -91,7 +105,7 @@ export async function computeFinancials(
   const riskRequest: RiskAssessmentRequest = {
     capex: effectiveCapexEur,
     annual_maintenance_cost: annualMaintenanceEur,
-    annual_energy_savings: input.annualEnergySavingsKwh,
+    annual_energy_savings: electricityEquivalentKwh,
     project_lifetime: assumptions.projectLifetimeYears,
     output_level: RSE_FINANCIAL_OUTPUT_LEVEL,
     indicators: ["IRR", "NPV", "PBP", "DPP", "ROI"],
@@ -105,9 +119,27 @@ export async function computeFinancials(
     capexEur,
     effectiveCapexEur,
     annualMaintenanceEur,
+    electricityEquivalentKwh,
     response,
     assumptions.projectLifetimeYears,
   );
+}
+
+function resolveFinancialAssumptions(
+  partial?: RSEFinancialAssumptions,
+): RSEFinancialAssumptions {
+  return {
+    projectLifetimeYears:
+      partial?.projectLifetimeYears ??
+      RSE_FINANCIAL_DEFAULTS.projectLifetimeYears,
+    financingType:
+      partial?.financingType ?? RSE_FINANCIAL_DEFAULTS.financingType,
+    upfrontIncentivePercentage:
+      partial?.upfrontIncentivePercentage ??
+      RSE_FINANCIAL_DEFAULTS.upfrontIncentivePercentage,
+    gasTariffEurPerKwh:
+      partial?.gasTariffEurPerKwh ?? RSE_ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
+  };
 }
 
 /**
@@ -125,6 +157,7 @@ function normalizeRiskResponse(
   capexEur: number,
   effectiveCapexEur: number,
   annualMaintenanceEur: number,
+  annualEnergySavingsKwh: number,
   response: RiskAssessmentResponse,
   projectLifetime: number,
 ): RSEFinancialResult {
@@ -140,7 +173,7 @@ function normalizeRiskResponse(
     capexEur,
     effectiveCapexEur,
     annualMaintenanceEur,
-    annualEnergySavingsKwh: input.annualEnergySavingsKwh,
+    annualEnergySavingsKwh,
     status: "available",
     pointForecasts: {
       NPV: pf.NPV,

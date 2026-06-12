@@ -17,6 +17,7 @@ import {
   PV_MEASURE_ID,
 } from "../../../services/renovationEcmParams";
 import type { UNI11300Results } from "../../../types/forecasting";
+import { extractCarrierSourceBreakdown } from "./rseCarrierSavingsService";
 import type { RSEForecastingCacheEntry, RSESimulationResult } from "../types";
 
 type RSECacheApiClient = {
@@ -117,8 +118,7 @@ export function normalizeEntry(
     renovatedSystemEnergyKwh !== undefined
       ? baselineSystemEnergyKwh - renovatedSystemEnergyKwh
       : undefined;
-  const annualEnergySavingsKwh =
-    systemEnergySavingsKwh ??
+  const annualPrimaryEnergySavingsKwh =
     entry.baseline.annualEnergyKwh - entry.renovated.annualEnergyKwh;
   const annualCo2ReductionTon =
     entry.baseline.co2.annualEmissionsTonCo2eq -
@@ -142,11 +142,15 @@ export function normalizeEntry(
     cacheVersion: entry.key.cacheVersion,
     baselineAnnualEnergyKwh: entry.baseline.annualEnergyKwh,
     renovatedAnnualEnergyKwh: entry.renovated.annualEnergyKwh,
-    annualEnergySavingsKwh,
+    annualEnergySavingsKwh: annualPrimaryEnergySavingsKwh,
     annualEnergySavingsPercentage: percentageSavings(
-      baselineSystemEnergyKwh ?? entry.baseline.annualEnergyKwh,
-      annualEnergySavingsKwh,
+      entry.baseline.annualEnergyKwh,
+      annualPrimaryEnergySavingsKwh,
     ),
+    carrierSourceBreakdown: {
+      baseline: extractCarrierSourceBreakdown(entry.baseline.co2),
+      renovated: extractCarrierSourceBreakdown(entry.renovated.co2),
+    },
     baselineAnnualEmissionsTonCo2eq: entry.baseline.co2.annualEmissionsTonCo2eq,
     renovatedAnnualEmissionsTonCo2eq:
       entry.renovated.co2.annualEmissionsTonCo2eq,

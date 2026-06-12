@@ -216,17 +216,29 @@ async function runWorkflowWithDependencies(
     const unavailableFinancials: RSEUnavailableCombination[] = [];
 
     for (const result of financialResults) {
-      if (result.financial) {
-        financials.push(result.financial);
-      }
       if (result.unavailable) {
         unavailableFinancials.push(result.unavailable);
+        continue;
       }
-      if (!result.financial && !result.unavailable) {
+
+      if (!result.financial) {
         throw new RSEWorkflowError(
           "Financial computation finished without a result.",
         );
       }
+
+      if (result.financial.status === "unavailable") {
+        unavailableFinancials.push({
+          archetype: result.financial.archetype,
+          packageId: result.financial.packageId,
+          reason:
+            result.financial.unavailableReason ??
+            RSE_UNAVAILABLE_REASONS.nonPositiveEnergySavings,
+        });
+        continue;
+      }
+
+      financials.push(result.financial);
     }
 
     if (unavailableFinancials.length > 0) {
@@ -399,7 +411,8 @@ function buildFinancialInputs(
       archetype: simulation.archetype,
       packageId: simulation.packageId,
       details,
-      annualEnergySavingsKwh: simulation.annualEnergySavingsKwh,
+      annualPrimaryEnergySavingsKwh: simulation.annualEnergySavingsKwh,
+      carrierSourceBreakdown: simulation.carrierSourceBreakdown,
       financialAssumptions,
     };
   });

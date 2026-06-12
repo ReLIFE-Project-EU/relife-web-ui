@@ -53,6 +53,16 @@ function makeSimulation(
       co2Method: "forecasting-carrier-split-final-energy-gas-thermal-mvp",
       emissionFactorCountry: "IT",
     },
+    carrierSourceBreakdown: {
+      baseline: {
+        naturalGasKwh: 10_000,
+        gridElectricityKwh: 0,
+      },
+      renovated: {
+        naturalGasKwh: 10_000 - annualEnergySavingsKwh,
+        gridElectricityKwh: 0,
+      },
+    },
   };
 }
 

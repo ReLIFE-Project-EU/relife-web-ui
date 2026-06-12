@@ -140,6 +140,11 @@ export interface RSECacheEntryProvenance {
   notes?: string;
 }
 
+export interface RSECarrierSourceBreakdown {
+  naturalGasKwh: number;
+  gridElectricityKwh: number;
+}
+
 export interface RSESimulationResult {
   key: RSEForecastingCacheKey;
   archetype: RSEArchetypeRef;
@@ -147,8 +152,14 @@ export interface RSESimulationResult {
   cacheVersion: string;
   baselineAnnualEnergyKwh: number;
   renovatedAnnualEnergyKwh: number;
+  /** Primary energy savings (EP_total_kWh delta) for energy-goal metrics. */
   annualEnergySavingsKwh: number;
   annualEnergySavingsPercentage: number;
+  /** Delivered gas/grid split for carrier-aware financial valuation. */
+  carrierSourceBreakdown: {
+    baseline: RSECarrierSourceBreakdown;
+    renovated: RSECarrierSourceBreakdown;
+  };
   baselineAnnualEmissionsTonCo2eq: number;
   renovatedAnnualEmissionsTonCo2eq: number;
   annualCo2ReductionTon: number;
@@ -199,6 +210,8 @@ export interface RSEFinancialAssumptions {
   projectLifetimeYears: number;
   financingType: typeof RSE_FINANCIAL_DEFAULTS.financingType;
   upfrontIncentivePercentage: number;
+  /** User-editable gas tariff (EUR/kWh) for carrier-aware savings valuation. */
+  gasTariffEurPerKwh: number;
 }
 
 export interface RSEFinancialResult {

@@ -247,10 +247,11 @@ describe("rseForecastingCacheService", () => {
       makeDetails(100),
     );
 
-    expect(result.annualEnergySavingsKwh).toBe(7_000);
+    expect(result.annualEnergySavingsKwh).toBe(4_000);
     expect(result.annualEnergySavingsPercentage).toBeCloseTo(
-      (7000 / 11000) * 100,
+      (4_000 / 12_000) * 100,
     );
+    expect(result.carrierSourceBreakdown.baseline.naturalGasKwh).toBe(12_000);
   });
 
   test("rejects system-only cache entries with no before-after system delta", () => {
