@@ -2,7 +2,6 @@ import { describe, test, expect } from "vitest";
 
 import {
   getEPCClass,
-  estimateAnnualHvacEnergyCost,
   transformColumnarToRowFormat,
   calculateAnnualTotals,
   extractUniTotals,
@@ -127,20 +126,6 @@ describe("transformColumnarToRowFormat", () => {
     expect(rows[0]).toMatchObject({ Q_HC: 5 });
     expect(rows[1]).toMatchObject({ Q_HC: 6 });
     expect(rows[2]).toMatchObject({ Q_HC: 7 });
-  });
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// estimateAnnualHvacEnergyCost
-// ─────────────────────────────────────────────────────────────────────────────
-
-describe("estimateAnnualHvacEnergyCost", () => {
-  test("uses default price (0.25 EUR/kWh)", () => {
-    expect(estimateAnnualHvacEnergyCost(1000)).toBeCloseTo(250, 2);
-  });
-
-  test("uses custom price when provided", () => {
-    expect(estimateAnnualHvacEnergyCost(1000, 0.3)).toBeCloseTo(300, 2);
   });
 });
 

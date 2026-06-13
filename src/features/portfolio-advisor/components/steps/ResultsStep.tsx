@@ -40,7 +40,6 @@ import {
   formatDecimal,
 } from "../../../../utils/formatters";
 import { getEPCImprovement } from "../../../../utils/epcUtils";
-import { ENERGY_PRICE_EUR_PER_KWH } from "../../../../services/energyUtils";
 import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
 import type { BuildingAnalysisResult } from "../../context/types";
@@ -231,51 +230,26 @@ const PortfolioSummary = memo(function PortfolioSummary({
         </SimpleGrid>
       </Card>
 
-      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
-        <Card withBorder radius="md" p="lg">
-          <Stack gap="xs">
-            <Box>
-              <Title order={5}>Energy use</Title>
-              <Text size="xs" c="dimmed">
-                Total annual building thermal needs.
-              </Text>
-            </Box>
-            {stats.totalEnergyBefore > 0 ? (
-              <EnergyChart
-                before={stats.totalEnergyBefore}
-                after={stats.totalEnergyAfter}
-              />
-            ) : (
-              <Text size="sm" c="dimmed">
-                No energy data available.
-              </Text>
-            )}
-          </Stack>
-        </Card>
-
-        <Card withBorder radius="md" p="lg">
-          <Stack gap="xs">
-            <Box>
-              <Title order={5}>Annual energy bill</Title>
-              <Text size="xs" c="dimmed">
-                Estimated yearly cost at a flat tariff of EUR{" "}
-                {ENERGY_PRICE_EUR_PER_KWH}/kWh.
-              </Text>
-            </Box>
-            {stats.totalEnergyBefore > 0 ? (
-              <EnergyChart
-                before={stats.totalEnergyBefore * ENERGY_PRICE_EUR_PER_KWH}
-                after={stats.totalEnergyAfter * ENERGY_PRICE_EUR_PER_KWH}
-                formatValue={(v) => formatCurrency(v)}
-              />
-            ) : (
-              <Text size="sm" c="dimmed">
-                No energy data available.
-              </Text>
-            )}
-          </Stack>
-        </Card>
-      </SimpleGrid>
+      <Card withBorder radius="md" p="lg">
+        <Stack gap="xs">
+          <Box>
+            <Title order={5}>Energy use</Title>
+            <Text size="xs" c="dimmed">
+              Total annual building thermal needs.
+            </Text>
+          </Box>
+          {stats.totalEnergyBefore > 0 ? (
+            <EnergyChart
+              before={stats.totalEnergyBefore}
+              after={stats.totalEnergyAfter}
+            />
+          ) : (
+            <Text size="sm" c="dimmed">
+              No energy data available.
+            </Text>
+          )}
+        </Stack>
+      </Card>
     </Stack>
   );
 });
@@ -320,15 +294,6 @@ function DataTransparencyContent() {
           </Text>{" "}
           — {ConceptSentence("system-energy-consumption")} Financial savings are
           based on reductions in this value when available.
-        </Text>
-      </List.Item>
-      <List.Item>
-        <Text size="xs" c="dimmed">
-          <Text span size="xs" fw={500} c="dimmed">
-            Energy costs
-          </Text>{" "}
-          — Use a flat tariff of EUR {ENERGY_PRICE_EUR_PER_KWH}/kWh (platform
-          assumption, not country-specific).
         </Text>
       </List.Item>
       <List.Item>

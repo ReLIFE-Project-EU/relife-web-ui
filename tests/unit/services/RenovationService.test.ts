@@ -111,7 +111,6 @@ const mockBuilding: BuildingInfo = {
 const mockEstimation: EstimationResult = {
   estimatedEPC: "D",
   annualEnergyNeeds: 15000,
-  annualEnergyCost: 3750,
   heatingCoolingNeeds: 15000,
   heatingDemand: 10000,
   coolingDemand: 5000,
@@ -120,7 +119,6 @@ const mockEstimation: EstimationResult = {
   annualEnergyConsumption: 15000,
   deliveredTotal: 17000,
   carrierBreakdown: { naturalGasKwh: 15000, gridElectricityKwh: 2000 },
-  deliveredEnergyCost: 4250,
   primaryEnergy: 22000,
   archetypeFloorArea: 100,
   archetype: {
@@ -503,7 +501,6 @@ describe("RenovationService", () => {
       naturalGasKwh: 1000,
       gridElectricityKwh: 250,
     });
-    expect(scenarios[1]?.deliveredEnergyCost).toBe(313);
     expect(scenarios[1]?.primaryEnergy).toBe(1800);
     expect(scenarios[1]?.heatingPrimaryEnergy).toBe(1200);
     expect(scenarios[1]?.coolingPrimaryEnergy).toBe(600);
@@ -794,7 +791,6 @@ describe("RenovationService", () => {
       naturalGasKwh: 1500,
       gridElectricityKwh: 0,
     });
-    expect(scenarios[1]?.deliveredEnergyCost).toBe(375);
     expect(scenarios[1]?.primaryEnergy).toBe(3000);
     expect(scenarios[1]?.heatingPrimaryEnergy).toBe(2000);
     expect(scenarios[1]?.coolingPrimaryEnergy).toBe(1000);

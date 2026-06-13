@@ -6,7 +6,6 @@ export type ConceptId =
   | "estimated-epc"
   | "scenario-epc-comparison-note"
   | "energy-intensity"
-  | "estimated-thermal-needs-cost"
   | "pv-generation"
   | "pv-self-consumption"
   | "pv-grid-export"
@@ -109,17 +108,6 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     description:
       "Annual energy result divided by building floor area for easier comparison across buildings.",
     unit: "kWh/m²/year",
-  },
-  "estimated-thermal-needs-cost": {
-    id: "estimated-thermal-needs-cost",
-    label: "Estimated cost of thermal needs",
-    description:
-      "Flat-tariff price tag for Annual building thermal needs, computed in the frontend at a fixed rate of 0.25 EUR/kWh thermal.",
-    unit: "EUR/year",
-    caveat:
-      "Not a utility bill: it does not account for heating-system efficiency, fuel mix, or PV self-consumption, and it is computed from thermal needs rather than delivered energy. The Financial Service uses a separate Monte Carlo electricity tariff for its own calculations, so figures shown here will not match the financial step.",
-    professionalDetail:
-      "Frontend-only estimate from estimateAnnualHvacEnergyCost() in energyUtils.ts, intentionally country-agnostic and fuel-agnostic so all pricing assumptions live in one place.",
   },
   "pv-generation": {
     id: "pv-generation",
@@ -431,7 +419,6 @@ export const supportedRenovationMeasureIds = Object.keys(
 export const hraResultMetricConceptIds = [
   "estimated-epc",
   "annual-building-thermal-needs",
-  "estimated-thermal-needs-cost",
   "system-energy-consumption",
   "investment",
   "npv",
@@ -454,7 +441,6 @@ export const praResultMetricConceptIds = [
   "npv",
   "roi",
   "payback-period",
-  "estimated-thermal-needs-cost",
 ] as const satisfies readonly ConceptId[];
 
 export const financialMetricConceptIds = {

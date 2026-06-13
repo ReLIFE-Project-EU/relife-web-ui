@@ -1,11 +1,10 @@
 /**
  * BeforeAfterBars
- * Two-bar before/after chart used for total portfolio energy use and the
- * annual energy bill. Pure CSS bars; reads aggregated values from props.
+ * Two-bar before/after chart used for total portfolio energy use.
  */
 
 import { Box, Group, Stack, Text } from "@mantine/core";
-import { formatNumber } from "../../../../utils/formatters";
+import { formatDecimal } from "../../../../utils/formatters";
 
 interface BeforeAfterBarsProps {
   /** Aggregate value before renovation */
@@ -18,8 +17,7 @@ interface BeforeAfterBarsProps {
   formatValue?: (raw: number) => string;
 }
 
-const defaultFormat = (raw: number) =>
-  `${formatNumber(Math.round(raw / 1000))} MWh`;
+const defaultFormat = (raw: number) => `${formatDecimal(raw / 1000)} MWh`;
 
 export function EnergyChart({
   before,

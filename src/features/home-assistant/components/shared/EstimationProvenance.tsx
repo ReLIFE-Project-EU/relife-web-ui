@@ -8,7 +8,6 @@ import {
 } from "../../../../components/shared";
 import {
   calculatePercentChange,
-  formatCurrency,
   formatEnergyPerYear,
 } from "../../utils/formatters";
 
@@ -126,36 +125,13 @@ export function ReferenceAdjustedComparisonCard({
                 />
               </Table.Td>
             </Table.Tr>
-
-            <Table.Tr>
-              <Table.Td>
-                <ConceptLabel conceptId="estimated-thermal-needs-cost" />
-              </Table.Td>
-              <Table.Td>
-                <Text size="sm" fw={500}>
-                  {formatCurrency(reference.annualEnergyCost)}
-                </Text>
-              </Table.Td>
-              <Table.Td>
-                <DeltaValue
-                  value={estimation.annualEnergyCost}
-                  delta={calculatePercentChange(
-                    reference.annualEnergyCost,
-                    estimation.annualEnergyCost,
-                  )}
-                  formatter={formatCurrency}
-                  higherIsBetter={false}
-                />
-              </Table.Td>
-            </Table.Tr>
           </Table.Tbody>
         </Table>
 
         <Text size="sm" c="dimmed">
           We started from a standard building profile similar to yours, applied
           your specific details, ran an energy simulation, and calculated the
-          results shown above. Cost figures here are frontend estimates based on
-          thermal needs, not utility bills.
+          results shown above.
         </Text>
       </Stack>
     </Card>

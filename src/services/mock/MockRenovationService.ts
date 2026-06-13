@@ -176,7 +176,6 @@ export class MockRenovationService implements IRenovationService {
       label: "Current Status",
       epcClass: estimation.estimatedEPC,
       annualEnergyNeeds: estimation.annualEnergyNeeds,
-      annualEnergyCost: estimation.annualEnergyCost,
       heatingCoolingNeeds: estimation.heatingCoolingNeeds,
       flexibilityIndex: estimation.flexibilityIndex,
       comfortIndex: estimation.comfortIndex,
@@ -199,10 +198,6 @@ export class MockRenovationService implements IRenovationService {
           annualEnergyNeeds: Math.max(
             0,
             estimation.annualEnergyNeeds - 1000 * (index + 1),
-          ),
-          annualEnergyCost: Math.max(
-            0,
-            estimation.annualEnergyCost - 250 * (index + 1),
           ),
           heatingCoolingNeeds: Math.max(
             0,

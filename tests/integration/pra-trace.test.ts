@@ -236,7 +236,6 @@ describe.sequential("PRA Trace", () => {
       s.label,
       `**${s.epcClass}**`,
       `${fmtNumber(s.annualEnergyNeeds)} kWh`,
-      `${fmtNumber(s.annualEnergyCost)} EUR`,
       s.measures.length > 0 ? s.measures.join(", ") : "_none_",
     ]);
 
@@ -285,10 +284,6 @@ describe.sequential("PRA Trace", () => {
               `${fmtNumber(estimation.annualEnergyNeeds)} kWh`,
             ],
             [
-              "Annual energy cost",
-              `${fmtNumber(estimation.annualEnergyCost)} EUR`,
-            ],
-            [
               "Heating/cooling needs",
               `${fmtNumber(estimation.heatingCoolingNeeds)} kWh`,
             ],
@@ -310,14 +305,7 @@ describe.sequential("PRA Trace", () => {
         `Selected measures: ${SELECTED_MEASURES.map((m) => `\`${m}\``).join(", ")}`,
         ``,
         mdTable(
-          [
-            "Scenario",
-            "Label",
-            "EPC Class",
-            "Annual Energy",
-            "Annual Cost",
-            "Measures",
-          ],
+          ["Scenario", "Label", "EPC Class", "Annual Energy", "Measures"],
           scenarioRows,
         ),
         ``,

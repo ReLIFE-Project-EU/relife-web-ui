@@ -39,7 +39,6 @@ function makeEstimation(
   return {
     estimatedEPC: "G",
     annualEnergyNeeds: 0,
-    annualEnergyCost: 0,
     heatingCoolingNeeds: 0,
     heatingDemand: 0,
     coolingDemand: 0,
@@ -141,7 +140,6 @@ describe("validateEstimation", () => {
     const estimation: EstimationResult = {
       estimatedEPC: "G",
       annualEnergyNeeds: 0,
-      annualEnergyCost: 0,
       heatingCoolingNeeds: 0,
       heatingDemand: 0,
       coolingDemand: 0,

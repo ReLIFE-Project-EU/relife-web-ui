@@ -1,6 +1,6 @@
 /**
  * EnergyDeepDive — left column of the HRA deep-dive panel.
- * Shows EPC swap, thermal needs, thermal cost, system energy use, and the
+ * Shows EPC swap, thermal needs, system energy use, and the
  * scenario's measure list, all relative to the current home today.
  */
 
@@ -9,7 +9,6 @@ import {
   IconBolt,
   IconCertificate,
   IconPlug,
-  IconReceipt,
   IconSolarPanel,
   IconSun,
   IconUpload,
@@ -24,7 +23,6 @@ import type { RenovationScenario } from "../../context/types";
 import { getScenarioColor } from "../../utils/colorUtils";
 import {
   calculatePercentChange,
-  formatCurrency,
   formatEnergyPerYear,
   formatNumber,
 } from "../../utils/formatters";
@@ -103,26 +101,6 @@ export function EnergyDeepDive({
               />
               <Text size="xs" c="dimmed" component="span">
                 vs. {formatEnergyPerYear(current.annualEnergyNeeds)} today
-              </Text>
-            </>
-          }
-        />
-
-        <MiniMetric
-          icon={<IconReceipt size={14} />}
-          conceptId="estimated-thermal-needs-cost"
-          value={formatCurrency(selected.annualEnergyCost)}
-          delta={
-            <>
-              <DeltaBadge
-                delta={calculatePercentChange(
-                  current.annualEnergyCost,
-                  selected.annualEnergyCost,
-                )}
-                higherIsBetter={false}
-              />
-              <Text size="xs" c="dimmed" component="span">
-                vs. {formatCurrency(current.annualEnergyCost)} today
               </Text>
             </>
           }

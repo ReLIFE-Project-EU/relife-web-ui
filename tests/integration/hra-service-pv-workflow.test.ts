@@ -111,9 +111,9 @@ describe.sequential("HRA Service PV Workflow", () => {
     const scenarioElements = pvUrl.searchParams.get("scenario_elements") ?? "";
     expect(scenarioElements).not.toContain("pv");
 
-    // PV reduces grid electricity, not HVAC demand — annualEnergyCost is unchanged
-    expect(pvScenario!.annualEnergyCost).toBe(
-      currentScenario!.annualEnergyCost,
+    // PV reduces grid electricity, not HVAC thermal needs
+    expect(pvScenario!.annualEnergyNeeds).toBe(
+      currentScenario!.annualEnergyNeeds,
     );
   });
 

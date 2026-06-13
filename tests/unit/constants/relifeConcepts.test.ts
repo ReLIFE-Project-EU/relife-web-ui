@@ -42,7 +42,6 @@ describe("relifeConcepts ontology", () => {
       "annual-building-thermal-needs",
       "system-energy-consumption",
       "energy-intensity",
-      "estimated-thermal-needs-cost",
       "investment",
       "npv",
       "payback-period",

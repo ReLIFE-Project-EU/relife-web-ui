@@ -17,7 +17,6 @@ import type {
 import {
   DEFAULT_FLOOR_AREA,
   calculateAnnualTotals,
-  estimateAnnualHvacEnergyCost,
   extractUniTotals,
   getEPCClass,
   transformColumnarToRowFormat,
@@ -468,9 +467,6 @@ export class RenovationService implements IRenovationService {
       label: renovationPackage.label,
       epcClass: getEPCClass(renovatedIntensity),
       annualEnergyNeeds: Math.round(scaledRenovatedHvac),
-      annualEnergyCost: Math.round(
-        estimateAnnualHvacEnergyCost(scaledRenovatedHvac),
-      ),
       heatingCoolingNeeds: Math.round(scaledRenovatedHvac),
       ...(scaledDeliveredTotal !== undefined
         ? {
@@ -485,9 +481,6 @@ export class RenovationService implements IRenovationService {
                   },
                 }
               : {}),
-            deliveredEnergyCost: Math.round(
-              estimateAnnualHvacEnergyCost(scaledDeliveredTotal),
-            ),
           }
         : {}),
       ...(scaledPrimaryEnergy !== undefined
@@ -560,11 +553,9 @@ export class RenovationService implements IRenovationService {
       label: "Current Status",
       epcClass: estimation.estimatedEPC,
       annualEnergyNeeds: estimation.annualEnergyNeeds,
-      annualEnergyCost: estimation.annualEnergyCost,
       heatingCoolingNeeds: estimation.heatingCoolingNeeds,
       deliveredTotal: estimation.deliveredTotal,
       carrierBreakdown: estimation.carrierBreakdown,
-      deliveredEnergyCost: estimation.deliveredEnergyCost,
       primaryEnergy: estimation.primaryEnergy,
       flexibilityIndex: estimation.flexibilityIndex,
       comfortIndex: estimation.comfortIndex,

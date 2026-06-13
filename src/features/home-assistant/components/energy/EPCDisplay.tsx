@@ -13,12 +13,7 @@ import {
   Title,
 } from "@mantine/core";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
-import {
-  formatCurrency,
-  formatCurrencyDecimal,
-  formatEnergyPerYear,
-} from "../../utils/formatters";
-import { ENERGY_PRICE_EUR_PER_KWH } from "../../services/energyUtils";
+import { formatEnergyPerYear } from "../../utils/formatters";
 import {
   ConceptMetricCard,
   EPCBadge,
@@ -92,25 +87,12 @@ export function EPCDisplay() {
             />
           </SimpleGrid>
 
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-            <ConceptMetricCard
-              conceptId="estimated-thermal-needs-cost"
-              value={formatCurrency(estimation.annualEnergyCost)}
-            />
-          </SimpleGrid>
-
           {!hasDeliveredConsumption && (
             <Text size="sm" c="dimmed">
               System energy consumption is not available for this simulation
               yet, so only the building thermal-needs result is shown.
             </Text>
           )}
-          <Text size="xs" c="dimmed">
-            This cost is a simple estimate based on{" "}
-            {formatCurrencyDecimal(ENERGY_PRICE_EUR_PER_KWH)}
-            /kWh and your home&apos;s thermal needs. It is not your expected
-            bill.
-          </Text>
         </Stack>
       </Card>
     </Stack>

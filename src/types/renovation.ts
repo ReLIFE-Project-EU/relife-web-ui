@@ -75,7 +75,6 @@ export interface BuildingInfo {
 export interface EstimationResult {
   estimatedEPC: string; // UI label (A+ to G), maps to Greek for API
   annualEnergyNeeds: number; // kWh/year (HVAC demand, API-derived)
-  annualEnergyCost: number; // EUR/year (derived from annualEnergyNeeds using ENERGY_PRICE_EUR_PER_KWH)
   heatingCoolingNeeds: number; // kWh/year (HVAC demand, API-derived)
   /**
    * Annual ideal heating thermal demand in kWh/year.
@@ -101,8 +100,6 @@ export interface EstimationResult {
   deliveredTotal?: number;
   /** Carrier split for delivered energy, when available. */
   carrierBreakdown?: DeliveredEnergyCarrierBreakdown;
-  /** Frontend flat-tariff estimate derived from deliveredTotal, when available. */
-  deliveredEnergyCost?: number;
   /** UNI/TS 11300 total primary energy, when available. */
   primaryEnergy?: number;
 
@@ -119,13 +116,11 @@ export interface EstimationResult {
   referenceEstimation?: {
     estimatedEPC: string;
     annualEnergyNeeds: number;
-    annualEnergyCost: number;
     heatingCoolingNeeds: number;
     flexibilityIndex: number;
     comfortIndex: number;
     deliveredTotal?: number;
     carrierBreakdown?: DeliveredEnergyCarrierBreakdown;
-    deliveredEnergyCost?: number;
     primaryEnergy?: number;
   };
 
@@ -256,11 +251,9 @@ export interface RenovationScenario {
   label: string;
   epcClass: string;
   annualEnergyNeeds: number; // kWh/year (HVAC demand, API-derived)
-  annualEnergyCost: number; // EUR/year (derived from annualEnergyNeeds using ENERGY_PRICE_EUR_PER_KWH)
   heatingCoolingNeeds: number; // kWh/year (HVAC demand, API-derived)
   deliveredTotal?: number; // kWh/year (UNI/TS 11300 delivered energy, when available)
   carrierBreakdown?: DeliveredEnergyCarrierBreakdown; // kWh/year carrier split, when available
-  deliveredEnergyCost?: number; // EUR/year estimate derived from deliveredTotal
   primaryEnergy?: number; // kWh/year (UNI/TS 11300 primary energy, when available)
   heatingPrimaryEnergy?: number; // kWh/year (UNI/TS 11300 primary energy for heating, when available)
   coolingPrimaryEnergy?: number; // kWh/year (UNI/TS 11300 primary energy for cooling, when available)

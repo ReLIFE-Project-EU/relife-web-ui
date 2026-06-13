@@ -27,7 +27,6 @@ import type { BuildingInfo, EstimationResult } from "../types/renovation";
 import {
   DEFAULT_FLOOR_AREA,
   calculateAnnualTotals,
-  estimateAnnualHvacEnergyCost,
   extractUniTotals,
   getEPCClass,
 } from "./energyUtils";
@@ -551,7 +550,6 @@ export class EnergyService implements IEnergyService {
     const scaledCooling = coolingTotal * areaScaleFactor;
     const energyIntensity = scaledHvacTotal / userArea;
     const annualEnergyNeeds = scaledHvacTotal;
-    const annualEnergyCost = estimateAnnualHvacEnergyCost(annualEnergyNeeds);
     const estimatedEPC = getEPCClass(energyIntensity);
     const uniTotals = extractUniTotals(
       simulationResponse.results.primary_energy_uni11300,
@@ -612,7 +610,6 @@ export class EnergyService implements IEnergyService {
     return {
       estimatedEPC,
       annualEnergyNeeds: Math.round(annualEnergyNeeds),
-      annualEnergyCost: Math.round(annualEnergyCost),
       heatingCoolingNeeds: Math.round(scaledHvacTotal),
       heatingDemand: Math.round(scaledHeating),
       coolingDemand: Math.round(scaledCooling),
@@ -632,9 +629,6 @@ export class EnergyService implements IEnergyService {
                   },
                 }
               : {}),
-            deliveredEnergyCost: Math.round(
-              estimateAnnualHvacEnergyCost(scaledDeliveredTotal),
-            ),
           }
         : {}),
       ...(scaledPrimaryEnergy !== undefined
@@ -801,12 +795,10 @@ export class EnergyService implements IEnergyService {
           referenceEstimation: {
             estimatedEPC: referenceEstimation.estimatedEPC,
             annualEnergyNeeds: referenceEstimation.annualEnergyNeeds,
-            annualEnergyCost: referenceEstimation.annualEnergyCost,
             heatingCoolingNeeds: referenceEstimation.heatingCoolingNeeds,
             flexibilityIndex: referenceEstimation.flexibilityIndex,
             comfortIndex: referenceEstimation.comfortIndex,
             deliveredTotal: referenceEstimation.deliveredTotal,
-            deliveredEnergyCost: referenceEstimation.deliveredEnergyCost,
             primaryEnergy: referenceEstimation.primaryEnergy,
           },
           auditCtx,
