@@ -33,13 +33,17 @@ import { buildSchemes, mapWireRiskResponse } from "./riskAssessmentAdapter";
 import type {
   ARVRequest,
   CalculateFinancialScenariosRequest,
+  FinancialAssumptions,
   IFinancialService,
   RiskAssessmentRequest,
   RiskAssessmentResponse,
 } from "./types";
 import { auditLog, type AuditCtx } from "../utils/auditLogger";
-
-const USE_SIMULATED_DELIVERED_ENERGY_FOR_FINANCE = true;
+import {
+  computeCarrierFinancialEnergySavings,
+  ENERGY_TARIFF_DEFAULTS,
+  FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
+} from "./carrierSavingsService";
 
 function resolveConstructionYear(building: BuildingInfo): number {
   return (
@@ -54,6 +58,15 @@ function resolveArvEnergyIntensity(
   floorArea: number,
 ): number {
   return (annualEnergyTotal ?? fallbackAnnualEnergyNeeds) / floorArea;
+}
+
+function resolveFinancialAssumptions(
+  partial?: FinancialAssumptions,
+): Required<FinancialAssumptions> {
+  return {
+    gasTariffEurPerKwh:
+      partial?.gasTariffEurPerKwh ?? ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
+  };
 }
 
 export class FinancialService implements IFinancialService {
@@ -205,6 +218,7 @@ export class FinancialService implements IFinancialService {
       currentEstimation: resolvedCurrentEstimation,
       packageFinancialInputs: resolvedPackageFinancialInputs,
       building: resolvedBuilding,
+      financialAssumptions: resolvedFinancialAssumptions,
       auditCtx: parentAuditCtx,
     } = Array.isArray(requestOrScenarios)
       ? {
@@ -214,10 +228,14 @@ export class FinancialService implements IFinancialService {
           currentEstimation: currentEstimation!,
           packageFinancialInputs: packageFinancialInputs!,
           building: building!,
+          financialAssumptions: undefined,
           auditCtx: undefined as AuditCtx | undefined,
         }
       : requestOrScenarios;
     const results: Record<string, FinancialResults> = {};
+    const assumptions = resolveFinancialAssumptions(
+      resolvedFinancialAssumptions,
+    );
 
     auditLog.info(
       "financial",
@@ -228,6 +246,9 @@ export class FinancialService implements IFinancialService {
         floorArea: resolvedFloorArea,
         projectLifetime: resolvedBuilding.projectLifetime,
         financingType: resolvedFundingOptions.financingType,
+        gasTariffEurPerKwh: assumptions.gasTariffEurPerKwh,
+        electricityReferencePriceEurPerKwh:
+          FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
       },
       parentAuditCtx,
     );
@@ -346,40 +367,39 @@ export class FinancialService implements IFinancialService {
         renovated_last_5_years: resolvedBuilding.renovatedLast5Years,
       };
 
-      // Canonical HRA semantic for POST /financial/risk-assessment:
-      // annual_energy_savings = max(0, baseline deliveredTotal - scenario deliveredTotal)
-      //
-      // This is saved HVAC system energy in kWh/year from Forecasting/UNI,
-      // already scaled to the user's floor area. It is intentionally NOT:
-      // - thermal-needs savings (Q_H/Q_C)
-      // - a direct EUR saving
-      //
-      // System measures such as condensing boiler or heat pump can therefore
-      // produce financial savings even when the building's thermal needs stay
-      // broadly unchanged, because the HVAC system delivers the same comfort
-      // with less input energy. If the required UNI totals are missing for a
-      // scenario, skip the detailed risk/cash-flow path instead of silently
-      // falling back to a different savings semantic.
-      const canUseDeliveredEnergy =
-        USE_SIMULATED_DELIVERED_ENERGY_FOR_FINANCE &&
-        resolvedCurrentEstimation.deliveredTotal !== undefined &&
-        scenario.deliveredTotal !== undefined;
-      const annualEnergySavingsKWh = canUseDeliveredEnergy
-        ? Math.max(
-            0,
-            resolvedCurrentEstimation.deliveredTotal! -
-              scenario.deliveredTotal!,
+      // Current Financial API accepts one scalar kWh value and prices it with
+      // the electricity curve. Preserve carrier economics by first valuing gas
+      // and grid-electricity deltas separately, then converting the net EUR
+      // savings into electricity-equivalent kWh at the backend reference price.
+      const canUseCarrierPricing =
+        resolvedCurrentEstimation.carrierBreakdown !== undefined &&
+        scenario.carrierBreakdown !== undefined;
+      const carrierSavings = canUseCarrierPricing
+        ? computeCarrierFinancialEnergySavings(
+            resolvedCurrentEstimation.carrierBreakdown!,
+            scenario.carrierBreakdown!,
+            {
+              gasTariffEurPerKwh: assumptions.gasTariffEurPerKwh,
+              electricityReferencePriceEurPerKwh:
+                FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
+            },
           )
-        : 0;
+        : { annualSavingsEur: 0, electricityEquivalentKwh: 0 };
 
       auditLog.debug(
         "financial",
         "financial.savings.computed",
         {
-          canUseDeliveredEnergy,
+          canUseCarrierPricing,
+          baselineCarrierBreakdown: resolvedCurrentEstimation.carrierBreakdown,
+          scenarioCarrierBreakdown: scenario.carrierBreakdown,
           baselineDeliveredTotal: resolvedCurrentEstimation.deliveredTotal,
           scenarioDeliveredTotal: scenario.deliveredTotal,
-          annualEnergySavingsKWh,
+          annualSavingsEur: carrierSavings.annualSavingsEur,
+          electricityEquivalentKwh: carrierSavings.electricityEquivalentKwh,
+          gasTariffEurPerKwh: assumptions.gasTariffEurPerKwh,
+          electricityReferencePriceEurPerKwh:
+            FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
           renovationCost,
           fundingFinancingType: resolvedFundingOptions.financingType,
           effectiveCost,
@@ -392,7 +412,7 @@ export class FinancialService implements IFinancialService {
       );
 
       const riskRequest: RiskAssessmentRequest = {
-        annual_energy_savings: Math.round(annualEnergySavingsKWh),
+        annual_energy_savings: carrierSavings.electricityEquivalentKwh,
         project_lifetime: resolvedBuilding.projectLifetime,
         output_level: this.outputLevel,
         capex: effectiveCost,
@@ -426,8 +446,11 @@ export class FinancialService implements IFinancialService {
           "financial.risk.skipped",
           {
             scenarioId: scenario.id,
-            reason: "zero-or-negative-savings",
-            annualEnergySavingsKWh,
+            reason: canUseCarrierPricing
+              ? "non-positive-carrier-aware-savings"
+              : "missing-carrier-breakdown",
+            annualSavingsEur: carrierSavings.annualSavingsEur,
+            electricityEquivalentKwh: carrierSavings.electricityEquivalentKwh,
           },
           auditCtx,
         );

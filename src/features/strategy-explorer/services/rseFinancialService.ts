@@ -3,6 +3,7 @@ import {
   buildSchemes,
   mapWireRiskResponse,
 } from "../../../services/riskAssessmentAdapter";
+import { computeCarrierFinancialEnergySavings } from "../../../services/carrierSavingsService";
 import type { ArchetypeDetails } from "../../../types/archetype";
 import type {
   RiskAssessmentRequest,
@@ -22,7 +23,6 @@ import type {
   RSEFinancialAssumptions,
   RSEFinancialResult,
 } from "../types";
-import { computeCarrierFinancialEnergySavings } from "./rseCarrierSavingsService";
 import { computePackageCost } from "./rsePackageCatalog";
 
 export const RSE_NON_POSITIVE_ENERGY_SAVINGS_REASON =

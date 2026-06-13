@@ -2,6 +2,7 @@ import type {
   RenovationMeasureId,
   RiskAssessmentPercentiles,
 } from "../../types/renovation";
+import type { DeliveredEnergyCarrierBreakdown } from "../../types/energy";
 import type { ArchetypeDetails } from "../../types/archetype";
 import type {
   RSE_CACHE_PAYLOAD_SCHEMA_VERSION,
@@ -140,10 +141,7 @@ export interface RSECacheEntryProvenance {
   notes?: string;
 }
 
-export interface RSECarrierSourceBreakdown {
-  naturalGasKwh: number;
-  gridElectricityKwh: number;
-}
+export type RSECarrierSourceBreakdown = DeliveredEnergyCarrierBreakdown;
 
 export interface RSESimulationResult {
   key: RSEForecastingCacheKey;

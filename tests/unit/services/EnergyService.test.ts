@@ -287,6 +287,10 @@ describe("EnergyService", () => {
     const estimation = await service.estimateEPC(unmodifiedBuilding);
 
     expect(estimation.deliveredTotal).toBe(1500);
+    expect(estimation.carrierBreakdown).toEqual({
+      naturalGasKwh: 1200,
+      gridElectricityKwh: 300,
+    });
     expect(estimation.deliveredEnergyCost).toBe(375);
     expect(estimation.primaryEnergy).toBe(2100);
     expect(estimation.annualEnergyNeeds).toBe(2628);

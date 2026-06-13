@@ -20,6 +20,7 @@ import { IconCash } from "@tabler/icons-react";
 import { memo, useCallback, useMemo } from "react";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
 import { ErrorAlert } from "../../../../components/shared/ErrorAlert";
+import { EnergyTariffPanel } from "../../../../components/shared/EnergyTariffPanel";
 import { MetricCard } from "../../../../components/shared/MetricCard";
 import { formatCurrency } from "../../../../utils/formatters";
 import { FINANCING_SCHEMES, type FinancingScheme } from "../../constants";
@@ -129,6 +130,9 @@ export function FinancingStep() {
         },
         globalCapex: state.renovation.estimatedCapex,
         globalMaintenanceCost: state.renovation.estimatedMaintenanceCost,
+        financialAssumptions: {
+          gasTariffEurPerKwh: state.gasTariffEurPerKwh,
+        },
       });
 
       // Set all building results in a single dispatch
@@ -257,6 +261,14 @@ export function FinancingStep() {
           </SimpleGrid>
         </Card>
       )}
+
+      <EnergyTariffPanel
+        appliedGasTariff={state.gasTariffEurPerKwh}
+        onApplyGasTariff={(gasTariffEurPerKwh) =>
+          dispatch({ type: "SET_GAS_TARIFF", gasTariffEurPerKwh })
+        }
+        isApplying={state.isEvaluating}
+      />
 
       {/* Error display */}
       <ErrorAlert error={state.error} title="Analysis Error" />

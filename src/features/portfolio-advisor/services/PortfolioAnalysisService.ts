@@ -58,6 +58,7 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       onProgress,
       globalCapex,
       globalMaintenanceCost,
+      financialAssumptions,
     } = request;
     void financingScheme;
     const results: Record<string, BuildingAnalysisResult> = {};
@@ -92,6 +93,7 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
             projectLifetime,
             globalCapex,
             globalMaintenanceCost,
+            financialAssumptions,
             parentCtx,
           ),
         ),
@@ -162,6 +164,7 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     projectLifetime: number,
     globalCapex?: number | null,
     globalMaintenanceCost?: number | null,
+    financialAssumptions?: PortfolioAnalysisRequest["financialAssumptions"],
     parentCtx?: AuditCtx,
   ): Promise<BuildingAnalysisResult> {
     const auditCtx = parentCtx?.child({ buildingId: building.id });
@@ -266,6 +269,7 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
         },
       },
       building: buildingInfo,
+      financialAssumptions,
       auditCtx,
     });
 

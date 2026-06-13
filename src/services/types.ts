@@ -335,7 +335,7 @@ export interface ARVRequest {
  * Monte Carlo simulation for financial risk analysis
  */
 export interface RiskAssessmentRequest {
-  annual_energy_savings: number; // kWh/year, from Forecasting API
+  annual_energy_savings: number; // Electricity-equivalent kWh/year for current scalar Financial API
   project_lifetime: number; // 1-30 years
   output_level: OutputLevel; // "private" for HRA tool
   indicators?: string[]; // Default: ["IRR", "NPV", "PBP", "DPP", "ROI"]
@@ -344,6 +344,10 @@ export interface RiskAssessmentRequest {
   upfront_incentive_percentage?: number; // 0-100; folded into capex before the call
   capex?: number;
   annual_maintenance_cost?: number;
+}
+
+export interface FinancialAssumptions {
+  gasTariffEurPerKwh?: number;
 }
 
 /**
@@ -370,6 +374,7 @@ export interface CalculateFinancialScenariosRequest {
   currentEstimation: EstimationResult;
   packageFinancialInputs: PackageFinancialInputsById;
   building: BuildingInfo;
+  financialAssumptions?: FinancialAssumptions;
   auditCtx?: AuditCtx;
 }
 

@@ -73,6 +73,7 @@ export interface HomeAssistantState {
   // Screen 2 selections
   renovation: RenovationSelections;
   funding: FundingOptions;
+  gasTariffEurPerKwh: number;
   suggestedPackages: RenovationPackage[];
   selectedPackageIds: string[];
   packageFinancialInputs: PackageFinancialInputsById;
@@ -133,6 +134,7 @@ export type HomeAssistantAction =
   | { type: "SET_FINANCING_TYPE"; financingType: FinancingType }
   | { type: "UPDATE_LOAN"; field: keyof LoanDetails; value: number }
   | { type: "UPDATE_INCENTIVE"; field: keyof IncentiveDetails; value: number }
+  | { type: "SET_GAS_TARIFF"; gasTariffEurPerKwh: number }
 
   // Evaluation
   | { type: "START_EVALUATION" }

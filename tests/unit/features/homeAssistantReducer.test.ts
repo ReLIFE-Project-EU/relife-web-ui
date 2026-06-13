@@ -214,6 +214,36 @@ describe("homeAssistantReducer package financial inputs", () => {
     expect(state.financialResults).toEqual({});
     expect(state.mcdaRanking).toBeNull();
   });
+
+  test("updating gas tariff invalidates prior financial results", () => {
+    const state = homeAssistantReducer(
+      {
+        ...initialState,
+        financialResults: {
+          "package-wall-insulation": {
+            arv: null,
+            riskAssessment: null,
+            capitalExpenditure: 10_000,
+            returnOnInvestment: 0,
+            paybackTime: 0,
+            netPresentValue: 0,
+            afterRenovationValue: 0,
+          },
+        },
+        mcdaRanking: [
+          { scenarioId: "package-wall-insulation", rank: 1, score: 1 },
+        ],
+      },
+      {
+        type: "SET_GAS_TARIFF",
+        gasTariffEurPerKwh: 0.12,
+      },
+    );
+
+    expect(state.gasTariffEurPerKwh).toBe(0.12);
+    expect(state.financialResults).toEqual({});
+    expect(state.mcdaRanking).toBeNull();
+  });
 });
 
 const mockEstimation: EstimationResult = {

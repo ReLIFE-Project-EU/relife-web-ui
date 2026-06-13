@@ -23,6 +23,11 @@ import {
   transformColumnarToRowFormat,
 } from "./energyUtils";
 import {
+  extractUniCarrierBreakdown,
+  scaleCarrierBreakdown,
+  totalCarrierEnergyKwh,
+} from "./carrierSavingsService";
+import {
   MEASURE_CATEGORIES,
   RENOVATION_MEASURES,
 } from "./mock/data/renovationMeasures";
@@ -351,18 +356,33 @@ export class RenovationService implements IRenovationService {
 
     const areaScaleFactor = userArea / estimation.archetypeFloorArea;
     const scaledRenovatedHvac = renovatedHvacEnergy * areaScaleFactor;
+    const pvAnnual = renovatedScenario.results.pv_hp?.summary?.annual_kwh;
+    const pvIndicators = renovatedScenario.results.pv_hp?.summary?.indicators;
+    const hasPv = renovationPackage.measureIds.includes(PV_MEASURE_ID);
+    const allowHeatPump = renovationPackage.measureIds.includes(
+      "air-water-heat-pump",
+    );
     const uniTotals = extractUniTotals(
       renovatedScenario.results.primary_energy_uni11300,
       {
-        allowHeatPump: renovationPackage.measureIds.includes(
-          "air-water-heat-pump",
-        ),
+        allowHeatPump,
       },
     );
+    const carrierBreakdown = scaleCarrierBreakdown(
+      extractUniCarrierBreakdown(
+        renovatedScenario.results.primary_energy_uni11300,
+        {
+          allowHeatPump,
+          pvSelfConsumptionKwh: hasPv ? pvAnnual?.self_consumption : undefined,
+        },
+      ),
+      areaScaleFactor,
+    );
     let scaledDeliveredTotal =
-      uniTotals !== undefined
+      totalCarrierEnergyKwh(carrierBreakdown) ??
+      (uniTotals !== undefined
         ? uniTotals.deliveredTotal * areaScaleFactor
-        : undefined;
+        : undefined);
     const scaledPrimaryEnergy =
       uniTotals !== undefined
         ? uniTotals.primaryEnergy * areaScaleFactor
@@ -375,8 +395,6 @@ export class RenovationService implements IRenovationService {
       uniTotals?.coolingPrimaryEnergy !== undefined
         ? uniTotals.coolingPrimaryEnergy * areaScaleFactor
         : undefined;
-    const pvAnnual = renovatedScenario.results.pv_hp?.summary?.annual_kwh;
-    const pvIndicators = renovatedScenario.results.pv_hp?.summary?.indicators;
     const scaledPvGeneration =
       pvAnnual?.pv_generation !== undefined
         ? pvAnnual.pv_generation * areaScaleFactor
@@ -391,7 +409,8 @@ export class RenovationService implements IRenovationService {
         : undefined;
     if (
       scaledPvSelfConsumption !== undefined &&
-      renovationPackage.measureIds.includes(PV_MEASURE_ID) &&
+      hasPv &&
+      carrierBreakdown === undefined &&
       scaledDeliveredTotal !== undefined
     ) {
       scaledDeliveredTotal = Math.max(
@@ -412,6 +431,15 @@ export class RenovationService implements IRenovationService {
         raw: {
           hvacTotal: renovatedHvacEnergy,
           deliveredTotal: uniTotals?.deliveredTotal,
+          carrierBreakdown: extractUniCarrierBreakdown(
+            renovatedScenario.results.primary_energy_uni11300,
+            {
+              allowHeatPump,
+              pvSelfConsumptionKwh: hasPv
+                ? pvAnnual?.self_consumption
+                : undefined,
+            },
+          ),
           primaryEnergy: uniTotals?.primaryEnergy,
           pvGeneration: pvAnnual?.pv_generation,
           pvSelfConsumption: pvAnnual?.self_consumption,
@@ -419,6 +447,7 @@ export class RenovationService implements IRenovationService {
         scaled: {
           hvacTotal: scaledRenovatedHvac,
           deliveredTotal: scaledDeliveredTotal,
+          carrierBreakdown,
           primaryEnergy: scaledPrimaryEnergy,
           pvGeneration: scaledPvGeneration,
           pvSelfConsumption: scaledPvSelfConsumption,
@@ -446,6 +475,16 @@ export class RenovationService implements IRenovationService {
       ...(scaledDeliveredTotal !== undefined
         ? {
             deliveredTotal: Math.round(scaledDeliveredTotal),
+            ...(carrierBreakdown !== undefined
+              ? {
+                  carrierBreakdown: {
+                    naturalGasKwh: Math.round(carrierBreakdown.naturalGasKwh),
+                    gridElectricityKwh: Math.round(
+                      carrierBreakdown.gridElectricityKwh,
+                    ),
+                  },
+                }
+              : {}),
             deliveredEnergyCost: Math.round(
               estimateAnnualHvacEnergyCost(scaledDeliveredTotal),
             ),
@@ -524,6 +563,7 @@ export class RenovationService implements IRenovationService {
       annualEnergyCost: estimation.annualEnergyCost,
       heatingCoolingNeeds: estimation.heatingCoolingNeeds,
       deliveredTotal: estimation.deliveredTotal,
+      carrierBreakdown: estimation.carrierBreakdown,
       deliveredEnergyCost: estimation.deliveredEnergyCost,
       primaryEnergy: estimation.primaryEnergy,
       flexibilityIndex: estimation.flexibilityIndex,

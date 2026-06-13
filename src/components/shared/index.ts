@@ -4,6 +4,7 @@
 
 export { DeltaValue, DeltaBadge } from "./DeltaValue";
 export { EPCBadge } from "./EPCBadge";
+export { EnergyTariffPanel } from "./EnergyTariffPanel";
 export { ErrorAlert } from "./ErrorAlert";
 export { MetricCard } from "./MetricCard";
 export { MetricExplainer } from "./MetricExplainer";

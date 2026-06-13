@@ -16,8 +16,8 @@ import {
   MEASURE_TO_ELEMENT,
   PV_MEASURE_ID,
 } from "../../../services/renovationEcmParams";
+import { extractCarrierSourceBreakdown } from "../../../services/carrierSavingsService";
 import type { UNI11300Results } from "../../../types/forecasting";
-import { extractCarrierSourceBreakdown } from "./rseCarrierSavingsService";
 import type { RSEForecastingCacheEntry, RSESimulationResult } from "../types";
 
 type RSECacheApiClient = {
@@ -148,8 +148,12 @@ export function normalizeEntry(
       annualPrimaryEnergySavingsKwh,
     ),
     carrierSourceBreakdown: {
-      baseline: extractCarrierSourceBreakdown(entry.baseline.co2),
-      renovated: extractCarrierSourceBreakdown(entry.renovated.co2),
+      baseline: extractCarrierSourceBreakdown(
+        entry.baseline.co2.sourceBreakdownKwh,
+      ),
+      renovated: extractCarrierSourceBreakdown(
+        entry.renovated.co2.sourceBreakdownKwh,
+      ),
     },
     baselineAnnualEmissionsTonCo2eq: entry.baseline.co2.annualEmissionsTonCo2eq,
     renovatedAnnualEmissionsTonCo2eq:

@@ -1,7 +1,15 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { PortfolioAnalysisService } from "../../../../src/features/portfolio-advisor/services/PortfolioAnalysisService";
-import type { PRABuilding } from "../../../../src/features/portfolio-advisor/context/types";
+import { ENERGY_TARIFF_DEFAULTS } from "../../../../src/services/carrierSavingsService";
+import {
+  initialState,
+  portfolioAdvisorReducer,
+} from "../../../../src/features/portfolio-advisor/context/portfolioAdvisorReducer";
+import type {
+  PortfolioAdvisorState,
+  PRABuilding,
+} from "../../../../src/features/portfolio-advisor/context/types";
 import type {
   IEnergyService,
   IFinancialService,
@@ -81,6 +89,28 @@ const funding: FundingOptions = {
   incentives: {
     upfrontPercentage: 0,
   },
+};
+
+const stateWithResults: PortfolioAdvisorState = {
+  ...initialState,
+  buildingResults: {
+    "building-1": {
+      buildingId: "building-1",
+      status: "success",
+      financialResults: {
+        arv: null,
+        riskAssessment: null,
+        capitalExpenditure: 10_000,
+        annualMaintenanceCost: 300,
+        returnOnInvestment: 0.1,
+        paybackTime: 10,
+        netPresentValue: 1000,
+        afterRenovationValue: null,
+      },
+    },
+  },
+  mcdaRanking: [{ scenarioId: "renovated", rank: 1, score: 1 }],
+  analysisProgress: { completed: 1, total: 1 },
 };
 
 function createBuilding(overrides?: Partial<PRABuilding>): PRABuilding {
@@ -196,6 +226,26 @@ describe("PortfolioAnalysisService", () => {
         },
       ],
       expect.anything(),
+    );
+  });
+
+  test("passes financial assumptions through to the financial service", async () => {
+    await service.analyzePortfolio({
+      buildings: [createBuilding()],
+      selectedMeasures: ["wall-insulation"],
+      financingScheme: "equity",
+      funding,
+      projectLifetime: 20,
+      onProgress: vi.fn(),
+      globalCapex: 12000,
+      globalMaintenanceCost: 500,
+      financialAssumptions: { gasTariffEurPerKwh: 0.12 },
+    });
+
+    expect(mockCalculateForAllScenarios).toHaveBeenCalledWith(
+      expect.objectContaining({
+        financialAssumptions: { gasTariffEurPerKwh: 0.12 },
+      }),
     );
   });
 
@@ -375,5 +425,25 @@ describe("PortfolioAnalysisService", () => {
     expect(results["building-1"].error).toContain(
       "selected renovation measure",
     );
+  });
+});
+
+describe("portfolioAdvisorReducer", () => {
+  test("initial state uses shared gas tariff default", () => {
+    expect(initialState.gasTariffEurPerKwh).toBe(
+      ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
+    );
+  });
+
+  test("SET_GAS_TARIFF updates tariff and clears stale analysis results", () => {
+    const state = portfolioAdvisorReducer(stateWithResults, {
+      type: "SET_GAS_TARIFF",
+      gasTariffEurPerKwh: 0.12,
+    });
+
+    expect(state.gasTariffEurPerKwh).toBe(0.12);
+    expect(state.buildingResults).toEqual({});
+    expect(state.mcdaRanking).toBeNull();
+    expect(state.analysisProgress).toBeNull();
   });
 });

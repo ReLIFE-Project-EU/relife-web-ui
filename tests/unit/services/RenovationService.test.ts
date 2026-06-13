@@ -119,6 +119,7 @@ const mockEstimation: EstimationResult = {
   comfortIndex: 70,
   annualEnergyConsumption: 15000,
   deliveredTotal: 17000,
+  carrierBreakdown: { naturalGasKwh: 15000, gridElectricityKwh: 2000 },
   deliveredEnergyCost: 4250,
   primaryEnergy: 22000,
   archetypeFloorArea: 100,
@@ -493,7 +494,15 @@ describe("RenovationService", () => {
     );
 
     expect(scenarios[0]?.deliveredTotal).toBe(17000);
+    expect(scenarios[0]?.carrierBreakdown).toEqual({
+      naturalGasKwh: 15000,
+      gridElectricityKwh: 2000,
+    });
     expect(scenarios[1]?.deliveredTotal).toBe(1250);
+    expect(scenarios[1]?.carrierBreakdown).toEqual({
+      naturalGasKwh: 1000,
+      gridElectricityKwh: 250,
+    });
     expect(scenarios[1]?.deliveredEnergyCost).toBe(313);
     expect(scenarios[1]?.primaryEnergy).toBe(1800);
     expect(scenarios[1]?.heatingPrimaryEnergy).toBe(1200);
@@ -556,6 +565,10 @@ describe("RenovationService", () => {
     );
     expect(scenarios[1]?.label).toBe("Condensing Boiler");
     expect(scenarios[1]?.deliveredTotal).toBe(1000);
+    expect(scenarios[1]?.carrierBreakdown).toEqual({
+      naturalGasKwh: 900,
+      gridElectricityKwh: 100,
+    });
     expect(scenarios[1]?.primaryEnergy).toBe(1400);
     expect(scenarios[1]?.heatingPrimaryEnergy).toBe(1000);
     expect(scenarios[1]?.coolingPrimaryEnergy).toBe(400);
@@ -622,6 +635,10 @@ describe("RenovationService", () => {
       "include_baseline",
     );
     expect(scenarios[1]?.deliveredTotal).toBe(850);
+    expect(scenarios[1]?.carrierBreakdown).toEqual({
+      naturalGasKwh: 0,
+      gridElectricityKwh: 850,
+    });
     expect(scenarios[1]?.primaryEnergy).toBe(1200);
     expect(scenarios[1]?.heatingPrimaryEnergy).toBe(900);
     expect(scenarios[1]?.coolingPrimaryEnergy).toBe(300);
@@ -772,8 +789,12 @@ describe("RenovationService", () => {
       ],
     );
 
-    expect(scenarios[1]?.deliveredTotal).toBe(500);
-    expect(scenarios[1]?.deliveredEnergyCost).toBe(125);
+    expect(scenarios[1]?.deliveredTotal).toBe(1500);
+    expect(scenarios[1]?.carrierBreakdown).toEqual({
+      naturalGasKwh: 1500,
+      gridElectricityKwh: 0,
+    });
+    expect(scenarios[1]?.deliveredEnergyCost).toBe(375);
     expect(scenarios[1]?.primaryEnergy).toBe(3000);
     expect(scenarios[1]?.heatingPrimaryEnergy).toBe(2000);
     expect(scenarios[1]?.coolingPrimaryEnergy).toBe(1000);

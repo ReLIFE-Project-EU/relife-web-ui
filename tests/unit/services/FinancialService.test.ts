@@ -9,6 +9,7 @@ import type {
 } from "../../../src/types/renovation";
 import type { RiskAssessmentRequest } from "../../../src/types/financial";
 import { APIError } from "../../../src/types/common";
+import { FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH } from "../../../src/services/carrierSavingsService";
 
 const { mockCalculateARV, mockAssessRisk } = vi.hoisted(() => ({
   mockCalculateARV: vi.fn(),
@@ -122,6 +123,7 @@ const mockEstimation = {
   comfortIndex: 70,
   annualEnergyConsumption: 15000,
   deliveredTotal: 11000,
+  carrierBreakdown: { naturalGasKwh: 10000, gridElectricityKwh: 1000 },
   deliveredEnergyCost: 2750,
   primaryEnergy: 16500,
   archetypeFloorArea: 100,
@@ -142,6 +144,7 @@ const renovatedScenario = {
   annualEnergyCost: 1250,
   heatingCoolingNeeds: 5000,
   deliveredTotal: 7000,
+  carrierBreakdown: { naturalGasKwh: 6000, gridElectricityKwh: 1000 },
   deliveredEnergyCost: 1750,
   primaryEnergy: 9600,
   flexibilityIndex: 55,
@@ -159,6 +162,7 @@ const currentScenario = {
   annualEnergyCost: 3750,
   heatingCoolingNeeds: 15000,
   deliveredTotal: 11000,
+  carrierBreakdown: { naturalGasKwh: 10000, gridElectricityKwh: 1000 },
   deliveredEnergyCost: 2750,
   primaryEnergy: 16500,
   flexibilityIndex: 50,
@@ -176,6 +180,7 @@ const secondScenario = {
   annualEnergyCost: 1000,
   heatingCoolingNeeds: 4000,
   deliveredTotal: 6500,
+  carrierBreakdown: { naturalGasKwh: 5500, gridElectricityKwh: 1000 },
   deliveredEnergyCost: 1625,
   primaryEnergy: 9100,
   measureIds: ["windows"],
@@ -318,7 +323,7 @@ describe("FinancialService", () => {
     );
   });
 
-  test("risk assessment savings = max(0, round(baseline - renovated))", async () => {
+  test("risk assessment savings are carrier-aware electricity-equivalent kWh", async () => {
     const service = new FinancialService();
 
     await service.calculateForAllScenarios(
@@ -331,7 +336,9 @@ describe("FinancialService", () => {
     );
 
     expect(mockAssessRisk).toHaveBeenCalledWith(
-      expect.objectContaining({ annual_energy_savings: 4000 }),
+      expect.objectContaining({
+        annual_energy_savings: (4000 * 0.115) / 0.246,
+      }),
     );
   });
 
@@ -363,6 +370,7 @@ describe("FinancialService", () => {
       annualEnergyNeeds: 15000,
       heatingCoolingNeeds: 15000,
       deliveredTotal: 9000,
+      carrierBreakdown: { naturalGasKwh: 9000, gridElectricityKwh: 0 },
       deliveredEnergyCost: 2250,
       primaryEnergy: 13000,
       measureIds: ["condensing-boiler"],
@@ -384,7 +392,11 @@ describe("FinancialService", () => {
     );
 
     expect(mockAssessRisk).toHaveBeenCalledWith(
-      expect.objectContaining({ annual_energy_savings: 2000 }),
+      expect.objectContaining({
+        annual_energy_savings:
+          (1000 * 0.115 + 1000 * FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH) /
+          FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
+      }),
     );
     expect(mockCalculateARV).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -400,6 +412,7 @@ describe("FinancialService", () => {
     const highEnergyScenario: RenovationScenario = {
       ...renovatedScenario,
       deliveredTotal: 12000,
+      carrierBreakdown: { naturalGasKwh: 13000, gridElectricityKwh: 1000 },
     };
 
     const results = await service.calculateForAllScenarios(
@@ -420,12 +433,13 @@ describe("FinancialService", () => {
     expect(results["renovated"].riskAssessment).toBeNull();
   });
 
-  test("missing delivered totals skip detailed finance instead of falling back to thermal needs", async () => {
+  test("missing carrier totals skip detailed finance instead of falling back to thermal needs", async () => {
     const service = new FinancialService();
 
     const scenarioWithoutDelivered: RenovationScenario = {
       ...renovatedScenario,
       deliveredTotal: undefined,
+      carrierBreakdown: undefined,
       deliveredEnergyCost: undefined,
       primaryEnergy: undefined,
     };

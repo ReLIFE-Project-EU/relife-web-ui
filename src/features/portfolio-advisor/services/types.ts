@@ -3,6 +3,7 @@
  */
 
 import type {
+  FinancialAssumptions,
   IBuildingService,
   IEnergyService,
   IFinancialService,
@@ -25,6 +26,7 @@ export interface PortfolioAnalysisRequest {
   onProgress: (completed: number, total: number, current: string) => void;
   globalCapex?: number | null;
   globalMaintenanceCost?: number | null;
+  financialAssumptions?: FinancialAssumptions;
 }
 
 export interface IPortfolioAnalysisService {

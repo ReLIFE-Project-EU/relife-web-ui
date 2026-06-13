@@ -154,7 +154,7 @@ export class MockRenovationService implements IRenovationService {
    *
    * TODO: In production, this should call the Forecasting API:
    * - POST /[endpoint] with building data + selected measures
-   * - Receive: annual_energy_savings, energy_class (EPC), etc.
+   * - Receive renovated energy demand, delivered energy, carrier split, EPC, etc.
    *
    * Currently returns placeholder data for UI development.
    * The "renovated" scenario values are NOT real calculations.

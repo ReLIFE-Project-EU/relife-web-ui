@@ -3,6 +3,7 @@
  */
 
 import { PRA_DEFAULT_PROJECT_LIFETIME } from "../constants";
+import { ENERGY_TARIFF_DEFAULTS } from "../../../services/carrierSavingsService";
 import type { PortfolioAdvisorAction, PortfolioAdvisorState } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -37,6 +38,7 @@ export const initialState: PortfolioAdvisorState = {
       upfrontPercentage: 0,
     },
   },
+  gasTariffEurPerKwh: ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
   buildingResults: {},
   selectedPersona: "cost-optimization",
   mcdaRanking: null,
@@ -212,6 +214,13 @@ export function portfolioAdvisorReducer(
             [action.field]: action.value,
           },
         },
+        ...clearedAnalysisResults,
+      };
+
+    case "SET_GAS_TARIFF":
+      return {
+        ...state,
+        gasTariffEurPerKwh: action.gasTariffEurPerKwh,
         ...clearedAnalysisResults,
       };
 

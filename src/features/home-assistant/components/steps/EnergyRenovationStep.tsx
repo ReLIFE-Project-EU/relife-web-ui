@@ -6,6 +6,7 @@
 import { useEffect } from "react";
 import { Alert, Box, Divider, Stack, Text, Title } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
+import { EnergyTariffPanel } from "../../../../components/shared/EnergyTariffPanel";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 import { EnergyMixDisplay, EPCDisplay } from "../energy";
@@ -86,6 +87,9 @@ export function EnergyRenovationStep() {
         currentEstimation: state.estimation,
         packageFinancialInputs: state.packageFinancialInputs,
         building: state.building,
+        financialAssumptions: {
+          gasTariffEurPerKwh: state.gasTariffEurPerKwh,
+        },
       });
 
       dispatch({
@@ -180,6 +184,13 @@ export function EnergyRenovationStep() {
 
       {/* Funding Options */}
       <FundingOptions />
+
+      <EnergyTariffPanel
+        appliedGasTariff={state.gasTariffEurPerKwh}
+        onApplyGasTariff={(gasTariffEurPerKwh) =>
+          dispatch({ type: "SET_GAS_TARIFF", gasTariffEurPerKwh })
+        }
+      />
 
       {/* Error display */}
       <ErrorAlert error={state.error} title="Evaluation Error" />

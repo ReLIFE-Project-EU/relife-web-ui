@@ -67,7 +67,7 @@ export interface RiskAssessmentRequest {
   /** Total capital expenditure in euros (> 0). Upfront incentives are folded in client-side. */
   capex: number;
 
-  /** Expected annual energy savings in kWh (> 0). Provided by energy simulation. */
+  /** Electricity-equivalent annual savings in kWh (> 0) for the current scalar API contract. */
   annual_energy_savings: number;
 
   /** Annual maintenance/operational cost in euros (>= 0). */

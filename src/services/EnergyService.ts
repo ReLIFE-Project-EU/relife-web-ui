@@ -31,6 +31,10 @@ import {
   extractUniTotals,
   getEPCClass,
 } from "./energyUtils";
+import {
+  extractUniCarrierBreakdown,
+  scaleCarrierBreakdown,
+} from "./carrierSavingsService";
 import type { IEnergyService, IBuildingService } from "./types";
 import {
   applyAllModifications,
@@ -552,6 +556,12 @@ export class EnergyService implements IEnergyService {
     const uniTotals = extractUniTotals(
       simulationResponse.results.primary_energy_uni11300,
     );
+    const carrierBreakdown = scaleCarrierBreakdown(
+      extractUniCarrierBreakdown(
+        simulationResponse.results.primary_energy_uni11300,
+      ),
+      areaScaleFactor,
+    );
     const scaledDeliveredTotal =
       uniTotals !== undefined
         ? uniTotals.deliveredTotal * areaScaleFactor
@@ -586,6 +596,7 @@ export class EnergyService implements IEnergyService {
           coolingDemand: scaledCooling,
           hvacTotal: scaledHvacTotal,
           deliveredTotal: scaledDeliveredTotal,
+          carrierBreakdown,
           primaryEnergy: scaledPrimaryEnergy,
         },
         energyIntensity,
@@ -611,6 +622,16 @@ export class EnergyService implements IEnergyService {
       ...(scaledDeliveredTotal !== undefined
         ? {
             deliveredTotal: Math.round(scaledDeliveredTotal),
+            ...(carrierBreakdown !== undefined
+              ? {
+                  carrierBreakdown: {
+                    naturalGasKwh: Math.round(carrierBreakdown.naturalGasKwh),
+                    gridElectricityKwh: Math.round(
+                      carrierBreakdown.gridElectricityKwh,
+                    ),
+                  },
+                }
+              : {}),
             deliveredEnergyCost: Math.round(
               estimateAnnualHvacEnergyCost(scaledDeliveredTotal),
             ),

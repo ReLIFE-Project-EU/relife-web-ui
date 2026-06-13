@@ -104,6 +104,7 @@ export interface PortfolioAdvisorState {
   projectLifetime: number;
   financingScheme: FinancingScheme;
   funding: FundingOptions;
+  gasTariffEurPerKwh: number;
   buildingResults: Record<string, BuildingAnalysisResult>;
   selectedPersona: string;
   mcdaRanking: MCDARankingResult[] | null;
@@ -141,6 +142,7 @@ export type PortfolioAdvisorAction =
   | { type: "SET_FINANCING_SCHEME"; scheme: FinancingScheme }
   | { type: "SET_FINANCING_TYPE"; financingType: FinancingType }
   | { type: "UPDATE_LOAN"; field: keyof LoanDetails; value: number }
+  | { type: "SET_GAS_TARIFF"; gasTariffEurPerKwh: number }
   | { type: "START_ANALYSIS" }
   | {
       type: "UPDATE_ANALYSIS_PROGRESS";
