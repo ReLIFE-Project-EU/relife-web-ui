@@ -6,7 +6,9 @@ import {
 } from "../../../../../src/features/strategy-explorer/services/rseWorkflowService";
 import { RSEPackageCatalogError } from "../../../../../src/features/strategy-explorer/services/rsePackageCatalog";
 import { auditLog } from "../../../../../src/utils/auditLogger";
+import type { RSECacheMatrixRequest } from "../../../../../src/features/strategy-explorer/api/rseCacheApi";
 import type {
+  RSEArchetypeRef,
   RSEExpandedPortfolioSelection,
   RSEFinancialResult,
   RSEForecastingCacheEntry,
@@ -59,7 +61,7 @@ function makePortfolio(): RSEExpandedPortfolioSelection[] {
 }
 
 function makeEntry(
-  archetype: typeof archetypeA,
+  archetype: RSEArchetypeRef,
   packageId: RSEPackageId,
 ): RSEForecastingCacheEntry {
   return {
@@ -143,18 +145,22 @@ function makeDependencies(
       expandPortfolio: vi.fn().mockResolvedValue(makePortfolio()),
     },
     cacheService: {
-      resolveCacheMatrix: vi.fn().mockImplementation((request) => {
-        const entries = request.archetypes.flatMap((archetype) =>
-          request.packageIds.map((packageId) => makeEntry(archetype, packageId)),
-        );
+      resolveCacheMatrix: vi
+        .fn()
+        .mockImplementation((request: RSECacheMatrixRequest) => {
+          const entries = request.archetypes.flatMap((archetype) =>
+            request.packageIds.map((packageId) =>
+              makeEntry(archetype, packageId),
+            ),
+          );
 
-        return Promise.resolve({
-          cacheVersion: "v1",
-          entries,
-          available: entries.map((entry) => entry.key),
-          missing: [],
-        });
-      }),
+          return Promise.resolve({
+            cacheVersion: "v1",
+            entries,
+            available: entries.map((entry) => entry.key),
+            missing: [],
+          });
+        }),
       normalizeEntry: vi.fn((entry: RSEForecastingCacheEntry) =>
         makeSimulation(entry),
       ),
@@ -299,18 +305,20 @@ describe("rseWorkflowService", () => {
   test("deduplicates package IDs before cache and financial work", async () => {
     const deps = makeDependencies({
       cacheService: {
-        resolveCacheMatrix: vi.fn().mockImplementation((request) => {
-          const entries = [
-            makeEntry(archetypeA, request.packageIds[0]),
-            makeEntry(archetypeB, request.packageIds[0]),
-          ];
-          return Promise.resolve({
-            cacheVersion: "v1",
-            entries,
-            available: entries.map((entry) => entry.key),
-            missing: [],
-          });
-        }),
+        resolveCacheMatrix: vi
+          .fn()
+          .mockImplementation((request: RSECacheMatrixRequest) => {
+            const entries = [
+              makeEntry(archetypeA, request.packageIds[0]),
+              makeEntry(archetypeB, request.packageIds[0]),
+            ];
+            return Promise.resolve({
+              cacheVersion: "v1",
+              entries,
+              available: entries.map((entry) => entry.key),
+              missing: [],
+            });
+          }),
         normalizeEntry: vi.fn((entry: RSEForecastingCacheEntry) =>
           makeSimulation(entry),
         ),
@@ -373,18 +381,20 @@ describe("rseWorkflowService", () => {
   test("returns empty rankings when every financial result is unavailable", async () => {
     const deps = makeDependencies({
       cacheService: {
-        resolveCacheMatrix: vi.fn().mockImplementation((request) => {
-          const entries = [
-            makeEntry(archetypeA, request.packageIds[0]),
-            makeEntry(archetypeB, request.packageIds[0]),
-          ];
-          return Promise.resolve({
-            cacheVersion: "v1",
-            entries,
-            available: entries.map((entry) => entry.key),
-            missing: [],
-          });
-        }),
+        resolveCacheMatrix: vi
+          .fn()
+          .mockImplementation((request: RSECacheMatrixRequest) => {
+            const entries = [
+              makeEntry(archetypeA, request.packageIds[0]),
+              makeEntry(archetypeB, request.packageIds[0]),
+            ];
+            return Promise.resolve({
+              cacheVersion: "v1",
+              entries,
+              available: entries.map((entry) => entry.key),
+              missing: [],
+            });
+          }),
         normalizeEntry: vi.fn((entry: RSEForecastingCacheEntry) =>
           makeSimulation(entry),
         ),
