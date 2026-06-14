@@ -214,8 +214,9 @@ describe("FinancialService", () => {
     expect(mockCalculateARV).toHaveBeenCalledWith(
       expect.objectContaining({
         target_country: "Greece",
-        energy_consumption_before: 110,
-        energy_consumption_after: 70,
+        // Primary-energy intensities (EP_total / floor area): 16500/100, 9600/100.
+        energy_consumption_before: 165,
+        energy_consumption_after: 96,
       }),
     );
   });
@@ -235,7 +236,8 @@ describe("FinancialService", () => {
     expect(mockCalculateARV).toHaveBeenCalledWith(
       expect.objectContaining({
         target_country: "Greece",
-        energy_consumption_after: 110,
+        // Primary-energy intensity (EP_total / floor area): 16500/100.
+        energy_consumption_after: 165,
         renovated_last_5_years: false,
       }),
     );
@@ -391,8 +393,9 @@ describe("FinancialService", () => {
     );
     expect(mockCalculateARV).toHaveBeenCalledWith(
       expect.objectContaining({
-        energy_consumption_before: 110,
-        energy_consumption_after: 90,
+        // Primary-energy intensities (EP_total / floor area): 16500/100, 13000/100.
+        energy_consumption_before: 165,
+        energy_consumption_after: 130,
       }),
     );
   });

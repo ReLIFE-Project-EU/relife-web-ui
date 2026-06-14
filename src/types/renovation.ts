@@ -8,7 +8,7 @@
  * - [ ] Technical API: MCDA pillar endpoint integration
  */
 
-import type { DeliveredEnergyCarrierBreakdown } from "./energy";
+import type { DeliveredEnergyCarrierBreakdown, EpcEnergyBasis } from "./energy";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Building Information Types (Screen 1)
@@ -102,6 +102,10 @@ export interface EstimationResult {
   carrierBreakdown?: DeliveredEnergyCarrierBreakdown;
   /** UNI/TS 11300 total primary energy, when available. */
   primaryEnergy?: number;
+  /** Energy intensity (kWh/m²/year) used to derive `estimatedEPC`. */
+  epcEnergyIntensity?: number;
+  /** Which energy basis backed `estimatedEPC` (primary, delivered, or thermal-demand fallback). */
+  epcEnergyBasis?: EpcEnergyBasis;
 
   /**
    * Notices returned during validation of a modified archetype.
@@ -122,6 +126,8 @@ export interface EstimationResult {
     deliveredTotal?: number;
     carrierBreakdown?: DeliveredEnergyCarrierBreakdown;
     primaryEnergy?: number;
+    epcEnergyIntensity?: number;
+    epcEnergyBasis?: EpcEnergyBasis;
   };
 
   /**
@@ -255,6 +261,8 @@ export interface RenovationScenario {
   deliveredTotal?: number; // kWh/year (UNI/TS 11300 delivered energy, when available)
   carrierBreakdown?: DeliveredEnergyCarrierBreakdown; // kWh/year carrier split, when available
   primaryEnergy?: number; // kWh/year (UNI/TS 11300 primary energy, when available)
+  epcEnergyIntensity?: number; // kWh/m²/year used to derive epcClass
+  epcEnergyBasis?: EpcEnergyBasis; // basis behind epcClass (primary, delivered, or thermal-demand fallback)
   heatingPrimaryEnergy?: number; // kWh/year (UNI/TS 11300 primary energy for heating, when available)
   coolingPrimaryEnergy?: number; // kWh/year (UNI/TS 11300 primary energy for cooling, when available)
   heatPumpCop?: number; // COP used by Forecasting for heat-pump scenarios, when available

@@ -19,6 +19,7 @@ import {
   calculateAnnualTotals,
   extractUniTotals,
   getEPCClass,
+  resolveEpcRatingIntensity,
   transformColumnarToRowFormat,
 } from "./energyUtils";
 import {
@@ -418,7 +419,18 @@ export class RenovationService implements IRenovationService {
       );
       // TODO(pv-primary): apply electricity primary factor before reducing primary energy.
     }
-    const renovatedIntensity = scaledRenovatedHvac / userArea;
+    // Rate the renovated scenario on primary energy (falling back to delivered,
+    // then thermal demand) so system measures move the class, consistent with
+    // the baseline estimation and the ARV energy basis.
+    const epcRating = resolveEpcRatingIntensity(
+      {
+        primaryEnergy: scaledPrimaryEnergy,
+        deliveredTotal: scaledDeliveredTotal,
+        annualEnergyNeeds: scaledRenovatedHvac,
+      },
+      userArea,
+    );
+    const renovatedIntensity = epcRating.intensity;
 
     auditLog.debug(
       "renovation",
@@ -486,6 +498,8 @@ export class RenovationService implements IRenovationService {
       ...(scaledPrimaryEnergy !== undefined
         ? { primaryEnergy: Math.round(scaledPrimaryEnergy) }
         : {}),
+      epcEnergyIntensity: Math.round(renovatedIntensity),
+      epcEnergyBasis: epcRating.basis,
       ...(scaledHeatingPrimaryEnergy !== undefined
         ? { heatingPrimaryEnergy: Math.round(scaledHeatingPrimaryEnergy) }
         : {}),

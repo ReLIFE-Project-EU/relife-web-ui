@@ -30,9 +30,10 @@ export function EPCDisplay() {
 
   const floorArea = state.building.floorArea;
   const energyIntensity =
-    floorArea && floorArea > 0
+    estimation.epcEnergyIntensity ??
+    (floorArea && floorArea > 0
       ? estimation.annualEnergyNeeds / floorArea
-      : undefined;
+      : undefined);
   const hasDeliveredConsumption = estimation.deliveredTotal !== undefined;
 
   return (

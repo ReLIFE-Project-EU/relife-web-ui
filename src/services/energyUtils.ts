@@ -11,6 +11,7 @@ import type {
   HourlyBuildingColumnar,
   UNI11300Results,
 } from "../types/forecasting";
+import type { EpcEnergyBasis } from "../types/energy";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -50,6 +51,9 @@ export interface ExtractedUniTotals {
 
 /**
  * Determine EPC class from energy intensity (kWh/m²/year).
+ *
+ * The threshold table is calibrated for primary-energy intensity (the EU/Italian
+ * EPgl,nren basis); feed it a value resolved via {@link resolveEpcRatingIntensity}.
  */
 export function getEPCClass(energyIntensity: number): string {
   for (const threshold of EPC_THRESHOLDS) {
@@ -58,6 +62,55 @@ export function getEPCClass(energyIntensity: number): string {
     }
   }
   return "G";
+}
+
+export interface EpcRatingIntensity {
+  /** Energy intensity in kWh/m²/year used to derive the EPC class. */
+  intensity: number;
+  /** Which energy quantity the intensity was derived from. */
+  basis: EpcEnergyBasis;
+}
+
+/**
+ * Resolve the energy intensity (kWh/m²/year) used to rate the EPC class.
+ *
+ * EU/Italian EPC is defined on non-renewable primary energy, which thermal
+ * demand (ideal HVAC needs) does not capture — net thermal demand is invariant
+ * to the heating system, so rating on it makes system retrofits look pointless.
+ * Prefer primary energy, fall back to delivered, and only use thermal demand
+ * when neither is available (flagged via `basis`).
+ *
+ * All `source` values are absolute kWh/year already scaled to the user's floor
+ * area; `floorArea` is the same denominator used elsewhere in the pipeline.
+ */
+export function resolveEpcRatingIntensity(
+  source: {
+    primaryEnergy?: number;
+    deliveredTotal?: number;
+    annualEnergyNeeds: number;
+  },
+  floorArea: number,
+): EpcRatingIntensity {
+  const area = floorArea > 0 ? floorArea : DEFAULT_FLOOR_AREA;
+
+  if (
+    source.primaryEnergy !== undefined &&
+    Number.isFinite(source.primaryEnergy)
+  ) {
+    return { intensity: source.primaryEnergy / area, basis: "primary" };
+  }
+
+  if (
+    source.deliveredTotal !== undefined &&
+    Number.isFinite(source.deliveredTotal)
+  ) {
+    return { intensity: source.deliveredTotal / area, basis: "delivered" };
+  }
+
+  return {
+    intensity: source.annualEnergyNeeds / area,
+    basis: "thermal-demand",
+  };
 }
 
 /**

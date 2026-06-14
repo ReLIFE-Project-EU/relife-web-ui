@@ -44,6 +44,7 @@ import {
   ENERGY_TARIFF_DEFAULTS,
   FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
 } from "./carrierSavingsService";
+import { resolveEpcRatingIntensity } from "./energyUtils";
 
 function resolveConstructionYear(building: BuildingInfo): number {
   return (
@@ -52,12 +53,23 @@ function resolveConstructionYear(building: BuildingInfo): number {
   );
 }
 
+/**
+ * Energy intensity (kWh/m²/year) sent to the ARV model as `energy_consumption_*`.
+ *
+ * The ARV model resolves a national EPC class from this value, so it must use
+ * the same basis as the displayed EPC badge (primary energy, falling back to
+ * delivered then thermal demand) — otherwise the property-value story and the
+ * EPC badge can contradict each other.
+ */
 function resolveArvEnergyIntensity(
-  annualEnergyTotal: number | undefined,
-  fallbackAnnualEnergyNeeds: number,
+  source: {
+    primaryEnergy?: number;
+    deliveredTotal?: number;
+    annualEnergyNeeds: number;
+  },
   floorArea: number,
 ): number {
-  return (annualEnergyTotal ?? fallbackAnnualEnergyNeeds) / floorArea;
+  return resolveEpcRatingIntensity(source, floorArea).intensity;
 }
 
 function resolveFinancialAssumptions(
@@ -254,8 +266,11 @@ export class FinancialService implements IFinancialService {
     );
 
     const baselineEnergyIntensity = resolveArvEnergyIntensity(
-      resolvedCurrentEstimation.deliveredTotal,
-      resolvedCurrentEstimation.annualEnergyNeeds,
+      {
+        primaryEnergy: resolvedCurrentEstimation.primaryEnergy,
+        deliveredTotal: resolvedCurrentEstimation.deliveredTotal,
+        annualEnergyNeeds: resolvedCurrentEstimation.annualEnergyNeeds,
+      },
       resolvedFloorArea,
     );
 
@@ -360,8 +375,11 @@ export class FinancialService implements IFinancialService {
         target_country: resolvedBuilding.country,
         energy_consumption_before: baselineEnergyIntensity,
         energy_consumption_after: resolveArvEnergyIntensity(
-          scenario.deliveredTotal,
-          scenario.annualEnergyNeeds,
+          {
+            primaryEnergy: scenario.primaryEnergy,
+            deliveredTotal: scenario.deliveredTotal,
+            annualEnergyNeeds: scenario.annualEnergyNeeds,
+          },
           resolvedFloorArea,
         ),
         renovated_last_5_years: resolvedBuilding.renovatedLast5Years,

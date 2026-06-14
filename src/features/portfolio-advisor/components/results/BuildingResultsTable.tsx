@@ -317,13 +317,15 @@ function ResultsRow({
   const energyBefore = result.estimation?.annualEnergyNeeds;
   const energyAfter = renovated?.annualEnergyNeeds;
   const intensityBefore =
-    energyBefore !== undefined && building.floorArea > 0
+    result.estimation?.epcEnergyIntensity ??
+    (energyBefore !== undefined && building.floorArea > 0
       ? energyBefore / building.floorArea
-      : undefined;
+      : undefined);
   const intensityAfter =
-    energyAfter !== undefined && building.floorArea > 0
+    renovated?.epcEnergyIntensity ??
+    (energyAfter !== undefined && building.floorArea > 0
       ? energyAfter / building.floorArea
-      : undefined;
+      : undefined);
   const deliveredBefore = result.estimation?.deliveredTotal;
   const deliveredAfter = renovated?.deliveredTotal;
   const deliveredEnergyReduction =

@@ -29,6 +29,7 @@ import {
   calculateAnnualTotals,
   extractUniTotals,
   getEPCClass,
+  resolveEpcRatingIntensity,
 } from "./energyUtils";
 import {
   extractUniCarrierBreakdown,
@@ -548,9 +549,7 @@ export class EnergyService implements IEnergyService {
     const scaledHvacTotal = hvacTotal * areaScaleFactor;
     const scaledHeating = heatingTotal * areaScaleFactor;
     const scaledCooling = coolingTotal * areaScaleFactor;
-    const energyIntensity = scaledHvacTotal / userArea;
     const annualEnergyNeeds = scaledHvacTotal;
-    const estimatedEPC = getEPCClass(energyIntensity);
     const uniTotals = extractUniTotals(
       simulationResponse.results.primary_energy_uni11300,
     );
@@ -568,6 +567,19 @@ export class EnergyService implements IEnergyService {
       uniTotals !== undefined
         ? uniTotals.primaryEnergy * areaScaleFactor
         : undefined;
+    // EPC is rated on primary energy (EU EPgl,nren basis), falling back to
+    // delivered then thermal demand so a heating-system swap actually moves the
+    // class. See resolveEpcRatingIntensity.
+    const epcRating = resolveEpcRatingIntensity(
+      {
+        primaryEnergy: scaledPrimaryEnergy,
+        deliveredTotal: scaledDeliveredTotal,
+        annualEnergyNeeds: scaledHvacTotal,
+      },
+      userArea,
+    );
+    const energyIntensity = epcRating.intensity;
+    const estimatedEPC = getEPCClass(energyIntensity);
 
     const comfortIndex = calculateComfortIndex(building);
     const flexibilityIndex = calculateFlexibilityIndex(building);
@@ -634,6 +646,8 @@ export class EnergyService implements IEnergyService {
       ...(scaledPrimaryEnergy !== undefined
         ? { primaryEnergy: Math.round(scaledPrimaryEnergy) }
         : {}),
+      epcEnergyIntensity: Math.round(energyIntensity),
+      epcEnergyBasis: epcRating.basis,
       archetypeFloorArea: archetypeArea,
       archetype: {
         category: archetype.category,
@@ -800,6 +814,8 @@ export class EnergyService implements IEnergyService {
             comfortIndex: referenceEstimation.comfortIndex,
             deliveredTotal: referenceEstimation.deliveredTotal,
             primaryEnergy: referenceEstimation.primaryEnergy,
+            epcEnergyIntensity: referenceEstimation.epcEnergyIntensity,
+            epcEnergyBasis: referenceEstimation.epcEnergyBasis,
           },
           auditCtx,
         });

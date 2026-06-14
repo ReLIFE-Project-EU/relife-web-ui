@@ -41,13 +41,15 @@ export function EnergyDeepDive({
 }: EnergyDeepDiveProps) {
   const color = getScenarioColor(selected.id);
   const intensityCurrent =
-    floorArea && floorArea > 0
+    current.epcEnergyIntensity ??
+    (floorArea && floorArea > 0
       ? current.annualEnergyNeeds / floorArea
-      : undefined;
+      : undefined);
   const intensitySelected =
-    floorArea && floorArea > 0
+    selected.epcEnergyIntensity ??
+    (floorArea && floorArea > 0
       ? selected.annualEnergyNeeds / floorArea
-      : undefined;
+      : undefined);
 
   return (
     <div>

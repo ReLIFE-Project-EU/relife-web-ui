@@ -91,16 +91,16 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     id: "estimated-epc",
     label: "Estimated EPC",
     description:
-      "Approximate energy class from modeled annual building thermal needs per floor area, shown for comparison.",
+      "Approximate energy class from modeled primary energy per floor area (UNI EP_total), shown for comparison.",
     caveat: "This is not an official Energy Performance Certificate.",
     professionalDetail:
-      "Letter bands map modeled thermal needs intensity (kWh/m²/year) to approximate classes; they do not fully represent heating fuel or primary energy the way many official schemes do.",
+      "Letter bands map primary-energy intensity (kWh/m²/year, the EU EPgl,nren basis) to approximate classes via resolveEpcRatingIntensity. Falls back to delivered energy, then to thermal needs, when primary energy is unavailable (e.g. heat-pump baselines without UNI data); in that fallback the class is rougher and does not fully reflect the heating fuel.",
   },
   "scenario-epc-comparison-note": {
     id: "scenario-epc-comparison-note",
     label: "Estimated EPC in scenario comparison",
     description:
-      "Some columns include a heating-system upgrade and/or solar (PV). The estimated class is still derived from modeled annual thermal needs per m². System and PV benefits often appear in delivered energy, costs, or generation rows even when this letter moves little. This is not an official Energy Performance Certificate.",
+      "Some columns include a heating-system upgrade and/or solar (PV). The estimated class is derived from modeled primary energy per m² (UNI EP_total), so heating-system and PV benefits are reflected in the class wherever the simulation returns primary energy. This is not an official Energy Performance Certificate.",
   },
   "energy-intensity": {
     id: "energy-intensity",

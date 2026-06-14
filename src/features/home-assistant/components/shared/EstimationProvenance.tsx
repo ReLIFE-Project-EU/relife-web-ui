@@ -25,14 +25,16 @@ export function ReferenceAdjustedComparisonCard({
   }
 
   const referenceIntensity =
-    floorArea && floorArea > 0
+    reference.epcEnergyIntensity ??
+    (floorArea && floorArea > 0
       ? reference.annualEnergyNeeds / floorArea
-      : undefined;
+      : undefined);
 
   const adjustedIntensity =
-    floorArea && floorArea > 0
+    estimation.epcEnergyIntensity ??
+    (floorArea && floorArea > 0
       ? estimation.annualEnergyNeeds / floorArea
-      : undefined;
+      : undefined);
 
   const epcChanged = estimation.estimatedEPC !== reference.estimatedEPC;
 

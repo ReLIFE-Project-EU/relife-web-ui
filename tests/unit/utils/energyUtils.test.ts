@@ -2,6 +2,7 @@ import { describe, test, expect } from "vitest";
 
 import {
   getEPCClass,
+  resolveEpcRatingIntensity,
   transformColumnarToRowFormat,
   calculateAnnualTotals,
   extractUniTotals,
@@ -44,6 +45,73 @@ describe("getEPCClass", () => {
     expect(getEPCClass(230)).toBe("D");
     expect(getEPCClass(330)).toBe("E");
     expect(getEPCClass(450)).toBe("F");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// resolveEpcRatingIntensity
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("resolveEpcRatingIntensity", () => {
+  test("prefers primary energy when available", () => {
+    expect(
+      resolveEpcRatingIntensity(
+        {
+          primaryEnergy: 18000,
+          deliveredTotal: 12000,
+          annualEnergyNeeds: 9000,
+        },
+        100,
+      ),
+    ).toEqual({ intensity: 180, basis: "primary" });
+  });
+
+  test("falls back to delivered energy when primary is missing", () => {
+    expect(
+      resolveEpcRatingIntensity(
+        { deliveredTotal: 12000, annualEnergyNeeds: 9000 },
+        100,
+      ),
+    ).toEqual({ intensity: 120, basis: "delivered" });
+  });
+
+  test("falls back to thermal demand and flags it when neither is available", () => {
+    expect(resolveEpcRatingIntensity({ annualEnergyNeeds: 9000 }, 100)).toEqual(
+      { intensity: 90, basis: "thermal-demand" },
+    );
+  });
+
+  test("system swap moves the rating: same thermal demand, lower primary energy", () => {
+    // Gas boiler vs heat pump: identical thermal needs, very different primary energy.
+    const gasBoiler = resolveEpcRatingIntensity(
+      { primaryEnergy: 22000, annualEnergyNeeds: 15000 },
+      100,
+    );
+    const heatPump = resolveEpcRatingIntensity(
+      { primaryEnergy: 9000, annualEnergyNeeds: 15000 },
+      100,
+    );
+    expect(getEPCClass(gasBoiler.intensity)).not.toBe(
+      getEPCClass(heatPump.intensity),
+    );
+  });
+
+  test("guards against non-positive floor area with DEFAULT_FLOOR_AREA", () => {
+    expect(
+      resolveEpcRatingIntensity(
+        { primaryEnergy: 9000, annualEnergyNeeds: 9000 },
+        0,
+      ),
+    ).toEqual({ intensity: 90, basis: "primary" });
+  });
+
+  test("ignores non-finite primary energy and falls through", () => {
+    expect(
+      resolveEpcRatingIntensity(
+        { primaryEnergy: NaN, deliveredTotal: 12000, annualEnergyNeeds: 9000 },
+        100,
+      ),
+    ).toEqual({ intensity: 120, basis: "delivered" });
   });
 });
 
