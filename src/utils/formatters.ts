@@ -40,35 +40,12 @@ const currencyFormatter = new Intl.NumberFormat("de-DE", {
   maximumFractionDigits: 0,
 });
 
-const currencyDecimalFormatter = new Intl.NumberFormat("de-DE", {
-  style: "currency",
-  currency: "EUR",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
 /**
  * Format a value as EUR currency (no decimals).
  * Example: 12500 -> "12.500 €"
  */
 export function formatCurrency(value: number): string {
   return currencyFormatter.format(value);
-}
-
-/**
- * Format a value as EUR currency with decimals.
- * Example: 12500.50 -> "12.500,50 €"
- */
-export function formatCurrencyDecimal(value: number): string {
-  return currencyDecimalFormatter.format(value);
-}
-
-/**
- * Format a cost per square meter.
- * Example: 180 -> "180 €/m²"
- */
-export function formatCostPerSqm(value: number): string {
-  return `${formatNumber(value)} €/m²`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

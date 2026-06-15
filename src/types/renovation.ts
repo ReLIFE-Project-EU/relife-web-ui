@@ -183,11 +183,6 @@ export type RenovationMeasureId =
   | "pv"
   | "solar-thermal";
 
-/**
- * @deprecated Use RenovationMeasureId instead. Kept for backward compatibility during transition.
- */
-export type PackageId = "soft" | "regular" | "deep";
-
 export interface RenovationSelections {
   /** Selected renovation measure IDs */
   selectedMeasures: RenovationMeasureId[];

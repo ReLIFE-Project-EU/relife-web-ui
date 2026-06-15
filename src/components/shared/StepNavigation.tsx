@@ -94,25 +94,3 @@ export function StepNavigation({
     </Group>
   );
 }
-
-/**
- * Simple back button for use outside the main navigation.
- */
-interface BackButtonProps {
-  onClick: () => void;
-  disabled?: boolean;
-}
-
-export function BackButton({ onClick, disabled }: BackButtonProps) {
-  return (
-    <Button
-      variant="subtle"
-      leftSection={<IconArrowLeft size={16} />}
-      onClick={onClick}
-      disabled={disabled}
-      size="sm"
-    >
-      Back
-    </Button>
-  );
-}

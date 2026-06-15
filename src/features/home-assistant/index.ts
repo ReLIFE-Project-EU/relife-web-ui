@@ -20,7 +20,6 @@ export type {
   EstimationResult,
   FundingOptions,
   HomeAssistantState,
-  PackageId,
   RenovationScenario,
   ScenarioId,
 } from "./context/types";

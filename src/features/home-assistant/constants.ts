@@ -29,15 +29,6 @@ export const PROJECT_LIFETIME_MAX = 30;
 export const PROJECT_LIFETIME_DEFAULT = 20;
 export const PACKAGE_SELECTION_MAX = 3;
 
-export const PROJECT_LIFETIME_MARKS = [
-  { value: 5, label: "5y" },
-  { value: 10, label: "10y" },
-  { value: 15, label: "15y" },
-  { value: 20, label: "20y" },
-  { value: 25, label: "25y" },
-  { value: 30, label: "30y" },
-];
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Coordinate Constraints
 // ─────────────────────────────────────────────────────────────────────────────
