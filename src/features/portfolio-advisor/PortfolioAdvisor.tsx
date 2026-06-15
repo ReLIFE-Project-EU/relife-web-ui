@@ -28,7 +28,10 @@ import { PortfolioAdvisorProvider } from "./context/PortfolioAdvisorContext";
 import { PortfolioAdvisorServiceProvider } from "./context/ServiceContext";
 import { usePortfolioAdvisor } from "./hooks/usePortfolioAdvisor";
 import { usePortfolioAdvisorServices } from "./hooks/usePortfolioAdvisorServices";
-import { getPortfolioMeasureStatus } from "./utils/measureSelection";
+import {
+  getCostOverrideValidity,
+  getPortfolioMeasureStatus,
+} from "./utils/measureSelection";
 import {
   BuildingPortfolioStep,
   EnergyRenovationStep,
@@ -49,15 +52,18 @@ function PortfolioAdvisorWizard() {
   const analysisEligibleMeasures = renovation
     .getAnalysisEligibleMeasures()
     .map((measure) => measure.id);
-  const costFieldsValid =
-    state.renovation.estimatedCapex !== null &&
-    state.renovation.estimatedMaintenanceCost !== null;
+  // Cost overrides are optional (blank → Financial API lookup during analysis);
+  // a present-but-invalid value still blocks access to the financing step.
+  const { capexInvalid, maintenanceInvalid } = getCostOverrideValidity(
+    state.renovation,
+  );
   const { hasValidSelections } = getPortfolioMeasureStatus(
     state.buildings,
     state.renovation.selectedMeasures,
     analysisEligibleMeasures,
   );
-  const canAccessFinancing = costFieldsValid && hasValidSelections;
+  const canAccessFinancing =
+    hasValidSelections && !capexInvalid && !maintenanceInvalid;
 
   // Sync local loading states to the global loading overlay
   useSyncGlobalLoading(state.isEstimating, "PortfolioAdvisor.estimate");

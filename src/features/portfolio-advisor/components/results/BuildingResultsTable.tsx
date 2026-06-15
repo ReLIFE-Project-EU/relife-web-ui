@@ -345,7 +345,25 @@ function ResultsRow({
           <Text size="sm" fw={500}>
             {building.name}
           </Text>
-          <RowStatusBadge row={row} />
+          <Group gap={4} wrap="nowrap">
+            <RowStatusBadge row={row} />
+            {(result.costSource?.capexFromLookup ||
+              result.costSource?.opexFromLookup) && (
+              <Tooltip
+                label="Cost estimated from EU reference data (no override set)"
+                withArrow
+              >
+                <Badge
+                  variant="light"
+                  color="blue"
+                  size="xs"
+                  leftSection={<IconInfoCircle size={11} />}
+                >
+                  Est. cost
+                </Badge>
+              </Tooltip>
+            )}
+          </Group>
         </Stack>
       </Table.Td>
       <Table.Td>

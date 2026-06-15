@@ -96,6 +96,7 @@ describe.sequential("PRA Service PV Workflow", () => {
     energyService,
     renovationService,
     financialService,
+    buildingService,
   );
 
   beforeAll(() => {

@@ -7,14 +7,6 @@ import { ENERGY_TARIFF_DEFAULTS } from "../../../services/carrierSavingsService"
 import type { PortfolioAdvisorAction, PortfolioAdvisorState } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Temporary defaults — pre-fill cost fields while the Financial API requires
-// non-null values. These will be removed once the backend accepts null.
-// ─────────────────────────────────────────────────────────────────────────────
-
-const DEFAULT_CAPEX = 10_000; // EUR — typical single-measure starting estimate
-const DEFAULT_ANNUAL_MAINTENANCE = 300; // EUR/year — typical O&M starting estimate
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Initial State
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -23,8 +15,11 @@ export const initialState: PortfolioAdvisorState = {
   buildings: [],
   renovation: {
     selectedMeasures: [],
-    estimatedCapex: DEFAULT_CAPEX,
-    estimatedMaintenanceCost: DEFAULT_ANNUAL_MAINTENANCE,
+    // Left blank by default: when neither a per-building/CSV value nor this
+    // global override is set, the cost is resolved from EU reference data via
+    // the Financial API lookup during analysis.
+    estimatedCapex: null,
+    estimatedMaintenanceCost: null,
   },
   projectLifetime: PRA_DEFAULT_PROJECT_LIFETIME,
   financingScheme: "equity",

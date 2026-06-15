@@ -6,13 +6,17 @@
  */
 
 import type {
+  IBuildingService,
   IEnergyService,
   IFinancialService,
   IRenovationService,
 } from "../../../services/types";
 import { normalizeSystemSelection } from "../../../services/measureNormalization";
+import { packageUsesHeatingStopgap } from "../../../services/renovationActions";
+import { lookupPackageCosts } from "../../../services/packageCostLookup";
 import type {
   BuildingInfo,
+  EstimationResult,
   FundingOptions,
   RenovationMeasureId,
   RenovationPackage,
@@ -23,6 +27,7 @@ import { validateEstimation } from "../../../services/estimationValidation";
 import { PRA_CONCURRENCY_LIMIT } from "../constants";
 import type {
   BuildingAnalysisResult,
+  CostSource,
   PRABuilding,
   PRAFinancialResults,
 } from "../context/types";
@@ -35,15 +40,20 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
   private readonly energy: IEnergyService;
   private readonly renovation: IRenovationService;
   private readonly financial: IFinancialService;
+  // Narrow dependency: only archetype details are needed (for the cost lookup's
+  // envelope surface areas), so we don't take the whole IBuildingService.
+  private readonly building: Pick<IBuildingService, "getArchetypeDetails">;
 
   constructor(
     energy: IEnergyService,
     renovation: IRenovationService,
     financial: IFinancialService,
+    building: Pick<IBuildingService, "getArchetypeDetails">,
   ) {
     this.energy = energy;
     this.renovation = renovation;
     this.financial = financial;
+    this.building = building;
   }
 
   async analyzePortfolio(
@@ -251,11 +261,44 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       auditCtx,
     );
 
-    // Step 3: Calculate financial results
-    // Per-building values take precedence; fall back to global overrides
-    const capex = building.estimatedCapex ?? globalCapex ?? null;
-    const maintenanceCost =
+    // Step 3: Calculate financial results.
+    // Cost precedence (per field): per-building / CSV value → global override →
+    // Financial API reference-data lookup. The lookup runs only when a field is
+    // still unresolved, and a failure throws (this building errors via the
+    // batch's allSettled while the rest of the portfolio continues).
+    let capex = building.estimatedCapex ?? globalCapex ?? null;
+    let maintenanceCost =
       building.annualMaintenanceCost ?? globalMaintenanceCost ?? null;
+    const costSource: CostSource = {
+      capexFromLookup: false,
+      opexFromLookup: false,
+    };
+
+    if (capex === null || maintenanceCost === null) {
+      const lookup = await this.lookupCosts(
+        building,
+        estimation,
+        normalizedRenovatedMeasures,
+        projectLifetime,
+        auditCtx,
+      );
+      if (capex === null) {
+        capex = lookup.capex;
+        costSource.capexFromLookup = true;
+      }
+      if (maintenanceCost === null) {
+        maintenanceCost = lookup.annualMaintenanceCost;
+        costSource.opexFromLookup = true;
+      }
+      // The heating cost lives in CAPEX, so the stopgap caveat only applies when
+      // CAPEX itself came from the lookup.
+      if (
+        costSource.capexFromLookup &&
+        packageUsesHeatingStopgap(normalizedRenovatedMeasures)
+      ) {
+        costSource.usesHeatingStopgap = true;
+      }
+    }
 
     const financialResults = await this.financial.calculateForAllScenarios({
       scenarios,
@@ -333,6 +376,62 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       estimation,
       scenarios,
       financialResults: praFinancialResults,
+      costSource,
+    };
+  }
+
+  /**
+   * Resolve a building's renovation CAPEX/OPEX from EU reference data, wrapping
+   * the shared `lookupPackageCosts` with PRA-specific audit logging. Throws (so
+   * the caller errors this building) when the lookup cannot resolve a cost.
+   */
+  private async lookupCosts(
+    building: PRABuilding,
+    estimation: EstimationResult,
+    measureIds: RenovationMeasureId[],
+    projectLifetime: number,
+    auditCtx?: AuditCtx,
+  ): Promise<{ capex: number; annualMaintenanceCost: number }> {
+    auditLog.info(
+      "financial",
+      "portfolio.cost.lookup.start",
+      {
+        buildingId: building.id,
+        country: building.country,
+        archetype: estimation.archetype?.name,
+        measureIds,
+        projectLifetime,
+      },
+      auditCtx,
+    );
+
+    const result = await lookupPackageCosts(
+      {
+        country: building.country,
+        archetype: estimation.archetype,
+        measureIds,
+        floorArea: building.floorArea,
+        projectLifetime,
+      },
+      { building: this.building, financial: this.financial },
+    );
+
+    auditLog.info(
+      "financial",
+      "portfolio.cost.lookup.end",
+      {
+        buildingId: building.id,
+        capex: result.capex,
+        annualMaintenanceCost: result.annualMaintenanceCost,
+        capexFromLookup: result.capexFromLookup,
+        opexFromLookup: result.opexFromLookup,
+      },
+      auditCtx,
+    );
+
+    return {
+      capex: result.capex,
+      annualMaintenanceCost: result.annualMaintenanceCost,
     };
   }
 

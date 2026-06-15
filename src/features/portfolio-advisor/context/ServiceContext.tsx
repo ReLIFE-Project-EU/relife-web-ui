@@ -27,6 +27,7 @@ const portfolioAnalysisService = new PortfolioAnalysisService(
   energyService,
   renovationService,
   financialService,
+  buildingService,
 );
 
 const defaultServices: IPortfolioAdvisorServices = {

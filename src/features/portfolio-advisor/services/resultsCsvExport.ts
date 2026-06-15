@@ -115,6 +115,20 @@ export const buildingExportColumns: CsvColumn<BuildingExportRow>[] = [
     value: (r) => r.result.financialResults?.capitalExpenditure,
   },
   {
+    key: "costSource",
+    header: "Cost source",
+    // "lookup" when a cost was resolved from EU reference data (no override),
+    // "override" when it came from a per-building/global value. Reported per
+    // field; blank for non-success rows that never resolved costs.
+    value: (r) => {
+      const cs = r.result.costSource;
+      if (!cs) return undefined;
+      const capex = cs.capexFromLookup ? "lookup" : "override";
+      const opex = cs.opexFromLookup ? "lookup" : "override";
+      return `capex:${capex};opex:${opex}`;
+    },
+  },
+  {
     key: "arv",
     header: "ARV (EUR)",
     value: (r) => r.result.financialResults?.afterRenovationValue,

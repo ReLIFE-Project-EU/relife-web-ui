@@ -21,15 +21,23 @@ export function PortfolioSummaryStrip({ state }: PortfolioSummaryStripProps) {
   const buildings = state.buildings;
   const totals = useMemo(() => {
     const totalArea = buildings.reduce((s, b) => s + (b.floorArea || 0), 0);
-    const totalCapex = buildings.reduce(
-      (s, b) =>
-        s +
-        (typeof b.estimatedCapex === "number"
+    // Sum only the buildings whose CAPEX is known up front (per-building value
+    // or global override). Buildings with neither are auto-estimated during
+    // analysis, so their cost is unknown here — flag that instead of adding €0.
+    let totalCapex = 0;
+    let hasAutoEstimated = false;
+    for (const b of buildings) {
+      const capex =
+        typeof b.estimatedCapex === "number"
           ? b.estimatedCapex
-          : (state.renovation.estimatedCapex ?? 0)),
-      0,
-    );
-    return { totalArea, totalCapex };
+          : state.renovation.estimatedCapex;
+      if (capex == null) {
+        hasAutoEstimated = true;
+      } else {
+        totalCapex += capex;
+      }
+    }
+    return { totalArea, totalCapex, hasAutoEstimated };
   }, [buildings, state.renovation.estimatedCapex]);
 
   const resultsCount = Object.keys(state.buildingResults).length;
@@ -84,7 +92,18 @@ export function PortfolioSummaryStrip({ state }: PortfolioSummaryStripProps) {
         </Cell>
         <Cell label="Estimated CAPEX">
           {totals.totalCapex > 0 ? (
-            formatCurrency(totals.totalCapex)
+            <>
+              {formatCurrency(totals.totalCapex)}
+              {totals.hasAutoEstimated && (
+                <Text component="span" size="xs" c="dimmed" ml={4}>
+                  + auto-est.
+                </Text>
+              )}
+            </>
+          ) : totals.hasAutoEstimated && buildings.length > 0 ? (
+            <Text c="dimmed" span>
+              Auto-estimated
+            </Text>
           ) : (
             <Text c="dimmed" span>
               —

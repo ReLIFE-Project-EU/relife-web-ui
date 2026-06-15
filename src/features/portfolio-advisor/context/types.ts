@@ -72,6 +72,22 @@ export interface PRAFinancialResults extends FinancialResults {
   >;
 }
 
+/**
+ * Provenance of the CAPEX/OPEX used in a building's financial analysis. A flag
+ * is true when that cost was resolved from EU reference data via the Financial
+ * API lookup (i.e. no per-building/CSV value and no global override was set).
+ */
+export interface CostSource {
+  capexFromLookup: boolean;
+  opexFromLookup: boolean;
+  /**
+   * CAPEX came from the lookup and the package includes a heating-system
+   * measure whose capacity was sized by the floor-area stopgap heuristic, so
+   * the heating portion of CAPEX is preliminary.
+   */
+  usesHeatingStopgap?: boolean;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Analysis Results
 // ─────────────────────────────────────────────────────────────────────────────
@@ -91,6 +107,8 @@ export interface BuildingAnalysisResult {
   estimation?: EstimationResult;
   scenarios?: RenovationScenario[];
   financialResults?: PRAFinancialResults;
+  /** Provenance of the costs used; set when status === "success". */
+  costSource?: CostSource;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

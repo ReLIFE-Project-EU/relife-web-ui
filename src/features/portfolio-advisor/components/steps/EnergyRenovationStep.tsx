@@ -44,7 +44,10 @@ import type { RenovationMeasure } from "../../../../services/types";
 import { SUGGESTED_PACKAGE } from "../../constants";
 import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
 import { usePortfolioAdvisorServices } from "../../hooks/usePortfolioAdvisorServices";
-import { getPortfolioMeasureStatus } from "../../utils/measureSelection";
+import {
+  getCostOverrideValidity,
+  getPortfolioMeasureStatus,
+} from "../../utils/measureSelection";
 import { BuildingMeasuresTable } from "../BuildingMeasuresTable";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -210,9 +213,13 @@ export function EnergyRenovationStep() {
   const unsupportedSelected = selectedMeasures.filter(
     (measureId) => !isAnalysisEligibleMeasure(measureId),
   );
-  const costFieldsValid =
-    state.renovation.estimatedCapex !== null &&
-    state.renovation.estimatedMaintenanceCost !== null;
+  // Cost overrides are optional: a blank field falls back to the Financial API
+  // reference-data lookup during analysis. A value that is present but invalid
+  // (CAPEX not > 0, negative maintenance) still blocks navigation — surfaced as
+  // per-input errors below.
+  const { capexInvalid, maintenanceInvalid } = getCostOverrideValidity(
+    state.renovation,
+  );
   const {
     buildingsWithoutMeasures,
     buildingsWithoutAnalysisEligibleMeasures,
@@ -222,7 +229,7 @@ export function EnergyRenovationStep() {
     selectedMeasures,
     analysisEligibleMeasures,
   );
-  const canProceed = costFieldsValid && hasValidSelections;
+  const canProceed = hasValidSelections && !capexInvalid && !maintenanceInvalid;
 
   const buildingsWithOverrides = state.buildings.filter(
     (b) =>
@@ -497,24 +504,20 @@ export function EnergyRenovationStep() {
 
         <Alert
           variant="light"
-          color="yellow"
+          color="blue"
           icon={<IconInfoCircle size={16} />}
           mb="md"
         >
-          <Text fw={600} size="sm" mb={4}>
-            Temporary requirement
-          </Text>
-          Due to a current API limitation, these cost fields cannot be left
-          empty for now. The pre-filled values are starting estimates — please
-          update them to match your project. This requirement will be removed
-          once the backend is updated.
+          Leave these blank to estimate each building&apos;s CAPEX/OPEX
+          automatically from EU reference data during analysis. Enter a value to
+          override the estimate for all buildings without a per-building cost.
         </Alert>
         <Grid>
           <Grid.Col span={{ base: 12, sm: 6 }}>
             <NumberInput
               label="Total CAPEX (EUR)"
-              description="Applied to buildings without a per-building CAPEX override."
-              placeholder="e.g. 10000"
+              description="Override applied to buildings without a per-building CAPEX. Leave blank to auto-estimate."
+              placeholder="Auto-estimated from reference data"
               value={state.renovation.estimatedCapex ?? ""}
               onChange={(val) =>
                 dispatch({
@@ -522,11 +525,11 @@ export function EnergyRenovationStep() {
                   capex: typeof val === "number" ? val : null,
                 })
               }
-              min={0}
+              min={1}
               thousandSeparator=","
               error={
-                state.renovation.estimatedCapex === null
-                  ? "Required — please enter a value or keep the default."
+                capexInvalid
+                  ? "CAPEX must be greater than 0, or leave blank to auto-estimate."
                   : undefined
               }
             />
@@ -544,8 +547,8 @@ export function EnergyRenovationStep() {
           <Grid.Col span={{ base: 12, sm: 6 }}>
             <NumberInput
               label="Annual Maintenance Cost (EUR/year)"
-              description="Post-renovation O&M cost."
-              placeholder="e.g. 300"
+              description="Override post-renovation O&M cost. Leave blank to auto-estimate."
+              placeholder="Auto-estimated from reference data"
               value={state.renovation.estimatedMaintenanceCost ?? ""}
               onChange={(val) =>
                 dispatch({
@@ -556,8 +559,8 @@ export function EnergyRenovationStep() {
               min={0}
               thousandSeparator=","
               error={
-                state.renovation.estimatedMaintenanceCost === null
-                  ? "Required — please enter a value or keep the default."
+                maintenanceInvalid
+                  ? "Maintenance cost cannot be negative."
                   : undefined
               }
             />

@@ -114,6 +114,7 @@ describe.sequential("PRA Trace", () => {
     energyService,
     renovationService,
     financialService,
+    buildingService,
   );
 
   beforeAll(() => {

@@ -186,17 +186,35 @@ export function parseCSV(text: string): CSVParseResult {
         ? parseInt(values[floorNumberIdx], 10)
         : undefined;
 
+    // Optional cost overrides. Blank/absent stays undefined so the Financial
+    // API lookup resolves the cost during analysis. A present value must be
+    // valid: CAPEX > 0, maintenance >= 0 (NaN/negative are flagged, not passed
+    // through as a silent override that would fail later in the pipeline).
     const capexIdx = colIndex("capex");
-    const estimatedCapex =
-      capexIdx >= 0 && values[capexIdx]?.trim()
-        ? parseFloat(values[capexIdx])
-        : undefined;
+    let estimatedCapex: number | undefined;
+    if (capexIdx >= 0 && values[capexIdx]?.trim()) {
+      const parsed = parseFloat(values[capexIdx]);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        rowErrors.push(
+          `Row ${rowNum}: capex must be a number greater than 0 (or left blank to auto-estimate).`,
+        );
+      } else {
+        estimatedCapex = parsed;
+      }
+    }
 
     const maintenanceIdx = colIndex("annual_maintenance_cost");
-    const annualMaintenanceCost =
-      maintenanceIdx >= 0 && values[maintenanceIdx]?.trim()
-        ? parseFloat(values[maintenanceIdx])
-        : undefined;
+    let annualMaintenanceCost: number | undefined;
+    if (maintenanceIdx >= 0 && values[maintenanceIdx]?.trim()) {
+      const parsed = parseFloat(values[maintenanceIdx]);
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        rowErrors.push(
+          `Row ${rowNum}: annual_maintenance_cost cannot be negative (or left blank to auto-estimate).`,
+        );
+      } else {
+        annualMaintenanceCost = parsed;
+      }
+    }
 
     // Parse optional per-building measures (semicolon-separated list)
     const measuresIdx = colIndex("measures");

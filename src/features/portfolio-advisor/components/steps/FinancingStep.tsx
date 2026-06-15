@@ -148,13 +148,25 @@ export function FinancingStep() {
     }
   };
 
-  // Loan summary derived from existing state. Total CAPEX = sum of per-building
-  // overrides plus the global default for buildings without an override.
-  const totalCapex = useMemo(() => {
-    return state.buildings.reduce((sum, b) => {
-      if (typeof b.estimatedCapex === "number") return sum + b.estimatedCapex;
-      return sum + (state.renovation.estimatedCapex ?? 0);
-    }, 0);
+  // Loan summary derived from existing state. Total CAPEX sums the buildings
+  // whose cost is known up front (per-building override or global override).
+  // Buildings with neither are auto-estimated during analysis, so they are not
+  // counted here — `hasAutoEstimated` flags that the figures are partial.
+  const { totalCapex, hasAutoEstimated } = useMemo(() => {
+    let total = 0;
+    let autoEstimated = false;
+    for (const b of state.buildings) {
+      const capex =
+        typeof b.estimatedCapex === "number"
+          ? b.estimatedCapex
+          : state.renovation.estimatedCapex;
+      if (capex == null) {
+        autoEstimated = true;
+      } else {
+        total += capex;
+      }
+    }
+    return { totalCapex: total, hasAutoEstimated: autoEstimated };
   }, [state.buildings, state.renovation.estimatedCapex]);
 
   const loanAmount =
@@ -259,6 +271,13 @@ export function FinancingStep() {
               value={formatCurrency(ownerEquity)}
             />
           </SimpleGrid>
+          {hasAutoEstimated && (
+            <Text size="xs" c="dimmed" mt="xs">
+              Figures cover only buildings with a set CAPEX. Buildings without a
+              cost override are auto-estimated from EU reference data during
+              analysis and are not included here.
+            </Text>
+          )}
         </Card>
       )}
 

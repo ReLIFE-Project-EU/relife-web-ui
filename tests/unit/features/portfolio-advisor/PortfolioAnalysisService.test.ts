@@ -11,10 +11,12 @@ import type {
   PRABuilding,
 } from "../../../../src/features/portfolio-advisor/context/types";
 import type {
+  IBuildingService,
   IEnergyService,
   IFinancialService,
   IRenovationService,
 } from "../../../../src/services/types";
+import { ArchetypeMatchStrategy } from "../../../../src/services/archetypeMatching";
 import type {
   EstimationResult,
   FinancialResults,
@@ -33,7 +35,25 @@ const estimation: EstimationResult = {
   comfortIndex: 70,
   annualEnergyConsumption: 15000,
   archetypeFloorArea: 100,
+  archetype: {
+    category: "Multi family House",
+    country: "Greece",
+    name: "MFH-1961-1980",
+    matchStrategy: ArchetypeMatchStrategy.USER_SELECTED,
+  },
 };
+
+// Minimal archetype details for the cost-lookup path: one wall surface so
+// `surfaceAreasFromBui` yields a positive wall area and `buildRenovationActions`
+// produces at least one priceable action.
+const archetypeDetails = {
+  bui: {
+    building_surface: [
+      { name: "wall_s", type: "opaque", area: 80, sky_view_factor: 0.5 },
+    ],
+  },
+  floorArea: 100,
+} as unknown as import("../../../../src/types/archetype").ArchetypeDetails;
 
 const scenarios: RenovationScenario[] = [
   {
@@ -131,6 +151,8 @@ describe("PortfolioAnalysisService", () => {
   const mockIsAnalysisEligibleMeasure = vi.fn();
   const mockEvaluateScenarios = vi.fn();
   const mockCalculateForAllScenarios = vi.fn();
+  const mockEstimatePackageCosts = vi.fn();
+  const mockGetArchetypeDetails = vi.fn();
 
   let service: PortfolioAnalysisService;
 
@@ -138,6 +160,13 @@ describe("PortfolioAnalysisService", () => {
     vi.clearAllMocks();
 
     mockEstimateEPC.mockResolvedValue(estimation);
+    mockGetArchetypeDetails.mockResolvedValue(archetypeDetails);
+    mockEstimatePackageCosts.mockResolvedValue({
+      capex: 8000,
+      annualMaintenanceCost: 150,
+      capexFromLookup: true,
+      opexFromLookup: true,
+    });
     mockIsAnalysisEligibleMeasure.mockImplementation(
       (measureId: RenovationMeasureId) =>
         [
@@ -163,7 +192,11 @@ describe("PortfolioAnalysisService", () => {
       } as unknown as IRenovationService,
       {
         calculateForAllScenarios: mockCalculateForAllScenarios,
+        estimatePackageCosts: mockEstimatePackageCosts,
       } as unknown as IFinancialService,
+      {
+        getArchetypeDetails: mockGetArchetypeDetails,
+      } as unknown as IBuildingService,
     );
   });
 
@@ -309,6 +342,95 @@ describe("PortfolioAnalysisService", () => {
     expect(results["building-1"]).toMatchObject({
       status: "success",
     });
+  });
+
+  test("resolves CAPEX/OPEX from the Financial lookup when no override is set", async () => {
+    const results = await service.analyzePortfolio({
+      buildings: [createBuilding()],
+      selectedMeasures: ["wall-insulation"],
+      financingScheme: "equity",
+      funding,
+      projectLifetime: 20,
+      onProgress: vi.fn(),
+      // No globalCapex / globalMaintenanceCost → lookup path.
+    });
+
+    expect(mockGetArchetypeDetails).toHaveBeenCalledWith({
+      category: "Multi family House",
+      country: "Greece",
+      name: "MFH-1961-1980",
+    });
+    expect(mockEstimatePackageCosts).toHaveBeenCalledWith(
+      expect.objectContaining({ country: "Greece", projectLifetime: 20 }),
+    );
+    // Looked-up costs feed the financial calculation.
+    expect(mockCalculateForAllScenarios).toHaveBeenCalledWith(
+      expect.objectContaining({
+        packageFinancialInputs: {
+          renovated: { capex: 8000, annualMaintenanceCost: 150 },
+        },
+      }),
+    );
+    expect(results["building-1"]).toMatchObject({
+      status: "success",
+      costSource: { capexFromLookup: true, opexFromLookup: true },
+    });
+  });
+
+  test("per-building and global values take precedence over the lookup", async () => {
+    const results = await service.analyzePortfolio({
+      // Per-building CAPEX overrides; OPEX falls back to the global override.
+      buildings: [createBuilding({ estimatedCapex: 25000 })],
+      selectedMeasures: ["wall-insulation"],
+      financingScheme: "equity",
+      funding,
+      projectLifetime: 20,
+      onProgress: vi.fn(),
+      globalMaintenanceCost: 400,
+    });
+
+    // Both fields resolved without touching the lookup.
+    expect(mockEstimatePackageCosts).not.toHaveBeenCalled();
+    expect(mockCalculateForAllScenarios).toHaveBeenCalledWith(
+      expect.objectContaining({
+        packageFinancialInputs: {
+          renovated: { capex: 25000, annualMaintenanceCost: 400 },
+        },
+      }),
+    );
+    expect(results["building-1"]).toMatchObject({
+      status: "success",
+      costSource: { capexFromLookup: false, opexFromLookup: false },
+    });
+  });
+
+  test("a failed lookup errors only that building; others still succeed", async () => {
+    mockEstimatePackageCosts.mockRejectedValueOnce(
+      new Error(
+        "Reference-data lookup did not return a cost for this package.",
+      ),
+    );
+
+    const results = await service.analyzePortfolio({
+      buildings: [
+        createBuilding({ id: "needs-lookup", name: "Needs lookup" }),
+        createBuilding({
+          id: "has-override",
+          name: "Has override",
+          estimatedCapex: 12000,
+          annualMaintenanceCost: 300,
+        }),
+      ],
+      selectedMeasures: ["wall-insulation"],
+      financingScheme: "equity",
+      funding,
+      projectLifetime: 20,
+      onProgress: vi.fn(),
+    });
+
+    expect(results["needs-lookup"].status).toBe("error");
+    expect(results["needs-lookup"].error).toContain("Reference-data lookup");
+    expect(results["has-override"]).toMatchObject({ status: "success" });
   });
 
   test("copies professional chart metadata into PRA financial results", async () => {
