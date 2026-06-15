@@ -13,11 +13,18 @@ export const financial = {
   /**
    * Perform Monte Carlo risk assessment for energy retrofit project.
    * Runs 10,000 scenarios to assess financial risk and returns.
+   *
+   * `skipGlobalLoading` suppresses the global loading overlay — used by the
+   * non-critical cost-estimation pre-pass so it doesn't block the page.
    */
-  assessRisk: (data: RiskAssessmentRequest) =>
+  assessRisk: (
+    data: RiskAssessmentRequest,
+    options?: { skipGlobalLoading?: boolean },
+  ) =>
     request<RiskAssessmentResponse>("/financial/risk-assessment", {
       method: "POST",
       body: JSON.stringify(data),
+      skipGlobalLoading: options?.skipGlobalLoading,
     }),
 
   /**

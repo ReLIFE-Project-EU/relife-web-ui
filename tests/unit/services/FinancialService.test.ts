@@ -391,6 +391,8 @@ describe("FinancialService", () => {
           FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
       }),
     );
+    // The priced run keeps the global overlay (no skipGlobalLoading flag).
+    expect(mockAssessRisk.mock.calls[0][1]).toBeUndefined();
     expect(mockCalculateARV).toHaveBeenCalledWith(
       expect.objectContaining({
         // Primary-energy intensities (EP_total / floor area): 16500/100, 13000/100.
@@ -655,6 +657,8 @@ describe("FinancialService.estimatePackageCosts", () => {
     ]);
     expect(request.annual_energy_savings).toBeGreaterThan(0);
     expect(request.schemes).toEqual([{ scheme_type: "equity" }]);
+    // The estimation pre-pass must not trigger the global loading overlay.
+    expect(mockAssessRisk.mock.calls[0][1]).toEqual({ skipGlobalLoading: true });
 
     expect(result).toEqual({
       capex: 24387,

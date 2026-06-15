@@ -9,6 +9,7 @@ import { IconInfoCircle } from "@tabler/icons-react";
 import { EnergyTariffPanel } from "../../../../components/shared/EnergyTariffPanel";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
+import { usePackageCostEstimation } from "../../hooks/usePackageCostEstimation";
 import { EnergyMixDisplay, EPCDisplay } from "../energy";
 import {
   FundingOptions,
@@ -37,6 +38,11 @@ export function EnergyRenovationStep() {
     selectedPackageIds,
     packageFinancialInputs,
   );
+
+  // Single source of the cost-estimation pre-pass; PackageSelector is rendered
+  // here, so this keeps exactly one hook instance / effect.
+  const { estimatingIds, errorsById, retry } = usePackageCostEstimation();
+  const isEstimatingCosts = estimatingIds.size > 0;
 
   useEffect(() => {
     const nextPackages = renovation.suggestPackages(selectedMeasures);
@@ -171,7 +177,11 @@ export function EnergyRenovationStep() {
       )}
 
       {suggestedPackages.length > 0 ? (
-        <PackageSelector />
+        <PackageSelector
+          estimatingIds={estimatingIds}
+          errorsById={errorsById}
+          retry={retry}
+        />
       ) : selectedMeasures.length > 0 ? (
         <Alert color="yellow" icon={<IconInfoCircle size={16} />}>
           No evaluation options are available from the current selection. Select
@@ -205,6 +215,7 @@ export function EnergyRenovationStep() {
         primaryActionLabel="Compare renovation options"
         isLoading={state.isEvaluating}
         primaryDisabled={!canEvaluate}
+        disabled={isEstimatingCosts}
       />
     </Stack>
   );

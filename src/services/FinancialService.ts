@@ -235,7 +235,11 @@ export class FinancialService implements IFinancialService {
       renovation_actions: request.renovationActions,
     };
 
-    const wire = await financial.assessRisk(wireRequest);
+    // Background pre-pass: suppress the global loading overlay (the renovation
+    // step shows a quiet per-card loader instead).
+    const wire = await financial.assessRisk(wireRequest, {
+      skipGlobalLoading: true,
+    });
 
     const { metadata } = wire;
     // A resolved CAPEX is mandatory; treat a missing/non-positive value as a

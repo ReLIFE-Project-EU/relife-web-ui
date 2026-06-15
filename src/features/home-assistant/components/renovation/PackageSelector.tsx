@@ -21,7 +21,6 @@ import type { ConceptId } from "../../../../constants/relifeConcepts";
 import { PACKAGE_SELECTION_MAX } from "../../constants";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
-import { usePackageCostEstimation } from "../../hooks/usePackageCostEstimation";
 import { checkCapexPerSqm } from "../../../../utils/inputSanityChecks";
 import { packageUsesHeatingStopgap } from "../../../../services/renovationActions";
 import { ConceptLabel, ErrorAlert } from "../../../../components/shared";
@@ -47,6 +46,7 @@ function PackageCostField(props: {
   error?: string;
   suffix?: string;
   autoEstimated?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <NumberInput
@@ -67,14 +67,27 @@ function PackageCostField(props: {
       leftSection={<IconCurrencyEuro size={16} />}
       suffix={props.suffix}
       error={props.error}
+      disabled={props.disabled}
     />
   );
 }
 
-export function PackageSelector() {
+interface PackageSelectorProps {
+  /** Package ids whose cost estimate is currently in flight. */
+  estimatingIds: ReadonlySet<string>;
+  /** Per-package estimation error messages, keyed by package id. */
+  errorsById: Readonly<Record<string, string>>;
+  /** Re-run a package's estimate after a failure. */
+  retry: (packageId: string) => void;
+}
+
+export function PackageSelector({
+  estimatingIds,
+  errorsById,
+  retry,
+}: PackageSelectorProps) {
   const { state, dispatch } = useHomeAssistant();
   const { renovation } = useHomeAssistantServices();
-  const { estimatingIds, errorsById, retry } = usePackageCostEstimation();
   const { suggestedPackages, selectedPackageIds, packageFinancialInputs } =
     state;
   const floorArea = state.building.floorArea;
@@ -167,106 +180,106 @@ export function PackageSelector() {
 
               {isSelected && (
                 <Stack gap="sm">
-                  {isEstimating ? (
+                  {isEstimating && (
                     <Group gap="xs" py="xs">
                       <Loader size="sm" />
                       <Text size="sm" c="dimmed">
                         Estimating costs from EU reference data…
                       </Text>
                     </Group>
-                  ) : (
-                    <>
-                      <Group grow align="flex-start">
-                        <PackageCostField
-                          conceptId="investment"
-                          value={capex}
-                          autoEstimated={capexAutoEstimated}
-                          onChange={(value) =>
-                            dispatch({
-                              type: "SET_PACKAGE_FINANCIAL_INPUT",
-                              packageId: pkg.id,
-                              field: "capex",
-                              value,
-                            })
-                          }
-                          step={1000}
-                          placeholder="e.g. 25000"
-                          error={
-                            capex === null || capex <= 0
-                              ? "Enter a positive value."
-                              : undefined
-                          }
-                        />
+                  )}
 
-                        <PackageCostField
-                          conceptId="annual-maintenance-cost"
-                          value={maintenanceCost}
-                          autoEstimated={opexAutoEstimated}
-                          onChange={(value) =>
-                            dispatch({
-                              type: "SET_PACKAGE_FINANCIAL_INPUT",
-                              packageId: pkg.id,
-                              field: "annualMaintenanceCost",
-                              value,
-                            })
-                          }
-                          step={100}
-                          placeholder="e.g. 500"
-                          suffix="/year"
-                          error={
-                            maintenanceCost === null || maintenanceCost < 0
-                              ? "Enter zero or a positive value."
-                              : undefined
-                          }
-                        />
-                      </Group>
+                  <Group grow align="flex-start">
+                    <PackageCostField
+                      conceptId="investment"
+                      value={capex}
+                      autoEstimated={capexAutoEstimated}
+                      disabled={isEstimating}
+                      onChange={(value) =>
+                        dispatch({
+                          type: "SET_PACKAGE_FINANCIAL_INPUT",
+                          packageId: pkg.id,
+                          field: "capex",
+                          value,
+                        })
+                      }
+                      step={1000}
+                      placeholder="e.g. 25000"
+                      error={
+                        capex === null || capex <= 0
+                          ? "Enter a positive value."
+                          : undefined
+                      }
+                    />
 
-                      {showHeatingNotice && (
-                        <Alert
-                          color="blue"
-                          variant="light"
-                          icon={<IconInfoCircle size={16} />}
-                          title="Heating cost is a rough estimate"
-                        >
-                          The heating system&apos;s size isn&apos;t available
-                          yet, so its cost is approximated. Adjust the values if
-                          you have a quote.
-                        </Alert>
-                      )}
+                    <PackageCostField
+                      conceptId="annual-maintenance-cost"
+                      value={maintenanceCost}
+                      autoEstimated={opexAutoEstimated}
+                      disabled={isEstimating}
+                      onChange={(value) =>
+                        dispatch({
+                          type: "SET_PACKAGE_FINANCIAL_INPUT",
+                          packageId: pkg.id,
+                          field: "annualMaintenanceCost",
+                          value,
+                        })
+                      }
+                      step={100}
+                      placeholder="e.g. 500"
+                      suffix="/year"
+                      error={
+                        maintenanceCost === null || maintenanceCost < 0
+                          ? "Enter zero or a positive value."
+                          : undefined
+                      }
+                    />
+                  </Group>
 
-                      {estimateError && (
-                        <ErrorAlert
-                          color="yellow"
-                          title="Couldn't estimate costs"
-                          error={
-                            <Group justify="space-between" align="center">
-                              <Text size="sm">
-                                {estimateError} Enter the values manually or try
-                                again.
-                              </Text>
-                              <Button
-                                size="xs"
-                                variant="light"
-                                color="yellow"
-                                onClick={() => retry(pkg.id)}
-                              >
-                                Retry
-                              </Button>
-                            </Group>
-                          }
-                        />
-                      )}
+                  {showHeatingNotice && (
+                    <Alert
+                      color="blue"
+                      variant="light"
+                      icon={<IconInfoCircle size={16} />}
+                      title="Heating cost is a rough estimate"
+                    >
+                      The heating system&apos;s size isn&apos;t available yet, so
+                      its cost is approximated. Adjust the values if you have a
+                      quote.
+                    </Alert>
+                  )}
 
-                      {capexWarning.warning && (
-                        <Alert
-                          color="yellow"
-                          icon={<IconAlertTriangle size={16} />}
-                          variant="light"
-                        >
-                          {capexWarning.message}
-                        </Alert>
-                      )}
-                    </>
+                  {estimateError && (
+                    <ErrorAlert
+                      color="yellow"
+                      title="Couldn't estimate costs"
+                      error={
+                        <Group justify="space-between" align="center">
+                          <Text size="sm">
+                            {estimateError} Enter the values manually or try
+                            again.
+                          </Text>
+                          <Button
+                            size="xs"
+                            variant="light"
+                            color="yellow"
+                            onClick={() => retry(pkg.id)}
+                          >
+                            Retry
+                          </Button>
+                        </Group>
+                      }
+                    />
+                  )}
+
+                  {capexWarning.warning && (
+                    <Alert
+                      color="yellow"
+                      icon={<IconAlertTriangle size={16} />}
+                      variant="light"
+                    >
+                      {capexWarning.message}
+                    </Alert>
                   )}
                 </Stack>
               )}

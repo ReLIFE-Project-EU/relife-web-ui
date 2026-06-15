@@ -13,6 +13,16 @@ import { auditLog } from "../utils/auditLogger";
 
 const API_BASE = "/api";
 
+/**
+ * Options for {@link request}. Extends the standard `RequestInit` with an opt-in
+ * flag to suppress the global loading overlay for this call only — used for
+ * non-critical background work (e.g. cost estimation) that should not block the
+ * page. Default behavior (omitted/false) is unchanged for every existing caller.
+ */
+export interface RequestOptions extends RequestInit {
+  skipGlobalLoading?: boolean;
+}
+
 function startTrackedHttpRequest(method: string, path: string): () => void {
   if (!isLongRunningRequest(method, path)) {
     return () => {};
@@ -83,18 +93,22 @@ async function fetchWithAuth(
 
 export async function request<T>(
   path: string,
-  options?: RequestInit,
+  options?: RequestOptions,
 ): Promise<T> {
-  const method = options?.method || "GET";
-  const stopTracking = startTrackedHttpRequest(method, path);
+  // Strip the custom flag so it never reaches fetch's RequestInit.
+  const { skipGlobalLoading, ...init } = options ?? {};
+  const method = init.method || "GET";
+  const stopTracking = skipGlobalLoading
+    ? () => {}
+    : startTrackedHttpRequest(method, path);
 
   try {
     const response = await fetchWithAuth(
       path,
-      { ...options, method },
+      { ...init, method },
       {
         "Content-Type": "application/json",
-        ...(options?.headers as Record<string, string>),
+        ...(init.headers as Record<string, string>),
       },
     );
 
