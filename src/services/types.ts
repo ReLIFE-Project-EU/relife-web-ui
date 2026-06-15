@@ -27,6 +27,7 @@ import type {
   RiskAssessmentPointForecasts,
   ScenarioId,
 } from "../types/renovation";
+import type { RenovationAction } from "../types/financial";
 import type { APIPropertyType, OutputLevel } from "../utils/apiMappings";
 import type { AuditCtx } from "../utils/auditLogger";
 
@@ -331,10 +332,11 @@ export interface ARVRequest {
 }
 
 /**
- * Request for POST /risk-assessment endpoint
- * Monte Carlo simulation for financial risk analysis
+ * Service-layer (mapped) request for the risk assessment, distinct from the wire
+ * `RiskAssessmentRequest` in `src/types/financial.ts`. FinancialService maps this
+ * to the wire shape before calling the API.
  */
-export interface RiskAssessmentRequest {
+export interface RiskAssessmentServiceRequest {
   annual_energy_savings: number; // Electricity-equivalent kWh/year for current scalar Financial API
   project_lifetime: number; // 1-30 years
   output_level: OutputLevel; // "private" for HRA tool
@@ -351,6 +353,28 @@ export interface FinancialAssumptions {
 }
 
 /**
+ * Request for the CAPEX/OPEX estimation pre-pass. Resolves reference-data costs
+ * for a renovation package via the Financial lookup (POST /risk-assessment with
+ * the cost fields omitted) so the UI can pre-fill editable cost inputs.
+ */
+export interface EstimatePackageCostsRequest {
+  /** EU country name (full English name, e.g. "Italy"). */
+  country: string;
+  /** Renovation actions for the package (already resolved with quantities). */
+  renovationActions: RenovationAction[];
+  /** Optional evaluation horizon override (years). */
+  projectLifetime?: number;
+}
+
+/** Reference-data costs resolved by the lookup, with provenance flags. */
+export interface EstimatePackageCostsResult {
+  capex: number;
+  annualMaintenanceCost: number;
+  capexFromLookup: boolean;
+  opexFromLookup: boolean;
+}
+
+/**
  * Internal (camelCase) risk-assessment result mapped from the per-scheme wire
  * response by `riskAssessmentAdapter.mapWireRiskResponse`. Shape is preserved
  * across the API migration so UI consumers stay unchanged.
@@ -359,7 +383,7 @@ export interface FinancialAssumptions {
  * - probabilities: Pr(*) success metrics (dynamic, lifetime-aware keys)
  * - cashFlowData / chart metadata: derived from the scheme's distributions
  */
-export interface RiskAssessmentResponse {
+export interface RiskAssessmentServiceResponse {
   pointForecasts: RiskAssessmentPointForecasts;
   metadata: RiskAssessmentMetadata;
   probabilities?: Record<string, number>;
@@ -389,7 +413,18 @@ export interface IFinancialService {
    * Perform risk assessment with Monte Carlo simulation
    * Maps to POST /risk-assessment endpoint
    */
-  assessRisk(request: RiskAssessmentRequest): Promise<RiskAssessmentResponse>;
+  assessRisk(
+    request: RiskAssessmentServiceRequest,
+  ): Promise<RiskAssessmentServiceResponse>;
+
+  /**
+   * Estimate a renovation package's CAPEX/OPEX from EU reference data via the
+   * Financial lookup. Used as a pre-pass to pre-fill editable cost inputs; the
+   * priced run still sends explicit post-incentive CAPEX.
+   */
+  estimatePackageCosts(
+    request: EstimatePackageCostsRequest,
+  ): Promise<EstimatePackageCostsResult>;
 
   /**
    * Calculate financial results for all scenarios

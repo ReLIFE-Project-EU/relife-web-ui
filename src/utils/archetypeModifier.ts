@@ -356,18 +356,49 @@ function isVerticalSurface(surface: BuildingSurface): boolean {
   );
 }
 
+/**
+ * A near-zero sky-view factor marks a ground-contact (slab/floor) surface: it
+ * sees no sky. Mirrors the forecasting backend, which classifies ground slabs by
+ * `sky_view_factor` in addition to name, so floor surfaces whose name does not
+ * contain "slab"/"ground" are still detected. Vertical walls have a meaningfully
+ * higher sky-view factor and are unaffected.
+ */
+const GROUND_SKY_VIEW_FACTOR_MAX = 0.01;
+
+/**
+ * Sum the building's surface areas (m²) by envelope element, reusing the same
+ * surface conventions as the modification helpers: transparent surfaces are
+ * windows; opaque surfaces are roof (by name), floor (by name or near-zero
+ * sky-view factor), otherwise wall.
+ */
+export function surfaceAreasFromBui(bui: BuildingPayload): {
+  wallM2: number;
+  roofM2: number;
+  floorM2: number;
+  windowM2: number;
+} {
+  const areas = { wallM2: 0, roofM2: 0, floorM2: 0, windowM2: 0 };
+  for (const surface of bui.building_surface) {
+    const name = surface.name.toLowerCase();
+    const isGroundContact =
+      name.includes("slab") ||
+      name.includes("ground") ||
+      surface.sky_view_factor <= GROUND_SKY_VIEW_FACTOR_MAX;
+    if (surface.type === "transparent") {
+      areas.windowM2 += surface.area;
+    } else if (name.includes("roof")) {
+      areas.roofM2 += surface.area;
+    } else if (isGroundContact) {
+      areas.floorM2 += surface.area;
+    } else {
+      areas.wallM2 += surface.area;
+    }
+  }
+  return areas;
+}
+
 function calculateTotalWallArea(bui: BuildingPayload): number {
-  return bui.building_surface
-    .filter((s) => {
-      const name = s.name.toLowerCase();
-      return (
-        s.type === "opaque" &&
-        !name.includes("roof") &&
-        !name.includes("slab") &&
-        !name.includes("ground")
-      );
-    })
-    .reduce((sum, surface) => sum + surface.area, 0);
+  return surfaceAreasFromBui(bui).wallM2;
 }
 
 export function extractConstructionPeriod(

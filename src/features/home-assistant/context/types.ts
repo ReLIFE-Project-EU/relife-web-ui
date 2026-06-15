@@ -19,7 +19,6 @@ import type {
   IncentiveDetails,
   LoanDetails,
   MCDARankingResult,
-  PackageFinancialInput,
   PackageFinancialInputsById,
   RenovationPackage,
   RenovationMeasureId,
@@ -126,8 +125,14 @@ export type HomeAssistantAction =
   | {
       type: "SET_PACKAGE_FINANCIAL_INPUT";
       packageId: string;
-      field: keyof PackageFinancialInput;
+      field: "capex" | "annualMaintenanceCost";
       value: number | null;
+    }
+  | {
+      type: "SET_PACKAGE_COST_ESTIMATE";
+      packageId: string;
+      capex: number;
+      annualMaintenanceCost: number;
     }
 
   // Funding options

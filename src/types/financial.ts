@@ -60,17 +60,61 @@ export interface BankLoanSchemeInput {
 export type SchemeInput = EquitySchemeInput | BankLoanSchemeInput;
 
 /**
+ * Canonical renovation work types accepted by the CAPEX/OPEX lookup. Must match
+ * the backend `RenovationAction.action` names exactly (relife-financial-service
+ * `models/risk_assessment.py`). Area-based actions need `area_m2`; capacity-based
+ * actions need `capacity_kw`.
+ */
+export type RenovationActionName =
+  | "Wall insulation"
+  | "Wall insulation - additional"
+  | "Roof insulation - Accessible"
+  | "Roof insulation - Makeover"
+  | "Floor insulation"
+  | "Windows"
+  | "Air-water Heat Pump"
+  | "Condensing boiler"
+  | "PV"
+  | "Solar thermal panels";
+
+/**
+ * A single renovation measure used for the optional CAPEX/OPEX lookup. The
+ * backend resolves unit prices and O&M costs from `country` + these actions when
+ * `capex` and/or `annual_maintenance_cost` are omitted from the request.
+ */
+export interface RenovationAction {
+  /** Renovation work type (one of the 10 canonical names). */
+  action: RenovationActionName;
+
+  /** Surface area in m² — required for insulation and windows actions. */
+  area_m2?: number;
+
+  /** Installed capacity in kW — required for HVAC, PV, and solar actions. */
+  capacity_kw?: number;
+
+  /** Optional material variant; if omitted, the average across variants is used. */
+  material?: string;
+}
+
+/**
  * Request model for multi-scheme Monte Carlo risk assessment.
  * Runs 10,000 scenarios per scheme to assess financial risk and returns.
  */
 export interface RiskAssessmentRequest {
-  /** Total capital expenditure in euros (> 0). Upfront incentives are folded in client-side. */
-  capex: number;
+  /**
+   * Total capital expenditure in euros (> 0). Upfront incentives are folded in
+   * client-side. Optional: omit to have it computed server-side from
+   * `country` + `renovation_actions`.
+   */
+  capex?: number;
 
   /** Electricity-equivalent annual savings in kWh (> 0) for the current scalar API contract. */
   annual_energy_savings: number;
 
-  /** Annual maintenance/operational cost in euros (>= 0). */
+  /**
+   * Annual maintenance/operational cost in euros (>= 0). Optional: omit to have
+   * it computed server-side from `country` + `renovation_actions`.
+   */
   annual_maintenance_cost?: number;
 
   /** Project evaluation horizon in years (1-30). */
@@ -84,6 +128,18 @@ export interface RiskAssessmentRequest {
 
   /** Which financial indicators to include. Default: all (IRR, NPV, PBP, DPP, ROI). */
   indicators?: string[];
+
+  /**
+   * EU country name (full English name, e.g. "Italy"). Required when `capex`
+   * or `annual_maintenance_cost` is omitted (CAPEX/OPEX lookup).
+   */
+  country?: string;
+
+  /**
+   * Renovation package used to look up unit prices and O&M costs. Required when
+   * `capex` or `annual_maintenance_cost` is omitted (CAPEX/OPEX lookup).
+   */
+  renovation_actions?: RenovationAction[];
 }
 
 /** Percentiles for a single KPI. P5/P10/P50/P90/P95 always present; quartiles optional. */
@@ -135,12 +191,30 @@ export interface SchemeResult {
 }
 
 /**
+ * Response `metadata` block. Typed for the keys the frontend reads; kept open
+ * via an index signature so other keys (and unknown consumers) stay safe.
+ */
+export interface RiskAssessmentResponseMetadata {
+  /** CAPEX used in the simulation (supplied value, or the lookup result). */
+  capex?: number;
+  /** True when `capex` was resolved from the reference data, not supplied. */
+  capex_from_lookup?: boolean;
+  /** Annual O&M cost used in the simulation (supplied value, or lookup result). */
+  annual_maintenance_cost?: number;
+  /** True when `annual_maintenance_cost` was resolved from the reference data. */
+  opex_from_lookup?: boolean;
+  project_lifetime?: number;
+  n_sims?: number;
+  [key: string]: unknown;
+}
+
+/**
  * Response model for multi-scheme risk assessment.
  * `results` is keyed by the same `scheme_type` strings sent in the request.
  */
 export interface RiskAssessmentResponse {
   results: Record<string, SchemeResult>;
-  metadata: Record<string, unknown>;
+  metadata: RiskAssessmentResponseMetadata;
 }
 
 // ============================================================================

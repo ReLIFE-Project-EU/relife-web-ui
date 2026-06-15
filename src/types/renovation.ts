@@ -241,6 +241,10 @@ export interface RenovationPackage {
 export interface PackageFinancialInput {
   capex: number | null;
   annualMaintenanceCost: number | null;
+  /** True while capex still holds the EU reference-data estimate (cleared on manual edit). */
+  capexAutoEstimated?: boolean;
+  /** True while maintenance still holds the EU reference-data estimate (cleared on manual edit). */
+  opexAutoEstimated?: boolean;
 }
 
 export type PackageFinancialInputsById = Record<string, PackageFinancialInput>;

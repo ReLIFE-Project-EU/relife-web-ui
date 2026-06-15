@@ -618,3 +618,86 @@ describe("FinancialService", () => {
     expect(results["renovated"].capitalExpenditure).toBe(10000);
   });
 });
+
+describe("FinancialService.estimatePackageCosts", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("omits cost fields, sends lookup inputs, and returns resolved costs", async () => {
+    mockAssessRisk.mockResolvedValue({
+      results: {},
+      metadata: {
+        capex: 24387,
+        capex_from_lookup: true,
+        annual_maintenance_cost: 300,
+        opex_from_lookup: true,
+        n_sims: 10000,
+      },
+    });
+
+    const service = new FinancialService();
+    const result = await service.estimatePackageCosts({
+      country: "Italy",
+      renovationActions: [
+        { action: "Wall insulation", area_m2: 120 },
+        { action: "Air-water Heat Pump", capacity_kw: 8 },
+      ],
+    });
+
+    const request = mockAssessRisk.mock.calls[0][0] as RiskAssessmentRequest;
+    expect(request.capex).toBeUndefined();
+    expect(request.annual_maintenance_cost).toBeUndefined();
+    expect(request.country).toBe("Italy");
+    expect(request.renovation_actions).toEqual([
+      { action: "Wall insulation", area_m2: 120 },
+      { action: "Air-water Heat Pump", capacity_kw: 8 },
+    ]);
+    expect(request.annual_energy_savings).toBeGreaterThan(0);
+    expect(request.schemes).toEqual([{ scheme_type: "equity" }]);
+
+    expect(result).toEqual({
+      capex: 24387,
+      annualMaintenanceCost: 300,
+      capexFromLookup: true,
+      opexFromLookup: true,
+    });
+  });
+
+  test("throws when the lookup does not resolve a positive CAPEX", async () => {
+    mockAssessRisk.mockResolvedValue({ results: {}, metadata: {} });
+
+    const service = new FinancialService();
+    await expect(
+      service.estimatePackageCosts({
+        country: "Germany",
+        renovationActions: [{ action: "PV", capacity_kw: 6 }],
+      }),
+    ).rejects.toThrow(/did not return a cost/i);
+  });
+
+  test("treats a resolved CAPEX with zero maintenance as valid (insulation-only)", async () => {
+    mockAssessRisk.mockResolvedValue({
+      results: {},
+      metadata: {
+        capex: 9000,
+        capex_from_lookup: true,
+        annual_maintenance_cost: 0,
+        opex_from_lookup: true,
+      },
+    });
+
+    const service = new FinancialService();
+    const result = await service.estimatePackageCosts({
+      country: "Italy",
+      renovationActions: [{ action: "Wall insulation", area_m2: 120 }],
+    });
+
+    expect(result).toEqual({
+      capex: 9000,
+      annualMaintenanceCost: 0,
+      capexFromLookup: true,
+      opexFromLookup: true,
+    });
+  });
+});

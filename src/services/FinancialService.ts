@@ -30,13 +30,16 @@ import {
 import { applyFundingReduction } from "../utils/financialCalculations";
 import { APIError } from "../types/common";
 import { buildSchemes, mapWireRiskResponse } from "./riskAssessmentAdapter";
+import type { RiskAssessmentRequest as RiskAssessmentWireRequest } from "../types/financial";
 import type {
   ARVRequest,
   CalculateFinancialScenariosRequest,
+  EstimatePackageCostsRequest,
+  EstimatePackageCostsResult,
   FinancialAssumptions,
   IFinancialService,
-  RiskAssessmentRequest,
-  RiskAssessmentResponse,
+  RiskAssessmentServiceRequest,
+  RiskAssessmentServiceResponse,
 } from "./types";
 import { auditLog, type AuditCtx } from "../utils/auditLogger";
 import {
@@ -45,6 +48,15 @@ import {
   FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
 } from "./carrierSavingsService";
 import { resolveEpcRatingIntensity } from "./energyUtils";
+
+/**
+ * The CAPEX/OPEX lookup lives inside the risk-assessment endpoint, which still
+ * requires a positive `annual_energy_savings`. The estimation pre-pass only
+ * reads back the resolved costs from `metadata`, so the simulation inputs below
+ * are inert placeholders whose Monte Carlo output is discarded.
+ */
+const ESTIMATION_PLACEHOLDER_ANNUAL_ENERGY_SAVINGS_KWH = 1;
+const ESTIMATION_DEFAULT_PROJECT_LIFETIME_YEARS = 20;
 
 function resolveConstructionYear(building: BuildingInfo): number {
   return (
@@ -158,8 +170,8 @@ export class FinancialService implements IFinancialService {
    * `request.capex` by `applyFundingReduction`.
    */
   async assessRisk(
-    request: RiskAssessmentRequest,
-  ): Promise<RiskAssessmentResponse> {
+    request: RiskAssessmentServiceRequest,
+  ): Promise<RiskAssessmentServiceResponse> {
     const { schemes, schemeType } = buildSchemes({
       loanAmount: request.loan_amount ?? 0,
       loanTerm: request.loan_term ?? 0,
@@ -196,6 +208,49 @@ export class FinancialService implements IFinancialService {
       probabilities: mapped.probabilities,
       percentiles: mapped.percentiles,
       cashFlowData: mapped.cashFlowData,
+    };
+  }
+
+  /**
+   * Estimate a package's CAPEX/OPEX from EU reference data via the Financial
+   * lookup. Calls /risk-assessment with the cost fields omitted (the server then
+   * resolves them from `country` + `renovation_actions`) and reads the resolved
+   * values back from `metadata`. The Monte Carlo result is discarded — this is
+   * purely a cost estimation pre-pass.
+   */
+  async estimatePackageCosts(
+    request: EstimatePackageCostsRequest,
+  ): Promise<EstimatePackageCostsResult> {
+    const { schemes } = buildSchemes({ loanAmount: 0, loanTerm: 0 });
+
+    // Built against the wire contract (capex/annual_maintenance_cost omitted so
+    // the backend resolves them from country + renovation_actions).
+    const wireRequest: RiskAssessmentWireRequest = {
+      annual_energy_savings: ESTIMATION_PLACEHOLDER_ANNUAL_ENERGY_SAVINGS_KWH,
+      project_lifetime:
+        request.projectLifetime ?? ESTIMATION_DEFAULT_PROJECT_LIFETIME_YEARS,
+      output_level: this.outputLevel,
+      schemes,
+      country: request.country,
+      renovation_actions: request.renovationActions,
+    };
+
+    const wire = await financial.assessRisk(wireRequest);
+
+    const { metadata } = wire;
+    // A resolved CAPEX is mandatory; treat a missing/non-positive value as a
+    // lookup failure so the caller can surface it rather than silently showing
+    // €0. OPEX of 0 is legitimate (insulation/windows carry no annual O&M).
+    if (metadata.capex == null || metadata.capex <= 0) {
+      throw new Error(
+        "Reference-data lookup did not return a cost for this package.",
+      );
+    }
+    return {
+      capex: metadata.capex,
+      annualMaintenanceCost: metadata.annual_maintenance_cost ?? 0,
+      capexFromLookup: metadata.capex_from_lookup ?? false,
+      opexFromLookup: metadata.opex_from_lookup ?? false,
     };
   }
 
@@ -429,7 +484,7 @@ export class FinancialService implements IFinancialService {
         auditCtx,
       );
 
-      const riskRequest: RiskAssessmentRequest = {
+      const riskRequest: RiskAssessmentServiceRequest = {
         annual_energy_savings: carrierSavings.electricityEquivalentKwh,
         project_lifetime: resolvedBuilding.projectLifetime,
         output_level: this.outputLevel,

@@ -5,20 +5,76 @@ import {
   Button,
   Card,
   Group,
+  Loader,
   NumberInput,
   Stack,
   Text,
   Title,
+  Tooltip,
 } from "@mantine/core";
-import { IconAlertTriangle, IconCurrencyEuro } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconCurrencyEuro,
+  IconInfoCircle,
+} from "@tabler/icons-react";
+import type { ConceptId } from "../../../../constants/relifeConcepts";
 import { PACKAGE_SELECTION_MAX } from "../../constants";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
+import { usePackageCostEstimation } from "../../hooks/usePackageCostEstimation";
 import { checkCapexPerSqm } from "../../../../utils/inputSanityChecks";
+import { packageUsesHeatingStopgap } from "../../../../services/renovationActions";
+import { ConceptLabel, ErrorAlert } from "../../../../components/shared";
+
+/** Outline "Estimated" tag (with caveat) used to mark an auto-filled cost. */
+function EstimatedTag() {
+  return (
+    <Tooltip label="Estimated from EU reference data — edit to override.">
+      <Badge color="blue" variant="outline" size="xs">
+        Estimated
+      </Badge>
+    </Tooltip>
+  );
+}
+
+/** A single labelled cost input; shared by the CAPEX and maintenance fields. */
+function PackageCostField(props: {
+  conceptId: ConceptId;
+  value: number | null;
+  onChange: (value: number | null) => void;
+  step: number;
+  placeholder: string;
+  error?: string;
+  suffix?: string;
+  autoEstimated?: boolean;
+}) {
+  return (
+    <NumberInput
+      label={
+        <Group gap="xs">
+          <ConceptLabel conceptId={props.conceptId} />
+          {props.autoEstimated && <EstimatedTag />}
+        </Group>
+      }
+      placeholder={props.placeholder}
+      value={props.value ?? ""}
+      onChange={(value) =>
+        props.onChange(typeof value === "number" ? value : null)
+      }
+      min={0}
+      step={props.step}
+      thousandSeparator=","
+      leftSection={<IconCurrencyEuro size={16} />}
+      suffix={props.suffix}
+      error={props.error}
+    />
+  );
+}
 
 export function PackageSelector() {
   const { state, dispatch } = useHomeAssistant();
   const { renovation } = useHomeAssistantServices();
+  const { estimatingIds, errorsById, retry } = usePackageCostEstimation();
   const { suggestedPackages, selectedPackageIds, packageFinancialInputs } =
     state;
   const floorArea = state.building.floorArea;
@@ -33,9 +89,8 @@ export function PackageSelector() {
       </Text>
 
       <Text size="sm" c="dimmed">
-        Each selected package currently needs its own CAPEX and annual
-        maintenance values. The pre-filled defaults are starting estimates that
-        you should adjust to match your project.
+        Costs are estimated automatically from EU reference data when you select
+        an option. Review and adjust them to match your project.
       </Text>
 
       {selectionLimitReached && (
@@ -51,6 +106,14 @@ export function PackageSelector() {
         const packageInput = packageFinancialInputs[pkg.id];
         const capex = packageInput?.capex ?? null;
         const maintenanceCost = packageInput?.annualMaintenanceCost ?? null;
+        const capexAutoEstimated = packageInput?.capexAutoEstimated ?? false;
+        const opexAutoEstimated = packageInput?.opexAutoEstimated ?? false;
+        const isEstimating = estimatingIds.has(pkg.id);
+        const estimateError = errorsById[pkg.id];
+        // The heating cost lives in CAPEX, so the stopgap notice tracks the
+        // CAPEX provenance specifically.
+        const showHeatingNotice =
+          capexAutoEstimated && packageUsesHeatingStopgap(pkg.measureIds);
         const capexWarning =
           isSelected &&
           capex !== null &&
@@ -104,65 +167,106 @@ export function PackageSelector() {
 
               {isSelected && (
                 <Stack gap="sm">
-                  <Group grow align="flex-start">
-                    <NumberInput
-                      label="Package CAPEX"
-                      description="Required for now. Backend fallback is not enabled yet."
-                      placeholder="e.g. 25000"
-                      value={capex ?? ""}
-                      onChange={(value) =>
-                        dispatch({
-                          type: "SET_PACKAGE_FINANCIAL_INPUT",
-                          packageId: pkg.id,
-                          field: "capex",
-                          value: typeof value === "number" ? value : null,
-                        })
-                      }
-                      min={0}
-                      step={1000}
-                      thousandSeparator=","
-                      leftSection={<IconCurrencyEuro size={16} />}
-                      error={
-                        capex === null || capex <= 0
-                          ? "Required — enter a positive value."
-                          : undefined
-                      }
-                    />
+                  {isEstimating ? (
+                    <Group gap="xs" py="xs">
+                      <Loader size="sm" />
+                      <Text size="sm" c="dimmed">
+                        Estimating costs from EU reference data…
+                      </Text>
+                    </Group>
+                  ) : (
+                    <>
+                      <Group grow align="flex-start">
+                        <PackageCostField
+                          conceptId="investment"
+                          value={capex}
+                          autoEstimated={capexAutoEstimated}
+                          onChange={(value) =>
+                            dispatch({
+                              type: "SET_PACKAGE_FINANCIAL_INPUT",
+                              packageId: pkg.id,
+                              field: "capex",
+                              value,
+                            })
+                          }
+                          step={1000}
+                          placeholder="e.g. 25000"
+                          error={
+                            capex === null || capex <= 0
+                              ? "Enter a positive value."
+                              : undefined
+                          }
+                        />
 
-                    <NumberInput
-                      label="Annual maintenance cost"
-                      description="Required by the current Financial API implementation."
-                      placeholder="e.g. 500"
-                      value={maintenanceCost ?? ""}
-                      onChange={(value) =>
-                        dispatch({
-                          type: "SET_PACKAGE_FINANCIAL_INPUT",
-                          packageId: pkg.id,
-                          field: "annualMaintenanceCost",
-                          value: typeof value === "number" ? value : null,
-                        })
-                      }
-                      min={0}
-                      step={100}
-                      thousandSeparator=","
-                      leftSection={<IconCurrencyEuro size={16} />}
-                      suffix="/year"
-                      error={
-                        maintenanceCost === null || maintenanceCost < 0
-                          ? "Required — enter zero or a positive value."
-                          : undefined
-                      }
-                    />
-                  </Group>
+                        <PackageCostField
+                          conceptId="annual-maintenance-cost"
+                          value={maintenanceCost}
+                          autoEstimated={opexAutoEstimated}
+                          onChange={(value) =>
+                            dispatch({
+                              type: "SET_PACKAGE_FINANCIAL_INPUT",
+                              packageId: pkg.id,
+                              field: "annualMaintenanceCost",
+                              value,
+                            })
+                          }
+                          step={100}
+                          placeholder="e.g. 500"
+                          suffix="/year"
+                          error={
+                            maintenanceCost === null || maintenanceCost < 0
+                              ? "Enter zero or a positive value."
+                              : undefined
+                          }
+                        />
+                      </Group>
 
-                  {capexWarning.warning && (
-                    <Alert
-                      color="yellow"
-                      icon={<IconAlertTriangle size={16} />}
-                      variant="light"
-                    >
-                      {capexWarning.message}
-                    </Alert>
+                      {showHeatingNotice && (
+                        <Alert
+                          color="blue"
+                          variant="light"
+                          icon={<IconInfoCircle size={16} />}
+                          title="Heating cost is a rough estimate"
+                        >
+                          The heating system&apos;s size isn&apos;t available
+                          yet, so its cost is approximated. Adjust the values if
+                          you have a quote.
+                        </Alert>
+                      )}
+
+                      {estimateError && (
+                        <ErrorAlert
+                          color="yellow"
+                          title="Couldn't estimate costs"
+                          error={
+                            <Group justify="space-between" align="center">
+                              <Text size="sm">
+                                {estimateError} Enter the values manually or try
+                                again.
+                              </Text>
+                              <Button
+                                size="xs"
+                                variant="light"
+                                color="yellow"
+                                onClick={() => retry(pkg.id)}
+                              >
+                                Retry
+                              </Button>
+                            </Group>
+                          }
+                        />
+                      )}
+
+                      {capexWarning.warning && (
+                        <Alert
+                          color="yellow"
+                          icon={<IconAlertTriangle size={16} />}
+                          variant="light"
+                        >
+                          {capexWarning.message}
+                        </Alert>
+                      )}
+                    </>
                   )}
                 </Stack>
               )}

@@ -11,6 +11,7 @@ export type ConceptId =
   | "pv-grid-export"
   | "pv-self-consumption-rate"
   | "investment"
+  | "annual-maintenance-cost"
   | "npv"
   | "irr"
   | "roi"
@@ -146,6 +147,15 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     unit: "EUR",
     professionalDetail:
       "Also referred to as CAPEX or capital expenditure in professional financial outputs.",
+  },
+  "annual-maintenance-cost": {
+    id: "annual-maintenance-cost",
+    label: "Annual maintenance cost",
+    description:
+      "Recurring yearly cost to operate and maintain the renovated systems.",
+    unit: "EUR/year",
+    professionalDetail:
+      "Also referred to as annual O&M (operation and maintenance) cost in professional financial outputs.",
   },
   npv: {
     id: "npv",

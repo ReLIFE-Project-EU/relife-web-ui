@@ -35,8 +35,8 @@ export type {
   RenovationMeasure,
   SelectOption,
   ARVRequest,
-  RiskAssessmentRequest,
-  RiskAssessmentResponse,
+  RiskAssessmentServiceRequest,
+  RiskAssessmentServiceResponse,
   TechnicalPillarRequest,
   TechnicalPillarResponse,
 } from "./types";

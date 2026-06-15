@@ -1,9 +1,5 @@
 import { describe, expect, test } from "vitest";
-import {
-  PACKAGE_ANNUAL_MAINTENANCE_DEFAULT,
-  PACKAGE_CAPEX_DEFAULT,
-  PACKAGE_SELECTION_MAX,
-} from "../../../src/features/home-assistant/constants";
+import { PACKAGE_SELECTION_MAX } from "../../../src/features/home-assistant/constants";
 import {
   homeAssistantReducer,
   initialState,
@@ -38,7 +34,7 @@ const packages: RenovationPackage[] = [
 ];
 
 describe("homeAssistantReducer package financial inputs", () => {
-  test("suggested packages start unselected and receive default financial inputs", () => {
+  test("suggested packages start unselected with empty financial inputs", () => {
     const state = homeAssistantReducer(initialState, {
       type: "SET_SUGGESTED_PACKAGES",
       packages: packages.slice(0, 2),
@@ -46,12 +42,16 @@ describe("homeAssistantReducer package financial inputs", () => {
 
     expect(state.selectedPackageIds).toEqual([]);
     expect(state.packageFinancialInputs["package-wall-insulation"]).toEqual({
-      capex: PACKAGE_CAPEX_DEFAULT,
-      annualMaintenanceCost: PACKAGE_ANNUAL_MAINTENANCE_DEFAULT,
+      capex: null,
+      annualMaintenanceCost: null,
+      capexAutoEstimated: false,
+      opexAutoEstimated: false,
     });
     expect(state.packageFinancialInputs["package-roof-insulation"]).toEqual({
-      capex: PACKAGE_CAPEX_DEFAULT,
-      annualMaintenanceCost: PACKAGE_ANNUAL_MAINTENANCE_DEFAULT,
+      capex: null,
+      annualMaintenanceCost: null,
+      capexAutoEstimated: false,
+      opexAutoEstimated: false,
     });
   });
 
@@ -94,9 +94,46 @@ describe("homeAssistantReducer package financial inputs", () => {
       28_000,
     );
     expect(state.packageFinancialInputs["package-windows"]).toEqual({
-      capex: PACKAGE_CAPEX_DEFAULT,
-      annualMaintenanceCost: PACKAGE_ANNUAL_MAINTENANCE_DEFAULT,
+      capex: null,
+      annualMaintenanceCost: null,
+      capexAutoEstimated: false,
+      opexAutoEstimated: false,
     });
+  });
+
+  test("cost estimate sets both provenance flags; editing one field clears only its own", () => {
+    let state = homeAssistantReducer(initialState, {
+      type: "SET_SUGGESTED_PACKAGES",
+      packages: packages.slice(0, 1),
+    });
+
+    state = homeAssistantReducer(state, {
+      type: "SET_PACKAGE_COST_ESTIMATE",
+      packageId: "package-wall-insulation",
+      capex: 24_000,
+      annualMaintenanceCost: 300,
+    });
+
+    expect(state.packageFinancialInputs["package-wall-insulation"]).toEqual({
+      capex: 24_000,
+      annualMaintenanceCost: 300,
+      capexAutoEstimated: true,
+      opexAutoEstimated: true,
+    });
+
+    // Editing maintenance must NOT clear the CAPEX provenance.
+    state = homeAssistantReducer(state, {
+      type: "SET_PACKAGE_FINANCIAL_INPUT",
+      packageId: "package-wall-insulation",
+      field: "annualMaintenanceCost",
+      value: 450,
+    });
+
+    const input = state.packageFinancialInputs["package-wall-insulation"];
+    expect(input?.capex).toBe(24_000);
+    expect(input?.capexAutoEstimated).toBe(true);
+    expect(input?.annualMaintenanceCost).toBe(450);
+    expect(input?.opexAutoEstimated).toBe(false);
   });
 
   test("changing measures clears package inputs, selection, and results", () => {

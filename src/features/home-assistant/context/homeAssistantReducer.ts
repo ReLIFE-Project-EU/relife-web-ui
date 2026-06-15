@@ -2,12 +2,7 @@
  * Reducer for the Home Renovation Assistant wizard state.
  */
 
-import {
-  PACKAGE_ANNUAL_MAINTENANCE_DEFAULT,
-  PACKAGE_CAPEX_DEFAULT,
-  PACKAGE_SELECTION_MAX,
-  PROJECT_LIFETIME_DEFAULT,
-} from "../constants";
+import { PACKAGE_SELECTION_MAX, PROJECT_LIFETIME_DEFAULT } from "../constants";
 import { ENERGY_TARIFF_DEFAULTS } from "../../../services/carrierSavingsService";
 import type {
   BuildingInfo,
@@ -66,8 +61,10 @@ const initialBuilding: BuildingInfo = {
 
 const initialRenovation: RenovationSelections = {
   selectedMeasures: [],
-  estimatedCapex: PACKAGE_CAPEX_DEFAULT,
-  estimatedMaintenanceCost: PACKAGE_ANNUAL_MAINTENANCE_DEFAULT,
+  // HRA prices each package individually (packageFinancialInputs); these
+  // shared fields are only consumed by PRA, so HRA leaves them unset.
+  estimatedCapex: null,
+  estimatedMaintenanceCost: null,
 };
 
 const initialFunding: FundingOptions = {
@@ -122,9 +119,13 @@ const clearedFinancialResults = {
 } as const;
 
 function createDefaultPackageFinancialInput() {
+  // Costs start empty so the renovation step can auto-estimate them from the EU
+  // reference-data lookup; the user can override the pre-filled values.
   return {
-    capex: PACKAGE_CAPEX_DEFAULT,
-    annualMaintenanceCost: PACKAGE_ANNUAL_MAINTENANCE_DEFAULT,
+    capex: null,
+    annualMaintenanceCost: null,
+    capexAutoEstimated: false,
+    opexAutoEstimated: false,
   };
 }
 
@@ -310,6 +311,10 @@ export function homeAssistantReducer(
     }
 
     case "SET_PACKAGE_FINANCIAL_INPUT": {
+      // A manual edit clears only the edited field's estimated provenance, so
+      // the other field (e.g. an estimated heating CAPEX) keeps its flag.
+      const estimatedFlag =
+        action.field === "capex" ? "capexAutoEstimated" : "opexAutoEstimated";
       return {
         ...state,
         packageFinancialInputs: {
@@ -318,6 +323,23 @@ export function homeAssistantReducer(
             ...(state.packageFinancialInputs[action.packageId] ??
               createDefaultPackageFinancialInput()),
             [action.field]: action.value,
+            [estimatedFlag]: false,
+          },
+        },
+        ...clearedEvaluationResults,
+      };
+    }
+
+    case "SET_PACKAGE_COST_ESTIMATE": {
+      return {
+        ...state,
+        packageFinancialInputs: {
+          ...state.packageFinancialInputs,
+          [action.packageId]: {
+            capex: action.capex,
+            annualMaintenanceCost: action.annualMaintenanceCost,
+            capexAutoEstimated: true,
+            opexAutoEstimated: true,
           },
         },
         ...clearedEvaluationResults,

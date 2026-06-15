@@ -19,8 +19,8 @@ export type {
   MeasureCategoryInfo,
   RenovationMeasure,
   ARVRequest,
-  RiskAssessmentRequest,
-  RiskAssessmentResponse,
+  RiskAssessmentServiceRequest,
+  RiskAssessmentServiceResponse,
   TechnicalPillarRequest,
   TechnicalPillarResponse,
 } from "../../../services/types";
