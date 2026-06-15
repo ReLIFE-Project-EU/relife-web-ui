@@ -25,20 +25,13 @@ import {
 } from "@mantine/core";
 import {
   IconAlertTriangle,
-  IconBuildingEstate,
-  IconBolt,
-  IconFlame,
-  IconHome,
   IconInfoCircle,
-  IconSolarPanel,
   IconSparkles,
-  IconSun,
-  IconWall,
-  IconWindow,
 } from "@tabler/icons-react";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
 import { MeasureEffectSummary } from "../../../../components/shared/MeasureEffectSummary";
 import { checkCapexPerSqm } from "../../../../utils/inputSanityChecks";
+import { getMeasureIcon } from "../../../../utils/measureIcons";
 import type { RenovationMeasureId } from "../../../../types/renovation";
 import type { RenovationMeasure } from "../../../../services/types";
 import { SUGGESTED_PACKAGE } from "../../constants";
@@ -53,31 +46,6 @@ import { BuildingMeasuresTable } from "../BuildingMeasuresTable";
 // ─────────────────────────────────────────────────────────────────────────────
 // Measure Card
 // ─────────────────────────────────────────────────────────────────────────────
-
-function getMeasureIcon(measureId: RenovationMeasureId) {
-  const iconProps = { size: 24, stroke: 1.5 };
-
-  switch (measureId) {
-    case "wall-insulation":
-      return <IconWall {...iconProps} />;
-    case "roof-insulation":
-      return <IconHome {...iconProps} />;
-    case "floor-insulation":
-      return <IconBuildingEstate {...iconProps} />;
-    case "windows":
-      return <IconWindow {...iconProps} />;
-    case "air-water-heat-pump":
-      return <IconBolt {...iconProps} />;
-    case "condensing-boiler":
-      return <IconFlame {...iconProps} />;
-    case "pv":
-      return <IconSolarPanel {...iconProps} />;
-    case "solar-thermal":
-      return <IconSun {...iconProps} />;
-    default:
-      return <IconBolt {...iconProps} />;
-  }
-}
 
 function MeasureCard({
   measure,

@@ -40,6 +40,10 @@ import {
   getArchetypeSelectionLabel,
 } from "../../../../utils/archetypeLabels";
 import { getCountryDisplayName } from "../../../../utils/countries";
+import {
+  APARTMENT_LOCATION_OPTIONS,
+  isApartmentLikeCategory as isApartmentCategory,
+} from "../../../../constants/buildingFormOptions";
 import type { BuildingModifications } from "../../../../types/archetype";
 import type { PeriodAvailabilityResult } from "../../../../services/types";
 import {
@@ -53,18 +57,6 @@ import type { ManualAddFormState } from "./manualAddFormReducer";
 import { MODIFICATION_FIELDS } from "./modificationFieldConfig";
 import { ArchetypeLocationMap } from "./ArchetypeLocationMap";
 import { PRALocationMap } from "./PRALocationMap";
-
-const APARTMENT_LOCATION_OPTIONS = [
-  { value: "bottom", label: "Bottom floor" },
-  { value: "middle", label: "Middle floor" },
-  { value: "top", label: "Top floor" },
-];
-
-const APARTMENT_CATEGORIES = new Set(["Multi family House", "Apartment"]);
-
-function isApartmentCategory(category: string | null): boolean {
-  return !!category && APARTMENT_CATEGORIES.has(category);
-}
 
 function buildPeriodFallbackMessage(
   result: PeriodAvailabilityResult | null,

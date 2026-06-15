@@ -64,6 +64,10 @@ import { validateModifications } from "../../../../utils/archetypeModifier";
 import { checkAreaArchetypeMismatch } from "../../../../utils/inputSanityChecks";
 import { normalizeCountryName } from "../../../../utils/countries";
 import {
+  APARTMENT_LOCATION_OPTIONS,
+  isApartmentLikeCategory,
+} from "../../../../constants/buildingFormOptions";
+import {
   formatArea,
   formatDecimal,
   formatNumber,
@@ -79,16 +83,6 @@ interface DraftState {
   numberOfFloors: number | string;
   floorHeight: number | string;
   apartmentLocation: ApartmentLocation | null;
-}
-
-const APARTMENT_LOCATION_OPTIONS = [
-  { value: "bottom", label: "Bottom floor" },
-  { value: "middle", label: "Middle floor" },
-  { value: "top", label: "Top floor" },
-] as const;
-
-function isApartmentLikeCategory(category: string): boolean {
-  return category === "Multi family House" || category === "Apartment";
 }
 
 function mapApartmentLocationToFloorNumber(
