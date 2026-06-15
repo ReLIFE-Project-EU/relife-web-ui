@@ -6,9 +6,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { buildRenovationActions } from "../../../services/renovationActions";
-import { surfaceAreasFromBui } from "../../../utils/archetypeModifier";
-import { getCountryDisplayName } from "../../../utils/countries";
+import { lookupPackageCosts } from "../../../services/packageCostLookup";
 import { useHomeAssistant } from "./useHomeAssistant";
 import { useHomeAssistantServices } from "./useHomeAssistantServices";
 
@@ -60,36 +58,21 @@ export function usePackageCostEstimation(): PackageCostEstimation {
       const pkg = suggestedPackages.find((p) => p.id === packageId);
       if (!pkg) return;
 
-      const country = getCountryDisplayName(buildingCountry);
-      if (!country || !archetype) {
-        setErrorsById((prev) => ({
-          ...prev,
-          [packageId]:
-            "Cost estimate unavailable: missing building location or archetype.",
-        }));
-        return;
-      }
-
       inFlightRef.current.add(packageId);
       setEstimatingIds((prev) => new Set(prev).add(packageId));
       clearError(packageId);
 
       try {
-        const details = await building.getArchetypeDetails(archetype);
-        const renovationActions = buildRenovationActions({
-          measureIds: pkg.measureIds,
-          surfaceAreas: surfaceAreasFromBui(details.bui),
-          floorArea: buildingFloorArea ?? details.floorArea,
-        });
-        if (renovationActions.length === 0) {
-          throw new Error("No priceable measures in this package.");
-        }
-
-        const result = await financial.estimatePackageCosts({
-          country,
-          renovationActions,
-          projectLifetime: buildingProjectLifetime,
-        });
+        const result = await lookupPackageCosts(
+          {
+            country: buildingCountry,
+            archetype,
+            measureIds: pkg.measureIds,
+            floorArea: buildingFloorArea,
+            projectLifetime: buildingProjectLifetime,
+          },
+          { building, financial },
+        );
 
         dispatch({
           type: "SET_PACKAGE_COST_ESTIMATE",
