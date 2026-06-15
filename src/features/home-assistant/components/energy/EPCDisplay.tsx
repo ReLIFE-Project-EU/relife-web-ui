@@ -14,6 +14,7 @@ import {
 } from "@mantine/core";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { formatEnergyPerYear } from "../../utils/formatters";
+import { getEnergyIntensity } from "../../../../utils/epcUtils";
 import {
   ConceptMetricCard,
   EPCBadge,
@@ -29,11 +30,7 @@ export function EPCDisplay() {
   }
 
   const floorArea = state.building.floorArea;
-  const energyIntensity =
-    estimation.epcEnergyIntensity ??
-    (floorArea && floorArea > 0
-      ? estimation.annualEnergyNeeds / floorArea
-      : undefined);
+  const energyIntensity = getEnergyIntensity(estimation, floorArea);
   const hasDeliveredConsumption = estimation.deliveredTotal !== undefined;
 
   return (

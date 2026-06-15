@@ -10,6 +10,7 @@ import {
   calculatePercentChange,
   formatEnergyPerYear,
 } from "../../utils/formatters";
+import { getEnergyIntensity } from "../../../../utils/epcUtils";
 
 export function ReferenceAdjustedComparisonCard({
   estimation,
@@ -24,17 +25,8 @@ export function ReferenceAdjustedComparisonCard({
     return null;
   }
 
-  const referenceIntensity =
-    reference.epcEnergyIntensity ??
-    (floorArea && floorArea > 0
-      ? reference.annualEnergyNeeds / floorArea
-      : undefined);
-
-  const adjustedIntensity =
-    estimation.epcEnergyIntensity ??
-    (floorArea && floorArea > 0
-      ? estimation.annualEnergyNeeds / floorArea
-      : undefined);
+  const referenceIntensity = getEnergyIntensity(reference, floorArea);
+  const adjustedIntensity = getEnergyIntensity(estimation, floorArea);
 
   const epcChanged = estimation.estimatedEPC !== reference.estimatedEPC;
 

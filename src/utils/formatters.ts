@@ -81,6 +81,19 @@ export function calculatePercentChange(
   return ((newValue - oldValue) / oldValue) * 100;
 }
 
+/**
+ * Percentage reduction from a before/after pair, guarding for missing values
+ * and a non-positive baseline. Returns undefined when it cannot be computed.
+ */
+export function getEnergyReduction(
+  before: number | undefined,
+  after: number | undefined,
+): number | undefined {
+  return before !== undefined && after !== undefined && before > 0
+    ? calculatePercentChange(before, after)
+    : undefined;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Energy Formatting
 // ─────────────────────────────────────────────────────────────────────────────

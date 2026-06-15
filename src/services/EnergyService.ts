@@ -836,15 +836,7 @@ export class EnergyService implements IEnergyService {
         );
         return result;
       } catch (error) {
-        if (error instanceof TypeError && error.message.includes("fetch")) {
-          throw new APIConnectionError();
-        }
-        if (error instanceof APIError) {
-          throw new APIConnectionError(
-            `Energy simulation failed with error ${error.status}: ${error.statusText}`,
-          );
-        }
-        throw error;
+        this.handleSimulationError(error);
       }
     }
 
@@ -896,7 +888,23 @@ export class EnergyService implements IEnergyService {
           `Energy simulation failed with error ${error.status}: ${error.statusText}`,
         );
       }
-      throw error;
+      this.handleSimulationError(error);
     }
+  }
+
+  /**
+   * Translate low-level fetch/API failures from the simulation calls into a
+   * uniform APIConnectionError; re-throw anything else unchanged.
+   */
+  private handleSimulationError(error: unknown): never {
+    if (error instanceof TypeError && error.message.includes("fetch")) {
+      throw new APIConnectionError();
+    }
+    if (error instanceof APIError) {
+      throw new APIConnectionError(
+        `Energy simulation failed with error ${error.status}: ${error.statusText}`,
+      );
+    }
+    throw error;
   }
 }

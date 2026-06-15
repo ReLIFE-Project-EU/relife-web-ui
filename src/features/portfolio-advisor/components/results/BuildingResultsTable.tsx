@@ -28,11 +28,12 @@ import { useMemo, useState } from "react";
 import { DeltaBadge } from "../../../../components/shared/DeltaValue";
 import { EPCBadge } from "../../../../components/shared/EPCBadge";
 import {
-  calculatePercentChange,
   formatCurrency,
   formatDecimal,
   formatEnergyPerYear,
+  getEnergyReduction,
 } from "../../../../utils/formatters";
+import { getEnergyIntensity } from "../../../../utils/epcUtils";
 import type { PRABuilding, BuildingAnalysisResult } from "../../context/types";
 
 export type StatusFilter =
@@ -84,12 +85,7 @@ function buildRowVms(
       const noSavings = isSuccess && fr?.riskAssessment === null && !!renovated;
       const energyBefore = result.estimation?.annualEnergyNeeds;
       const energyAfter = renovated?.annualEnergyNeeds;
-      const energyReduction =
-        energyBefore !== undefined &&
-        energyAfter !== undefined &&
-        energyBefore > 0
-          ? calculatePercentChange(energyBefore, energyAfter)
-          : undefined;
+      const energyReduction = getEnergyReduction(energyBefore, energyAfter);
       return {
         building,
         result,
@@ -314,26 +310,20 @@ function ResultsRow({
   const renovated = result.scenarios?.find((s) => s.id === "renovated");
   const epcBefore = result.estimation?.estimatedEPC;
   const epcAfter = renovated?.epcClass;
-  const energyBefore = result.estimation?.annualEnergyNeeds;
-  const energyAfter = renovated?.annualEnergyNeeds;
-  const intensityBefore =
-    result.estimation?.epcEnergyIntensity ??
-    (energyBefore !== undefined && building.floorArea > 0
-      ? energyBefore / building.floorArea
-      : undefined);
-  const intensityAfter =
-    renovated?.epcEnergyIntensity ??
-    (energyAfter !== undefined && building.floorArea > 0
-      ? energyAfter / building.floorArea
-      : undefined);
+  const intensityBefore = getEnergyIntensity(
+    result.estimation ?? {},
+    building.floorArea,
+  );
+  const intensityAfter = getEnergyIntensity(
+    renovated ?? {},
+    building.floorArea,
+  );
   const deliveredBefore = result.estimation?.deliveredTotal;
   const deliveredAfter = renovated?.deliveredTotal;
-  const deliveredEnergyReduction =
-    deliveredBefore !== undefined &&
-    deliveredAfter !== undefined &&
-    deliveredBefore > 0
-      ? calculatePercentChange(deliveredBefore, deliveredAfter)
-      : undefined;
+  const deliveredEnergyReduction = getEnergyReduction(
+    deliveredBefore,
+    deliveredAfter,
+  );
 
   return (
     <Table.Tr

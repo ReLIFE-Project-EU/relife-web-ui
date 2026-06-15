@@ -11,7 +11,7 @@
  * Mantine color tokens for each EPC class.
  * Uses the format expected by Mantine Badge color prop.
  */
-export const EPC_COLORS: Record<string, string> = {
+const EPC_COLORS: Record<string, string> = {
   "A+": "green.8",
   A: "green.6",
   B: "lime.6",
@@ -36,29 +36,14 @@ export function getEPCColor(epcClass: string): string {
 /**
  * EPC classes ordered from worst to best.
  */
-export const EPC_ORDER = ["G", "F", "E", "D", "C", "B", "A", "A+"];
+const EPC_ORDER = ["G", "F", "E", "D", "C", "B", "A", "A+"];
 
 /**
  * Get the numeric index of an EPC class (0 = G, 7 = A+).
  * Returns -1 if not found.
  */
-export function getEPCIndex(epcClass: string): number {
+function getEPCIndex(epcClass: string): number {
   return EPC_ORDER.indexOf(epcClass);
-}
-
-/**
- * Compare two EPC classes.
- * Returns positive if first is better, negative if worse, 0 if equal.
- */
-export function compareEPC(epc1: string, epc2: string): number {
-  return getEPCIndex(epc1) - getEPCIndex(epc2);
-}
-
-/**
- * Check if first EPC class is better than or equal to second.
- */
-export function isEPCBetterOrEqual(epc1: string, epc2: string): boolean {
-  return compareEPC(epc1, epc2) >= 0;
 }
 
 /**
@@ -75,7 +60,7 @@ export function getEPCImprovement(fromEPC: string, toEPC: string): number {
 /**
  * Human-readable descriptions for each EPC class.
  */
-export const EPC_DESCRIPTIONS: Record<string, string> = {
+const EPC_DESCRIPTIONS: Record<string, string> = {
   "A+": "Excellent - Nearly zero energy building",
   A: "Very Good - High efficiency",
   B: "Good - Above average efficiency",
@@ -110,3 +95,20 @@ export const EPC_ENERGY_RANGES: Record<string, { min: number; max: number }> = {
   F: { min: 330, max: 450 },
   G: { min: 450, max: Infinity },
 };
+
+/**
+ * Resolve a scenario's energy intensity (kWh/m²/year): prefer the explicit
+ * `epcEnergyIntensity`, otherwise derive it from annual energy needs and floor
+ * area when both are available.
+ */
+export function getEnergyIntensity(
+  scenario: { epcEnergyIntensity?: number; annualEnergyNeeds?: number },
+  floorArea: number | null | undefined,
+): number | undefined {
+  return (
+    scenario.epcEnergyIntensity ??
+    (floorArea && floorArea > 0 && scenario.annualEnergyNeeds !== undefined
+      ? scenario.annualEnergyNeeds / floorArea
+      : undefined)
+  );
+}

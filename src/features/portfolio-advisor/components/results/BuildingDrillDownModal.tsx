@@ -20,10 +20,10 @@ import { EPCBadge } from "../../../../components/shared/EPCBadge";
 import { ErrorAlert } from "../../../../components/shared/ErrorAlert";
 import { MetricCard } from "../../../../components/shared/MetricCard";
 import {
-  calculatePercentChange,
   formatCurrency,
   formatDecimal,
   formatNumber,
+  getEnergyReduction,
 } from "../../../../utils/formatters";
 import { formatArchetypeName } from "../../../../utils/archetypeLabels";
 import { CashFlowChart } from "../../../../components/shared/CashFlowChart";
@@ -49,12 +49,10 @@ export function BuildingDrillDownModal({
   const renovated = result?.scenarios?.find((s) => s.id === "renovated");
   const fr = result?.financialResults;
 
-  const energyBefore = result?.estimation?.annualEnergyNeeds;
-  const energyAfter = renovated?.annualEnergyNeeds;
-  const energyReduction =
-    energyBefore !== undefined && energyAfter !== undefined && energyBefore > 0
-      ? calculatePercentChange(energyBefore, energyAfter)
-      : undefined;
+  const energyReduction = getEnergyReduction(
+    result?.estimation?.annualEnergyNeeds,
+    renovated?.annualEnergyNeeds,
+  );
 
   const epcBefore = result?.estimation?.estimatedEPC;
   const epcAfter = renovated?.epcClass;

@@ -8,6 +8,8 @@
  * library is needed for the small, well-formed tables this produces.
  */
 
+import { downloadBlob } from "./download";
+
 export interface CsvColumn<T> {
   /** Stable identifier — not emitted; handy for tests and toggling. */
   key: string;
@@ -48,15 +50,6 @@ export function serializeCsv<T>(rows: T[], columns: CsvColumn<T>[]): string {
  * detects the encoding correctly. No-op outside a DOM environment.
  */
 export function downloadCsv(filename: string, csv: string): void {
-  if (typeof document === "undefined") return;
   const BOM = String.fromCharCode(0xfeff); // U+FEFF byte order mark — helps Excel detect UTF-8
-  const blob = new Blob([BOM, csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  downloadBlob(filename, [BOM, csv], "text/csv;charset=utf-8");
 }

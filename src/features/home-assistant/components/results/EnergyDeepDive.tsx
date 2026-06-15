@@ -26,6 +26,7 @@ import {
   formatEnergyPerYear,
   formatNumber,
 } from "../../utils/formatters";
+import { getEnergyIntensity } from "../../../../utils/epcUtils";
 import classes from "./ResultsLayout.module.css";
 
 interface EnergyDeepDiveProps {
@@ -40,16 +41,8 @@ export function EnergyDeepDive({
   floorArea,
 }: EnergyDeepDiveProps) {
   const color = getScenarioColor(selected.id);
-  const intensityCurrent =
-    current.epcEnergyIntensity ??
-    (floorArea && floorArea > 0
-      ? current.annualEnergyNeeds / floorArea
-      : undefined);
-  const intensitySelected =
-    selected.epcEnergyIntensity ??
-    (floorArea && floorArea > 0
-      ? selected.annualEnergyNeeds / floorArea
-      : undefined);
+  const intensityCurrent = getEnergyIntensity(current, floorArea);
+  const intensitySelected = getEnergyIntensity(selected, floorArea);
 
   return (
     <div>
