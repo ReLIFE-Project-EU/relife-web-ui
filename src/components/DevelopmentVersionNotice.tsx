@@ -1,6 +1,5 @@
 import { ActionIcon, Code, Group, Text } from "@mantine/core";
 import { IconInfoCircle, IconX } from "@tabler/icons-react";
-import { useMemo } from "react";
 
 const FALLBACK_SHA = "unknown";
 const FALLBACK_DATE = "unknown";
@@ -24,11 +23,10 @@ interface DevelopmentVersionNoticeProps {
 export const DevelopmentVersionNotice = ({
   onClose,
 }: DevelopmentVersionNoticeProps) => {
-  const versionInfo = useMemo(() => {
-    const sha = __APP_COMMIT_SHA__?.slice(0, 12) || FALLBACK_SHA;
-    const date = formatCommitDate(__APP_COMMIT_DATE__);
-    return { sha, date };
-  }, []);
+  const versionInfo = {
+    sha: __APP_COMMIT_SHA__?.slice(0, 12) || FALLBACK_SHA,
+    date: formatCommitDate(__APP_COMMIT_DATE__),
+  };
 
   return (
     <Group

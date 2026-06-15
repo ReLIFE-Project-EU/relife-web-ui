@@ -44,38 +44,81 @@ export function validateModifications(
     coolingSetpoint: { min: 24, max: 30 },
   };
 
-  if (modifications.floorArea !== undefined) {
-    if (
-      modifications.floorArea < CONSTRAINTS.floorArea.min ||
-      modifications.floorArea > CONSTRAINTS.floorArea.max
-    ) {
-      errors.push({
-        field: "floorArea",
-        message: `Floor area must be between ${CONSTRAINTS.floorArea.min}-${CONSTRAINTS.floorArea.max} m²`,
-      });
-    }
-  }
+  const rangeChecks: {
+    field:
+      | "floorArea"
+      | "numberOfFloors"
+      | "floorHeight"
+      | "wallUValue"
+      | "roofUValue"
+      | "windowUValue"
+      | "heatingSetpoint"
+      | "coolingSetpoint";
+    label: string;
+    unit: string;
+    constraint: { min: number; max: number };
+  }[] = [
+    {
+      field: "floorArea",
+      label: "Floor area",
+      unit: "m²",
+      constraint: CONSTRAINTS.floorArea,
+    },
+    {
+      field: "numberOfFloors",
+      label: "Number of floors",
+      unit: "",
+      constraint: CONSTRAINTS.numberOfFloors,
+    },
+    {
+      field: "floorHeight",
+      label: "Floor height",
+      unit: "m",
+      constraint: CONSTRAINTS.floorHeight,
+    },
+    {
+      field: "wallUValue",
+      label: "Wall U-value",
+      unit: "W/m²K",
+      constraint: CONSTRAINTS.uValues,
+    },
+    {
+      field: "roofUValue",
+      label: "Roof U-value",
+      unit: "W/m²K",
+      constraint: CONSTRAINTS.uValues,
+    },
+    {
+      field: "windowUValue",
+      label: "Window U-value",
+      unit: "W/m²K",
+      constraint: CONSTRAINTS.uValues,
+    },
+    {
+      field: "heatingSetpoint",
+      label: "Heating setpoint",
+      unit: "°C",
+      constraint: CONSTRAINTS.heatingSetpoint,
+    },
+    {
+      field: "coolingSetpoint",
+      label: "Cooling setpoint",
+      unit: "°C",
+      constraint: CONSTRAINTS.coolingSetpoint,
+    },
+  ];
 
-  if (modifications.numberOfFloors !== undefined) {
+  for (const { field, label, unit, constraint } of rangeChecks) {
+    const value = modifications[field];
     if (
-      modifications.numberOfFloors < CONSTRAINTS.numberOfFloors.min ||
-      modifications.numberOfFloors > CONSTRAINTS.numberOfFloors.max
+      value !== undefined &&
+      (value < constraint.min || value > constraint.max)
     ) {
       errors.push({
-        field: "numberOfFloors",
-        message: `Number of floors must be between ${CONSTRAINTS.numberOfFloors.min}-${CONSTRAINTS.numberOfFloors.max}`,
-      });
-    }
-  }
-
-  if (modifications.floorHeight !== undefined) {
-    if (
-      modifications.floorHeight < CONSTRAINTS.floorHeight.min ||
-      modifications.floorHeight > CONSTRAINTS.floorHeight.max
-    ) {
-      errors.push({
-        field: "floorHeight",
-        message: `Floor height must be between ${CONSTRAINTS.floorHeight.min}-${CONSTRAINTS.floorHeight.max} m`,
+        field,
+        message: `${label} must be between ${constraint.min}-${constraint.max}${
+          unit ? ` ${unit}` : ""
+        }`,
       });
     }
   }
@@ -92,65 +135,7 @@ export function validateModifications(
     }
   }
 
-  if (modifications.wallUValue !== undefined) {
-    if (
-      modifications.wallUValue < CONSTRAINTS.uValues.min ||
-      modifications.wallUValue > CONSTRAINTS.uValues.max
-    ) {
-      errors.push({
-        field: "wallUValue",
-        message: `Wall U-value must be between ${CONSTRAINTS.uValues.min}-${CONSTRAINTS.uValues.max} W/m²K`,
-      });
-    }
-  }
-
-  if (modifications.roofUValue !== undefined) {
-    if (
-      modifications.roofUValue < CONSTRAINTS.uValues.min ||
-      modifications.roofUValue > CONSTRAINTS.uValues.max
-    ) {
-      errors.push({
-        field: "roofUValue",
-        message: `Roof U-value must be between ${CONSTRAINTS.uValues.min}-${CONSTRAINTS.uValues.max} W/m²K`,
-      });
-    }
-  }
-
-  if (modifications.windowUValue !== undefined) {
-    if (
-      modifications.windowUValue < CONSTRAINTS.uValues.min ||
-      modifications.windowUValue > CONSTRAINTS.uValues.max
-    ) {
-      errors.push({
-        field: "windowUValue",
-        message: `Window U-value must be between ${CONSTRAINTS.uValues.min}-${CONSTRAINTS.uValues.max} W/m²K`,
-      });
-    }
-  }
-
-  if (modifications.heatingSetpoint !== undefined) {
-    if (
-      modifications.heatingSetpoint < CONSTRAINTS.heatingSetpoint.min ||
-      modifications.heatingSetpoint > CONSTRAINTS.heatingSetpoint.max
-    ) {
-      errors.push({
-        field: "heatingSetpoint",
-        message: `Heating setpoint must be between ${CONSTRAINTS.heatingSetpoint.min}-${CONSTRAINTS.heatingSetpoint.max} °C`,
-      });
-    }
-  }
-
   if (modifications.coolingSetpoint !== undefined) {
-    if (
-      modifications.coolingSetpoint < CONSTRAINTS.coolingSetpoint.min ||
-      modifications.coolingSetpoint > CONSTRAINTS.coolingSetpoint.max
-    ) {
-      errors.push({
-        field: "coolingSetpoint",
-        message: `Cooling setpoint must be between ${CONSTRAINTS.coolingSetpoint.min}-${CONSTRAINTS.coolingSetpoint.max} °C`,
-      });
-    }
-
     const heating =
       modifications.heatingSetpoint !== undefined
         ? modifications.heatingSetpoint

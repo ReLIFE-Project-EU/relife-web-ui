@@ -433,14 +433,6 @@ export interface IFinancialService {
   calculateForAllScenarios(
     request: CalculateFinancialScenariosRequest,
   ): Promise<Record<ScenarioId, FinancialResults>>;
-  calculateForAllScenarios(
-    scenarios: RenovationScenario[],
-    fundingOptions: FundingOptions,
-    floorArea: number,
-    currentEstimation: EstimationResult,
-    packageFinancialInputs: PackageFinancialInputsById,
-    building: BuildingInfo,
-  ): Promise<Record<ScenarioId, FinancialResults>>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

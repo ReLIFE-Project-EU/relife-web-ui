@@ -13,11 +13,7 @@ import { financial } from "../api";
 import type {
   ARVResult,
   BuildingInfo,
-  EstimationResult,
   FinancialResults,
-  FundingOptions,
-  PackageFinancialInputsById,
-  RenovationScenario,
   ScenarioId,
 } from "../types/renovation";
 import {
@@ -263,24 +259,6 @@ export class FinancialService implements IFinancialService {
    */
   async calculateForAllScenarios(
     request: CalculateFinancialScenariosRequest,
-  ): Promise<Record<ScenarioId, FinancialResults>>;
-  async calculateForAllScenarios(
-    scenarios: RenovationScenario[],
-    fundingOptions: FundingOptions,
-    floorArea: number,
-    currentEstimation: EstimationResult,
-    packageFinancialInputs: PackageFinancialInputsById,
-    building: BuildingInfo,
-  ): Promise<Record<ScenarioId, FinancialResults>>;
-  async calculateForAllScenarios(
-    requestOrScenarios:
-      | CalculateFinancialScenariosRequest
-      | RenovationScenario[],
-    fundingOptions?: FundingOptions,
-    floorArea?: number,
-    currentEstimation?: EstimationResult,
-    packageFinancialInputs?: PackageFinancialInputsById,
-    building?: BuildingInfo,
   ): Promise<Record<ScenarioId, FinancialResults>> {
     const {
       scenarios,
@@ -291,18 +269,7 @@ export class FinancialService implements IFinancialService {
       building: resolvedBuilding,
       financialAssumptions: resolvedFinancialAssumptions,
       auditCtx: parentAuditCtx,
-    } = Array.isArray(requestOrScenarios)
-      ? {
-          scenarios: requestOrScenarios,
-          fundingOptions: fundingOptions!,
-          floorArea: floorArea!,
-          currentEstimation: currentEstimation!,
-          packageFinancialInputs: packageFinancialInputs!,
-          building: building!,
-          financialAssumptions: undefined,
-          auditCtx: undefined as AuditCtx | undefined,
-        }
-      : requestOrScenarios;
+    } = request;
     const results: Record<string, FinancialResults> = {};
     const assumptions = resolveFinancialAssumptions(
       resolvedFinancialAssumptions,
