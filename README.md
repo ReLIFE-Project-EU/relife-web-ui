@@ -62,7 +62,7 @@ sequenceDiagram
     end
 
     UI->>HRA: Evaluate selected measures
-    HRA->>FCAST: simulateECM(supported envelope measures)
+    HRA->>FCAST: simulateECM(selected analyzable measures)
     FCAST-->>HRA: Current + renovated scenarios
     HRA->>FIN: calculateARV and assessRisk per scenario
     FIN-->>HRA: ARV and risk indicators
@@ -73,7 +73,7 @@ sequenceDiagram
     TECH-->>HRA: Ranked scenarios with closeness scores
     HRA->>HRA: Technical integration is partial - TOPSIS only, some KPIs are placeholders
     HRA-->>UI: Render ranked recommendations and scenario comparison
-    HRA->>HRA: ECM supports wall, roof, floor, windows, air-water heat pump
+    HRA->>HRA: ECM supports envelope, condensing boiler, heat pump, and PV paths
 ```
 
 #### Flow Diagram
@@ -84,7 +84,7 @@ flowchart LR
 
     DB[("ReLIFE Database<br/>---<br/>Forecasting archetypes<br/>Financial CAPEX/OPEX defaults<br/>Risk model parameters")]
 
-    Forecasting["FORECASTING API PARTIAL<br/>---<br/>GET /forecasting/building/available<br/>POST /forecasting/building archetype=true<br/>POST /forecasting/simulate<br/>POST /forecasting/ecm_application<br/>---<br/>Returns baseline and renovated energy outputs<br/>NOTE: ECM supports envelope and heat pump only"]
+    Forecasting["FORECASTING API PARTIAL<br/>---<br/>GET /forecasting/building/available<br/>POST /forecasting/building archetype=true<br/>POST /forecasting/simulate<br/>POST /forecasting/ecm_application<br/>---<br/>Returns baseline and renovated energy outputs<br/>NOTE: ECM supports envelope, generation-change, and PV parameters"]
 
     Financial["FINANCIAL API REAL<br/>---<br/>POST /financial/arv<br/>POST /financial/risk-assessment<br/>---<br/>Private output level<br/>Returns ARV + risk metrics<br/>NPV, IRR, ROI, PBP, DPP<br/>Cash flow visualization data"]
 
@@ -115,9 +115,9 @@ flowchart LR
 **Implementation status**
 
 - Real Forecasting + Financial integrations are wired through `src/services/BuildingService.ts`, `src/services/EnergyService.ts`, `src/services/RenovationService.ts`, and `src/services/FinancialService.ts`.
-- Technical ranking is partially live: `src/features/home-assistant/context/ServiceContext.tsx` wires `src/services/TechnicalMCDAService.ts`, and `src/features/home-assistant/components/results/DecisionSupport.tsx` calls the Technical API on demand from the results step.
+- Technical ranking is partially live: `src/features/home-assistant/context/ServiceContext.tsx` wires `src/services/TechnicalMCDAService.ts`, and `src/features/home-assistant/components/steps/ResultsStep.tsx` auto-ranks scenarios from the results step.
 - The Technical integration is still partial because only `POST /technical/mcda/topsis` is used; KPI assembly in `src/services/TechnicalMCDAService.ts` sends placeholder values for several non-envelope criteria while the live mapping is still being expanded.
-- Renovation simulation is partial: `src/services/RenovationService.ts` can send envelope targets and heat-pump flags to `forecasting.simulateECM(...)`, but the current ranked comparison workflow in `src/features/home-assistant/components/steps/EnergyRenovationStep.tsx` only packages envelope measures.
+- Renovation simulation is partial: `src/services/RenovationService.ts` can send envelope, generation-change, and PV parameters to `forecasting.simulateECM(...)`, but the current package workflow is still limited to the analyzable measure set declared in that service.
 - This means energy and financial outputs are backend-backed, and the technical ranking is backend-assisted but still incomplete in KPI coverage.
 - The flow diagram above shows the current implementation; compare with the [design flow](docs/hra-tool-design.md#sequential-flow) to identify deviations.
 
@@ -153,7 +153,7 @@ sequenceDiagram
       PRA-->>UI: Progress callback and per-building result
     end
     PRA->>PRA: No Technical API call in portfolio analysis flow
-    PRA->>PRA: Same ECM support as HRA - envelope and heat pump
+    PRA->>PRA: Same ECM support as HRA - envelope, generation changes, and PV
     PRA-->>UI: Portfolio summary in results step
 ```
 
@@ -165,7 +165,7 @@ flowchart LR
 
     DB[("ReLIFE Database<br/>---<br/>Forecasting archetypes<br/>Financial CAPEX/OPEX defaults<br/>Risk model parameters")]
 
-    Forecasting["FORECASTING API PARTIAL<br/>---<br/>simulateDirect and simulateCustomBuilding<br/>simulateECM for selected measures<br/>---<br/>Used per building in batched analysis<br/>NOTE: ECM supports envelope and heat pump only"]
+    Forecasting["FORECASTING API PARTIAL<br/>---<br/>simulateDirect and simulateCustomBuilding<br/>simulateECM for selected measures<br/>---<br/>Used per building in batched analysis<br/>NOTE: ECM supports envelope, generation-change, and PV parameters"]
 
     Financial["FINANCIAL API REAL<br/>---<br/>POST /financial/arv<br/>POST /financial/risk-assessment<br/>---<br/>Professional output level<br/>Provides metrics and probability metadata"]
 
@@ -211,6 +211,7 @@ sequenceDiagram
     participant RSE as Renovation Strategy Explorer
     participant FCAST as Forecasting API
     participant FIN as Financial API
+    participant TECH as Technical API
 
     UI->>RSE: Open wizard goal portfolio and packages
     RSE->>FCAST: listArchetypes and getArchetypeDetails via BuildingService
@@ -224,6 +225,7 @@ sequenceDiagram
         FIN-->>RSE: IRR NPV PBP DPP ROI percentiles and probabilities
     end
     RSE->>RSE: rankPackages applies weighted scores in browser not Technical API
+    RSE->>TECH: Technical API not called in RSE workflow
     RSE-->>UI: Aggregates rankings and scenario tables
 ```
 
@@ -249,10 +251,13 @@ flowchart LR
     PolicyInput --> DB
     PolicyInput --> Financial
     DB --> Financial
+    Forecasting -. not-executed .-> Technical
+    Financial -. not-executed .-> Technical
     Forecasting --> PolicyUI
     Financial --> PolicyUI
     Technical -. not-executed .-> PolicyUI
 
+    style LandingPage fill:#e2e3e5
     style PolicyInput fill:#f0f0f0
     style DB fill:#d4edda
     style Forecasting fill:#cfe2ff,stroke:#4c6ef5
