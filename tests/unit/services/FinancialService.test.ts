@@ -658,7 +658,9 @@ describe("FinancialService.estimatePackageCosts", () => {
     expect(request.annual_energy_savings).toBeGreaterThan(0);
     expect(request.schemes).toEqual([{ scheme_type: "equity" }]);
     // The estimation pre-pass must not trigger the global loading overlay.
-    expect(mockAssessRisk.mock.calls[0][1]).toEqual({ skipGlobalLoading: true });
+    expect(mockAssessRisk.mock.calls[0][1]).toEqual({
+      skipGlobalLoading: true,
+    });
 
     expect(result).toEqual({
       capex: 24387,

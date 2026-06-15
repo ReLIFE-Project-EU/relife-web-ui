@@ -23,6 +23,7 @@ export type ConceptId =
   | "break-even-year"
   | "priority-profile"
   | "ranking-score"
+  | "rse-ranking-method"
   | "mcda"
   | "rse-energy-saved-per-eur"
   | "rse-total-energy-savings"
@@ -241,8 +242,18 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     description:
       "How well a package matches the selected priority profile compared with the other packages.",
     unit: "%",
+    caveat:
+      "The exact method depends on the tool. HRA/PRA use the Technical service MCDA/TOPSIS workflow; RSE uses a browser-side normalized weighted score with interim MVP weights.",
     professionalDetail:
-      "Normalized recommendation ranking score from the MCDA/TOPSIS workflow.",
+      "For HRA/PRA the score comes from the Technical service MCDA/TOPSIS workflow. For RSE it is computed by normalizing metrics across the compared packages and applying goal-specific interim weights.",
+  },
+  "rse-ranking-method": {
+    id: "rse-ranking-method",
+    label: "How this ranking is calculated",
+    description:
+      "Each renovation package is compared with the others for every measure, like payback period, energy saved, or CO2 reduced. For each measure, the top-performing package gets a score of 1, the lowest gets 0, and the others get a score between 0 and 1 based on how they rank in between. For example, if three packages save 2,000, 5,000, and 8,000 kWh per year, they would get scores of 0, 0.5, and 1—the middle one is halfway between the lowest and highest. Then, these scores are weighted according to the chosen goal (financial, energy, or emissions), added up, and the package with the highest total ranks first.",
+    caveat:
+      "The weights are planning assumptions chosen to reflect the selected goal. They are not fixed rules and may be refined in future updates. Because scores are rescaled across the packages shown, they indicate relative ranking only — not how good a package is in absolute terms.",
   },
   mcda: {
     id: "mcda",

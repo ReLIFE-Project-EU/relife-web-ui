@@ -6,9 +6,10 @@
  */
 
 import { BarChart } from "@mantine/charts";
-import { Text } from "@mantine/core";
-import { IconChartBar } from "@tabler/icons-react";
+import { Accordion, Stack, Text, ThemeIcon } from "@mantine/core";
+import { IconChartBar, IconInfoCircle } from "@tabler/icons-react";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
+import { relifeConcepts } from "../../../../constants/relifeConcepts";
 import { RSE_PACKAGES } from "../../services/rsePackageCatalog";
 import type { RSERankingResult } from "../../types";
 import {
@@ -47,6 +48,8 @@ export function ScoreCompositionChart({
     color: SERIES_COLORS[index % SERIES_COLORS.length],
   }));
 
+  const rankingMethod = relifeConcepts["rse-ranking-method"];
+
   return (
     <section className={classes.chartCard} aria-label="Score composition">
       <div className={classes.chartCardHead}>
@@ -58,6 +61,34 @@ export function ScoreCompositionChart({
         Weighted score contributions (0–100) per package for your selected goal.
         Segments sum to each package's total score.
       </Text>
+      <Accordion
+        chevronPosition="right"
+        variant="default"
+        multiple={false}
+        mb="md"
+      >
+        <Accordion.Item value="ranking-method">
+          <Accordion.Control
+            icon={
+              <ThemeIcon color="blue" variant="light" size="sm">
+                <IconInfoCircle size={16} />
+              </ThemeIcon>
+            }
+          >
+            {rankingMethod.label}
+          </Accordion.Control>
+          <Accordion.Panel>
+            <Stack gap="xs">
+              <Text size="xs">{rankingMethod.description}</Text>
+              {rankingMethod.caveat ? (
+                <Text size="xs" c="dimmed">
+                  {rankingMethod.caveat}
+                </Text>
+              ) : null}
+            </Stack>
+          </Accordion.Panel>
+        </Accordion.Item>
+      </Accordion>
       <BarChart
         h={rankings.length * 56 + 48}
         data={data}
