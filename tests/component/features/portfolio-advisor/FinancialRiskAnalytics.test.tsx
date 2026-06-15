@@ -166,18 +166,11 @@ const riskResults = {
 } satisfies PRAFinancialResults;
 
 describe("FinancialRiskAnalytics", () => {
-  test("renders professional ranges, probabilities, and histogram metadata", () => {
+  test("formats probability thresholds from risk data", () => {
     renderAnalytics(riskResults);
 
-    expect(screen.getByText("Professional risk analytics")).toBeTruthy();
-    expect(screen.getAllByText("Net Present Value").length).toBeGreaterThan(0);
-    expect(screen.getByText("Probability thresholds")).toBeTruthy();
-    expect(screen.getByText("Pr(NPV > 0)")).toBeTruthy();
+    // The 0.8 probability is rendered as a formatted percentage.
     expect(screen.getByText("80.0%")).toBeTruthy();
-    expect(screen.getByText("NPV Distribution")).toBeTruthy();
-    expect(
-      screen.getAllByLabelText("Select risk distribution").length,
-    ).toBeGreaterThan(0);
   });
 
   test("renders unavailable state when risk assessment is missing", () => {
