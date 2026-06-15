@@ -17,8 +17,6 @@ export { RenovationService } from "./RenovationService";
 export { TechnicalMCDAService } from "./TechnicalMCDAService";
 
 // Export mock implementations for use in tests
-export { mockBuildingService } from "./mock/MockBuildingService";
-export { mockRenovationService } from "./mock/MockRenovationService";
 export { mockMCDAService } from "./mock/MockMCDAService";
 
 // Re-export types

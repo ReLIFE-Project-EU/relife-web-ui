@@ -9,25 +9,3 @@
 
 // Main component
 export { HomeAssistant } from "./HomeAssistant";
-
-// Context (if needed externally)
-export { HomeAssistantProvider } from "./context/HomeAssistantContext";
-export { useHomeAssistant } from "./hooks/useHomeAssistant";
-
-// Types (for external use)
-export type {
-  BuildingInfo,
-  EstimationResult,
-  FundingOptions,
-  HomeAssistantState,
-  RenovationScenario,
-  ScenarioId,
-} from "./context/types";
-
-// Services (for potential testing or extension)
-export {
-  EnergyService,
-  mockBuildingService,
-  mockMCDAService,
-  mockRenovationService,
-} from "./services";

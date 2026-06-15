@@ -15,8 +15,6 @@ export {
 } from "./EnergyService";
 
 // Export mock implementations (via shared)
-export { mockBuildingService } from "../../../services/mock/MockBuildingService";
-export { mockRenovationService } from "../../../services/mock/MockRenovationService";
 export { mockMCDAService } from "../../../services/mock/MockMCDAService";
 
 // Re-export types

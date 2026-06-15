@@ -35,9 +35,11 @@ import type {
 } from "../../types/renovation";
 import { extractCriteriaValues, topsis } from "../../utils/mcdaAlgorithms";
 import type { IMCDAService, MCDAPersona } from "../types";
-import { MOCK_DELAY_MEDIUM } from "./constants";
 import { MCDA_PERSONAS } from "./data/personas";
 import { auditLog, type AuditCtx } from "../../utils/auditLogger";
+
+/** Simulated network latency (ms) for the mock ranking call. */
+const MOCK_DELAY_MEDIUM = 400;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Service Implementation

@@ -276,7 +276,3 @@ export function getCountryFlag(
     String.fromCodePoint(0x1f1e6 + code.codePointAt(1)! - 65)
   );
 }
-
-export function listCanonicalCountries(): string[] {
-  return COUNTRY_DEFINITIONS.map((country) => country.displayName);
-}
