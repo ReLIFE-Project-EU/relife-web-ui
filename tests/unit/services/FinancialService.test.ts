@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type {
   BuildingInfo,
-  EstimationResult,
   FundingOptions,
   PackageFinancialInputsById,
   RenovationScenario,
@@ -112,21 +111,6 @@ const mockBuilding = {
   glazingTechnology: "",
 } as BuildingInfo;
 
-const mockEstimation = {
-  estimatedEPC: "D",
-  annualEnergyNeeds: 15000,
-  heatingCoolingNeeds: 15000,
-  heatingDemand: 10000,
-  coolingDemand: 5000,
-  flexibilityIndex: 50,
-  comfortIndex: 70,
-  annualEnergyConsumption: 15000,
-  deliveredTotal: 11000,
-  carrierBreakdown: { naturalGasKwh: 10000, gridElectricityKwh: 1000 },
-  primaryEnergy: 16500,
-  archetypeFloorArea: 100,
-} as EstimationResult;
-
 const selfFundedOptions: FundingOptions = {
   financingType: "self-funded",
   loan: { percentage: 0, duration: 0 },
@@ -203,10 +187,9 @@ describe("FinancialService", () => {
     const service = new FinancialService();
 
     await service.calculateForAllScenarios({
-      scenarios: [renovatedScenario],
+      scenarios: [currentScenario, renovatedScenario],
       fundingOptions: selfFundedOptions,
       floorArea: 100,
-      currentEstimation: mockEstimation,
       packageFinancialInputs,
       building: mockBuilding,
     });
@@ -228,7 +211,6 @@ describe("FinancialService", () => {
       scenarios: [currentScenario],
       fundingOptions: selfFundedOptions,
       floorArea: 100,
-      currentEstimation: mockEstimation,
       packageFinancialInputs,
       building: mockBuilding,
     });
@@ -252,10 +234,9 @@ describe("FinancialService", () => {
     const service = new FinancialService();
 
     await service.calculateForAllScenarios({
-      scenarios: [renovatedScenario],
+      scenarios: [currentScenario, renovatedScenario],
       fundingOptions: selfFundedOptions,
       floorArea: 100,
-      currentEstimation: mockEstimation,
       packageFinancialInputs,
       building: mockBuilding,
     });
@@ -279,10 +260,9 @@ describe("FinancialService", () => {
     };
 
     await service.calculateForAllScenarios({
-      scenarios: [renovatedScenario],
+      scenarios: [currentScenario, renovatedScenario],
       fundingOptions: selfFundedOptions,
       floorArea: 100,
-      currentEstimation: mockEstimation,
       packageFinancialInputs,
       building: buildingWithoutYear,
     });
@@ -302,10 +282,9 @@ describe("FinancialService", () => {
     };
 
     await service.calculateForAllScenarios({
-      scenarios: [renovatedScenario],
+      scenarios: [currentScenario, renovatedScenario],
       fundingOptions: selfFundedOptions,
       floorArea: 100,
-      currentEstimation: mockEstimation,
       packageFinancialInputs,
       building: sfhBuilding,
     });
@@ -321,10 +300,9 @@ describe("FinancialService", () => {
     const service = new FinancialService();
 
     await service.calculateForAllScenarios({
-      scenarios: [renovatedScenario],
+      scenarios: [currentScenario, renovatedScenario],
       fundingOptions: selfFundedOptions,
       floorArea: 100,
-      currentEstimation: mockEstimation,
       packageFinancialInputs,
       building: mockBuilding,
     });
@@ -340,10 +318,9 @@ describe("FinancialService", () => {
     const service = new FinancialService();
 
     await service.calculateForAllScenarios({
-      scenarios: [renovatedScenario],
+      scenarios: [currentScenario, renovatedScenario],
       fundingOptions: selfFundedOptions,
       floorArea: 100,
-      currentEstimation: mockEstimation,
       packageFinancialInputs,
       building: mockBuilding,
     });
@@ -371,10 +348,9 @@ describe("FinancialService", () => {
     };
 
     await service.calculateForAllScenarios({
-      scenarios: [systemOnlyScenario],
+      scenarios: [currentScenario, systemOnlyScenario],
       fundingOptions: selfFundedOptions,
       floorArea: 100,
-      currentEstimation: mockEstimation,
       packageFinancialInputs: {
         "scenario-condensing-boiler": {
           capex: 10000,
@@ -412,10 +388,9 @@ describe("FinancialService", () => {
     };
 
     const results = await service.calculateForAllScenarios({
-      scenarios: [highEnergyScenario],
+      scenarios: [currentScenario, highEnergyScenario],
       fundingOptions: selfFundedOptions,
       floorArea: 100,
-      currentEstimation: mockEstimation,
       packageFinancialInputs: {
         renovated: {
           capex: 10000,
@@ -440,10 +415,9 @@ describe("FinancialService", () => {
     };
 
     const results = await service.calculateForAllScenarios({
-      scenarios: [scenarioWithoutDelivered],
+      scenarios: [currentScenario, scenarioWithoutDelivered],
       fundingOptions: selfFundedOptions,
       floorArea: 100,
-      currentEstimation: mockEstimation,
       packageFinancialInputs,
       building: mockBuilding,
     });
@@ -456,10 +430,9 @@ describe("FinancialService", () => {
     const service = new FinancialService("professional");
 
     await service.calculateForAllScenarios({
-      scenarios: [renovatedScenario],
+      scenarios: [currentScenario, renovatedScenario],
       fundingOptions: selfFundedOptions,
       floorArea: 100,
-      currentEstimation: mockEstimation,
       packageFinancialInputs,
       building: mockBuilding,
     });
@@ -495,10 +468,9 @@ describe("FinancialService", () => {
     const service = new FinancialService();
 
     await service.calculateForAllScenarios({
-      scenarios: [renovatedScenario, secondScenario],
+      scenarios: [currentScenario, renovatedScenario, secondScenario],
       fundingOptions: selfFundedOptions,
       floorArea: 100,
-      currentEstimation: mockEstimation,
       packageFinancialInputs,
       building: mockBuilding,
     });
@@ -528,10 +500,9 @@ describe("FinancialService", () => {
     };
 
     await service.calculateForAllScenarios({
-      scenarios: [renovatedScenario, secondScenario],
+      scenarios: [currentScenario, renovatedScenario, secondScenario],
       fundingOptions: fundedOptions,
       floorArea: 100,
-      currentEstimation: mockEstimation,
       packageFinancialInputs,
       building: mockBuilding,
     });
@@ -565,10 +536,9 @@ describe("FinancialService", () => {
     };
 
     await service.calculateForAllScenarios({
-      scenarios: [renovatedScenario],
+      scenarios: [currentScenario, renovatedScenario],
       fundingOptions: fundedOptions,
       floorArea: 100,
-      currentEstimation: mockEstimation,
       packageFinancialInputs,
       building: mockBuilding,
     });
@@ -600,7 +570,6 @@ describe("FinancialService", () => {
       scenarios: [currentScenario, renovatedScenario],
       fundingOptions: selfFundedOptions,
       floorArea: 100,
-      currentEstimation: mockEstimation,
       packageFinancialInputs,
       building: { ...mockBuilding, country: "Poland" },
     });

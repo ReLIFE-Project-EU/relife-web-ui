@@ -395,7 +395,6 @@ export interface CalculateFinancialScenariosRequest {
   scenarios: RenovationScenario[];
   fundingOptions: FundingOptions;
   floorArea: number;
-  currentEstimation: EstimationResult;
   packageFinancialInputs: PackageFinancialInputsById;
   building: BuildingInfo;
   financialAssumptions?: FinancialAssumptions;

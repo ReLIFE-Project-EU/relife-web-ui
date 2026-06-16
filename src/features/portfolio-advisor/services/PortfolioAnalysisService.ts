@@ -304,7 +304,6 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       scenarios,
       fundingOptions: funding,
       floorArea: building.floorArea,
-      currentEstimation: estimation,
       packageFinancialInputs: {
         renovated: {
           capex,

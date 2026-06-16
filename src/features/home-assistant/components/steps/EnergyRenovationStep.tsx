@@ -90,7 +90,6 @@ export function EnergyRenovationStep() {
         scenarios,
         fundingOptions: state.funding,
         floorArea,
-        currentEstimation: state.estimation,
         packageFinancialInputs: state.packageFinancialInputs,
         building: state.building,
         financialAssumptions: {

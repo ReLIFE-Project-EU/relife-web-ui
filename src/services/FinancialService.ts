@@ -264,7 +264,6 @@ export class FinancialService implements IFinancialService {
       scenarios,
       fundingOptions: resolvedFundingOptions,
       floorArea: resolvedFloorArea,
-      currentEstimation: resolvedCurrentEstimation,
       packageFinancialInputs: resolvedPackageFinancialInputs,
       building: resolvedBuilding,
       financialAssumptions: resolvedFinancialAssumptions,
@@ -274,6 +273,19 @@ export class FinancialService implements IFinancialService {
     const assumptions = resolveFinancialAssumptions(
       resolvedFinancialAssumptions,
     );
+
+    // The "current" scenario is re-simulated through the ECM engine by
+    // RenovationService, so energy savings compare like-for-like against the
+    // renovated scenarios (same engine). Use it — not the energy-estimation
+    // result — as the baseline for carrier savings and the ARV "before" basis.
+    const baselineScenario = scenarios.find(
+      (scenario) => scenario.id === "current",
+    );
+    if (!baselineScenario) {
+      throw new Error(
+        "Financial calculation requires a baseline 'current' scenario",
+      );
+    }
 
     auditLog.info(
       "financial",
@@ -293,9 +305,9 @@ export class FinancialService implements IFinancialService {
 
     const baselineEnergyIntensity = resolveArvEnergyIntensity(
       {
-        primaryEnergy: resolvedCurrentEstimation.primaryEnergy,
-        deliveredTotal: resolvedCurrentEstimation.deliveredTotal,
-        annualEnergyNeeds: resolvedCurrentEstimation.annualEnergyNeeds,
+        primaryEnergy: baselineScenario.primaryEnergy,
+        deliveredTotal: baselineScenario.deliveredTotal,
+        annualEnergyNeeds: baselineScenario.annualEnergyNeeds,
       },
       resolvedFloorArea,
     );
@@ -416,11 +428,11 @@ export class FinancialService implements IFinancialService {
       // and grid-electricity deltas separately, then converting the net EUR
       // savings into electricity-equivalent kWh at the backend reference price.
       const canUseCarrierPricing =
-        resolvedCurrentEstimation.carrierBreakdown !== undefined &&
+        baselineScenario.carrierBreakdown !== undefined &&
         scenario.carrierBreakdown !== undefined;
       const carrierSavings = canUseCarrierPricing
         ? computeCarrierFinancialEnergySavings(
-            resolvedCurrentEstimation.carrierBreakdown!,
+            baselineScenario.carrierBreakdown!,
             scenario.carrierBreakdown!,
             {
               gasTariffEurPerKwh: assumptions.gasTariffEurPerKwh,
@@ -435,9 +447,9 @@ export class FinancialService implements IFinancialService {
         "financial.savings.computed",
         {
           canUseCarrierPricing,
-          baselineCarrierBreakdown: resolvedCurrentEstimation.carrierBreakdown,
+          baselineCarrierBreakdown: baselineScenario.carrierBreakdown,
           scenarioCarrierBreakdown: scenario.carrierBreakdown,
-          baselineDeliveredTotal: resolvedCurrentEstimation.deliveredTotal,
+          baselineDeliveredTotal: baselineScenario.deliveredTotal,
           scenarioDeliveredTotal: scenario.deliveredTotal,
           annualSavingsEur: carrierSavings.annualSavingsEur,
           electricityEquivalentKwh: carrierSavings.electricityEquivalentKwh,

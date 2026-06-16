@@ -138,6 +138,15 @@ const stubECMResponse = {
         hourly_building: {
           Q_HC: Array(8760).fill(100),
         },
+        primary_energy_uni11300: {
+          summary: {
+            E_delivered_thermal_kWh: 1600,
+            E_delivered_electric_total_kWh: 400,
+            EP_heat_total_kWh: 1900,
+            EP_cool_total_kWh: 700,
+            EP_total_kWh: 2600,
+          },
+        },
       },
     },
     {
@@ -407,7 +416,7 @@ describe("RenovationService", () => {
     ]);
   });
 
-  test("evaluateScenarios calls forecasting once per package", async () => {
+  test("evaluateScenarios calls forecasting once per package plus the baseline", async () => {
     const packages = service.suggestPackages([
       "wall-insulation",
       "roof-insulation",
@@ -416,7 +425,8 @@ describe("RenovationService", () => {
 
     await service.evaluateScenarios(mockBuilding, mockEstimation, packages);
 
-    expect(mockSimulateECM).toHaveBeenCalledTimes(packages.length);
+    // One ECM call per package, plus one baseline_only call for "current".
+    expect(mockSimulateECM).toHaveBeenCalledTimes(packages.length + 1);
   });
 
   test("evaluateScenarios limits forecasting concurrency to two requests", async () => {
@@ -425,7 +435,8 @@ describe("RenovationService", () => {
       "roof-insulation",
       "windows",
     ]);
-    const deferredResponses = packages.map(() =>
+    // One deferred per ECM call: the baseline_only call plus one per package.
+    const deferredResponses = Array.from({ length: packages.length + 1 }, () =>
       createDeferred<typeof stubECMResponse>(),
     );
     let responseIndex = 0;
@@ -467,7 +478,7 @@ describe("RenovationService", () => {
 
     const scenarios = await evaluationPromise;
 
-    expect(mockSimulateECM).toHaveBeenCalledTimes(packages.length);
+    expect(mockSimulateECM).toHaveBeenCalledTimes(packages.length + 1);
     expect(scenarios.map((scenario) => scenario.id)).toEqual([
       "current",
       "package-wall-insulation",
@@ -491,11 +502,14 @@ describe("RenovationService", () => {
       ],
     );
 
-    expect(scenarios[0]?.deliveredTotal).toBe(17000);
+    // The "current" baseline is now re-simulated through the ECM engine
+    // (baseline_only), so it carries the stub baseline scenario's UNI totals.
+    expect(scenarios[0]?.deliveredTotal).toBe(2000);
     expect(scenarios[0]?.carrierBreakdown).toEqual({
-      naturalGasKwh: 15000,
-      gridElectricityKwh: 2000,
+      naturalGasKwh: 1600,
+      gridElectricityKwh: 400,
     });
+    expect(scenarios[0]?.primaryEnergy).toBe(2600);
     expect(scenarios[1]?.deliveredTotal).toBe(1250);
     expect(scenarios[1]?.carrierBreakdown).toEqual({
       naturalGasKwh: 1000,
@@ -507,7 +521,7 @@ describe("RenovationService", () => {
   });
 
   test("evaluateScenarios handles condensing-boiler system scenarios without relying on envelope elements", async () => {
-    mockSimulateECM.mockResolvedValueOnce({
+    mockSimulateECM.mockResolvedValue({
       scenarios: [
         {
           scenario_id: "baseline",
@@ -572,7 +586,7 @@ describe("RenovationService", () => {
   });
 
   test("evaluateScenarios enables heat-pump UNI totals for mixed scenarios", async () => {
-    mockSimulateECM.mockResolvedValueOnce({
+    mockSimulateECM.mockResolvedValue({
       scenarios: [
         {
           scenario_id: "baseline",
@@ -665,10 +679,11 @@ describe("RenovationService", () => {
         annual_pv_yield_kwh_per_kwp: PV_DEFAULTS.annualYieldKwhPerKwp,
       }),
     );
-    expect(mockSimulateECM.mock.calls[0]?.[0]).not.toHaveProperty(
+    // calls[0] is the baseline_only simulation; calls[1] is the PV-only package.
+    expect(mockSimulateECM.mock.calls[1]?.[0]).not.toHaveProperty(
       "scenario_elements",
     );
-    expect(mockSimulateECM.mock.calls[0]?.[0]).not.toHaveProperty(
+    expect(mockSimulateECM.mock.calls[1]?.[0]).not.toHaveProperty(
       "include_baseline",
     );
   });
@@ -710,13 +725,21 @@ describe("RenovationService", () => {
       },
     ]);
 
+    // calls[0] is the dedicated baseline_only simulation for "current".
     expect(mockSimulateECM.mock.calls[0]?.[0]).toEqual(
-      expect.objectContaining({ include_baseline: true }),
+      expect.objectContaining({ baseline_only: true }),
     );
-    expect(mockSimulateECM.mock.calls[1]?.[0]).not.toHaveProperty(
+    expect(mockSimulateECM.mock.calls[0]?.[0]).not.toHaveProperty(
       "include_baseline",
     );
+    // Pure generation change still requests the in-response baseline scenario.
+    expect(mockSimulateECM.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({ include_baseline: true }),
+    );
     expect(mockSimulateECM.mock.calls[2]?.[0]).not.toHaveProperty(
+      "include_baseline",
+    );
+    expect(mockSimulateECM.mock.calls[3]?.[0]).not.toHaveProperty(
       "include_baseline",
     );
   });
@@ -738,7 +761,7 @@ describe("RenovationService", () => {
   });
 
   test("evaluateScenarios credits PV self-consumption to delivered energy only", async () => {
-    mockSimulateECM.mockResolvedValueOnce({
+    mockSimulateECM.mockResolvedValue({
       scenarios: [
         {
           scenario_id: "wall",
@@ -801,5 +824,48 @@ describe("RenovationService", () => {
     expect(scenarios[1]?.pvSelfSufficiencyRate).toBe(0.42);
     expect(scenarios[1]?.annualEnergyNeeds).toBe(876);
     expect(scenarios[1]?.heatingCoolingNeeds).toBe(876);
+  });
+
+  test("evaluateScenarios derives the baseline from the ECM engine, not the estimation", async () => {
+    // Regression for the cross-engine savings bug: the "current" baseline used
+    // to copy the energy-estimation result (a different forecasting endpoint),
+    // so comparing it against ECM-simulated packages mixed two engines. For a
+    // low-impact measure that lowered thermal demand, delivered energy could
+    // still come out higher than the estimation baseline, producing negative
+    // savings -> NPV 0 -> the package being excluded from ranking. The baseline
+    // must instead come from the ECM engine (baseline_only) so it stays
+    // comparable with the renovated scenarios.
+    const estimationWithDivergentBaseline: EstimationResult = {
+      ...mockEstimation,
+      deliveredTotal: 99999,
+      carrierBreakdown: { naturalGasKwh: 90000, gridElectricityKwh: 9999 },
+      primaryEnergy: 120000,
+    };
+
+    const scenarios = await service.evaluateScenarios(
+      mockBuilding,
+      estimationWithDivergentBaseline,
+      [
+        {
+          id: "package-windows",
+          label: "Window Replacement",
+          measureIds: ["windows"],
+        },
+      ],
+    );
+
+    // A dedicated baseline_only ECM simulation is issued for "current".
+    expect(mockSimulateECM).toHaveBeenCalledWith(
+      expect.objectContaining({ baseline_only: true }),
+    );
+
+    // The baseline reflects the ECM engine (stub UNI totals), not the divergent
+    // estimation values — keeping savings on a single engine.
+    const current = scenarios.find((scenario) => scenario.id === "current");
+    expect(current?.deliveredTotal).toBe(2000);
+    expect(current?.carrierBreakdown).toEqual({
+      naturalGasKwh: 1600,
+      gridElectricityKwh: 400,
+    });
   });
 });
