@@ -5,22 +5,22 @@
 
 import { Alert, Badge, Box, Grid, Stack, Text, Title } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import {
+  BuildingSelector,
+  type BuildingSelectorInitialValue,
+  type BuildingSelectorSelection,
+} from "../../../../components/building-selector";
 import {
   ErrorAlert,
   SelectionSummaryPanel,
   StepProgressFooter,
-  StepSectionCard,
   type SelectionSummaryItem,
 } from "../../../../components/shared";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 import { auditLog } from "../../../../utils/auditLogger";
-import {
-  ArchetypeSelector,
-  BuildingTypeInputs,
-  LocationInputs,
-} from "../building";
+import { deriveConstructionYear } from "../../../../utils/apiMappings";
 
 export function BuildingInfoStep() {
   const { state, dispatch } = useHomeAssistant();
@@ -50,6 +50,94 @@ export function BuildingInfoStep() {
 
   const isValid = locationDone && buildingDone && archetypeDone;
 
+  const selectorInitialValue = useMemo<BuildingSelectorInitialValue>(
+    () => ({
+      mode: "map",
+      coords: hasCoordinates
+        ? {
+            lat: state.building.lat ?? undefined,
+            lng: state.building.lng ?? undefined,
+          }
+        : null,
+      country: state.building.country || detectedCountry,
+      category: state.building.buildingType || null,
+      constructionPeriod: state.building.constructionPeriod || null,
+      archetype:
+        state.building.selectedArchetype ??
+        state.building.tentativeArchetype ??
+        null,
+      floorArea: state.building.floorArea,
+      numberOfFloors: state.building.numberOfFloors,
+      apartmentLocation: state.building.apartmentLocation,
+      modifications: state.building.modifications,
+    }),
+    [
+      detectedCountry,
+      hasCoordinates,
+      state.building.apartmentLocation,
+      state.building.buildingType,
+      state.building.constructionPeriod,
+      state.building.country,
+      state.building.floorArea,
+      state.building.lat,
+      state.building.lng,
+      state.building.modifications,
+      state.building.numberOfFloors,
+      state.building.selectedArchetype,
+      state.building.tentativeArchetype,
+    ],
+  );
+
+  const handleBuildingSelectionChange = useCallback(
+    (selection: BuildingSelectorSelection | null) => {
+      if (!selection) {
+        dispatch({
+          type: "SET_BUILDING",
+          building: {
+            country: "",
+            lat: null,
+            lng: null,
+            buildingType: "",
+            constructionPeriod: "",
+            constructionYear: null,
+            selectedArchetype: undefined,
+            tentativeArchetype: undefined,
+            isModified: false,
+            modifications: undefined,
+            floorArea: null,
+            numberOfFloors: null,
+            apartmentLocation: undefined,
+            floorNumber: null,
+          },
+        });
+        return;
+      }
+
+      dispatch({
+        type: "SET_BUILDING",
+        building: {
+          country: selection.country,
+          lat: selection.coords.lat,
+          lng: selection.coords.lng,
+          buildingType: selection.category,
+          constructionPeriod: selection.constructionPeriod,
+          constructionYear: deriveConstructionYear(
+            selection.constructionPeriod,
+          ),
+          tentativeArchetype: selection.archetype,
+          selectedArchetype: selection.archetype,
+          isModified: Boolean(selection.modifications),
+          modifications: selection.modifications,
+          floorArea: selection.floorArea,
+          numberOfFloors: selection.numberOfFloors,
+          apartmentLocation: selection.apartmentLocation,
+          floorNumber: selection.floorNumber ?? null,
+        },
+      });
+    },
+    [dispatch],
+  );
+
   const handleEstimateEPC = async () => {
     if (!isValid) return;
 
@@ -78,9 +166,9 @@ export function BuildingInfoStep() {
     {
       id: "country",
       label: "Country",
-      value: detectedCountry ?? undefined,
-      complete: Boolean(detectedCountry),
-      placeholder: "Click on the map",
+      value: state.building.country || detectedCountry || undefined,
+      complete: Boolean(state.building.country || detectedCountry),
+      placeholder: "Choose reference or map location",
     },
     {
       id: "type",
@@ -99,7 +187,7 @@ export function BuildingInfoStep() {
       label: "Archetype",
       value: state.building.selectedArchetype?.name,
       complete: archetypeDone,
-      placeholder: "Awaiting match",
+      placeholder: "Choose a reference",
     },
   ];
 
@@ -113,7 +201,7 @@ export function BuildingInfoStep() {
     </Text>
   ) : (
     <Text size="xs" c="dimmed">
-      Fill in the location, type, and period to match an archetype.
+      Choose a reference building or use the map matcher before continuing.
     </Text>
   );
 
@@ -125,9 +213,8 @@ export function BuildingInfoStep() {
           Tell us about your building
         </Title>
         <Text c="dimmed" size="sm">
-          Place your home on the map, pick its type and age. We'll match it to a
-          representative archetype with typical energy use, then refine in the
-          next step.
+          Pick a typical home from the catalog, or place yours on the map and
+          let the tool match a representative archetype.
         </Text>
       </Box>
 
@@ -142,65 +229,24 @@ export function BuildingInfoStep() {
           title="How this works"
         >
           <Text size="sm">
-            We group buildings into archetypes by country, type, and
-            construction period. The closer the match, the more reliable the
-            estimate. You can review and refine the matched archetype before
-            continuing.
+            We match buildings to archetypes based on country, type, and
+            construction period. Closer matches produce more reliable estimates.
+            You can review the match before continuing.
           </Text>
         </Alert>
       )}
 
-      {/* Two-column: stacked sections + sticky summary */}
+      {/* Two-column: selector + sticky summary */}
       <Grid gutter="lg">
         {/* Main column */}
         <Grid.Col span={{ base: 12, md: 8 }}>
-          <Stack gap="md">
-            <StepSectionCard
-              number={1}
-              title="Location"
-              meta={
-                detectedCountry
-                  ? detectedCountry
-                  : hasCoordinates
-                    ? "Pin set — country not yet detected"
-                    : "Click on the map to drop your pin"
-              }
-              complete={locationDone}
-              active={!locationDone}
-            >
-              <LocationInputs />
-            </StepSectionCard>
-
-            <StepSectionCard
-              number={2}
-              title="Building type & age"
-              meta={
-                buildingDone
-                  ? `${state.building.buildingType} · ${state.building.constructionPeriod}`
-                  : "Pick the type and construction period"
-              }
-              complete={buildingDone}
-              active={locationDone && !buildingDone}
-            >
-              <BuildingTypeInputs />
-            </StepSectionCard>
-
-            <Box id="hra-archetype-section" style={{ scrollMarginTop: 96 }}>
-              <StepSectionCard
-                number={3}
-                title="Matched archetype"
-                meta={
-                  archetypeDone
-                    ? state.building.selectedArchetype?.name
-                    : "Awaiting building type & period"
-                }
-                complete={archetypeDone}
-                active={buildingDone && !archetypeDone}
-              >
-                <ArchetypeSelector />
-              </StepSectionCard>
-            </Box>
-          </Stack>
+          <BuildingSelector
+            service={building}
+            host="hra"
+            adjustmentScope="limited"
+            initialValue={selectorInitialValue}
+            onSelectionChange={handleBuildingSelectionChange}
+          />
         </Grid.Col>
 
         {/* Summary column */}
