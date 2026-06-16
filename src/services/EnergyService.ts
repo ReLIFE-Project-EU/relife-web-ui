@@ -672,7 +672,7 @@ export class EnergyService implements IEnergyService {
    * Estimate EPC and energy consumption based on building characteristics.
    *
    * Archetype resolution:
-   * 1. Uses building.selectedArchetype when available (set by ArchetypeSelector)
+   * 1. Uses building.selectedArchetype when available (set by BuildingSelector)
    * 2. Falls back to heuristic matching by country/category when not set
    *
    * For modified archetypes:

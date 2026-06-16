@@ -1,0 +1,15 @@
+@keyframes flash-ring {
+  0% {
+    box-shadow: 0 0 0 0 var(--flash-color, var(--mantine-color-blue-3));
+  }
+  50% {
+    box-shadow: 0 0 0 4px var(--flash-color, var(--mantine-color-blue-3));
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.flashRing {
+  animation: flash-ring 1.5s ease;
+}
