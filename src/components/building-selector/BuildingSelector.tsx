@@ -1,7 +1,14 @@
 import { Alert, Box, Card, SegmentedControl, Stack, Text } from "@mantine/core";
 import { useDebouncedValue, useDisclosure } from "@mantine/hooks";
 import { IconAlertTriangle } from "@tabler/icons-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type {
   ArchetypeDetails,
   BuildingModifications,
@@ -28,6 +35,7 @@ import {
 import type {
   BuildingSelectorAdjustmentScope,
   BuildingSelectorDraft,
+  BuildingSelectorHandle,
   BuildingSelectorHost,
   BuildingSelectorInitialValue,
   BuildingSelectorMode,
@@ -89,6 +97,7 @@ interface BuildingSelectorProps {
   compact?: boolean;
   initialValue?: BuildingSelectorInitialValue;
   onSelectionChange: (selection: BuildingSelectorSelection | null) => void;
+  ref?: React.Ref<BuildingSelectorHandle>;
 }
 
 export function BuildingSelector({
@@ -98,6 +107,7 @@ export function BuildingSelector({
   compact = false,
   initialValue,
   onSelectionChange,
+  ref,
 }: BuildingSelectorProps) {
   const copy = SELECTOR_COPY[host];
   const [mode, setMode] = useState<BuildingSelectorMode>(
@@ -186,6 +196,26 @@ export function BuildingSelector({
     },
     [onSelectionChange],
   );
+
+  useImperativeHandle(ref, () => ({
+    reset: () => {
+      clearSelection(true);
+      setMode("browse");
+      setSearch("");
+      setBrowseCountry(null);
+      setBrowseCategory(null);
+      setBrowsePeriod(null);
+      setMapLat(null);
+      setMapLng(null);
+      setMapCategory(null);
+      setMapPeriod(null);
+      setMapCategories([]);
+      setMapPeriods([]);
+      setBrowseError(null);
+      setIsMatching(false);
+      lastInitialValueSignatureRef.current = null;
+    },
+  }));
 
   const publishSelection = useCallback(
     (params: {

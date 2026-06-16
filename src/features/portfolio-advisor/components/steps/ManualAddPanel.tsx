@@ -13,10 +13,11 @@ import {
   Title,
 } from "@mantine/core";
 import { IconPlus } from "@tabler/icons-react";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   BuildingSelector,
   buildGeneratedBuildingName,
+  type BuildingSelectorHandle,
   type BuildingSelectorSelection,
 } from "../../../../components/building-selector";
 import { usePortfolioAdvisorServices } from "../../hooks/usePortfolioAdvisorServices";
@@ -41,7 +42,7 @@ export function ManualAddPanel({
   const [selection, setSelection] = useState<BuildingSelectorSelection | null>(
     null,
   );
-  const [selectorResetKey, setSelectorResetKey] = useState(0);
+  const selectorRef = useRef<BuildingSelectorHandle>(null);
 
   const handleAdd = useCallback(() => {
     if (!selection) return;
@@ -69,7 +70,7 @@ export function ManualAddPanel({
     onAdd(building);
     setName("");
     setSelection(null);
-    setSelectorResetKey((current) => current + 1);
+    selectorRef.current?.reset();
     onClose?.();
   }, [name, onAdd, onClose, selection]);
 
@@ -92,7 +93,7 @@ export function ManualAddPanel({
         />
 
         <BuildingSelector
-          key={selectorResetKey}
+          ref={selectorRef}
           service={buildingService}
           host="pra"
           adjustmentScope="full"

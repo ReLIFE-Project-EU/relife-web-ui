@@ -77,3 +77,8 @@ export interface BuildingSelectorDraft {
   coolingSetpoint: number | string;
   numberOfOccupants: number | string;
 }
+
+export interface BuildingSelectorHandle {
+  /** Reset the selector to its empty initial state. */
+  reset(): void;
+}

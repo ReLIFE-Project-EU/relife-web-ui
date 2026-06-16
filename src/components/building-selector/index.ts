@@ -3,6 +3,7 @@ export { buildGeneratedBuildingName } from "./buildingSelectorUtils";
 export type {
   ApartmentLocation,
   BuildingSelectorAdjustmentScope,
+  BuildingSelectorHandle,
   BuildingSelectorHost,
   BuildingSelectorInitialValue,
   BuildingSelectorMatchMeta,
