@@ -105,6 +105,8 @@ export type HomeAssistantAction =
   // Building info updates
   | { type: "UPDATE_BUILDING"; field: keyof BuildingInfo; value: unknown }
   | { type: "SET_BUILDING"; building: Partial<BuildingInfo> }
+  /** Reset building to its initial empty state. */
+  | { type: "RESET_BUILDING" }
   /** Clear accepted archetype only; preserves search inputs, tentative match, and estimation. */
   | { type: "CLEAR_ACCEPTED_ARCHETYPE" }
 

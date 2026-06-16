@@ -91,25 +91,7 @@ export function BuildingInfoStep() {
   const handleBuildingSelectionChange = useCallback(
     (selection: BuildingSelectorSelection | null) => {
       if (!selection) {
-        dispatch({
-          type: "SET_BUILDING",
-          building: {
-            country: "",
-            lat: null,
-            lng: null,
-            buildingType: "",
-            constructionPeriod: "",
-            constructionYear: null,
-            selectedArchetype: undefined,
-            tentativeArchetype: undefined,
-            isModified: false,
-            modifications: undefined,
-            floorArea: null,
-            numberOfFloors: null,
-            apartmentLocation: undefined,
-            floorNumber: null,
-          },
-        });
+        dispatch({ type: "RESET_BUILDING" });
         return;
       }
 

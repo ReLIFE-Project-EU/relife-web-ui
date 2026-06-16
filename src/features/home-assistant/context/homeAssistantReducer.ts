@@ -199,6 +199,13 @@ export function homeAssistantReducer(
         estimation: null,
       };
 
+    case "RESET_BUILDING":
+      return {
+        ...state,
+        building: initialBuilding,
+        estimation: null,
+      };
+
     case "CLEAR_ACCEPTED_ARCHETYPE":
       return {
         ...state,
