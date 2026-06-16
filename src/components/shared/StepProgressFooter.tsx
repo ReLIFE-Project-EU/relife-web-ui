@@ -57,7 +57,6 @@ export function StepProgressFooter({
     <Paper
       withBorder
       radius="md"
-      shadow="sm"
       p="sm"
       mt="md"
       style={{ position: "sticky", bottom: 16, zIndex: 3 }}
