@@ -1,22 +1,6 @@
-/**
- * MeasureCard Component
- * Displays a single renovation measure with checkbox selection.
- */
-
-import {
-  Badge,
-  Card,
-  Checkbox,
-  Group,
-  Stack,
-  Text,
-  Tooltip,
-} from "@mantine/core";
-import { IconInfoCircle } from "@tabler/icons-react";
 import type { RenovationMeasureId } from "../../context/types";
 import type { RenovationMeasure } from "../../services";
-import { getMeasureIcon } from "../../../../utils/measureIcons";
-import { MeasureEffectSummary } from "../shared";
+import { RenovationMeasureCard } from "../../../../components/shared/RenovationMeasureCard";
 
 interface MeasureCardProps {
   measure: RenovationMeasure;
@@ -25,133 +9,18 @@ interface MeasureCardProps {
   disabled?: boolean;
 }
 
-/**
- * Get badge color based on measure category
- */
-function getCategoryColor(category: string): string {
-  switch (category) {
-    case "envelope":
-      return "blue";
-    case "systems":
-      return "orange";
-    case "renewable":
-      return "green";
-    default:
-      return "gray";
-  }
-}
-
-function getCategoryLabel(category: string): string {
-  switch (category) {
-    case "envelope":
-      return "Envelope";
-    case "systems":
-      return "Systems";
-    case "renewable":
-      return "Renewables";
-    default:
-      return "Other";
-  }
-}
-
 export function MeasureCard({
   measure,
   isSelected,
   onToggle,
   disabled,
 }: MeasureCardProps) {
-  const categoryColor = getCategoryColor(measure.category);
-  const categoryLabel = getCategoryLabel(measure.category);
-
   return (
-    <Card
-      withBorder
-      radius="lg"
-      p="lg"
-      shadow={isSelected ? "md" : "sm"}
-      bg={isSelected ? `${categoryColor}.0` : disabled ? "gray.0" : "white"}
-      style={{
-        borderColor: isSelected
-          ? `var(--mantine-color-${categoryColor}-5)`
-          : undefined,
-        borderWidth: isSelected ? 2 : 1,
-        cursor: disabled ? "not-allowed" : "pointer",
-        transition: "border-color 150ms ease, box-shadow 150ms ease",
-        opacity: disabled ? 0.7 : 1,
-      }}
-      onClick={() => !disabled && onToggle(measure.id)}
-      onKeyDown={(event) => {
-        if (!disabled && (event.key === "Enter" || event.key === " ")) {
-          event.preventDefault();
-          onToggle(measure.id);
-        }
-      }}
-      role="button"
-      tabIndex={disabled ? -1 : 0}
-      aria-disabled={disabled}
-    >
-      <Stack gap="md">
-        <Group justify="space-between" align="flex-start" wrap="nowrap">
-          <Group gap="sm" wrap="nowrap" align="flex-start">
-            <Text c={disabled ? "gray" : categoryColor}>
-              {getMeasureIcon(measure.id)}
-            </Text>
-            <Stack gap={4}>
-              <Text fw={600} size="sm">
-                {measure.name}
-              </Text>
-            </Stack>
-          </Group>
-          <Tooltip
-            label={measure.description}
-            position="left"
-            multiline
-            w={260}
-          >
-            <IconInfoCircle
-              size={16}
-              color="var(--mantine-color-gray-5)"
-              style={{ cursor: "help", flexShrink: 0 }}
-              onClick={(event) => event.stopPropagation()}
-            />
-          </Tooltip>
-        </Group>
-
-        <MeasureEffectSummary measureId={measure.id} compact />
-
-        <Stack gap="xs">
-          <Group justify="space-between" align="center">
-            <Badge
-              color={disabled ? "gray" : categoryColor}
-              variant={isSelected ? "filled" : "light"}
-            >
-              {categoryLabel}
-            </Badge>
-            <Checkbox
-              checked={isSelected}
-              onChange={() => !disabled && onToggle(measure.id)}
-              label={
-                <Text fw={500} size="sm">
-                  {isSelected ? "Selected" : "Select"}
-                </Text>
-              }
-              onClick={(event) => event.stopPropagation()}
-              disabled={disabled}
-              styles={{
-                body: { alignItems: "center" },
-                label: { paddingLeft: 8 },
-                input: { cursor: disabled ? "not-allowed" : "pointer" },
-              }}
-            />
-          </Group>
-
-          {!measure.isSupported && (
-            <Badge color="yellow" size="sm" variant="light" fullWidth>
-              Coming Soon
-            </Badge>
-          )}
-        </Stack>
-      </Stack>
-    </Card>
+    <RenovationMeasureCard
+      measure={measure}
+      isSelected={isSelected}
+      onToggle={onToggle}
+      disabled={disabled}
+    />
   );
 }

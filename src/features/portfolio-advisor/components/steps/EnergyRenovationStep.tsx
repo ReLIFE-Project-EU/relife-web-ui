@@ -10,7 +10,6 @@ import {
   Box,
   Button,
   Card,
-  Checkbox,
   Divider,
   Grid,
   Group,
@@ -21,20 +20,12 @@ import {
   Text,
   Tooltip,
   Title,
-  UnstyledButton,
 } from "@mantine/core";
-import {
-  IconAlertTriangle,
-  IconInfoCircle,
-  IconSparkles,
-} from "@tabler/icons-react";
+import { IconAlertTriangle, IconInfoCircle } from "@tabler/icons-react";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
-import { MeasureEffectSummary } from "../../../../components/shared/MeasureEffectSummary";
+import { RenovationMeasureCard } from "../../../../components/shared/RenovationMeasureCard";
 import { checkCapexPerSqm } from "../../../../utils/inputSanityChecks";
-import { getMeasureIcon } from "../../../../utils/measureIcons";
 import type { RenovationMeasureId } from "../../../../types/renovation";
-import type { RenovationMeasure } from "../../../../services/types";
-import { SUGGESTED_PACKAGE } from "../../constants";
 import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
 import { usePortfolioAdvisorServices } from "../../hooks/usePortfolioAdvisorServices";
 import {
@@ -42,111 +33,6 @@ import {
   getPortfolioMeasureStatus,
 } from "../../utils/measureSelection";
 import { BuildingMeasuresTable } from "../BuildingMeasuresTable";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Measure Card
-// ─────────────────────────────────────────────────────────────────────────────
-
-function MeasureCard({
-  measure,
-  selected,
-  onToggle,
-  disabled,
-}: {
-  measure: RenovationMeasure;
-  selected: boolean;
-  onToggle: (measureId: RenovationMeasureId) => void;
-  disabled?: boolean;
-}) {
-  const handleClick = () => !disabled && onToggle(measure.id);
-
-  return (
-    <UnstyledButton onClick={handleClick} w="100%" disabled={disabled}>
-      <Card
-        withBorder
-        radius="md"
-        p="md"
-        bg={selected ? "relife.0" : disabled ? "gray.0" : "white"}
-        style={{
-          borderColor: selected ? "var(--mantine-color-relife-7)" : undefined,
-          borderWidth: selected ? 2 : 1,
-          cursor: disabled ? "not-allowed" : "pointer",
-          transition: "border-color 150ms ease, box-shadow 150ms ease",
-          opacity: disabled ? 0.7 : 1,
-        }}
-      >
-        <Stack gap="sm">
-          <Group justify="space-between" align="flex-start" wrap="nowrap">
-            <Group gap="sm" wrap="nowrap" align="flex-start">
-              <Box
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: "var(--mantine-radius-md)",
-                  display: "grid",
-                  placeItems: "center",
-                  backgroundColor: selected
-                    ? "var(--mantine-color-relife-7)"
-                    : "var(--mantine-color-gray-1)",
-                  color: selected ? "white" : "var(--mantine-color-gray-7)",
-                  flexShrink: 0,
-                }}
-              >
-                {getMeasureIcon(measure.id)}
-              </Box>
-              <Stack gap={2} style={{ minWidth: 0 }}>
-                <Text fw={600} size="sm">
-                  {measure.name}
-                </Text>
-              </Stack>
-            </Group>
-            <Tooltip
-              label={measure.technicalDescription ?? measure.description}
-              position="left"
-              multiline
-              w={320}
-            >
-              <IconInfoCircle
-                size={16}
-                color="var(--mantine-color-gray-5)"
-                style={{ cursor: "help", flexShrink: 0 }}
-                onClick={(event) => event.stopPropagation()}
-              />
-            </Tooltip>
-          </Group>
-
-          <MeasureEffectSummary measureId={measure.id} compact />
-
-          <Group justify="space-between" align="center">
-            {!measure.isSupported ? (
-              <Badge color="yellow" size="xs" variant="light">
-                Coming soon
-              </Badge>
-            ) : (
-              <span />
-            )}
-            <Checkbox
-              checked={selected}
-              onChange={handleClick}
-              label={
-                <Text size="xs" fw={500} c={selected ? "relife.8" : "dimmed"}>
-                  {selected ? "Selected" : "Select"}
-                </Text>
-              }
-              onClick={(event) => event.stopPropagation()}
-              disabled={disabled}
-              styles={{
-                body: { alignItems: "center" },
-                label: { paddingLeft: 6 },
-                input: { cursor: disabled ? "not-allowed" : "pointer" },
-              }}
-            />
-          </Group>
-        </Stack>
-      </Card>
-    </UnstyledButton>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Project Lifetime Marks
@@ -214,10 +100,6 @@ export function EnergyRenovationStep() {
     dispatch({ type: "TOGGLE_MEASURE", measureId });
   };
 
-  const applyPackage = (measures: RenovationMeasureId[]) => {
-    dispatch({ type: "SET_MEASURES", measures });
-  };
-
   const handlePrevious = () => {
     dispatch({ type: "SET_STEP", step: 0 });
   };
@@ -273,18 +155,10 @@ export function EnergyRenovationStep() {
             <Button
               variant="subtle"
               size="xs"
-              onClick={() => applyPackage([])}
+              onClick={() => dispatch({ type: "SET_MEASURES", measures: [] })}
               disabled={selectedMeasures.length === 0}
             >
               Clear
-            </Button>
-            <Button
-              variant="light"
-              size="xs"
-              leftSection={<IconSparkles size={14} />}
-              onClick={() => applyPackage(SUGGESTED_PACKAGE)}
-            >
-              Suggested package
             </Button>
           </Group>
         </Group>
@@ -319,13 +193,18 @@ export function EnergyRenovationStep() {
                     multiline
                   >
                     <Box>
-                      <MeasureCard
+                      <RenovationMeasureCard
                         measure={displayMeasure}
-                        selected={isSelected}
+                        isSelected={isSelected}
                         onToggle={handleToggle}
                         disabled={
                           !isAnalysisEligible || mutuallyExclusiveDisabled
                         }
+                        tooltipLabel={
+                          displayMeasure.technicalDescription ??
+                          displayMeasure.description
+                        }
+                        tooltipWidth={320}
                       />
                     </Box>
                   </Tooltip>

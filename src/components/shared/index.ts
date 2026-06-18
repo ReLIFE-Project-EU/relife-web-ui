@@ -20,3 +20,4 @@ export { ConceptExplainer } from "./ConceptExplainer";
 export { ConceptLabel } from "./ConceptLabel";
 export { ConceptMetricCard } from "./ConceptMetricCard";
 export { MeasureEffectSummary } from "./MeasureEffectSummary";
+export { RenovationMeasureCard } from "./RenovationMeasureCard";
