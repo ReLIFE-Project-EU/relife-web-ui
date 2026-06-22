@@ -244,16 +244,6 @@ export function EnergyRenovationStep() {
         </Alert>
       )}
 
-      <Alert
-        color="blue"
-        icon={<IconInfoCircle size={16} />}
-        title="Current Analysis Scope"
-      >
-        Portfolio analysis currently evaluates envelope, supported system, and
-        photovoltaic measures. Ranking readiness depends on complete technical
-        and financial data for each analyzed scenario.
-      </Alert>
-
       {buildingsWithoutAnalysisEligibleMeasures.length > 0 && (
         <Alert
           color="red"
