@@ -30,6 +30,9 @@ export interface SelectorCopy {
   selectedLabel: string;
   chooseLabel: string;
   selectedReferenceLabel: string;
+  selectionEmptyLabel: string;
+  selectionEmptyHint: string;
+  clearSelectionLabel: string;
   adjustmentTitle: string;
 }
 
@@ -117,6 +120,9 @@ export const SELECTOR_COPY: Record<BuildingSelectorHost, SelectorCopy> = {
     selectedLabel: "Selected",
     chooseLabel: "Choose this",
     selectedReferenceLabel: "Selected reference",
+    selectionEmptyLabel: "No reference home selected yet",
+    selectionEmptyHint: "Pick a typical home from the list below to continue.",
+    clearSelectionLabel: "Clear",
     adjustmentTitle: "Adjust to my home",
   },
   pra: {
@@ -130,6 +136,10 @@ export const SELECTOR_COPY: Record<BuildingSelectorHost, SelectorCopy> = {
     selectedLabel: "Selected",
     chooseLabel: "Select",
     selectedReferenceLabel: "Selected reference",
+    selectionEmptyLabel: "No reference building selected yet",
+    selectionEmptyHint:
+      "Pick a reference building from the list below to continue.",
+    clearSelectionLabel: "Clear",
     adjustmentTitle: "Customize simulation parameters",
   },
 };

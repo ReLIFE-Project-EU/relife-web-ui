@@ -12,7 +12,12 @@ import {
   TextInput,
   ThemeIcon,
 } from "@mantine/core";
-import { IconAlertTriangle, IconCheck, IconSearch } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconBuilding,
+  IconCheck,
+  IconSearch,
+} from "@tabler/icons-react";
 import { createElement, useMemo } from "react";
 import type { ArchetypeDetails } from "../../types/archetype";
 import type { ArchetypeInfo } from "../../types/forecasting";
@@ -163,6 +168,100 @@ function ArchetypeRow({
   );
 }
 
+interface SelectionSummaryBarProps {
+  copy: SelectorCopy;
+  details?: ArchetypeDetails;
+  onClear: () => void;
+}
+
+function SelectionSummaryBar({
+  copy,
+  details,
+  onClear,
+}: SelectionSummaryBarProps) {
+  if (!details) {
+    return (
+      <Paper
+        radius="md"
+        p="sm"
+        style={{
+          border: "1px dashed var(--mantine-color-gray-4)",
+          backgroundColor: "var(--mantine-color-gray-0)",
+        }}
+      >
+        <Group wrap="nowrap" gap="md">
+          <ThemeIcon
+            variant="default"
+            color="gray"
+            size={40}
+            radius="xl"
+            style={{ borderStyle: "dashed" }}
+          >
+            <IconBuilding size={20} />
+          </ThemeIcon>
+          <Box style={{ flex: 1, minWidth: 0 }}>
+            <Text fw={500} size="sm" c="dimmed">
+              {copy.selectionEmptyLabel}
+            </Text>
+            <Text size="xs" c="dimmed">
+              {copy.selectionEmptyHint}
+            </Text>
+          </Box>
+        </Group>
+      </Paper>
+    );
+  }
+
+  const code = countryNameToCode(getDisplayCountry(details.country));
+
+  return (
+    <Paper
+      radius="md"
+      p="sm"
+      bg={`${copy.accentColor}.0`}
+      style={{
+        border: `1px solid var(--mantine-color-${copy.accentColor}-4)`,
+      }}
+    >
+      <Group wrap="nowrap" gap="md">
+        <ThemeIcon
+          variant="filled"
+          color={copy.accentColor}
+          size={40}
+          radius="xl"
+        >
+          <IconCheck size={22} />
+        </ThemeIcon>
+        <Box style={{ flex: 1, minWidth: 0 }}>
+          <Text fw={600} size="sm">
+            {formatArchetypeName(details.name)}
+          </Text>
+          <Group gap={6} wrap="wrap">
+            {code ? <Text size="xs">{countryFlag(code)}</Text> : null}
+            <Text size="xs" c="dimmed">
+              {getDisplayCountry(details.country)}
+            </Text>
+            <Text size="xs" c="dimmed">
+              {details.category}
+            </Text>
+            <Text size="xs" c="dimmed">
+              {getArchetypePeriod(details)}
+            </Text>
+          </Group>
+        </Box>
+        <Button
+          variant="subtle"
+          color={copy.accentColor}
+          size="xs"
+          onClick={onClear}
+        >
+          {copy.clearSelectionLabel}
+        </Button>
+      </Group>
+    </Paper>
+  );
+}
+
 export function BrowseMode({
   copy,
   archetypes,
@@ -196,15 +295,6 @@ export function BrowseMode({
     () => getPeriodOptions(archetypes),
     [archetypes],
   );
-  const listItems = useMemo(
-    () =>
-      selectedKey
-        ? visibleItems.filter((item) => getArchetypeKey(item) !== selectedKey)
-        : visibleItems,
-    [visibleItems, selectedKey],
-  );
-  const dedupedCount = visibleItems.length - listItems.length;
-  const listTotalCount = totalCount - dedupedCount;
   const selectedDetails = selectedKey ? detailsByKey[selectedKey] : undefined;
 
   if (isLoading) {
@@ -263,22 +353,16 @@ export function BrowseMode({
       </Stack>
 
       <Stack gap="xs">
-        {selectedDetails && (
-          <>
-            <Text size="xs" fw={600} c="dimmed">
-              {copy.selectedReferenceLabel}
-            </Text>
-            <ArchetypeRow
-              copy={copy}
-              archetype={selectedDetails}
-              details={selectedDetails}
-              selected
-              onSelect={() => onSelect(selectedDetails)}
-            />
-          </>
-        )}
+        <Text size="xs" fw={600} c="dimmed">
+          {copy.selectedReferenceLabel}
+        </Text>
+        <SelectionSummaryBar
+          copy={copy}
+          details={selectedDetails}
+          onClear={() => selectedDetails && onSelect(selectedDetails)}
+        />
 
-        {listItems.map((archetype) => {
+        {visibleItems.map((archetype) => {
           const key = getArchetypeKey(archetype);
           return (
             <ArchetypeRow
@@ -287,14 +371,14 @@ export function BrowseMode({
               archetype={archetype}
               details={detailsByKey[key]}
               detailError={detailErrorsByKey[key]}
-              selected={false}
+              selected={key === selectedKey}
               loading={selectingKey === key}
               onSelect={() => onSelect(archetype)}
             />
           );
         })}
 
-        {listTotalCount === 0 && (
+        {totalCount === 0 && (
           <Paper withBorder p="lg" radius="sm">
             <Text size="sm" fw={600}>
               No reference buildings match these filters.
@@ -305,9 +389,9 @@ export function BrowseMode({
           </Paper>
         )}
 
-        {listTotalCount > listItems.length && (
+        {totalCount > visibleItems.length && (
           <Text size="xs" c="dimmed">
-            Showing first {listItems.length} of {listTotalCount} matches. Narrow
+            Showing first {visibleItems.length} of {totalCount} matches. Narrow
             the filters to see more specific results.
           </Text>
         )}

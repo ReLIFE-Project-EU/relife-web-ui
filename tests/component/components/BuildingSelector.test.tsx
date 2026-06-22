@@ -255,4 +255,33 @@ describe("BuildingSelector", () => {
       onSelectionChange.mock.calls.some(([selection]) => selection === null),
     ).toBe(false);
   });
+
+  test("keeps the selected catalog building in place and updates the summary bar", async () => {
+    renderSelector();
+
+    // Catalog loads both reference buildings as choosable rows.
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("button", { name: "Choose this" }).length,
+      ).toBe(2),
+    );
+
+    // The summary bar starts in its empty placeholder state.
+    expect(screen.getByText("No reference home selected yet")).toBeTruthy();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Choose this" })[0]);
+
+    // Selection resolves: bar shows the Clear action, placeholder is gone.
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Clear" })).toBeTruthy(),
+    );
+    expect(screen.queryByText("No reference home selected yet")).toBeNull();
+
+    // The selected row stays in the list (now labelled "Selected") and the
+    // other row is untouched — the list was not reordered or trimmed.
+    expect(screen.getByRole("button", { name: "Selected" })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Choose this" }).length).toBe(
+      1,
+    );
+  });
 });
