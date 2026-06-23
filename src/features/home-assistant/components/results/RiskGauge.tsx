@@ -10,6 +10,7 @@ import {
   IconAlertCircle,
 } from "@tabler/icons-react";
 import { MetricExplainer } from "../shared";
+import { formatNumber } from "../../utils/formatters";
 
 interface RiskGaugeProps {
   /** Success rate as a decimal (0-1) */
@@ -63,7 +64,7 @@ export function RiskGauge({ successRate, compact = false }: RiskGaugeProps) {
           style={{ flex: 1, minWidth: 60 }}
         />
         <Text size="sm" fw={600} c={`${risk.color}.7`}>
-          {percentage}%
+          {formatNumber(percentage)}%
         </Text>
       </Group>
     );
@@ -88,7 +89,7 @@ export function RiskGauge({ successRate, compact = false }: RiskGaugeProps) {
           <Stack gap={4} style={{ flex: 1 }}>
             <Group justify="space-between" align="baseline">
               <Text size="xl" fw={700} c={`${risk.color}.7`}>
-                {percentage}%
+                {formatNumber(percentage)}%
               </Text>
               <Text size="sm" fw={500} c={`${risk.color}.6`}>
                 {risk.label}

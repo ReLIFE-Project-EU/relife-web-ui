@@ -62,7 +62,7 @@ export function StrategyHero({
           </span>
           <span className={classes.recoBandScore}>
             <IconAward size={16} />
-            Score {(winner.score * 100).toFixed(0)}
+            Score {formatNumber(winner.score * 100)}
             <ConceptExplainer conceptId="ranking-score" />
           </span>
         </div>
@@ -186,7 +186,7 @@ export function StrategyHero({
                         pct={entry.score * 100}
                         packageId={entry.packageId}
                       />
-                      {(entry.score * 100).toFixed(0)}
+                      {formatNumber(entry.score * 100)}
                     </span>
                   </button>
                 </li>

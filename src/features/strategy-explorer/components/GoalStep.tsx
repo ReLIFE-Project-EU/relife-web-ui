@@ -12,6 +12,7 @@ import {
 } from "@mantine/core";
 import { IconBolt, IconCash, IconCheck, IconLeaf } from "@tabler/icons-react";
 import { StepNavigation } from "../../../components/shared/StepNavigation";
+import { browserNumberSeparators } from "../../../utils/formatters";
 import { useStrategyExplorer } from "../hooks/useStrategyExplorer";
 import type { RSERenovationGoal } from "../types";
 import classes from "./StrategySteps.module.css";
@@ -155,7 +156,7 @@ export function GoalStep() {
                         });
                       }}
                       min={0}
-                      thousandSeparator=","
+                      {...browserNumberSeparators}
                       mt="sm"
                     />
                   )}

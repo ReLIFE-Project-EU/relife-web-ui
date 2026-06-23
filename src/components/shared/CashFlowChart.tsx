@@ -28,13 +28,12 @@ const CASH_FLOW_SWATCH_COLORS = {
   reference: "var(--mantine-color-blue-6)",
 } as const;
 
-const compactCurrency = new Intl.NumberFormat("de-DE", {
+const compactCurrency = new Intl.NumberFormat(undefined, {
   style: "currency",
   currency: "EUR",
   notation: "compact",
   maximumFractionDigits: 1,
 });
-
 interface CashFlowChartProps {
   data: CashFlowData;
   projectLifetime?: number;

@@ -21,7 +21,7 @@ import {
 import { useRef } from "react";
 import { useSyncGlobalLoading } from "../../contexts/global-loading";
 import { useWizardStepScroll } from "../../hooks/useWizardStepScroll";
-import { formatNumber } from "../../utils/formatters";
+import { formatCurrency, formatNumber } from "../../utils/formatters";
 import { StrategyExplorerProvider } from "./context";
 import {
   useCurrentStep,
@@ -54,7 +54,7 @@ function SummaryStrip() {
     if (!goal) return "Not selected";
     switch (goal.kind) {
       case "financial":
-        return `Financial (≤ ${goal.maxBudgetEur.toLocaleString()} €)`;
+        return `Financial (≤ ${formatCurrency(goal.maxBudgetEur)})`;
       case "energy":
         return "Energy efficiency";
       case "emission":

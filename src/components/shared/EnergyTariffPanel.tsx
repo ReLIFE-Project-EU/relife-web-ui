@@ -17,7 +17,7 @@ import {
   ENERGY_TARIFF_DEFAULTS,
   FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
 } from "../../services/carrierSavingsService";
-import { formatDecimal } from "../../utils/formatters";
+import { browserNumberSeparators, formatDecimal } from "../../utils/formatters";
 
 const electricityDisplayValue = `${formatDecimal(FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH)} €/kWh`;
 
@@ -123,6 +123,7 @@ export function EnergyTariffPanel({
             leftSection={<IconFlame size={16} />}
             size="sm"
             disabled={isApplying}
+            {...browserNumberSeparators}
           />
           <TextInput
             label={

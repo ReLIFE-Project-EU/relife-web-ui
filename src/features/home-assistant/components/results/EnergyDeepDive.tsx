@@ -75,8 +75,8 @@ export function EnergyDeepDive({
           </div>
           {intensityCurrent !== undefined && intensitySelected !== undefined ? (
             <Text size="xs" c="dimmed" mt={6}>
-              ~{Math.round(intensityCurrent)} → ~{Math.round(intensitySelected)}{" "}
-              kWh/m²/year
+              ~{formatNumber(intensityCurrent)} → ~
+              {formatNumber(intensitySelected)} kWh/m²/year
             </Text>
           ) : null}
         </div>
@@ -144,7 +144,7 @@ export function EnergyDeepDive({
                 delta={
                   selected.pvSelfConsumptionRate !== undefined ? (
                     <Text size="xs" c="dimmed" component="span">
-                      {(selected.pvSelfConsumptionRate * 100).toFixed(0)}% of
+                      {formatNumber(selected.pvSelfConsumptionRate * 100)}% of
                       generation
                     </Text>
                   ) : null

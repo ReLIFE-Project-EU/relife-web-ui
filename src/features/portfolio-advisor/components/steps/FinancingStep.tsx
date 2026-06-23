@@ -22,7 +22,10 @@ import { StepNavigation } from "../../../../components/shared/StepNavigation";
 import { ErrorAlert } from "../../../../components/shared/ErrorAlert";
 import { EnergyTariffPanel } from "../../../../components/shared/EnergyTariffPanel";
 import { MetricCard } from "../../../../components/shared/MetricCard";
-import { formatCurrency } from "../../../../utils/formatters";
+import {
+  browserNumberSeparators,
+  formatCurrency,
+} from "../../../../utils/formatters";
 import { FINANCING_SCHEMES, type FinancingScheme } from "../../constants";
 import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
 import { usePortfolioAdvisorServices } from "../../hooks/usePortfolioAdvisorServices";
@@ -229,6 +232,7 @@ export function FinancingStep() {
                 min={0}
                 max={100}
                 suffix="%"
+                {...browserNumberSeparators}
               />
             </Grid.Col>
             <Grid.Col span={{ base: 12, sm: 6 }}>
@@ -247,6 +251,7 @@ export function FinancingStep() {
                 }}
                 min={1}
                 max={30}
+                {...browserNumberSeparators}
               />
             </Grid.Col>
           </Grid>

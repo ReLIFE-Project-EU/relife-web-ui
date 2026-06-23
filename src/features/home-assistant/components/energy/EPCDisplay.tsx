@@ -13,7 +13,7 @@ import {
   Title,
 } from "@mantine/core";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
-import { formatEnergyPerYear } from "../../utils/formatters";
+import { formatEnergyPerYear, formatNumber } from "../../utils/formatters";
 import { getEnergyIntensity } from "../../../../utils/epcUtils";
 import {
   ConceptMetricCard,
@@ -64,7 +64,7 @@ export function EPCDisplay() {
               />
               {energyIntensity !== undefined && (
                 <Text size="xs" c="dimmed">
-                  ~{Math.round(energyIntensity)} kWh/m²/y
+                  ~{formatNumber(energyIntensity)} kWh/m²/y
                 </Text>
               )}
             </Stack>

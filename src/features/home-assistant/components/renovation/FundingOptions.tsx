@@ -29,6 +29,7 @@ import type {
   LoanDetails,
 } from "../../context/types";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
+import { browserNumberSeparators } from "../../../../utils/formatters";
 
 export function FundingOptions() {
   const { state, dispatch } = useHomeAssistant();
@@ -118,6 +119,7 @@ export function FundingOptions() {
               step={1}
               clampBehavior="strict"
               size="sm"
+              {...browserNumberSeparators}
             />
           </Stack>
         </Card>
@@ -160,6 +162,7 @@ export function FundingOptions() {
                   max={100}
                   step={5}
                   size="sm"
+                  {...browserNumberSeparators}
                 />
 
                 <NumberInput
@@ -176,6 +179,7 @@ export function FundingOptions() {
                   min={1}
                   max={30}
                   size="sm"
+                  {...browserNumberSeparators}
                 />
               </SimpleGrid>
             </Stack>

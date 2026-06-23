@@ -24,6 +24,7 @@ import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 import { checkCapexPerSqm } from "../../../../utils/inputSanityChecks";
 import { packageUsesHeatingStopgap } from "../../../../services/renovationActions";
 import { ConceptLabel, ErrorAlert } from "../../../../components/shared";
+import { browserNumberSeparators } from "../../../../utils/formatters";
 
 /** Outline "Estimated" tag (with caveat) used to mark an auto-filled cost. */
 function EstimatedTag() {
@@ -63,11 +64,11 @@ function PackageCostField(props: {
       }
       min={0}
       step={props.step}
-      thousandSeparator=","
       leftSection={<IconCurrencyEuro size={16} />}
       suffix={props.suffix}
       error={props.error}
       disabled={props.disabled}
+      {...browserNumberSeparators}
     />
   );
 }

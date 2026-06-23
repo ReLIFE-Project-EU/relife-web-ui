@@ -17,6 +17,7 @@ import { pvKwpFromFloorArea } from "../../../../services/pvConfig";
 import type { RenovationMeasureId } from "../../context/types";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
+import { formatDecimal } from "../../utils/formatters";
 import { MeasureCard } from "./MeasureCard";
 
 export function MeasureSelector() {
@@ -110,7 +111,7 @@ export function MeasureSelector() {
               {/* The API uses archetype-basis sizing; this shows the user-equivalent size. */}
               For your building, this is roughly{" "}
               <Text span inherit fw={700}>
-                {pvKwp.toFixed(1)} kWp
+                {formatDecimal(pvKwp)} kWp
               </Text>
               . Real output depends on roof direction, shade, and available
               space. The cost comparison currently counts self-consumed

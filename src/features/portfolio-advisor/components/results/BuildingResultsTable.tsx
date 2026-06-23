@@ -31,6 +31,7 @@ import {
   formatCurrency,
   formatDecimal,
   formatEnergyPerYear,
+  formatFixed,
   getEnergyReduction,
 } from "../../../../utils/formatters";
 import { getEnergyIntensity } from "../../../../utils/epcUtils";
@@ -512,7 +513,7 @@ function RowStatusBadge({ row }: { row: RowVm }) {
             )}
             <Text size="xs" c="dimmed">
               Strategy: {result.rejection.strategy} · scale{" "}
-              {result.rejection.areaScaleFactor.toFixed(2)}×
+              {formatFixed(result.rejection.areaScaleFactor, 2)}×
             </Text>
           </Stack>
         }

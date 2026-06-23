@@ -195,7 +195,7 @@ export function CompareStrategiesTable({
                         packageId={ranking.packageId}
                       />
                       <Text component="span" fw={700} size="sm">
-                        {(ranking.score * 100).toFixed(0)}
+                        {formatNumber(ranking.score * 100)}
                       </Text>
                     </span>
                   </td>

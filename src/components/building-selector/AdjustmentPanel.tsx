@@ -30,6 +30,7 @@ import {
   formatNumber,
   type SelectorCopy,
 } from "./selectorConfig";
+import { browserNumberSeparators } from "../../utils/formatters";
 import {
   getArchetypePeriod,
   getDisplayCountry,
@@ -147,6 +148,7 @@ export function AdjustmentPanel({
                       step={field.step}
                       decimalScale={field.decimalScale}
                       size="xs"
+                      {...browserNumberSeparators}
                     />
                   ))}
                 </SimpleGrid>

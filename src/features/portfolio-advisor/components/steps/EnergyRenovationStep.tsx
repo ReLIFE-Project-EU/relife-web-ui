@@ -33,6 +33,7 @@ import {
   getPortfolioMeasureStatus,
 } from "../../utils/measureSelection";
 import { BuildingMeasuresTable } from "../BuildingMeasuresTable";
+import { browserNumberSeparators } from "../../../../utils/formatters";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Project Lifetime Marks
@@ -363,7 +364,7 @@ export function EnergyRenovationStep() {
                 })
               }
               min={1}
-              thousandSeparator=","
+              {...browserNumberSeparators}
               error={
                 capexInvalid
                   ? "CAPEX must be greater than 0, or leave blank to auto-estimate."
@@ -394,7 +395,7 @@ export function EnergyRenovationStep() {
                 })
               }
               min={0}
-              thousandSeparator=","
+              {...browserNumberSeparators}
               error={
                 maintenanceInvalid
                   ? "Maintenance cost cannot be negative."

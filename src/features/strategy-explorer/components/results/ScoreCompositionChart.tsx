@@ -9,6 +9,7 @@ import { BarChart } from "@mantine/charts";
 import { Accordion, Stack, Text, ThemeIcon } from "@mantine/core";
 import { IconChartBar, IconInfoCircle } from "@tabler/icons-react";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
+import { formatNumber } from "../../../../utils/formatters";
 import { relifeConcepts } from "../../../../constants/relifeConcepts";
 import { RSE_PACKAGES } from "../../services/rsePackageCatalog";
 import type { RSERankingResult } from "../../types";
@@ -100,7 +101,7 @@ export function ScoreCompositionChart({
         tickLine="none"
         gridAxis="x"
         yAxisProps={RSE_CHART_Y_AXIS_PROPS}
-        valueFormatter={(value) => value.toFixed(0)}
+        valueFormatter={formatNumber}
         withTooltip
         tooltipProps={RSE_CHART_TOOLTIP_PROPS}
       />

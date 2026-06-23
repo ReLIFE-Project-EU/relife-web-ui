@@ -4,17 +4,48 @@
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Number Formatting
+// Browser-default formatters
 // ─────────────────────────────────────────────────────────────────────────────
 
-const numberFormatter = new Intl.NumberFormat("en-EU", {
+const numberFormatter = new Intl.NumberFormat(undefined, {
   maximumFractionDigits: 0,
 });
 
-const decimalFormatter = new Intl.NumberFormat("en-EU", {
+const decimalFormatter = new Intl.NumberFormat(undefined, {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
 });
+
+const currencyFormatter = new Intl.NumberFormat(undefined, {
+  style: "currency",
+  currency: "EUR",
+  maximumFractionDigits: 0,
+});
+
+export interface NumberSeparators {
+  decimalSeparator: string;
+  thousandSeparator: string;
+}
+
+function getBrowserNumberSeparators(): NumberSeparators {
+  const parts = new Intl.NumberFormat(undefined, {
+    minimumFractionDigits: 1,
+    useGrouping: true,
+  }).formatToParts(1234.5);
+  return {
+    decimalSeparator:
+      parts.find((part) => part.type === "decimal")?.value ?? ".",
+    thousandSeparator:
+      parts.find((part) => part.type === "group")?.value ?? ",",
+  };
+}
+
+/** Separators for Mantine NumberInput controls, derived from the browser locale. */
+export const browserNumberSeparators = getBrowserNumberSeparators();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Number Formatting
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Format a number with thousands separators.
@@ -30,19 +61,30 @@ export function formatDecimal(value: number): string {
   return decimalFormatter.format(value);
 }
 
+const fixedFormatterCache = new Map<number, Intl.NumberFormat>();
+
+/**
+ * Format a number with a fixed number of decimal places (locale-aware).
+ */
+export function formatFixed(value: number, decimals: number): string {
+  let fmt = fixedFormatterCache.get(decimals);
+  if (!fmt) {
+    fmt = new Intl.NumberFormat(undefined, {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+    fixedFormatterCache.set(decimals, fmt);
+  }
+  return fmt.format(value);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Currency Formatting
 // ─────────────────────────────────────────────────────────────────────────────
 
-const currencyFormatter = new Intl.NumberFormat("de-DE", {
-  style: "currency",
-  currency: "EUR",
-  maximumFractionDigits: 0,
-});
-
 /**
  * Format a value as EUR currency (no decimals).
- * Example: 12500 -> "12.500 €"
+ * Example: 12500 -> "12.500 €" (de-DE), "€12,500" (en-IE)
  */
 export function formatCurrency(value: number): string {
   return currencyFormatter.format(value);
@@ -144,7 +186,10 @@ export function formatArea(value: number): string {
  */
 export function formatYears(value: number): string {
   const rounded = Math.round(value * 10) / 10;
-  return `${rounded} ${rounded === 1 ? "year" : "years"}`;
+  const formatted = Number.isInteger(rounded)
+    ? formatNumber(rounded)
+    : formatDecimal(rounded);
+  return `${formatted} ${rounded === 1 ? "year" : "years"}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

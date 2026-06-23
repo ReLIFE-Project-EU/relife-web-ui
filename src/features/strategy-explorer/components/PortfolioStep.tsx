@@ -33,6 +33,7 @@ import {
 } from "../../../utils/archetypeLabels";
 import { getCountryDisplayName } from "../../../utils/countries";
 import {
+  browserNumberSeparators,
   formatArea,
   formatDecimal,
   formatNumber,
@@ -279,6 +280,7 @@ export function PortfolioStep() {
                   min={1}
                   step={1}
                   style={{ minWidth: 100 }}
+                  {...browserNumberSeparators}
                 />
                 <Button
                   variant="subtle"

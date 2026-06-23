@@ -31,6 +31,7 @@ import { ErrorAlert, StepNavigation } from "../shared";
 import classes from "../results/ResultsLayout.module.css";
 import type { ScenarioId } from "../../context/types";
 import { validateEstimation } from "../../../../services/estimationValidation";
+import { formatFixed } from "../../utils/formatters";
 
 export function ResultsStep() {
   const { state, dispatch } = useHomeAssistant();
@@ -183,7 +184,7 @@ export function ResultsStep() {
                   ? ` · ${estimationDiagnostic.requested.period}`
                   : ""}{" "}
                 — chosen archetype: {estimationDiagnostic.chosen.name} (scale{" "}
-                {estimationDiagnostic.areaScaleFactor.toFixed(2)}×)
+                {formatFixed(estimationDiagnostic.areaScaleFactor, 2)}×)
               </Text>
             </Stack>
           }

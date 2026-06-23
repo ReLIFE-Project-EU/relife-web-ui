@@ -25,7 +25,11 @@ import type {
   ScenarioId,
 } from "../../context/types";
 import type { MCDAPersona } from "../../../../services/types";
-import { formatCurrency, formatYears } from "../../utils/formatters";
+import {
+  formatCurrency,
+  formatNumber,
+  formatYears,
+} from "../../utils/formatters";
 import classes from "./ResultsLayout.module.css";
 import { ScenDot, ScoreBar } from "./resultsAtoms";
 
@@ -79,7 +83,7 @@ export function RecommendationHero({
           <span className={classes.recoBandScore}>
             <IconAward size={16} />
             {winnerScore !== undefined ? (
-              <>Score {(winnerScore * 100).toFixed(0)}</>
+              <>Score {formatNumber(winnerScore * 100)}</>
             ) : isRanking ? (
               "Ranking…"
             ) : (
@@ -283,7 +287,7 @@ export function RecommendationHero({
                           pct={entry.score * 100}
                           scenarioId={scenario.id}
                         />
-                        {(entry.score * 100).toFixed(0)}
+                        {formatNumber(entry.score * 100)}
                       </span>
                     </button>
                   </li>
@@ -365,7 +369,7 @@ function paybackRangeHint(result: FinancialResults | undefined): string {
   const p10 = result?.riskAssessment?.percentiles?.PBP?.P10;
   const p90 = result?.riskAssessment?.percentiles?.PBP?.P90;
   if (p10 === undefined || p90 === undefined) return "";
-  return `P10–P90: ${p10.toFixed(0)}–${p90.toFixed(0)} yr`;
+  return `P10–P90: ${formatNumber(p10)}–${formatNumber(p90)} yr`;
 }
 
 interface SavingsCopyProps {
@@ -416,14 +420,15 @@ function formatThermalNeedsChange(changePct: number | null) {
   if (roundedChange < 0) {
     return (
       <>
-        Reduces your thermal needs by <b>{Math.abs(roundedChange)}%</b>
+        Reduces your thermal needs by{" "}
+        <b>{formatNumber(Math.abs(roundedChange))}%</b>
       </>
     );
   }
 
   return (
     <>
-      Increases your thermal needs by <b>{roundedChange}%</b>
+      Increases your thermal needs by <b>{formatNumber(roundedChange)}%</b>
     </>
   );
 }
