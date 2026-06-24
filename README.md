@@ -30,6 +30,22 @@ The Docker Compose stack includes a self-hosted Umami instance for privacy-focus
 
 Caddy exposes only the public tracker script at `/umami/script.js` and collection endpoint at `/api/send`. The Umami dashboard is not routed through Caddy; it is bound to `127.0.0.1:${HOST_PORT_UMAMI}` for local operator access only. Override the default Umami passwords and app secret in `.env.local` before using a shared or public deployment.
 
+### Releasing
+
+Releases use SemVer tags (`vMAJOR.MINOR.PATCH`) via a `task` command:
+
+```bash
+# Preview the next version and commands without mutating anything
+task release -- patch --dry-run
+
+# Cut a release: bump package.json, commit, tag, push
+task release -- major|minor|patch
+```
+
+The `release` task (see [`scripts/release.sh`](./scripts/release.sh)) enforces that it runs on `main`, the working tree is clean (`git status --porcelain`), and `task format-lint` passes. It bumps `package.json`, commits with a gitmoji message (`🔖 release vX.Y.Z`), creates an annotated `vX.Y.Z` tag, and pushes it. Pushing the tag triggers the existing [`docker-publish` GitHub Actions workflow](.github/workflows/docker-publish.yml) (`v*` trigger), which builds and publishes the image to GHCR with semver tags (`X.Y.Z`, `X.Y`, `X`) and `latest` on `main`.
+
+The `package.json` `version` is the single source of truth for the version surfaced in the UI: it is injected at build time via the `__APP_VERSION__` global (see [`vite.config.ts`](./vite.config.ts)) and shown in the header version chip and the development version notice.
+
 ## Renovation Tools Architecture
 
 The ReLIFE Web UI implements three renovation tools with different implementation maturity levels. The diagrams below document current runtime behavior (not target design), including where services are real, mocked, partial, or not wired yet.

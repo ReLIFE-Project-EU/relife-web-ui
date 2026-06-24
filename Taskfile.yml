@@ -77,6 +77,14 @@ tasks:
       - npm run typecheck
       - npm run typecheck:test
 
+  release:
+    desc: "Bump version, tag, and push release (usage: task release -- major|minor|patch [--dry-run])"
+    preconditions:
+      - sh: '[ "$(git rev-parse --abbrev-ref HEAD)" = "main" ]'
+        msg: "releases must run on main"
+    cmds:
+      - ./scripts/release.sh {{.CLI_ARGS}}
+
   rse-seed:
     desc: "Generate an RSE forecasting cache seed"
     cmds:
