@@ -92,7 +92,7 @@ if [ "$DRY_RUN" -eq 1 ]; then
   log "next version:    $NEXT ($LEVEL)"
   log "planned commands:"
   log "  npm version $LEVEL --no-git-tag-version --no-commit-hooks"
-  log "  git add package.json"
+  log "  git add package.json package-lock.json"
   log "  git commit -m \"$COMMIT_MSG\""
   log "  git tag -a \"$TAG\" -m \"$COMMIT_MSG\""
   log "  git push"
@@ -119,7 +119,7 @@ log "next version:    $NEXT ($LEVEL)"
 npm version "$LEVEL" --no-git-tag-version --no-commit-hooks >/dev/null
 
 log "committing release..."
-git add package.json
+git add package.json package-lock.json
 git commit -m "$COMMIT_MSG" >/dev/null
 
 log "creating annotated tag $TAG..."
