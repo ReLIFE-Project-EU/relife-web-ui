@@ -3,6 +3,7 @@ import { IconInfoCircle, IconX } from "@tabler/icons-react";
 
 const FALLBACK_SHA = "unknown";
 const FALLBACK_DATE = "unknown";
+const FALLBACK_VERSION = "0.0.0";
 
 function formatCommitDate(value: string): string {
   const date = new Date(value);
@@ -24,6 +25,7 @@ export const DevelopmentVersionNotice = ({
   onClose,
 }: DevelopmentVersionNoticeProps) => {
   const versionInfo = {
+    version: __APP_VERSION__ || FALLBACK_VERSION,
     sha: __APP_COMMIT_SHA__?.slice(0, 12) || FALLBACK_SHA,
     date: formatCommitDate(__APP_COMMIT_DATE__),
   };
@@ -41,7 +43,8 @@ export const DevelopmentVersionNotice = ({
         <IconInfoCircle size={14} />
         <Text size="xs" truncate>
           The ReLIFE Platform is currently in early development. Version{" "}
-          <Code>{versionInfo.sha}</Code> • Commit date {versionInfo.date}
+          <Code>{versionInfo.version}</Code> • <Code>{versionInfo.sha}</Code> •
+          Commit date {versionInfo.date}
         </Text>
       </Group>
       <ActionIcon
