@@ -2,6 +2,7 @@ import {
   ActionIcon,
   AppShell,
   Avatar,
+  Badge,
   Burger,
   Button,
   Group,
@@ -74,9 +75,20 @@ export const LayoutHeader = ({
         </Group>
 
         <Group gap="sm">
-          <Text size="xs" c="white.6" visibleFrom="sm" ff="monospace">
-            v{__APP_VERSION__ || "0.0.0"}
-          </Text>
+          <Badge
+            variant="light"
+            color="relife"
+            visibleFrom="sm"
+            ff="monospace"
+            styles={{
+              label: {
+                textTransform: "none",
+                color: "var(--mantine-color-relife-1)",
+              },
+            }}
+          >
+            {`v${__APP_VERSION__ || "0.0.0"}`}
+          </Badge>
           <ServiceStatus autoRefresh={30000} />
 
           {!sessionLoading && (
