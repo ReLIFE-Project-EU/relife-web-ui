@@ -48,8 +48,12 @@ export function PortfolioProvider({ children }: PortfolioProviderProps) {
     loadInitialData();
   }, []);
 
-  // Load files when portfolio selection changes
+  // Load files when portfolio selection changes. The cancelled flag ignores
+  // responses that resolve after the selection has already moved on, so a
+  // slow response for portfolio A cannot overwrite portfolio B's files.
   useEffect(() => {
+    let cancelled = false;
+
     async function loadFiles() {
       if (!state.currentPortfolioId) {
         dispatch({ type: "SET_FILES", files: [] });
@@ -60,8 +64,10 @@ export function PortfolioProvider({ children }: PortfolioProviderProps) {
 
       try {
         const files = await fileApi.listByPortfolio(state.currentPortfolioId);
+        if (cancelled) return;
         dispatch({ type: "SET_FILES", files });
       } catch (err) {
+        if (cancelled) return;
         const message =
           err instanceof Error ? err.message : "Failed to load files";
         dispatch({ type: "SET_ERROR", error: message });
@@ -70,6 +76,9 @@ export function PortfolioProvider({ children }: PortfolioProviderProps) {
     }
 
     loadFiles();
+    return () => {
+      cancelled = true;
+    };
   }, [state.currentPortfolioId]);
 
   return (

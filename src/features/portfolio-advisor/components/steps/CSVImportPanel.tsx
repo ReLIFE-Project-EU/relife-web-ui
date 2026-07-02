@@ -94,13 +94,22 @@ export function CSVImportPanel({
       return;
     }
 
+    // Ignore responses that resolve after the selection has moved on, so a
+    // slow response for one portfolio cannot show up under another.
+    let cancelled = false;
     fileApi
       .listByPortfolio(selectedPortfolioId)
       .then((f) => {
+        if (cancelled) return;
         setFiles(f);
         setSelectedFileId(null);
       })
-      .catch(() => setFiles([]));
+      .catch(() => {
+        if (!cancelled) setFiles([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [selectedPortfolioId, session]);
 
   const handleImport = async () => {
