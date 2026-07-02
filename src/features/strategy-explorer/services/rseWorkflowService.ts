@@ -30,7 +30,6 @@ import {
   computeFinancials,
   type RSEFinancialServiceInput,
 } from "./rseFinancialService";
-import { RSEPackageCatalogError } from "./rsePackageCatalog";
 import { rankPackages } from "./rseRankingService";
 import { rseArchetypeKey, rseArchetypePackageKey } from "./rseKeys";
 
@@ -428,19 +427,6 @@ async function computeFinancialSafely(
     const financial = await financialMapper(input);
     return { financial };
   } catch (error) {
-    if (error instanceof RSEPackageCatalogError) {
-      return {
-        unavailable: {
-          archetype: input.archetype,
-          packageId: input.packageId,
-          reason:
-            error.reason === "missing-floor-area"
-              ? RSE_UNAVAILABLE_REASONS.invalidFloorArea
-              : RSE_UNAVAILABLE_REASONS.invalidPackageData,
-        },
-      };
-    }
-
     throw new RSEWorkflowError("RSE Financial API step failed.", {
       cause: error,
     });

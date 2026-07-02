@@ -3,8 +3,13 @@ import { Alert, Box, Button, Group, Stack, Text, Title } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { ErrorAlert } from "../../../components/shared/ErrorAlert";
 import { formatNumber } from "../../../utils/formatters";
-import { RSE_MVP_COST_SOURCE_NOTE } from "../constants";
+import { packageUsesHeatingStopgap } from "../../../services/renovationActions";
+import {
+  RSE_HEATING_STOPGAP_NOTE,
+  RSE_REFERENCE_DATA_COST_NOTE,
+} from "../constants";
 import { useStrategyExplorer } from "../hooks/useStrategyExplorer";
+import { RSE_PACKAGES } from "../services/rsePackageCatalog";
 import type { RSEPackageId } from "../types";
 import {
   CompareStrategiesTable,
@@ -136,10 +141,12 @@ export function ResultsStep() {
           <Alert
             color="blue"
             icon={<IconInfoCircle size={16} />}
-            title="Cost assumptions"
+            title="Cost estimates"
           >
-            Investment and maintenance figures are not authoritative.{" "}
-            {RSE_MVP_COST_SOURCE_NOTE}
+            {RSE_REFERENCE_DATA_COST_NOTE}
+            {request.packageIds.some((packageId) =>
+              packageUsesHeatingStopgap(RSE_PACKAGES[packageId].measureIds),
+            ) && <> {RSE_HEATING_STOPGAP_NOTE}</>}
           </Alert>
         </>
       )}

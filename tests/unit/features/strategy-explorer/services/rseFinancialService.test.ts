@@ -19,6 +19,40 @@ import {
   computeFinancialsBatch,
 } from "../../../../../src/features/strategy-explorer/services/rseFinancialService";
 import type { ArchetypeDetails } from "../../../../../src/types/archetype";
+import { APIError } from "../../../../../src/types/common";
+
+/**
+ * Envelope geometry consumed by the CAPEX/OPEX lookup: 80 m² wall, 60 m² roof,
+ * 50 m² ground floor, 20 m² windows.
+ */
+const FIXTURE_BUI = {
+  building_surface: [
+    { name: "wall_south", type: "opaque", area: 80, sky_view_factor: 0.5 },
+    { name: "roof", type: "opaque", area: 60, sky_view_factor: 1 },
+    { name: "slab_on_ground", type: "opaque", area: 50, sky_view_factor: 0 },
+    {
+      name: "window_south",
+      type: "transparent",
+      area: 20,
+      sky_view_factor: 0.5,
+    },
+  ],
+} as unknown as ArchetypeDetails["bui"];
+
+/** Expected lookup actions for the envelope package with FIXTURE_BUI. */
+const ENVELOPE_ACTIONS = [
+  { action: "Wall insulation", area_m2: 80 },
+  { action: "Roof insulation - Accessible", area_m2: 60 },
+  { action: "Floor insulation", area_m2: 50 },
+  { action: "Windows", area_m2: 20 },
+];
+
+/** With 100 m² floor area: heating 100 × 0.05 = 5 kW; PV 100 × 0.045 = 4.5 kWp. */
+const COMBINED_ACTIONS = [
+  ...ENVELOPE_ACTIONS,
+  { action: "Air-water Heat Pump", capacity_kw: 5 },
+  { action: "PV", capacity_kw: 4.5 },
+];
 
 function makeArchetypeDetails(floorArea: number): ArchetypeDetails {
   return {
@@ -41,7 +75,7 @@ function makeArchetypeDetails(floorArea: number): ArchetypeDetails {
       coolingSetback: 28,
     },
     location: { lat: 41.9, lng: 12.5 },
-    bui: {} as unknown as ArchetypeDetails["bui"],
+    bui: FIXTURE_BUI,
     system: {} as unknown as ArchetypeDetails["system"],
   };
 }
@@ -141,18 +175,74 @@ function makeFixtureResponse() {
   };
 }
 
+/**
+ * Lookup pre-pass wire response: only `metadata` matters (costs resolved from
+ * country + renovation_actions); the Monte Carlo payload is discarded.
+ */
+function makeLookupResponse(capex: number, annualMaintenanceCost: number) {
+  return {
+    results: {},
+    metadata: {
+      capex,
+      annual_maintenance_cost: annualMaintenanceCost,
+      capex_from_lookup: true,
+      opex_from_lookup: true,
+    },
+  };
+}
+
+/** True for the cost-lookup pre-pass (costs omitted so the backend resolves them). */
+function isLookupRequest(request: { capex?: number }): boolean {
+  return request.capex === undefined;
+}
+
 describe("computeFinancials", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // The fixture metadata carries a resolved CAPEX, so the same response
+    // serves both the lookup pre-pass and the risk-assessment call.
     mockAssessRisk.mockResolvedValue(makeFixtureResponse());
+  });
+
+  test("resolves package costs via the reference-data lookup pre-pass", async () => {
+    await computeFinancials(makeCarrierInput());
+
+    expect(mockAssessRisk).toHaveBeenCalledTimes(2);
+    const [lookupRequest, lookupOptions] = mockAssessRisk.mock.calls[0];
+
+    expect(lookupRequest.capex).toBeUndefined();
+    expect(lookupRequest.annual_maintenance_cost).toBeUndefined();
+    expect(lookupRequest.country).toBe("Italy");
+    expect(lookupRequest.renovation_actions).toEqual(ENVELOPE_ACTIONS);
+    expect(lookupRequest.project_lifetime).toBe(20);
+    expect(lookupRequest.output_level).toBe("professional");
+    expect(lookupOptions).toEqual({ skipGlobalLoading: true });
+  });
+
+  test("passes lookup CAPEX and OPEX into the risk request", async () => {
+    mockAssessRisk.mockImplementation((request) =>
+      Promise.resolve(
+        isLookupRequest(request)
+          ? makeLookupResponse(30_000, 350)
+          : makeFixtureResponse(),
+      ),
+    );
+
+    const result = await computeFinancials(makeCarrierInput());
+
+    const [riskRequest] = mockAssessRisk.mock.calls[1];
+    expect(riskRequest.capex).toBe(30_000);
+    expect(riskRequest.annual_maintenance_cost).toBe(350);
+    expect(result.capexEur).toBe(30_000);
+    expect(result.annualMaintenanceEur).toBe(350);
   });
 
   test("POSTs carrier-aware electricity-equivalent kWh at professional output level", async () => {
     const input = makeCarrierInput();
     await computeFinancials(input);
 
-    expect(mockAssessRisk).toHaveBeenCalledTimes(1);
-    const [request] = mockAssessRisk.mock.calls[0];
+    expect(mockAssessRisk).toHaveBeenCalledTimes(2);
+    const [request] = mockAssessRisk.mock.calls[1];
 
     expect(request.output_level).toBe("professional");
     expect(request.project_lifetime).toBe(20);
@@ -178,7 +268,7 @@ describe("computeFinancials", () => {
       },
     });
 
-    const [request] = mockAssessRisk.mock.calls[0];
+    const [request] = mockAssessRisk.mock.calls[1];
     expect(request.project_lifetime).toBe(25);
     expect(request.schemes).toEqual([{ scheme_type: "equity" }]);
     expect(request.capex).toBe(19_800);
@@ -196,15 +286,54 @@ describe("computeFinancials", () => {
 
     const result = await computeFinancials(input);
 
-    expect(mockAssessRisk).not.toHaveBeenCalled();
+    // Only the lookup pre-pass ran; the risk assessment was skipped.
+    expect(mockAssessRisk).toHaveBeenCalledTimes(1);
+    expect(isLookupRequest(mockAssessRisk.mock.calls[0][0])).toBe(true);
     expect(result).toEqual(
       expect.objectContaining({
         status: "unavailable",
         unavailableReason: "non-positive-energy-savings",
+        capexEur: 22_000,
         pointForecasts: {},
       }),
     );
     expect(result.unavailableMessage).toContain("carrier-aware");
+  });
+
+  test("returns unavailable when the lookup cannot price the package", async () => {
+    // Pre-pass resolves without a CAPEX in metadata → lookup failure.
+    mockAssessRisk.mockResolvedValue({ results: {}, metadata: {} });
+
+    const result = await computeFinancials(makeCarrierInput());
+
+    expect(mockAssessRisk).toHaveBeenCalledTimes(1);
+    expect(result).toEqual(
+      expect.objectContaining({
+        status: "unavailable",
+        unavailableReason: "cost-lookup-failed",
+        capexEur: 0,
+        pointForecasts: {},
+      }),
+    );
+    expect(result.unavailableMessage).toContain("reference data");
+  });
+
+  test("returns unavailable when the lookup rejects with a validation APIError", async () => {
+    mockAssessRisk.mockRejectedValue(new APIError(400, "Bad Request"));
+
+    const result = await computeFinancials(makeCarrierInput());
+
+    expect(result.status).toBe("unavailable");
+    expect(result.unavailableReason).toBe("cost-lookup-failed");
+  });
+
+  test("rethrows transport errors from the lookup", async () => {
+    const transportError = new APIError(500, "Internal Server Error");
+    mockAssessRisk.mockRejectedValue(transportError);
+
+    await expect(computeFinancials(makeCarrierInput())).rejects.toBe(
+      transportError,
+    );
   });
 
   test("normalises the scheme result into RSEFinancialResult shape", async () => {
@@ -298,11 +427,22 @@ describe("computeFinancialsBatch", () => {
 
     const results = await computeFinancialsBatch(inputs);
 
-    expect(mockAssessRisk).toHaveBeenCalledTimes(2);
+    // One lookup pre-pass + one risk call per input.
+    expect(mockAssessRisk).toHaveBeenCalledTimes(4);
     expect(results).toHaveLength(2);
     expect(results[0].status).toBe("available");
     expect(results[1].status).toBe("available");
     expect(results[0].packageId).toBe("envelope");
     expect(results[1].packageId).toBe("combined");
+
+    // The combined package's lookup includes the stopgap-sized HVAC and PV
+    // capacities alongside the envelope surface areas.
+    const combinedLookup = mockAssessRisk.mock.calls
+      .map(([request]) => request)
+      .find(
+        (request) =>
+          isLookupRequest(request) && request.renovation_actions?.length === 6,
+      );
+    expect(combinedLookup?.renovation_actions).toEqual(COMBINED_ACTIONS);
   });
 });

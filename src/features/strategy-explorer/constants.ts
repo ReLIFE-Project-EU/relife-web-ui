@@ -44,32 +44,11 @@ export const RSE_MVP_PACKAGE_MEASURE_IDS = {
   ],
 } as const satisfies Record<RSEPackageId, readonly RenovationMeasureId[]>;
 
-export const RSE_MVP_COST_SOURCE = "mvp-assumption";
-export const RSE_SERVICE_API_COST_SOURCE = "service-api";
+export const RSE_REFERENCE_DATA_COST_NOTE =
+  "Investment and maintenance figures are estimated from EU reference data via the ReLIFE Financial service, based on each archetype's envelope geometry and floor area.";
 
-export const RSE_MVP_COST_SOURCE_NOTE =
-  "Temporary planning assumption; authoritative CAPEX and maintenance must come from ReLIFE service/data APIs later.";
-
-export const RSE_COST_SOURCES = [
-  RSE_MVP_COST_SOURCE,
-  RSE_SERVICE_API_COST_SOURCE,
-] as const;
-export type RSECostSource = (typeof RSE_COST_SOURCES)[number];
-
-export const RSE_COST_BASIS = {
-  floorArea: "eur_per_m2_floor_area",
-  surfaceArea: "eur_per_m2_surface_area",
-  building: "eur_per_building",
-  pvCapacity: "eur_per_kwp",
-} as const;
-
-export const RSE_COST_BASIS_KINDS = [
-  RSE_COST_BASIS.floorArea,
-  RSE_COST_BASIS.surfaceArea,
-  RSE_COST_BASIS.building,
-  RSE_COST_BASIS.pvCapacity,
-] as const;
-export type RSECostBasisKind = (typeof RSE_COST_BASIS_KINDS)[number];
+export const RSE_HEATING_STOPGAP_NOTE =
+  "Heat pump and boiler capacities are sized from floor area with a temporary heuristic, so their costs are rough estimates.";
 
 export const RSE_MVP_THERMAL_EMISSION_SOURCE = "natural_gas";
 export const RSE_GRID_ELECTRICITY_EMISSION_SOURCE = "grid_electricity";
@@ -108,8 +87,8 @@ export const RSE_UNAVAILABLE_REASONS = {
   duplicateArchetype: "duplicate-archetype",
   invalidBuildingCount: "invalid-building-count",
   invalidFloorArea: "invalid-floor-area",
-  invalidPackageData: "invalid-package-data",
   invalidCacheEntry: "invalid-cache-entry",
+  costLookupFailed: "cost-lookup-failed",
   nonPositiveEnergySavings: "non-positive-energy-savings",
 } as const;
 export type RSEUnavailableReason =
@@ -166,51 +145,3 @@ export const RSE_FORECASTING_CO2_FIELD_PATHS = {
   pvSelfConsumptionKwh: "pv_hp.summary.annual_kwh.self_consumption",
   pvGridImportKwh: "pv_hp.summary.annual_kwh.grid_import",
 } as const;
-
-type RSEMeasureCostBasis =
-  | { kind: typeof RSE_COST_BASIS.floorArea; value: number }
-  | {
-      kind: typeof RSE_COST_BASIS.surfaceArea;
-      value: number;
-      surface: "wall" | "roof" | "floor" | "window";
-    }
-  | { kind: typeof RSE_COST_BASIS.building; value: number }
-  | { kind: typeof RSE_COST_BASIS.pvCapacity; value: number };
-
-type RSEMeasureCostAssumptionValue = {
-  capex: RSEMeasureCostBasis;
-  annualMaintenance: RSEMeasureCostBasis;
-};
-
-export const RSE_MVP_MEASURE_COST_ASSUMPTIONS = {
-  "wall-insulation": {
-    capex: { kind: RSE_COST_BASIS.floorArea, value: 70 },
-    annualMaintenance: { kind: RSE_COST_BASIS.floorArea, value: 0 },
-  },
-  "roof-insulation": {
-    capex: { kind: RSE_COST_BASIS.floorArea, value: 50 },
-    annualMaintenance: { kind: RSE_COST_BASIS.floorArea, value: 0 },
-  },
-  "floor-insulation": {
-    capex: { kind: RSE_COST_BASIS.floorArea, value: 35 },
-    annualMaintenance: { kind: RSE_COST_BASIS.floorArea, value: 0 },
-  },
-  windows: {
-    capex: { kind: RSE_COST_BASIS.floorArea, value: 65 },
-    annualMaintenance: { kind: RSE_COST_BASIS.floorArea, value: 0 },
-  },
-  "air-water-heat-pump": {
-    capex: { kind: RSE_COST_BASIS.building, value: 22_000 },
-    annualMaintenance: { kind: RSE_COST_BASIS.building, value: 300 },
-  },
-  "condensing-boiler": {
-    capex: { kind: RSE_COST_BASIS.building, value: 6_500 },
-    annualMaintenance: { kind: RSE_COST_BASIS.building, value: 220 },
-  },
-  pv: {
-    capex: { kind: RSE_COST_BASIS.pvCapacity, value: 1_500 },
-    annualMaintenance: { kind: RSE_COST_BASIS.pvCapacity, value: 25 },
-  },
-} as const satisfies Partial<
-  Record<RenovationMeasureId, RSEMeasureCostAssumptionValue>
->;

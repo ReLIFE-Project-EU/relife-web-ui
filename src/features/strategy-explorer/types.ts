@@ -6,14 +6,12 @@ import type { DeliveredEnergyCarrierBreakdown } from "../../types/energy";
 import type { ArchetypeDetails } from "../../types/archetype";
 import type {
   RSE_CACHE_PAYLOAD_SCHEMA_VERSION,
-  RSE_COST_BASIS,
   RSE_FINANCIAL_DEFAULTS,
   RSE_MVP_THERMAL_EMISSION_SOURCE,
 } from "./constants";
 import type {
   RSECacheSource,
   RSECo2Method,
-  RSECostSource,
   RSEEmissionEnergySource,
   RSEPackageId,
   RSEUnavailableReason,
@@ -23,8 +21,6 @@ export type {
   RSECacheSource,
   RSECacheStatus,
   RSECo2Method,
-  RSECostBasisKind,
-  RSECostSource,
   RSEEmissionEnergySource,
   RSEPackageId,
   RSESupportedEmissionFactorCountry,
@@ -55,29 +51,10 @@ export type RSERenovationGoal =
   | { kind: "energy" }
   | { kind: "emission" };
 
-export type RSECostBasis =
-  | { kind: typeof RSE_COST_BASIS.floorArea; value: number }
-  | {
-      kind: typeof RSE_COST_BASIS.surfaceArea;
-      value: number;
-      surface: "wall" | "roof" | "floor" | "window";
-    }
-  | { kind: typeof RSE_COST_BASIS.building; value: number }
-  | { kind: typeof RSE_COST_BASIS.pvCapacity; value: number };
-
-export interface RSEMeasureCostAssumption {
-  measureId: RenovationMeasureId;
-  capex: RSECostBasis;
-  annualMaintenance: RSECostBasis;
-  source: RSECostSource;
-  sourceNote: string;
-}
-
 export interface RSEPackageDefinition {
   id: RSEPackageId;
   label: string;
   measureIds: RenovationMeasureId[];
-  costAssumptions: RSEMeasureCostAssumption[];
 }
 
 export interface RSEForecastingCacheKey {

@@ -4,7 +4,6 @@ import {
   createRSEWorkflowService,
   RSEWorkflowError,
 } from "../../../../../src/features/strategy-explorer/services/rseWorkflowService";
-import { RSEPackageCatalogError } from "../../../../../src/features/strategy-explorer/services/rsePackageCatalog";
 import { auditLog } from "../../../../../src/utils/auditLogger";
 import type { RSECacheMatrixRequest } from "../../../../../src/features/strategy-explorer/api/rseCacheApi";
 import type {
@@ -430,50 +429,6 @@ describe("rseWorkflowService", () => {
         reason: "non-positive-energy-savings",
       },
     ]);
-  });
-
-  test("maps package catalog data errors to typed unavailable combinations", async () => {
-    const deps = makeDependencies({
-      computeFinancials: vi.fn(async () => {
-        throw new RSEPackageCatalogError(
-          "Missing floor area",
-          "missing-floor-area",
-        );
-      }),
-    });
-
-    const result = await createRSEWorkflowService(deps).runWorkflow(
-      makeRequest(["envelope"]),
-    );
-
-    expect(result.unavailableCombinations[0]).toEqual({
-      archetype: archetypeA,
-      packageId: "envelope",
-      reason: "invalid-floor-area",
-    });
-    expect(result.packageAggregates).toEqual([]);
-  });
-
-  test("maps non-floor-area package catalog errors to invalidPackageData", async () => {
-    const deps = makeDependencies({
-      computeFinancials: vi.fn(async () => {
-        throw new RSEPackageCatalogError(
-          "Missing PV capacity",
-          "missing-pv-capacity",
-        );
-      }),
-    });
-
-    const result = await createRSEWorkflowService(deps).runWorkflow(
-      makeRequest(["envelope"]),
-    );
-
-    expect(result.unavailableCombinations[0]).toEqual({
-      archetype: archetypeA,
-      packageId: "envelope",
-      reason: "invalid-package-data",
-    });
-    expect(result.packageAggregates).toEqual([]);
   });
 
   test("rethrows unknown financial failures as workflow errors", async () => {

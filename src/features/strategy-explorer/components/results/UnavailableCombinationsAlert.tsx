@@ -20,8 +20,8 @@ const UNAVAILABLE_REASON_LABELS: Partial<Record<RSEUnavailableReason, string>> =
     [RSE_UNAVAILABLE_REASONS.duplicateArchetype]: "duplicate archetype",
     [RSE_UNAVAILABLE_REASONS.invalidBuildingCount]: "invalid building count",
     [RSE_UNAVAILABLE_REASONS.invalidFloorArea]: "invalid floor area",
-    [RSE_UNAVAILABLE_REASONS.invalidPackageData]: "invalid package data",
     [RSE_UNAVAILABLE_REASONS.invalidCacheEntry]: "invalid cache entry",
+    [RSE_UNAVAILABLE_REASONS.costLookupFailed]: "cost lookup failed",
     [RSE_UNAVAILABLE_REASONS.nonPositiveEnergySavings]:
       "non-positive energy savings",
   };

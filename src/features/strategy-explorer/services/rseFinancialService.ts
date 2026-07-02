@@ -1,10 +1,14 @@
 import { financial } from "../../../api/financial";
+import { FinancialService } from "../../../services/FinancialService";
+import { lookupPackageCostsFromDetails } from "../../../services/packageCostLookup";
 import {
   buildSchemes,
   mapWireRiskResponse,
 } from "../../../services/riskAssessmentAdapter";
 import { computeCarrierFinancialEnergySavings } from "../../../services/carrierSavingsService";
+import type { EstimatePackageCostsResult } from "../../../services/types";
 import type { ArchetypeDetails } from "../../../types/archetype";
+import { APIError } from "../../../types/common";
 import type {
   RiskAssessmentRequest,
   RiskAssessmentResponse,
@@ -23,10 +27,13 @@ import type {
   RSEFinancialAssumptions,
   RSEFinancialResult,
 } from "../types";
-import { computePackageCost } from "./rsePackageCatalog";
+import { RSE_PACKAGES } from "./rsePackageCatalog";
 
 export const RSE_NON_POSITIVE_ENERGY_SAVINGS_REASON =
   RSE_UNAVAILABLE_REASONS.nonPositiveEnergySavings;
+
+/** Provider for the CAPEX/OPEX reference-data lookup pre-pass. */
+const lookupFinancialService = new FinancialService(RSE_FINANCIAL_OUTPUT_LEVEL);
 
 /**
  * Input for computing financial results for a single (archetype, package)
@@ -47,7 +54,8 @@ export interface RSEFinancialServiceInput {
 
 /**
  * Compute financial indicators for a single (archetype, package) via the
- * Financial API risk-assessment endpoint.
+ * Financial API risk-assessment endpoint. Package CAPEX and maintenance come
+ * from the shared EU reference-data lookup before the risk call.
  *
  * Skips ARV.  Always requests `output_level: "professional"`.  Falls back to
  * `RSE_FINANCIAL_DEFAULTS` when `financialAssumptions` is omitted.
@@ -60,10 +68,47 @@ export async function computeFinancials(
 ): Promise<RSEFinancialResult> {
   const assumptions = resolveFinancialAssumptions(input.financialAssumptions);
 
-  const { capexEur, annualMaintenanceEur } = computePackageCost(
-    input.packageId,
-    input.details,
-  );
+  // Resolve gross CAPEX and annual maintenance from EU reference data via the
+  // shared Financial lookup. Data-shaped failures (unsupported country, no
+  // priceable measures, no reference data — the backend returns HTTP 400/422
+  // for the latter) mark this combination unavailable; other API errors abort
+  // the workflow, matching how the risk-assessment call behaves below.
+  let costs: EstimatePackageCostsResult;
+  try {
+    costs = await lookupPackageCostsFromDetails(
+      {
+        country: input.archetype.country,
+        bui: input.details.bui,
+        floorArea: input.details.floorArea,
+        measureIds: RSE_PACKAGES[input.packageId].measureIds,
+        projectLifetime: assumptions.projectLifetimeYears,
+      },
+      { financial: lookupFinancialService },
+    );
+  } catch (error) {
+    if (
+      error instanceof APIError &&
+      error.status !== 400 &&
+      error.status !== 422
+    ) {
+      throw error;
+    }
+    return {
+      archetype: input.archetype,
+      packageId: input.packageId,
+      capexEur: 0,
+      effectiveCapexEur: 0,
+      annualMaintenanceEur: 0,
+      annualEnergySavingsKwh: 0,
+      status: "unavailable",
+      unavailableReason: RSE_UNAVAILABLE_REASONS.costLookupFailed,
+      unavailableMessage:
+        "Financial indicators are unavailable because CAPEX and maintenance costs could not be resolved from EU reference data for this archetype and package.",
+      pointForecasts: {},
+    };
+  }
+  const capexEur = costs.capex;
+  const annualMaintenanceEur = costs.annualMaintenanceCost;
 
   // Fold the upfront incentive into CAPEX (the new contract has no incentive
   // fields). RSE is always self-funded, so the scheme is always equity. The

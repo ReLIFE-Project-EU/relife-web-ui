@@ -3,10 +3,12 @@
  *
  * Resolves a renovation package's costs from EU reference data via the
  * Financial lookup, given the package measures plus the building's archetype
- * geometry. Used by HRA (to pre-fill editable cost inputs) and PRA (as the
- * cost fallback during portfolio analysis), so the orchestration lives in one
- * place. Callers keep their own concerns around it — HRA the React
- * effect/error-state/dispatch, PRA the audit logging and provenance flags.
+ * geometry. Used by HRA (to pre-fill editable cost inputs), PRA (as the cost
+ * fallback during portfolio analysis), and RSE (to price archetype/package
+ * combinations), so the orchestration lives in one place. Callers keep their
+ * own concerns around it — HRA the React effect/error-state/dispatch, PRA the
+ * audit logging and provenance flags, RSE the per-combination availability
+ * classification.
  */
 
 import { buildRenovationActions } from "./renovationActions";
@@ -18,6 +20,7 @@ import type {
   IFinancialService,
 } from "./types";
 import type { RenovationMeasureId } from "../types/renovation";
+import type { BuildingPayload } from "../types/archetype";
 import type { ArchetypeInfo } from "../types/forecasting";
 
 export interface PackageCostLookupParams {
@@ -36,6 +39,50 @@ export interface PackageCostLookupParams {
 export interface PackageCostLookupDeps {
   building: Pick<IBuildingService, "getArchetypeDetails">;
   financial: Pick<IFinancialService, "estimatePackageCosts">;
+}
+
+export interface PackageCostLookupFromDetailsParams {
+  /** Raw building country (code or display name); resolved internally. */
+  country: string | null | undefined;
+  /** BUI payload providing the envelope surface areas. */
+  bui: BuildingPayload;
+  /** Floor area used to size HVAC/PV capacity. */
+  floorArea: number | null;
+  /** Package measures to price. */
+  measureIds: RenovationMeasureId[];
+  /** Optional evaluation horizon (years). */
+  projectLifetime?: number;
+}
+
+/**
+ * Resolve a renovation package's CAPEX/OPEX from EU reference data using
+ * already-fetched archetype geometry. Throws on any unmet precondition
+ * (unresolvable country, no priceable measures) or lookup failure so callers
+ * can surface it in their own way.
+ */
+export async function lookupPackageCostsFromDetails(
+  params: PackageCostLookupFromDetailsParams,
+  deps: Pick<PackageCostLookupDeps, "financial">,
+): Promise<EstimatePackageCostsResult> {
+  const country = getCountryDisplayName(params.country);
+  if (!country) {
+    throw new Error("Cost estimate unavailable: missing building location.");
+  }
+
+  const renovationActions = buildRenovationActions({
+    measureIds: params.measureIds,
+    surfaceAreas: surfaceAreasFromBui(params.bui),
+    floorArea: params.floorArea,
+  });
+  if (renovationActions.length === 0) {
+    throw new Error("No priceable measures in this package.");
+  }
+
+  return deps.financial.estimatePackageCosts({
+    country,
+    renovationActions,
+    projectLifetime: params.projectLifetime,
+  });
 }
 
 /**
@@ -64,18 +111,14 @@ export async function lookupPackageCosts(
     name: params.archetype.name,
   });
 
-  const renovationActions = buildRenovationActions({
-    measureIds: params.measureIds,
-    surfaceAreas: surfaceAreasFromBui(details.bui),
-    floorArea: params.floorArea ?? details.floorArea,
-  });
-  if (renovationActions.length === 0) {
-    throw new Error("No priceable measures in this package.");
-  }
-
-  return deps.financial.estimatePackageCosts({
-    country,
-    renovationActions,
-    projectLifetime: params.projectLifetime,
-  });
+  return lookupPackageCostsFromDetails(
+    {
+      country,
+      bui: details.bui,
+      floorArea: params.floorArea ?? details.floorArea,
+      measureIds: params.measureIds,
+      projectLifetime: params.projectLifetime,
+    },
+    { financial: deps.financial },
+  );
 }
