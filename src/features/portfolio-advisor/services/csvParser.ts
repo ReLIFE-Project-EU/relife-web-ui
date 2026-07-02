@@ -41,6 +41,37 @@ export interface CSVParseResult {
   errors: string[];
 }
 
+const STRICT_FLOAT_RE = /^-?\d+(\.\d+)?$/;
+const STRICT_INT_RE = /^-?\d+$/;
+
+/**
+ * Strictly parse a numeric CSV cell. Unlike parseFloat, the whole cell must
+ * be numeric — trailing garbage ("85abc") or a comma-truncated fraction
+ * ("85,5" read as 85) is rejected instead of silently accepted. A single
+ * decimal comma with no dot (EU locale, quoted in the CSV) is normalized to
+ * a dot before validation. Returns null when the cell is not a valid number.
+ */
+function parseStrictFloat(raw: string | undefined): number | null {
+  const cell = raw?.trim();
+  if (!cell) return null;
+  const normalized =
+    !cell.includes(".") && (cell.match(/,/g) ?? []).length === 1
+      ? cell.replace(",", ".")
+      : cell;
+  return STRICT_FLOAT_RE.test(normalized) ? Number(normalized) : null;
+}
+
+/**
+ * Strictly parse an integer CSV cell. Unlike parseInt, the whole cell must
+ * be an integer — "1995.9" or "1995abc" is rejected instead of truncated.
+ * Returns null when the cell is not a valid integer.
+ */
+function parseStrictInt(raw: string | undefined): number | null {
+  const cell = raw?.trim();
+  if (!cell) return null;
+  return STRICT_INT_RE.test(cell) ? Number(cell) : null;
+}
+
 /**
  * Parse CSV text into an array of PRABuilding objects.
  * Validates required columns and data types.
@@ -99,12 +130,12 @@ export function parseCSV(text: string): CSVParseResult {
     const name = values[colIndex("building_name")]?.trim();
     if (!name) rowErrors.push(`Row ${rowNum}: building_name is empty.`);
 
-    const lat = parseFloat(values[colIndex("lat")]);
+    const lat = parseStrictFloat(values[colIndex("lat")]) ?? NaN;
     if (isNaN(lat) || lat < -90 || lat > 90) {
       rowErrors.push(`Row ${rowNum}: lat must be a number between -90 and 90.`);
     }
 
-    const lng = parseFloat(values[colIndex("lng")]);
+    const lng = parseStrictFloat(values[colIndex("lng")]) ?? NaN;
     if (isNaN(lng) || lng < -180 || lng > 180) {
       rowErrors.push(
         `Row ${rowNum}: lng must be a number between -180 and 180.`,
@@ -126,7 +157,7 @@ export function parseCSV(text: string): CSVParseResult {
     const country = values[colIndex("country")]?.trim();
     if (!country) rowErrors.push(`Row ${rowNum}: country is empty.`);
 
-    const floorArea = parseFloat(values[colIndex("floor_area")]);
+    const floorArea = parseStrictFloat(values[colIndex("floor_area")]) ?? NaN;
     if (isNaN(floorArea) || floorArea <= 0) {
       rowErrors.push(`Row ${rowNum}: floor_area must be a positive number.`);
     }
@@ -143,7 +174,7 @@ export function parseCSV(text: string): CSVParseResult {
         constructionPeriod = normalized;
       } else {
         // Try parsing as a numeric year
-        const asYear = parseInt(raw, 10);
+        const asYear = parseStrictInt(raw) ?? NaN;
         if (!isNaN(asYear) && asYear >= 1800 && asYear <= 2030) {
           constructionPeriod = deriveConstructionPeriod(asYear);
         } else {
@@ -153,7 +184,8 @@ export function parseCSV(text: string): CSVParseResult {
         }
       }
     } else if (hasConstructionYear) {
-      const yearVal = parseInt(values[colIndex("construction_year")], 10);
+      const yearVal =
+        parseStrictInt(values[colIndex("construction_year")]) ?? NaN;
       if (!isNaN(yearVal) && yearVal >= 1800 && yearVal <= 2030) {
         constructionPeriod = deriveConstructionPeriod(yearVal);
       } else {
@@ -163,7 +195,8 @@ export function parseCSV(text: string): CSVParseResult {
       }
     }
 
-    const numberOfFloors = parseInt(values[colIndex("number_of_floors")], 10);
+    const numberOfFloors =
+      parseStrictInt(values[colIndex("number_of_floors")]) ?? NaN;
     if (isNaN(numberOfFloors) || numberOfFloors < 1 || numberOfFloors > 100) {
       rowErrors.push(
         `Row ${rowNum}: number_of_floors must be between 1 and 100.`,
@@ -181,10 +214,17 @@ export function parseCSV(text: string): CSVParseResult {
         : undefined;
 
     const floorNumberIdx = colIndex("floor_number");
-    const floorNumber =
-      floorNumberIdx >= 0 && values[floorNumberIdx]?.trim()
-        ? parseInt(values[floorNumberIdx], 10)
-        : undefined;
+    let floorNumber: number | undefined;
+    if (floorNumberIdx >= 0 && values[floorNumberIdx]?.trim()) {
+      const parsed = parseStrictInt(values[floorNumberIdx]);
+      if (parsed === null) {
+        rowErrors.push(
+          `Row ${rowNum}: floor_number must be a whole number (or left blank).`,
+        );
+      } else {
+        floorNumber = parsed;
+      }
+    }
 
     // Optional cost overrides. Blank/absent stays undefined so the Financial
     // API lookup resolves the cost during analysis. A present value must be
@@ -193,7 +233,7 @@ export function parseCSV(text: string): CSVParseResult {
     const capexIdx = colIndex("capex");
     let estimatedCapex: number | undefined;
     if (capexIdx >= 0 && values[capexIdx]?.trim()) {
-      const parsed = parseFloat(values[capexIdx]);
+      const parsed = parseStrictFloat(values[capexIdx]) ?? NaN;
       if (!Number.isFinite(parsed) || parsed <= 0) {
         rowErrors.push(
           `Row ${rowNum}: capex must be a number greater than 0 (or left blank to auto-estimate).`,
@@ -206,7 +246,7 @@ export function parseCSV(text: string): CSVParseResult {
     const maintenanceIdx = colIndex("annual_maintenance_cost");
     let annualMaintenanceCost: number | undefined;
     if (maintenanceIdx >= 0 && values[maintenanceIdx]?.trim()) {
-      const parsed = parseFloat(values[maintenanceIdx]);
+      const parsed = parseStrictFloat(values[maintenanceIdx]) ?? NaN;
       if (!Number.isFinite(parsed) || parsed < 0) {
         rowErrors.push(
           `Row ${rowNum}: annual_maintenance_cost cannot be negative (or left blank to auto-estimate).`,
