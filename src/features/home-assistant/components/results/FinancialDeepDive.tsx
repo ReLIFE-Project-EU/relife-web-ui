@@ -12,8 +12,8 @@ import type {
 } from "../../context/types";
 import {
   formatCurrency,
+  formatPaybackYears,
   formatPercent,
-  formatYears,
 } from "../../utils/formatters";
 import { FinancialMetricCard } from "./FinancialMetricCard";
 import { RiskGauge } from "./RiskGauge";
@@ -67,7 +67,12 @@ export function FinancialDeepDive({
               value={
                 result.riskAssessment?.pointForecasts.PBP ?? result.paybackTime
               }
-              formatter={formatYears}
+              formatter={(v) =>
+                formatPaybackYears(
+                  v,
+                  result.riskAssessment?.metadata.project_lifetime,
+                )
+              }
               percentiles={result.riskAssessment?.percentiles?.PBP}
               color="teal"
               lowerIsBetter
@@ -147,7 +152,11 @@ function SecondaryMetrics({ result }: { result: FinancialResults }) {
       ) : null}
       {dpp !== undefined ? (
         <span>
-          <b>DPP</b> {formatYears(dpp)}
+          <b>DPP</b>{" "}
+          {formatPaybackYears(
+            dpp,
+            result.riskAssessment?.metadata.project_lifetime,
+          )}
         </span>
       ) : null}
     </div>

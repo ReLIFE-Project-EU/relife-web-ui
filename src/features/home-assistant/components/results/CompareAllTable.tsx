@@ -17,7 +17,7 @@ import {
   formatCurrency,
   formatEnergyPerYear,
   formatNumber,
-  formatYears,
+  formatPaybackYears,
 } from "../../utils/formatters";
 import classes from "./ResultsLayout.module.css";
 import { ScenDot, ScoreBar } from "./resultsAtoms";
@@ -141,7 +141,14 @@ export function CompareAllTable({
                   >
                     {npv !== undefined ? formatCurrency(npv) : "—"}
                   </td>
-                  <td>{pbp !== undefined ? formatYears(pbp) : "—"}</td>
+                  <td>
+                    {pbp !== undefined
+                      ? formatPaybackYears(
+                          pbp,
+                          result?.riskAssessment?.metadata.project_lifetime,
+                        )
+                      : "—"}
+                  </td>
                   <td>
                     {monthly !== undefined
                       ? `${formatCurrency(monthly)}/mo`

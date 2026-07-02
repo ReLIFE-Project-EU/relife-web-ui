@@ -23,6 +23,7 @@ import {
   formatCurrency,
   formatDecimal,
   formatNumber,
+  formatPaybackYears,
   getEnergyReduction,
 } from "../../../../utils/formatters";
 import { formatArchetypeName } from "../../../../utils/archetypeLabels";
@@ -146,7 +147,14 @@ export function BuildingDrillDownModal({
               />
               <MetricCard
                 label="Payback"
-                value={fr ? `${formatDecimal(fr.paybackTime)} years` : "—"}
+                value={
+                  fr
+                    ? formatPaybackYears(
+                        fr.paybackTime,
+                        fr.riskAssessment?.metadata.project_lifetime,
+                      )
+                    : "—"
+                }
               />
             </SimpleGrid>
 

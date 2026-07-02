@@ -28,7 +28,9 @@ import type { MCDAPersona } from "../../../../services/types";
 import {
   formatCurrency,
   formatNumber,
+  formatPaybackYears,
   formatYears,
+  isPaybackBeyondHorizon,
 } from "../../utils/formatters";
 import classes from "./ResultsLayout.module.css";
 import { ScenDot, ScoreBar } from "./resultsAtoms";
@@ -160,9 +162,11 @@ export function RecommendationHero({
                   label="Payback period"
                   value={
                     winnerResult
-                      ? formatYears(
+                      ? formatPaybackYears(
                           winnerResult.riskAssessment?.pointForecasts.PBP ??
                             winnerResult.paybackTime,
+                          winnerResult.riskAssessment?.metadata
+                            .project_lifetime,
                         )
                       : "—"
                   }
@@ -369,7 +373,11 @@ function paybackRangeHint(result: FinancialResults | undefined): string {
   const p10 = result?.riskAssessment?.percentiles?.PBP?.P10;
   const p90 = result?.riskAssessment?.percentiles?.PBP?.P90;
   if (p10 === undefined || p90 === undefined) return "";
-  return `P10–P90: ${formatNumber(p10)}–${formatNumber(p90)} yr`;
+  const lifetime = result?.riskAssessment?.metadata.project_lifetime;
+  const p90Label = isPaybackBeyondHorizon(p90, lifetime)
+    ? `>${formatNumber(lifetime ?? p90)}`
+    : formatNumber(p90);
+  return `P10–P90: ${formatNumber(p10)}–${p90Label} yr`;
 }
 
 interface SavingsCopyProps {
@@ -392,9 +400,18 @@ function SavingsCopy({ current, winner, result }: SavingsCopyProps) {
     <Text size="sm" c="dark.6" mt={8} maw={560}>
       {formatThermalNeedsChange(thermalNeedsChangePct)}
       {pbp !== undefined ? (
-        <>
-          , pays back in <b>{formatYears(pbp)}</b>
-        </>
+        isPaybackBeyondHorizon(
+          pbp,
+          result?.riskAssessment?.metadata.project_lifetime,
+        ) ? (
+          <>
+            , does <b>not pay back within the project horizon</b>
+          </>
+        ) : (
+          <>
+            , pays back in <b>{formatYears(pbp)}</b>
+          </>
+        )
       ) : null}
       {monthly !== undefined ? (
         <>

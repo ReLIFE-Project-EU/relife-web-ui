@@ -33,6 +33,7 @@ import {
   formatEnergyPerYear,
   formatFixed,
   getEnergyReduction,
+  isPaybackBeyondHorizon,
 } from "../../../../utils/formatters";
 import { getEnergyIntensity } from "../../../../utils/epcUtils";
 import type { PRABuilding, BuildingAnalysisResult } from "../../context/types";
@@ -467,7 +468,14 @@ function ResultsRow({
           c={noSavings ? "dimmed" : undefined}
           style={{ fontVariantNumeric: "tabular-nums" }}
         >
-          {isSuccess && fr ? formatDecimal(fr.paybackTime) : "-"}
+          {isSuccess && fr
+            ? isPaybackBeyondHorizon(
+                fr.paybackTime,
+                fr.riskAssessment?.metadata.project_lifetime,
+              )
+              ? "No payback"
+              : formatDecimal(fr.paybackTime)
+            : "-"}
         </Text>
       </Table.Td>
     </Table.Tr>

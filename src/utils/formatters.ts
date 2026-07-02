@@ -192,6 +192,34 @@ export function formatYears(value: number): string {
   return `${formatted} ${rounded === 1 ? "year" : "years"}`;
 }
 
+/**
+ * True when a payback indicator (PBP/DPP) means "never pays back within the
+ * project horizon". The Financial service censors such simulations to
+ * project_lifetime + 1 before computing percentiles, so any value beyond the
+ * lifetime (or a non-finite one) is a censor artifact, not a real year count.
+ */
+export function isPaybackBeyondHorizon(
+  value: number,
+  projectLifetime: number | undefined,
+): boolean {
+  if (!Number.isFinite(value)) return true;
+  return projectLifetime !== undefined && value > projectLifetime;
+}
+
+/**
+ * Format a payback duration, rendering the censored "never pays back"
+ * sentinel as a label instead of a fake year count.
+ * Example: (10.5, 20) -> "10.5 years"; (21, 20) -> "No payback within horizon"
+ */
+export function formatPaybackYears(
+  value: number,
+  projectLifetime: number | undefined,
+): string {
+  return isPaybackBeyondHorizon(value, projectLifetime)
+    ? "No payback within horizon"
+    : formatYears(value);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CO₂ Formatting
 // ─────────────────────────────────────────────────────────────────────────────
