@@ -42,7 +42,7 @@ export function PortfolioSummaryStrip({ state }: PortfolioSummaryStripProps) {
 
   const resultsCount = Object.keys(state.buildingResults).length;
   const status = (() => {
-    if (state.isEvaluating || state.isEstimating || state.isRanking) {
+    if (state.isEvaluating || state.isEstimating) {
       return { label: "Running…", color: "blue", icon: true };
     }
     if (resultsCount > 0) {

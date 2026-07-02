@@ -10,10 +10,6 @@ import { buildingService } from "../../../services/BuildingService";
 import { EnergyService } from "../../../services/EnergyService";
 import { FinancialService } from "../../../services/FinancialService";
 import { RenovationService } from "../../../services/RenovationService";
-import {
-  MockMCDAService,
-  mockMCDAService,
-} from "../../../services/mock/MockMCDAService";
 import { PortfolioAnalysisService } from "../services/PortfolioAnalysisService";
 import { PRA_OUTPUT_LEVEL } from "../constants";
 import type { IPortfolioAdvisorServices } from "../services/types";
@@ -35,7 +31,6 @@ const defaultServices: IPortfolioAdvisorServices = {
   energy: energyService,
   renovation: renovationService,
   financial: financialService,
-  mcda: mockMCDAService,
   portfolioAnalysis: portfolioAnalysisService,
 };
 
@@ -59,11 +54,8 @@ export function PortfolioAdvisorServiceProvider({
         energy: value.energy.constructor.name,
         renovation: value.renovation.constructor.name,
         financial: value.financial.constructor.name,
-        mcda: value.mcda.constructor.name,
         portfolioAnalysis: value.portfolioAnalysis.constructor.name,
       },
-      mcdaPath:
-        value.mcda instanceof MockMCDAService ? "mock-frontend" : "custom",
       financialOutputLevel: PRA_OUTPUT_LEVEL,
     });
   }, [value, services]);

@@ -7,7 +7,6 @@ import type {
   IBuildingService,
   IEnergyService,
   IFinancialService,
-  IMCDAService,
   IRenovationService,
 } from "../../../services/types";
 import type {
@@ -40,6 +39,5 @@ export interface IPortfolioAdvisorServices {
   energy: IEnergyService;
   renovation: IRenovationService;
   financial: IFinancialService;
-  mcda: IMCDAService;
   portfolioAnalysis: IPortfolioAnalysisService;
 }

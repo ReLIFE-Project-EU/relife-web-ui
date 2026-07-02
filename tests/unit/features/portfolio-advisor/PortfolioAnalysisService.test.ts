@@ -124,7 +124,6 @@ const stateWithResults: PortfolioAdvisorState = {
       },
     },
   },
-  mcdaRanking: [{ scenarioId: "renovated", rank: 1, score: 1 }],
   analysisProgress: { completed: 1, total: 1 },
 };
 
@@ -560,7 +559,6 @@ describe("portfolioAdvisorReducer", () => {
 
     expect(state.gasTariffEurPerKwh).toBe(0.12);
     expect(state.buildingResults).toEqual({});
-    expect(state.mcdaRanking).toBeNull();
     expect(state.analysisProgress).toBeNull();
   });
 });

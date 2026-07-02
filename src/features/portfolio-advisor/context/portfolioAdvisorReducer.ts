@@ -35,12 +35,9 @@ export const initialState: PortfolioAdvisorState = {
   },
   gasTariffEurPerKwh: ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
   buildingResults: {},
-  selectedPersona: "cost-optimization",
-  mcdaRanking: null,
   analysisProgress: null,
   isEstimating: false,
   isEvaluating: false,
-  isRanking: false,
   error: null,
 };
 
@@ -49,7 +46,6 @@ export const initialState: PortfolioAdvisorState = {
  */
 const clearedAnalysisResults = {
   buildingResults: {} as PortfolioAdvisorState["buildingResults"],
-  mcdaRanking: null,
   analysisProgress: null,
 } as const;
 
@@ -272,38 +268,6 @@ export function portfolioAdvisorReducer(
         isEvaluating: false,
         error: action.error,
         analysisProgress: null,
-      };
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // MCDA / Persona
-    // ─────────────────────────────────────────────────────────────────────────
-    case "SELECT_PERSONA":
-      return {
-        ...state,
-        selectedPersona: action.persona,
-        mcdaRanking: null,
-      };
-
-    case "START_RANKING":
-      return {
-        ...state,
-        isRanking: true,
-        error: null,
-      };
-
-    case "SET_RANKING":
-      return {
-        ...state,
-        mcdaRanking: action.ranking,
-        isRanking: false,
-        error: null,
-      };
-
-    case "RANKING_ERROR":
-      return {
-        ...state,
-        isRanking: false,
-        error: action.error,
       };
 
     // ─────────────────────────────────────────────────────────────────────────

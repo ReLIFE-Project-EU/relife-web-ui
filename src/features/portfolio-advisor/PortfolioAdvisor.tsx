@@ -68,7 +68,6 @@ function PortfolioAdvisorWizard() {
   // Sync local loading states to the global loading overlay
   useSyncGlobalLoading(state.isEstimating, "PortfolioAdvisor.estimate");
   useSyncGlobalLoading(state.isEvaluating, "PortfolioAdvisor.evaluate");
-  useSyncGlobalLoading(state.isRanking, "PortfolioAdvisor.rank");
   useWizardStepScroll(state.currentStep, topRef);
 
   const handleStepClick = (step: number) => {

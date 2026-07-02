@@ -10,7 +10,6 @@ import type {
   FinancingType,
   FundingOptions,
   LoanDetails,
-  MCDARankingResult,
   RenovationMeasureId,
   RenovationScenario,
   RenovationSelections,
@@ -124,8 +123,6 @@ export interface PortfolioAdvisorState {
   funding: FundingOptions;
   gasTariffEurPerKwh: number;
   buildingResults: Record<string, BuildingAnalysisResult>;
-  selectedPersona: string;
-  mcdaRanking: MCDARankingResult[] | null;
   analysisProgress: {
     completed: number;
     total: number;
@@ -133,7 +130,6 @@ export interface PortfolioAdvisorState {
   } | null;
   isEstimating: boolean;
   isEvaluating: boolean;
-  isRanking: boolean;
   error: string | null;
 }
 
@@ -179,9 +175,5 @@ export type PortfolioAdvisorAction =
     }
   | { type: "ANALYSIS_COMPLETE" }
   | { type: "ANALYSIS_ERROR"; error: string }
-  | { type: "SELECT_PERSONA"; persona: string }
-  | { type: "START_RANKING" }
-  | { type: "SET_RANKING"; ranking: MCDARankingResult[] }
-  | { type: "RANKING_ERROR"; error: string }
   | { type: "RESET" }
   | { type: "CLEAR_ERROR" };
