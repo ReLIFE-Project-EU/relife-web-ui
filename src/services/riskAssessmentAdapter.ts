@@ -12,6 +12,7 @@ import type {
   RiskAssessmentResponse,
   SchemeInput,
   SchemeKpiHistogram,
+  SchemePercentiles,
 } from "../types/financial";
 import type {
   CashFlowData,
@@ -142,12 +143,15 @@ function meanOfYears(perYear: number[]): number {
 }
 
 function mapPercentiles(
-  perc: Record<string, { P10: number; P50: number; P90: number }>,
+  perc: Record<string, SchemePercentiles>,
 ): RiskAssessmentPercentiles {
   const out: RiskAssessmentPercentiles = {};
   for (const indicator of RISK_INDICATORS) {
     const p = perc[indicator];
     if (!p) continue;
+    // The backend sanitizes NaN/Inf to null; an indicator with a null
+    // percentile has no meaningful range, so omit it entirely.
+    if (p.P10 == null || p.P50 == null || p.P90 == null) continue;
     const data: PercentileData = { P10: p.P10, P50: p.P50, P90: p.P90 };
     out[indicator] = data;
   }

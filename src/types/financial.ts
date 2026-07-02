@@ -142,15 +142,19 @@ export interface RiskAssessmentRequest {
   renovation_actions?: RenovationAction[];
 }
 
-/** Percentiles for a single KPI. P5/P10/P50/P90/P95 always present; quartiles optional. */
+/**
+ * Percentiles for a single KPI. P5/P10/P50/P90/P95 always present; quartiles
+ * optional. Values are null when the backend sanitized a NaN/Inf simulation
+ * result for JSON (e.g. IRR undefined for an all-negative cash flow).
+ */
 export interface SchemePercentiles {
-  P5?: number;
-  P10: number;
-  P25?: number;
-  P50: number;
-  P75?: number;
-  P90: number;
-  P95?: number;
+  P5?: number | null;
+  P10: number | null;
+  P25?: number | null;
+  P50: number | null;
+  P75?: number | null;
+  P90: number | null;
+  P95?: number | null;
 }
 
 /** Per-year percentile bands (keys "P5".."P95", each an array of length project_lifetime + 1). */

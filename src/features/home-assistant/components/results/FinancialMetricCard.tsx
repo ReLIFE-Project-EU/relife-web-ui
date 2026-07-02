@@ -48,10 +48,9 @@ export function FinancialMetricCard({
 }: FinancialMetricCardProps) {
   const concept =
     relifeConcepts[conceptId ?? financialMetricConceptIds[metricType]];
+  // != null also rejects nulls that slip past the adapter's sanitization.
   const hasPercentiles =
-    percentiles &&
-    percentiles.P10 !== undefined &&
-    percentiles.P90 !== undefined;
+    percentiles != null && percentiles.P10 != null && percentiles.P90 != null;
 
   return (
     <Card

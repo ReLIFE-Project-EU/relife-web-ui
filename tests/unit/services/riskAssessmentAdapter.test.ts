@@ -148,6 +148,27 @@ describe("mapWireRiskResponse", () => {
     expect(npv?.statistics.P50).toBe(15400);
   });
 
+  test("omits indicators whose percentiles were null-sanitized by the backend", () => {
+    const response = fixture();
+    // The backend replaces NaN/Inf with null for JSON safety (e.g. IRR is
+    // undefined when every simulated cash flow is negative).
+    response.results.equity.summary.percentiles.IRR = {
+      P10: null,
+      P50: null,
+      P90: null,
+    };
+
+    const mappedNull = mapWireRiskResponse(response, {
+      schemeType: "equity",
+      projectLifetime: 20,
+    });
+
+    expect(mappedNull.percentiles?.IRR).toBeUndefined();
+    expect(mappedNull.percentiles?.NPV).toBeDefined();
+    // Point forecast falls back to 0 rather than propagating null.
+    expect(mappedNull.pointForecasts.IRR).toBe(0);
+  });
+
   test("throws when the requested scheme is absent", () => {
     expect(() =>
       mapWireRiskResponse(fixture(), {
