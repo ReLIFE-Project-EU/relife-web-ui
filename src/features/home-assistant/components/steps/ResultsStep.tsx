@@ -4,7 +4,7 @@
  * persona. Auto-ranks scenarios whenever the persona changes.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -45,8 +45,16 @@ export function ResultsStep() {
     funding,
   } = state;
 
-  const currentScenario = scenarios.find((s) => s.id === "current");
-  const renovationScenarios = scenarios.filter((s) => s.id !== "current");
+  // Memoized so the auto-rank effect below can depend on them without
+  // re-running on every render (filter/find create fresh references).
+  const currentScenario = useMemo(
+    () => scenarios.find((s) => s.id === "current"),
+    [scenarios],
+  );
+  const renovationScenarios = useMemo(
+    () => scenarios.filter((s) => s.id !== "current"),
+    [scenarios],
+  );
   const personas = mcda.getPersonas();
 
   const rankingStatuses = getRankingScenarioStatuses(
@@ -58,8 +66,9 @@ export function ResultsStep() {
     .map((status) => status.scenario);
   const canRank = eligibleScenarios.length >= 2 && !!currentScenario;
 
-  // Auto-rank: trigger an MCDA call whenever the active persona changes
-  // (and on first reach of step 3 once enough data is available).
+  // Auto-rank: trigger an MCDA call whenever the active persona or the
+  // ranking inputs change (and on first reach of step 3 once enough data is
+  // available). The cancelled flag keeps overlapping runs latest-wins.
   useEffect(() => {
     if (!canRank || !currentScenario) return;
     let cancelled = false;
@@ -87,8 +96,15 @@ export function ResultsStep() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPersona, canRank]);
+  }, [
+    selectedPersona,
+    canRank,
+    currentScenario,
+    renovationScenarios,
+    financialResults,
+    mcda,
+    dispatch,
+  ]);
 
   // Selected scenario for the deep-dive. Defaults to the current winner once
   // ranking is available; explicit user selections only need to still exist.
@@ -98,11 +114,13 @@ export function ResultsStep() {
   const [showCashFlow, { toggle: toggleCashFlow }] = useDisclosure(false);
   const winnerId = mcdaRanking?.[0]?.scenarioId ?? null;
 
-  useEffect(() => {
-    if (winnerId) {
-      setSelectedDetailId(winnerId);
-    }
-  }, [winnerId]);
+  // Snap the deep-dive selection to the winner when it changes, using the
+  // render-time "adjust state on change" pattern instead of an effect.
+  const [prevWinnerId, setPrevWinnerId] = useState<ScenarioId | null>(null);
+  if (winnerId !== prevWinnerId) {
+    setPrevWinnerId(winnerId);
+    if (winnerId) setSelectedDetailId(winnerId);
+  }
 
   const effectiveSelectedId = getEffectiveDetailScenarioId(
     renovationScenarios,
