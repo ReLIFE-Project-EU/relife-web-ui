@@ -89,8 +89,33 @@ describe("mapWireRiskResponse", () => {
 
   test("maps SuccessRate from Pr(NPV > 0) and derives MonthlyAvgSavings", () => {
     expect(mapped.pointForecasts.SuccessRate).toBe(0.952);
-    // mean of inflows years 1..2 = 700; / 12
-    expect(mapped.pointForecasts.MonthlyAvgSavings).toBeCloseTo(700 / 12, 5);
+    // mean of NET cash flows years 1..2 = 600 (not gross inflows = 700); / 12
+    expect(mapped.pointForecasts.MonthlyAvgSavings).toBeCloseTo(600 / 12, 5);
+  });
+
+  test("MonthlyAvgSavings reflects negative net cash flow under a loan", () => {
+    const response = fixture();
+    const scheme = response.results.equity;
+    response.results = { bank_loan: scheme };
+    scheme.scheme_family = "debt_financed";
+    // Debt service exceeds energy revenue: gross inflows stay positive while
+    // the net cash flow is negative during the loan term.
+    scheme.cashflow_distributions = {
+      years: [0, 1, 2],
+      cash_flows: { P50: [0, -200, -200] },
+      inflows: { P50: [0, 700, 700] },
+      outflows: { P50: [0, 900, 900] },
+    };
+
+    const mappedLoan = mapWireRiskResponse(response, {
+      schemeType: "bank_loan",
+      projectLifetime: 20,
+    });
+
+    expect(mappedLoan.pointForecasts.MonthlyAvgSavings).toBeCloseTo(
+      -200 / 12,
+      5,
+    );
   });
 
   test("keeps lifetime-dynamic probability keys verbatim", () => {

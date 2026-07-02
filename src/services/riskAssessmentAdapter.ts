@@ -109,8 +109,9 @@ export function mapWireRiskResponse(
     ROI: perc.ROI?.P50 ?? 0,
     PBP: perc.PBP?.P50 ?? 0,
     DPP: perc.DPP?.P50 ?? 0,
-    // Derived: the new contract no longer returns these directly.
-    MonthlyAvgSavings: meanOfYears(inflowByYear) / 12,
+    // Derived: the new contract no longer returns these directly. Uses the
+    // net series so O&M outflows and loan debt service are accounted for.
+    MonthlyAvgSavings: meanOfYears(netByYear) / 12,
     SuccessRate: probabilities["Pr(NPV > 0)"] ?? 0,
   };
 
