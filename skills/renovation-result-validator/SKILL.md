@@ -1,12 +1,13 @@
 ---
 name: renovation-result-validator
 description: >
-  Domain-expert auditor for HRA and PRA tool results. Accepts structured
-  inputs/outputs or screenshots and validates computational correctness of
-  financial indicators, energy simulations, MCDA rankings, and ARV predictions.
-  Actively reads frontend service code and backend API implementations to trace
-  data transformations and identify root causes of anomalies. Triggered manually
-  when verifying tool results.
+  Domain-expert auditor for HRA, PRA, and RSE tool results. Accepts structured
+  inputs/outputs, screenshots, or E2E audit artifacts and validates
+  computational correctness of financial indicators, energy simulations, MCDA
+  rankings, ARV predictions, and RSE strategy rankings. Actively reads frontend
+  service code and backend API implementations to trace data transformations
+  and identify root causes of anomalies. Triggered manually when verifying
+  tool results.
 ---
 
 # Renovation Result Validator
@@ -14,27 +15,67 @@ description: >
 ## Purpose
 
 Audit the correctness and plausibility of computed results from the **HRA**
-(Home Renovation Assistant) and **PRA** (Portfolio Renovation Advisor) tools.
-This skill transforms the agent into an active code archaeologist that reads
-implementation code across the UI and backend services to trace how inputs
-become outputs, then validates whether those outputs are mathematically,
-logically, and procedurally justified.
+(Home Renovation Assistant), **PRA** (Portfolio Renovation Advisor), and
+**RSE** (Renovation Strategy Explorer) tools. This skill transforms the agent
+into an active code archaeologist that reads implementation code across the UI
+and backend services to trace how inputs become outputs, then validates
+whether those outputs are mathematically, logically, and procedurally
+justified.
 
 ## Trigger
 
-**Manual only.** The user explicitly requests validation of HRA or PRA results.
+**Manual only.** The user explicitly requests validation of HRA, PRA, or RSE
+results — typically after a manual tool run or a browser E2E run
+(`task test-e2e`).
 
 ## Input Formats
 
 1. **Structured data**: JSON, TypeScript objects, CSV tables, or any tabular
-   representation containing identifiable HRA/PRA input parameters and output
-   values.
+   representation containing identifiable HRA/PRA/RSE input parameters and
+   output values.
 2. **Screenshots**: Web application screenshots showing inputs and outputs.
    When screenshots are provided, extract every visible number, label, unit,
-   and chart value. Reconstruct the tool context (HRA/PRA, which step/screen).
-   Map visible values to known input/output schema fields (from `src/types/`).
-   Apply the same audit protocol as structured data. Explicitly mark any values
-   that could not be extracted with certainty.
+   and chart value. Reconstruct the tool context (HRA/PRA/RSE, which
+   step/screen). Map visible values to known input/output schema fields (from
+   `src/types/`). Apply the same audit protocol as structured data. Explicitly
+   mark any values that could not be extracted with certainty.
+3. **E2E audit artifacts**: The browser E2E suite (`tests/e2e/`) persists one
+   artifact set per tool under `.work/e2e/artifacts/<tool>/` (`<tool>` is
+   `hra`, `pra`, or `rse`):
+   - `audit.json` — the full structured audit trace: an array of `AuditEvent`
+     objects (`src/utils/auditLogger.ts`) with `ts`, `level`, `category`,
+     `event`, `scope`, `runId`, optional `buildingId`/`scenarioId`, and a
+     sanitized `data` payload.
+   - `results.png` — full-page screenshot of the tool's results step. Treat it
+     as a Screenshot input (format 2).
+   - `meta.json` — capture timestamp, git SHA, and event count. Verify the git
+     SHA matches the checked-out code before tracing; a mismatch means the
+     trace may not correspond to the current implementation.
+
+   How to read `audit.json`:
+   - Select the run: filter events by `scope` (tool) and take the latest
+     `runId`. PRA runs fan out per building — correlate with `buildingId`
+     (and `scenarioId` for per-scenario financial events).
+   - `info` events mark pipeline stage boundaries with summary outputs (e.g.
+     `energy.estimate.end`, `portfolio.building.end`, `rse.workflow.end`) —
+     use them to reconstruct the Pipeline Execution Trace.
+   - `debug` events carry full request/response payloads and intermediate
+     transformations (e.g. `financial.arv.request`, `mcda.criteria.matrix`,
+     `renovation.ecm.scaling`, `rse.workflow.rankings`) — use them as the
+     observed values for computation path traces.
+   - `warn` events flag fallbacks (`energy.archetype.fallback`,
+     `financial.risk.skipped`) — each one belongs in Input Quality Assessment
+     or Known Disharmonies.
+   - `error` events (`api.error`, `portfolio.building.error`) indicate a
+     failed pipeline; report them before attempting numeric validation.
+
+### E2E Handoff Workflow
+
+The intended loop: run `task test-e2e` (brings up the Docker stack, drives
+the three tool journeys in a real browser, writes the artifact sets), then
+invoke this skill on `.work/e2e/artifacts/`. The E2E specs only gate on
+coarse structural checks (flow completed, no audit `error` events, non-empty
+results); numeric plausibility is this skill's job.
 
 ---
 
@@ -50,7 +91,7 @@ instruction; this is mandatory, not optional.
 ### Source-of-Truth Hierarchy
 
 1. Service implementation code (route handlers, models, business logic)
-2. Integration tests (`tests/integration/`)
+2. E2E audit artifacts (`.work/e2e/artifacts/`) and specs (`tests/e2e/`)
 3. Running stack behavior (`task up` / Docker Compose)
 4. Frontend service code (`src/services/`, `src/features/*/services/`)
 5. Frontend utility functions (`src/utils/`)
@@ -74,9 +115,11 @@ The agent must report such discrepancies in the audit report under a dedicated
 
 ---
 
-## Service Environment Detection
+## Service Environment Detection (HRA / PRA)
 
-Before auditing results, determine which service implementations are in use.
+Before auditing HRA or PRA results, determine which service implementations
+are in use. This section does not apply to RSE — see the RSE Audit Protocol
+for its environment notes.
 
 ### Step 1: Locate Service Injection Points
 
@@ -341,6 +384,112 @@ For each financial indicator across all buildings:
 
 ---
 
+## RSE Audit Protocol
+
+The RSE pipeline differs structurally from HRA/PRA: energy results come from a
+**pre-published forecasting cache in Supabase**, not live simulations, and the
+unit of analysis is the archetype × package combination aggregated over a
+building stock. Service Environment Detection above does not apply — RSE has
+no service injection context; its services are module-level singletons under
+`src/features/strategy-explorer/services/`.
+
+Each step follows the pattern: **Read → Trace → Verify**.
+
+### RSE-1: Trace the Workflow Pipeline Order
+
+Read the workflow orchestrator:
+`src/features/strategy-explorer/services/rseWorkflowService.ts`
+
+Verify the documented order:
+
+1. Portfolio expansion (`archetypePortfolioService.expandPortfolio`)
+2. Cache matrix resolution (`cacheService.resolveCacheMatrix`)
+3. Cache entry normalization (`cacheService.normalizeEntry`)
+4. Financial computation per combination (`computeFinancials`, bounded
+   concurrency)
+5. Package aggregation (`aggregatePackage`)
+6. Ranking (`rankPackages`)
+
+Combinations can drop out at stages 2–4 (`unavailableCombinations` with typed
+reasons). Verify that exclusions are surfaced, not silently swallowed, and
+that aggregation only covers archetypes that survived the financial stage.
+
+### RSE-2: Trace Cache Resolution and Normalization
+
+Read the cache service and API:
+`src/features/strategy-explorer/services/rseForecastingCacheService.ts`,
+`src/features/strategy-explorer/api/rseCacheApi.ts`
+
+Answer these questions:
+
+- Which cache version is used? Is it the published version or an explicit one?
+- How is a cache entry keyed (archetype × package × schema version)?
+- What validation does `normalizeEntry` apply, and which
+  `RSEUnavailableReason` values exist?
+- How are baseline vs. renovated energy figures extracted from the cached
+  UNI 11300 payloads? What is the savings semantic (primary vs. delivered)?
+- How is the carrier/source breakdown derived, and where is it consumed?
+
+### RSE-3: Trace Financial Computation
+
+Read: `src/features/strategy-explorer/services/rseFinancialService.ts`
+
+Answer these questions:
+
+- How are per-archetype savings converted to money? Which tariffs apply per
+  carrier?
+- Which Financial API endpoints are called, and with what `output_level`?
+- When does a combination become `unavailable` (e.g. non-positive savings)?
+- How do `financialAssumptions` (project lifetime, tariffs) flow in from the
+  UI?
+
+### RSE-4: Trace Aggregation and Ranking
+
+Read: `src/features/strategy-explorer/services/rseAggregationService.ts`,
+`src/features/strategy-explorer/services/rseRankingService.ts`,
+`src/features/strategy-explorer/services/rsePackageCatalog.ts`
+
+Answer these questions:
+
+- How are per-archetype results scaled by `buildingCount` and combined into
+  package aggregates?
+- How does the selected goal (financial / energy / emission) change the
+  ranking criteria and their direction?
+- For the financial goal, how is the budget ceiling applied?
+- How are CO₂ figures derived (`co2Mapper.ts`) and which method is active?
+- Are packages that lost archetypes to exclusions still comparable
+  head-to-head, or does partial coverage bias the ranking? Report partial
+  coverage explicitly.
+
+### RSE-5: Validate Specific Output Values
+
+For each displayed ranking entry or aggregate metric, trace backward through
+`aggregatePackage` → `normalizeEntry` → the cached payload. The audit trace
+provides the observed intermediates: `rse.workflow.cache.normalized`,
+`rse.workflow.aggregates`, and `rse.workflow.rankings` (debug events), plus
+exclusion events (`rse.workflow.cache.unavailable`, `rse.workflow.cache.invalid`,
+`rse.workflow.financial.unavailable`).
+
+Display components live under
+`src/features/strategy-explorer/components/results/`.
+
+### RSE Sanity Checks
+
+- Energy savings per archetype cannot exceed the archetype's baseline
+  consumption; portfolio savings must equal the building-count-weighted sum
+  of the included archetypes.
+- Ranking scores must be finite and the ordering consistent with the goal's
+  criteria direction (e.g. for the energy goal, a package strictly better on
+  every criterion must not rank lower).
+- CO₂ reductions must be non-negative and proportional to energy savings
+  within the bounds of the carrier mix.
+- A package with zero surviving archetype combinations must not appear in the
+  ranking.
+- Different goals should generally produce different rankings unless one
+  package dominates on all criteria.
+
+---
+
 ## Mathematical Sanity Cross-Checks
 
 These checks apply AFTER the code trace. They are domain constraints, not
@@ -401,11 +550,11 @@ in the data pipeline, not merely describe the symptom.
 ### Required Sections
 
 ```markdown
-## HRA/PRA Result Validation Report
+## HRA/PRA/RSE Result Validation Report
 
-### Tool: [HRA | PRA]
+### Tool: [HRA | PRA | RSE]
 
-### Data Source: [Structured | Screenshot]
+### Data Source: [Structured | Screenshot | E2E artifacts]
 
 ### Audit Depth: [Quick | Deep]
 

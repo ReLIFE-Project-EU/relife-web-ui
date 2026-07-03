@@ -3,14 +3,14 @@ name: api-client-upgrade
 description: >
   Proposes frontend API client (`src/api/`) upgrade plans from verified service
   implementation (optional `external-services/` clones or upstream GitHub), plus
-  integration tests or live HTTP when needed. Use when reviewing API integrations,
+  live HTTP against a running stack when needed. Use when reviewing API integrations,
   upgrading clients, or analyzing endpoint gaps. Do not infer contracts from OpenAPI
   JSON alone; this repo does not ship API spec snapshots.
 ---
 
 # API Client Upgrade Planning
 
-Proposes structured upgrade plans for the frontend API client (`src/api/`). **Contract truth is the service implementation** (route handlers, models, validation): read it from `external-services/<repo>` when present, otherwise from the **public GitHub repositories** listed in [`AGENTS.md`](../../AGENTS.md) § Backend API contracts. Use **integration tests** (`tests/integration/`) and a **running stack** to validate behavior at HTTP boundaries when source alone is ambiguous.
+Proposes structured upgrade plans for the frontend API client (`src/api/`). **Contract truth is the service implementation** (route handlers, models, validation): read it from `external-services/<repo>` when present, otherwise from the **public GitHub repositories** listed in [`AGENTS.md`](../../AGENTS.md) § Backend API contracts. Use a **running stack** (`task up` / Docker Compose) to validate behavior at HTTP boundaries when source alone is ambiguous.
 
 ## Workflow
 
@@ -18,7 +18,7 @@ Proposes structured upgrade plans for the frontend API client (`src/api/`). **Co
 
 1. Check whether these directories exist: `external-services/relife-financial-service`, `external-services/relife-forecasting-service`, `external-services/relife-technical-service`
 2. **If any expected repo is missing**: use the GitHub URLs in [`AGENTS.md`](../../AGENTS.md) to review the same code paths in the browser or ask the user to clone (`task fetch-sources` per [`Taskfile.yml`](../../Taskfile.yml)) if local search is required
-3. Optionally cross-check with `task up` / Docker Compose and Vitest integration tests
+3. Optionally cross-check with `task up` / Docker Compose
 
 ### Step 2: Map each service from code
 

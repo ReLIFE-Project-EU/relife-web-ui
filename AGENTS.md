@@ -80,7 +80,7 @@ Authoritative contract sources:
 Workflow:
 
 - Prefer route handlers, request/response models, serializers, and validation in `external-services/<repo>`.
-- If local clones are missing, use upstream GitHub source, a running stack (`task up` / Docker Compose), or `tests/integration/`.
+- If local clones are missing, use upstream GitHub source or a running stack (`task up` / Docker Compose).
 - Cross-check HTTP behavior when in doubt.
 - If still uncertain, ask whether to fetch service sources, inspect a specific handler, or confirm observed behavior.
 
@@ -206,12 +206,12 @@ Configuration:
 - Do not hardcode environment-specific URLs, production domains, tokens, or secrets in components.
 - Keep dev proxy/config in Vite or compose/task config.
 
-## Audit Logging (HRA / PRA pipelines)
+## Audit Logging (HRA / PRA / RSE pipelines)
 
 Structured trace consumed by the `renovation-result-validator` skill. Off by default; enable with `VITE_RELIFE_AUDIT_LOG=info|debug`.
 
 - Single utility: `src/utils/auditLogger.ts` (ring buffer, severity × category, sanitizer, `window.__relifeAudit.dump()/download()`).
-- Correlation via `AuditCtx` (`runId`, `buildingId`, `scenarioId`). HRA uses ambient ctx (sequential flow); PRA threads explicit ctx through `PortfolioAnalysisService` because buildings run concurrently.
+- Correlation via `AuditCtx` (`runId`, `buildingId`, `scenarioId`). HRA uses ambient ctx (sequential flow); PRA threads explicit ctx through `PortfolioAnalysisService` because buildings run concurrently; RSE threads explicit ctx through `rseWorkflowService`.
 - Service interfaces (`IEnergyService.estimateEPC`, `IRenovationService.evaluateScenarios`, `IFinancialService.calculateForAllScenarios`, `IMCDAService.rank`) accept an optional `auditCtx?: AuditCtx`. Add it when extending these contracts.
 - When instrumenting new pipeline code: emit `info` for stage start/end with summary outputs, `debug` for full request/response payloads and intermediate transformations, `warn` for fallbacks, `error` for API failures. Do not log auth headers or other secrets.
 
@@ -221,6 +221,7 @@ Structured trace consumed by the `renovation-result-validator` skill. Off by def
 - For non-trivial changes, define success criteria and a verification plan.
 - Test before and after changes when causality matters.
 - Write focused tests for changed API clients, critical hooks/components, and domain logic.
-- Use Vitest + React Testing Library; do not add heavy test frameworks.
+- Use Vitest + React Testing Library for unit/component tests; do not add other test frameworks.
+- Browser E2E journeys live in `tests/e2e/` (Playwright, `task test-e2e`): HRA and PRA specs drive the real UI against the Docker stack, with RSE coverage deferred until the planned UX refactor. Each run captures audit artifacts under `.work/e2e/artifacts/` for the `renovation-result-validator` skill. See `tests/e2e/README.md`.
 - Run lint and build before completion when feasible.
 - Keep `README.md` current for non-obvious operational or architecture changes.

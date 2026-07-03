@@ -22,7 +22,13 @@ npm run preview
 
 The three platform services (financial, forecasting, technical) are developed in separate repositories. For local builds that compile those images, clone them under `external-services/` (this path is gitignored). Use `task fetch-sources` (see [`Taskfile.yml`](./Taskfile.yml)) with the appropriate repo refs.
 
-When integrating or changing API clients, verify contracts against service source (local `external-services/` or the upstream GitHub repos), a running stack, and/or integration tests; see [`AGENTS.md`](./AGENTS.md) (section **Backend API contracts**).
+When integrating or changing API clients, verify contracts against service source (local `external-services/` or the upstream GitHub repos) and/or a running stack; see [`AGENTS.md`](./AGENTS.md) (section **Backend API contracts**).
+
+### Testing
+
+- `task test-unit` (`npm run test:unit`): Vitest unit and component tests, no backend required.
+- `task test-e2e` (`npm run test:e2e`): Playwright browser journeys for HRA and PRA against the Docker Compose stack. Each run captures audit-trace artifacts under `.work/e2e/artifacts/` for AI-assisted result validation via the `renovation-result-validator` skill. RSE E2E coverage is deferred until the planned UX refactor. See [`tests/e2e/README.md`](./tests/e2e/README.md).
+- `task test`: both of the above.
 
 ### Visitor analytics
 

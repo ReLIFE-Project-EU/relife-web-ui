@@ -4,5 +4,6 @@
     "types": ["vite/client", "vitest/globals", "node"],
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo"
   },
-  "include": ["src", "tests", "vitest.*.config.ts"]
+  "include": ["src", "tests", "vitest.*.config.ts"],
+  "exclude": ["tests/e2e"]
 }
