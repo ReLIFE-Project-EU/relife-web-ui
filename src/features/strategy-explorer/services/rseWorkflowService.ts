@@ -36,8 +36,11 @@ import { rseArchetypeKey, rseArchetypePackageKey } from "./rseKeys";
 type ArchetypePortfolioService = ReturnType<
   typeof createArchetypePortfolioService
 >;
-type ForecastingCacheService = ReturnType<
-  typeof createRSEForecastingCacheService
+// Only the members the workflow consumes, so test fakes and future
+// cache-service additions (e.g. selection-time coverage queries) stay decoupled.
+type ForecastingCacheService = Pick<
+  ReturnType<typeof createRSEForecastingCacheService>,
+  "resolveCacheMatrix" | "normalizeEntry"
 >;
 
 export interface RSEWorkflowServiceDependencies {

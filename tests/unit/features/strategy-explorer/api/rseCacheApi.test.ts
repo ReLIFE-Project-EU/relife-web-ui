@@ -180,6 +180,36 @@ describe("rseCacheApi", () => {
     } satisfies Partial<RSECacheApiError>);
   });
 
+  test("lists distinct cached archetypes, paginating past the PostgREST row cap", async () => {
+    // 1001 rows force a second page; only 3 distinct archetype names exist.
+    const entryRows = Array.from({ length: 1001 }, (_, index) => ({
+      ...cacheEntryRow,
+      package_id: index % 2 === 0 ? "envelope" : "combined",
+      archetype_name: `AT_SFH_198${index % 3}-1989`,
+    }));
+
+    const api = createRSECacheApi(
+      fakeClient({
+        rse_cache_versions: [cacheVersionRow],
+        rse_forecasting_cache_entries: entryRows,
+      }),
+    );
+
+    const refs = await api.listCachedArchetypeRefs();
+
+    expect(refs).toHaveLength(3);
+    expect(refs.map((ref) => ref.name).sort()).toEqual([
+      "AT_SFH_1980-1989",
+      "AT_SFH_1981-1989",
+      "AT_SFH_1982-1989",
+    ]);
+    expect(refs[0]).toEqual({
+      country: archetype.country,
+      category: archetype.category,
+      name: expect.stringMatching(/^AT_SFH_198\d-1989$/) as unknown as string,
+    });
+  });
+
   test("throws a feature-local error when no published cache exists", async () => {
     const api = createRSECacheApi(fakeClient({ rse_cache_versions: [] }));
 
@@ -203,6 +233,7 @@ function fakeClient(
 class FakeQuery implements PromiseLike<FakeResponse> {
   private filters: Array<(row: FakeRow) => boolean> = [];
   private rowLimit: number | undefined;
+  private rowRange: [number, number] | undefined;
   private readonly rows: FakeRow[];
 
   constructor(rows: FakeRow[]) {
@@ -210,6 +241,11 @@ class FakeQuery implements PromiseLike<FakeResponse> {
   }
 
   select(): this {
+    return this;
+  }
+
+  range(from: number, to: number): this {
+    this.rowRange = [from, to];
     return this;
   }
 
@@ -253,9 +289,13 @@ class FakeQuery implements PromiseLike<FakeResponse> {
   }
 
   private applyFilters(): FakeRow[] {
-    const rows = this.rows.filter((row) =>
+    let rows = this.rows.filter((row) =>
       this.filters.every((filter) => filter(row)),
     );
+
+    if (this.rowRange) {
+      rows = rows.slice(this.rowRange[0], this.rowRange[1] + 1);
+    }
 
     return typeof this.rowLimit === "number"
       ? rows.slice(0, this.rowLimit)

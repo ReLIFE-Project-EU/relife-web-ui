@@ -18,13 +18,18 @@ import {
 } from "../../../services/renovationEcmParams";
 import { extractCarrierSourceBreakdown } from "../../../services/carrierSavingsService";
 import type { UNI11300Results } from "../../../types/forecasting";
-import type { RSEForecastingCacheEntry, RSESimulationResult } from "../types";
+import type {
+  RSEArchetypeRef,
+  RSEForecastingCacheEntry,
+  RSESimulationResult,
+} from "../types";
 
 type RSECacheApiClient = {
   getPublishedVersion(): Promise<RSEPublishedCacheVersion>;
   listEntries(
     request: RSECacheMatrixRequest,
   ): Promise<RSEForecastingCacheEntry[]>;
+  listCachedArchetypeRefs(cacheVersion?: string): Promise<RSEArchetypeRef[]>;
 };
 
 const ENERGY_DELTA_EPSILON_KWH = 0.001;
@@ -68,6 +73,12 @@ export function createRSEForecastingCacheService(
         available: availability.available,
         missing: availability.missing,
       };
+    },
+
+    /** Distinct archetypes with at least one published cache entry, so the
+     *  selection UI can flag archetypes that cannot produce results yet. */
+    async listCachedArchetypes(): Promise<RSEArchetypeRef[]> {
+      return api.listCachedArchetypeRefs();
     },
 
     normalizeEntry(

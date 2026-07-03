@@ -43,6 +43,7 @@ import {
   useStrategyExplorer,
 } from "../hooks/useStrategyExplorer";
 import { archetypePortfolioService } from "../services/archetypePortfolioService";
+import { rseForecastingCacheService } from "../services/rseForecastingCacheService";
 import type { RSEArchetypeRef, RSEPortfolioDefinition } from "../types";
 import classes from "./StrategySteps.module.css";
 
@@ -61,6 +62,33 @@ export function PortfolioStep() {
     { id: 1, country: "", category: "", name: "", buildingCount: "" },
   ]);
   const [validationError, setValidationError] = useState<string | null>(null);
+  // Archetypes with at least one published cache entry. `null` while loading
+  // or when coverage could not be determined — annotation is advisory only;
+  // the post-run "excluded combinations" alert remains the safety net.
+  const [cachedArchetypeKeys, setCachedArchetypeKeys] =
+    useState<Set<string> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    rseForecastingCacheService
+      .listCachedArchetypes()
+      .then((refs) => {
+        if (!cancelled) {
+          setCachedArchetypeKeys(new Set(refs.map(archetypeKey)));
+        }
+      })
+      .catch((error: unknown) => {
+        console.warn(
+          "RSE cache coverage could not be loaded; archetype availability will only be reported after running the analysis.",
+          error,
+        );
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const countries = useMemo(() => {
     const set = new Set(availableArchetypes.map((a) => a.country));
@@ -94,10 +122,21 @@ export function PortfolioStep() {
   const getArchetypeOptions = (country: string, category: string) => {
     return availableArchetypes
       .filter((a) => a.country === country && a.category === category)
-      .map((archetype) => ({
-        value: archetype.name,
-        label: getArchetypeSelectionLabel(archetype, archetypeSelectionLabels),
-      }))
+      .map((archetype) => {
+        const label = getArchetypeSelectionLabel(
+          archetype,
+          archetypeSelectionLabels,
+        );
+        const uncached =
+          cachedArchetypeKeys !== null &&
+          !cachedArchetypeKeys.has(archetypeKey(archetype));
+
+        return {
+          value: archetype.name,
+          label: uncached ? `${label} — no published results yet` : label,
+          disabled: uncached,
+        };
+      })
       .sort((left, right) => left.label.localeCompare(right.label));
   };
 

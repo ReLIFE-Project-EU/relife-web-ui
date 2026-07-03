@@ -130,6 +130,7 @@ describe("rseForecastingCacheService", () => {
     const entry = makeEntry();
     const api = {
       getPublishedVersion: vi.fn(),
+      listCachedArchetypeRefs: vi.fn(),
       listEntries: vi.fn().mockResolvedValue([entry]),
     };
     const service = createRSEForecastingCacheService(api);
@@ -153,6 +154,7 @@ describe("rseForecastingCacheService", () => {
 
   test("resolves the published cache version once when omitted", async () => {
     const api = {
+      listCachedArchetypeRefs: vi.fn(),
       getPublishedVersion: vi.fn().mockResolvedValue({
         cacheVersion: "1.published",
         generatedAt,
@@ -180,6 +182,7 @@ describe("rseForecastingCacheService", () => {
     const entry = makeEntry({ packageId: "envelope" });
     const api = {
       getPublishedVersion: vi.fn(),
+      listCachedArchetypeRefs: vi.fn(),
       listEntries: vi.fn().mockResolvedValue([entry]),
     };
     const service = createRSEForecastingCacheService(api);

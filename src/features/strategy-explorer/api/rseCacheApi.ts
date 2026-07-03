@@ -204,6 +204,57 @@ export function createRSECacheApi(client: Pick<typeof supabase, "from">) {
         .map(toCacheEntry);
     },
 
+    /** List the distinct archetypes that have at least one cache entry in the
+     *  given (default: published) cache version, regardless of package.
+     *  Selects key columns only — no payload JSONB — and paginates past the
+     *  PostgREST row cap, so the selection UI can annotate uncached
+     *  archetypes cheaply. */
+    async listCachedArchetypeRefs(
+      cacheVersion?: string,
+    ): Promise<RSEArchetypeRef[]> {
+      const resolvedVersion =
+        cacheVersion ?? (await this.getPublishedVersion()).cacheVersion;
+
+      const refs = new Map<string, RSEArchetypeRef>();
+      const pageSize = 1000;
+      for (let offset = 0; ; offset += pageSize) {
+        const { data, error } = await client
+          .from("rse_forecasting_cache_entries")
+          .select("archetype_country, archetype_category, archetype_name")
+          .eq("cache_version", resolvedVersion)
+          .range(offset, offset + pageSize - 1);
+
+        if (error) {
+          throw new RSECacheApiError(
+            "Failed to load cached archetype coverage.",
+            "database",
+            { cause: error },
+          );
+        }
+
+        const rows = (data ?? []) as unknown as Array<
+          Pick<
+            RSEForecastingCacheEntryRow,
+            "archetype_country" | "archetype_category" | "archetype_name"
+          >
+        >;
+        for (const row of rows) {
+          const ref: RSEArchetypeRef = {
+            country: row.archetype_country,
+            category: row.archetype_category,
+            name: row.archetype_name,
+          };
+          refs.set([ref.country, ref.category, ref.name].join("\u001f"), ref);
+        }
+
+        if (rows.length < pageSize) {
+          break;
+        }
+      }
+
+      return Array.from(refs.values());
+    },
+
     /** Compare the requested matrix against what is actually stored in the cache
      *  so the caller can report missing (archetype, package) combinations
      *  before running aggregation or financial calculations. */

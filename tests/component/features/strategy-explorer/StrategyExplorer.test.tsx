@@ -86,6 +86,18 @@ vi.mock(
 );
 
 vi.mock(
+  "../../../../src/features/strategy-explorer/services/rseForecastingCacheService",
+  () => ({
+    rseForecastingCacheService: {
+      listCachedArchetypes: vi.fn().mockResolvedValue([
+        { country: "IT", category: "SFH", name: "ref-a" },
+        { country: "IT", category: "SFH", name: "ref-b" },
+      ]),
+    },
+  }),
+);
+
+vi.mock(
   "../../../../src/features/strategy-explorer/services/rseWorkflowService",
   () => ({
     runWorkflow: vi.fn().mockResolvedValue({
