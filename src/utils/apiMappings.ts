@@ -12,6 +12,8 @@
  * - [ ] Additional building types are added to UI
  */
 
+import { ARCHETYPE_CATEGORIES } from "../constants/archetypeCategories";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Property Type Mapping
 // ─────────────────────────────────────────────────────────────────────────────
@@ -33,10 +35,16 @@ export type APIPropertyType =
 /**
  * Maps archetype category labels to Financial API PropertyType enum.
  * These are the canonical values stored in BuildingInfo.buildingType.
+ * Derived from the canonical category module; the legacy "Apartment" entry
+ * covers values stored before it became an alias of "Apartment buildings".
  */
 export const PROPERTY_TYPE_TO_API: Record<string, APIPropertyType> = {
-  "Single Family House": "Detached House",
-  "Multi family House": "Apartment Complex",
+  ...Object.fromEntries(
+    ARCHETYPE_CATEGORIES.map((category) => [
+      category.backendLabel,
+      category.financialPropertyType,
+    ]),
+  ),
   Apartment: "Apartment",
 };
 
@@ -163,6 +171,12 @@ export function normalizeConstructionPeriod(
   const presentRangeMatch = normalized.match(/^(\d{4})-(present|now)$/);
   if (presentRangeMatch) {
     return `${presentRangeMatch[1]}-present`;
+  }
+
+  // Catalogue-native open start (e.g. "0-1945" from archetype names)
+  const zeroRangeMatch = normalized.match(/^0-(\d{4})$/);
+  if (zeroRangeMatch) {
+    return `pre-${zeroRangeMatch[1]}`;
   }
 
   const preMatch = normalized.match(/^pre[- ]?(\d{4})$/);

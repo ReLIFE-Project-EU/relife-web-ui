@@ -5,6 +5,8 @@
  * choices and the apartment-category predicate stay consistent across tools.
  */
 
+import { findCategoryDef } from "./archetypeCategories";
+
 /** Floor-position choices for apartment-like building categories. */
 export const APARTMENT_LOCATION_OPTIONS: { value: string; label: string }[] = [
   { value: "bottom", label: "Bottom floor" },
@@ -17,5 +19,5 @@ export const APARTMENT_LOCATION_OPTIONS: { value: string; label: string }[] = [
  * floor-position input). Null-safe so callers can pass an unresolved category.
  */
 export function isApartmentLikeCategory(category: string | null): boolean {
-  return category === "Multi family House" || category === "Apartment";
+  return category ? (findCategoryDef(category)?.apartmentLike ?? false) : false;
 }

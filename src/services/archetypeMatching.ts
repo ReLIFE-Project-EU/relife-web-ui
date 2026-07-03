@@ -28,19 +28,3 @@ export const ArchetypeMatchStrategy = {
 
 export type ArchetypeMatchStrategy =
   (typeof ArchetypeMatchStrategy)[keyof typeof ArchetypeMatchStrategy];
-
-/**
- * Extract the construction period from an archetype name, normalised to
- * the same form `normalizeConstructionPeriod` produces (e.g. "1946-1969").
- *
- * Archetype names in the Forecasting service catalogue carry their period
- * as a trailing `_YYYY_YYYY` suffix (e.g. `SFH_Greece_1946_1969`,
- * `ES_SFH_1946_1969`). Names without a recognisable suffix return undefined.
- */
-export function extractArchetypePeriod(
-  archetypeName: string,
-): string | undefined {
-  const match = archetypeName.match(/(\d{4})[_-](\d{4})(?!\d)/);
-  if (!match) return undefined;
-  return `${match[1]}-${match[2]}`;
-}

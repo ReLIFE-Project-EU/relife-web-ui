@@ -41,12 +41,14 @@ import {
   validateModifications,
 } from "../utils/archetypeModifier";
 import { countryNamesEqual, normalizeCountryName } from "../utils/countries";
-import { normalizeConstructionPeriod } from "../utils/apiMappings";
-import { auditLog, type AuditCtx } from "../utils/auditLogger";
 import {
-  ArchetypeMatchStrategy,
-  extractArchetypePeriod,
-} from "./archetypeMatching";
+  deriveConstructionPeriod,
+  deriveConstructionYear,
+  normalizeConstructionPeriod,
+} from "../utils/apiMappings";
+import { auditLog, type AuditCtx } from "../utils/auditLogger";
+import { ArchetypeMatchStrategy } from "./archetypeMatching";
+import { extractArchetypePeriod } from "../utils/archetypePeriod";
 
 interface ResolvedArchetype {
   archetype: ArchetypeInfo;
@@ -102,10 +104,35 @@ const BASE_FLEXIBILITY_INDEX = 50;
  * Countries grouped by similar climate characteristics
  */
 const CLIMATE_REGIONS: Record<string, string[]> = {
-  mediterranean: ["Greece", "Italy", "Spain", "Portugal"],
-  central: ["Germany", "Austria", "Netherlands", "Belgium", "France"],
-  northern: ["Finland", "Sweden", "Norway", "Denmark"],
-  eastern: ["Poland", "Czechia", "Hungary", "Romania"],
+  mediterranean: [
+    "Greece",
+    "Italy",
+    "Spain",
+    "Portugal",
+    "Croatia",
+    "Cyprus",
+    "Malta",
+  ],
+  central: [
+    "Germany",
+    "Austria",
+    "Netherlands",
+    "Belgium",
+    "France",
+    "Luxembourg",
+    "Ireland",
+    "Slovenia",
+  ],
+  northern: [
+    "Finland",
+    "Sweden",
+    "Norway",
+    "Denmark",
+    "Estonia",
+    "Latvia",
+    "Lithuania",
+  ],
+  eastern: ["Poland", "Czechia", "Hungary", "Romania", "Slovakia", "Bulgaria"],
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -136,11 +163,15 @@ function calculateComfortIndex(building: BuildingInfo): number {
     "1945-1970": -10,
     "pre-1945": -15,
   };
+  // Bucket archetype-vocabulary periods (e.g. "1946-1969") into the
+  // canonical keys the bonus map uses.
   const normalizedPeriod = normalizeConstructionPeriod(
     building.constructionPeriod,
   );
-  comfort +=
-    (normalizedPeriod ? periodBonus[normalizedPeriod] : undefined) || 0;
+  const bucketedPeriod = normalizedPeriod
+    ? deriveConstructionPeriod(deriveConstructionYear(normalizedPeriod))
+    : undefined;
+  comfort += (bucketedPeriod ? periodBonus[bucketedPeriod] : undefined) || 0;
 
   if (building.heatingTechnology.includes("heat-pump")) {
     comfort += 5;
@@ -178,8 +209,11 @@ function calculateFlexibilityIndex(building: BuildingInfo): number {
   const normalizedPeriod = normalizeConstructionPeriod(
     building.constructionPeriod,
   );
+  const bucketedPeriod = normalizedPeriod
+    ? deriveConstructionPeriod(deriveConstructionYear(normalizedPeriod))
+    : undefined;
   flexibility +=
-    (normalizedPeriod ? periodBonus[normalizedPeriod] : undefined) || 0;
+    (bucketedPeriod ? periodBonus[bucketedPeriod] : undefined) || 0;
 
   return Math.max(0, Math.min(100, flexibility));
 }

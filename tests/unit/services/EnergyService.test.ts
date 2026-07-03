@@ -359,6 +359,41 @@ describe("EnergyService", () => {
     );
   });
 
+  test("findMatchingArchetype selects the exact period among hyphenated-period archetypes", async () => {
+    mockListArchetypes.mockResolvedValue([
+      {
+        category: "Apartment buildings",
+        country: "Austria",
+        name: "AT_AB_0-1945",
+      },
+      {
+        category: "Apartment buildings",
+        country: "Austria",
+        name: "AT_AB_2011-now",
+      },
+    ]);
+
+    const austrianBuilding: BuildingInfo = {
+      ...unmodifiedBuilding,
+      country: "Austria",
+      buildingType: "Apartment buildings",
+      constructionPeriod: "2011-now",
+      selectedArchetype: undefined,
+    };
+
+    await service.estimateEPC(austrianBuilding);
+
+    // The 0-1945 archetype comes first, so getting 2011-now proves the match
+    // was period-aware (EXACT_FULL) rather than first-in-country fallback.
+    expect(mockSimulateDirect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        country: "Austria",
+        category: "Apartment buildings",
+        name: "AT_AB_2011-now",
+      }),
+    );
+  });
+
   test("findMatchingArchetype throws ArchetypeNotAvailableError when no match at all", async () => {
     const unmatchedBuilding: BuildingInfo = {
       ...unmodifiedBuilding,

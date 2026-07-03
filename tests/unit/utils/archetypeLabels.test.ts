@@ -12,6 +12,16 @@ describe("archetypeLabels", () => {
     test("expands known archetype category codes", () => {
       expect(formatArchetypeCategoryLabel("SFH")).toBe("Single-Family House");
       expect(formatArchetypeCategoryLabel("MFH")).toBe("Multi-Family House");
+      expect(formatArchetypeCategoryLabel("AB")).toBe("Apartment Building");
+    });
+
+    test("expands verbatim backend category labels", () => {
+      expect(formatArchetypeCategoryLabel("Multi family House")).toBe(
+        "Multi-Family House",
+      );
+      expect(formatArchetypeCategoryLabel("Apartment buildings")).toBe(
+        "Apartment Building",
+      );
     });
 
     test("keeps unknown categories unchanged", () => {
@@ -36,6 +46,18 @@ describe("archetypeLabels", () => {
       expect(
         formatArchetypeSelectionLabel("Czech Republic", "SFH_0_1945"),
       ).toBe("Czechia · Single-Family House · Pre-1945");
+    });
+
+    test("renders hyphenated-period names from the expanded catalogue", () => {
+      expect(formatArchetypeSelectionLabel("Austria", "AT_SFH_0-1945")).toBe(
+        "Austria · Single-Family House · Pre-1945",
+      );
+      expect(formatArchetypeSelectionLabel("Austria", "AT_MFH_1980-1989")).toBe(
+        "Austria · Multi-Family House · 1980–1989",
+      );
+      expect(formatArchetypeSelectionLabel("Austria", "AT_AB_2011-now")).toBe(
+        "Austria · Apartment Building · 2011–Present",
+      );
     });
   });
 

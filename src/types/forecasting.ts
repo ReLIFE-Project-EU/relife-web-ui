@@ -9,9 +9,9 @@
  * Archetype metadata from GET /building/available
  */
 export interface ArchetypeInfo {
-  category: string; // "Single Family House", "Multi family House", "office"
+  category: string; // "Single Family House", "Multi family House", "Apartment buildings"
   country: string; // "Italy", "Greece", etc.
-  name: string; // Specific archetype identifier
+  name: string; // Specific archetype identifier, e.g. "AT_SFH_0-1945"
 }
 
 // ============================================================================

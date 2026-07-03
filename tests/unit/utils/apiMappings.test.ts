@@ -18,6 +18,7 @@ describe("apiMappings", () => {
     test.each([
       ["Single Family House", "Detached House"],
       ["Multi family House", "Apartment Complex"],
+      ["Apartment buildings", "Apartment Complex"],
       ["Apartment", "Apartment"],
     ] as const)("maps archetype category %s → API %s", (ui, expected) => {
       expect(toAPIPropertyType(ui)).toBe(expected);
@@ -130,6 +131,8 @@ describe("apiMappings", () => {
       [" 1946 - 1969 ", "1946-1969"],
       ["Pre-1945", "pre-1945"],
       ["post 2010", "post-2010"],
+      ["0-1945", "pre-1945"],
+      ["2011-now", "2011-present"],
     ] as const)("normalizes %s → %s", (input, expected) => {
       expect(normalizeConstructionPeriod(input)).toBe(expected);
     });

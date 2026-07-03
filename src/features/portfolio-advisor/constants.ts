@@ -3,6 +3,11 @@
  */
 
 import type { OutputLevel } from "../../utils/apiMappings";
+import {
+  ARCHETYPE_CATEGORIES,
+  findCategoryDef,
+  type ArchetypeBackendCategory,
+} from "../../constants/archetypeCategories";
 
 export const PRA_OUTPUT_LEVEL: OutputLevel = "professional";
 export const PRA_CONCURRENCY_LIMIT = 2;
@@ -61,38 +66,26 @@ export const CSV_REQUIRED_COLUMNS = [
 ] as const;
 
 /**
- * Archetype categories accepted in CSV uploads.
- *
- * These values are the canonical labels used by the Financial API's archetype
- * catalog and must be passed through unchanged. The mixed casing
- * (`"Multi family House"` with lowercase `f`, `"Single Family House"` with
- * uppercase `F`) reflects the upstream values — do not normalize.
+ * Archetype categories accepted in CSV uploads: the verbatim Forecasting
+ * catalogue labels from the canonical category module. Legacy values such as
+ * "Apartment" are accepted and resolved to their canonical form.
  */
-export const CSV_VALID_CATEGORIES = [
-  "Single Family House",
-  "Multi family House",
-  "Apartment",
-] as const;
-
-export type ArchetypeCategory = (typeof CSV_VALID_CATEGORIES)[number];
-
-const CATEGORY_LOOKUP = new Map<string, ArchetypeCategory>(
-  CSV_VALID_CATEGORIES.map((c) => [normalizeCategoryKey(c), c]),
+export const CSV_VALID_CATEGORIES = ARCHETYPE_CATEGORIES.map(
+  (category) => category.backendLabel,
 );
 
-function normalizeCategoryKey(input: string): string {
-  return input.toLowerCase().replace(/\s+/g, " ").trim();
-}
+export type ArchetypeCategory = ArchetypeBackendCategory;
 
 /**
  * Resolve a user-supplied category string to its canonical form.
- * Tolerates case differences and irregular whitespace. Returns `undefined`
- * if the input does not match any accepted category.
+ * Tolerates case differences, irregular whitespace, short codes, and legacy
+ * aliases. Returns `undefined` if the input does not match any accepted
+ * category.
  */
 export function normalizeArchetypeCategory(
   input: string,
 ): ArchetypeCategory | undefined {
-  return CATEGORY_LOOKUP.get(normalizeCategoryKey(input));
+  return findCategoryDef(input)?.backendLabel;
 }
 
 export const CSV_OPTIONAL_COLUMNS = [

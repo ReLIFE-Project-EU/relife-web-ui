@@ -2,3 +2,4 @@ building_name,lat,lng,category,country,floor_area,construction_period,number_of_
 Athens Riverside Apartments,37.9838,23.7275,Multi family House,Greece,4200,1971-1990,8,,4,680000,18500,wall-insulation;roof-insulation;windows
 Rome Historic Townhouse,41.9028,12.4964,Single Family House,Italy,260,pre-1945,3,,1,92000,3400,wall-insulation;floor-insulation;windows;condensing-boiler
 Thessaloniki Seafront Residences,40.6401,22.9444,Multi family House,Greece,3150,1991-2000,7,,3,510000,16000,windows;air-water-heat-pump;solar-thermal
+Vienna Modern Apartment Block,48.2082,16.3738,Apartment buildings,Austria,5100,2011-now,9,,5,720000,21000,windows;air-water-heat-pump

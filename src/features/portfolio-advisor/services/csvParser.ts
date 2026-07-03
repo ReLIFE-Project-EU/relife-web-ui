@@ -169,7 +169,8 @@ export function parseCSV(text: string): CSVParseResult {
       const normalized = normalizeConstructionPeriod(raw);
       if (
         normalized &&
-        (VALID_PERIODS.has(normalized) || /^\d{4}-\d{4}$/.test(normalized))
+        (VALID_PERIODS.has(normalized) ||
+          /^\d{4}-(\d{4}|present)$/.test(normalized))
       ) {
         constructionPeriod = normalized;
       } else {
@@ -179,7 +180,7 @@ export function parseCSV(text: string): CSVParseResult {
           constructionPeriod = deriveConstructionPeriod(asYear);
         } else {
           rowErrors.push(
-            `Row ${rowNum}: construction_period must be one of: ${CONSTRUCTION_PERIODS.join(", ")} (or a year between 1800–2030).`,
+            `Row ${rowNum}: construction_period must be one of: ${CONSTRUCTION_PERIODS.join(", ")}, a year range such as 1946-1969 or 2011-now, or a year between 1800–2030.`,
           );
         }
       }

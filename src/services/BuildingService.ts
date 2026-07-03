@@ -11,10 +11,8 @@ import type {
   BuildingSurface,
   SystemPayload,
 } from "../types/archetype";
-import {
-  calculateDistance,
-  extractConstructionPeriod,
-} from "../utils/archetypeModifier";
+import { calculateDistance } from "../utils/archetypeModifier";
+import { extractArchetypePeriod } from "../utils/archetypePeriod";
 import {
   compareConstructionPeriods,
   constructionPeriodsEqual,
@@ -59,7 +57,7 @@ export class BuildingService implements IBuildingService {
   private collectPeriods(archetypes: ArchetypeInfo[]): string[] {
     const periods = new Set<string>();
     archetypes.forEach((archetype) => {
-      const period = extractConstructionPeriod(archetype.name);
+      const period = extractArchetypePeriod(archetype.name);
       if (period) {
         periods.add(period);
       }
@@ -153,7 +151,7 @@ export class BuildingService implements IBuildingService {
     // Extract unique construction periods
     const periodSet = new Set<string>();
     archetypes.forEach((a) => {
-      const period = extractConstructionPeriod(a.name);
+      const period = extractArchetypePeriod(a.name);
       if (period) periodSet.add(period);
     });
     const constructionPeriods = Array.from(periodSet)
@@ -235,7 +233,7 @@ export class BuildingService implements IBuildingService {
     let periodScore = 0.0;
     const normalizedUserPeriod = normalizeConstructionPeriod(userPeriod);
     if (normalizedUserPeriod) {
-      const archetypePeriod = extractConstructionPeriod(archetype.name);
+      const archetypePeriod = extractArchetypePeriod(archetype.name);
       if (archetypePeriod) {
         if (constructionPeriodsEqual(archetypePeriod, normalizedUserPeriod)) {
           periodScore = 1.0;
@@ -509,7 +507,7 @@ export class BuildingService implements IBuildingService {
         return {
           periods: localPeriods,
           recommendedPeriod: localRecommendation
-            ? extractConstructionPeriod(localRecommendation.name)
+            ? extractArchetypePeriod(localRecommendation.name)
             : (localPeriods[0] ?? null),
           detectedCountry: normalizedCountry,
           sourceCountry: normalizedCountry,
@@ -528,7 +526,7 @@ export class BuildingService implements IBuildingService {
         return {
           periods: fallbackPeriods,
           recommendedPeriod: fallbackRecommendation
-            ? extractConstructionPeriod(fallbackRecommendation.name)
+            ? extractArchetypePeriod(fallbackRecommendation.name)
             : (fallbackPeriods[0] ?? null),
           detectedCountry: normalizedCountry,
           sourceCountry: fallbackRecommendation
@@ -551,7 +549,7 @@ export class BuildingService implements IBuildingService {
     return {
       periods,
       recommendedPeriod: fallbackRecommendation
-        ? extractConstructionPeriod(fallbackRecommendation.name)
+        ? extractArchetypePeriod(fallbackRecommendation.name)
         : (periods[0] ?? null),
       detectedCountry: normalizedCountry,
       sourceCountry: fallbackRecommendation
@@ -580,7 +578,7 @@ export class BuildingService implements IBuildingService {
 
     if (normalizedPeriod) {
       archetypes = archetypes.filter((a) => {
-        const archetypePeriod = extractConstructionPeriod(a.name);
+        const archetypePeriod = extractArchetypePeriod(a.name);
         return constructionPeriodsEqual(archetypePeriod, normalizedPeriod);
       });
     }

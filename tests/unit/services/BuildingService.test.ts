@@ -380,4 +380,68 @@ describe("BuildingService", () => {
     expect(categories).toContain("MFH");
     expect(categories).toContain("SFH");
   });
+
+  test("getOptions derives periods from a mixed legacy + hyphenated catalogue", async () => {
+    mockListArchetypes.mockResolvedValue([
+      {
+        category: "Single Family House",
+        country: "Austria",
+        name: "SFH_0_1945",
+      },
+      {
+        category: "Single Family House",
+        country: "Austria",
+        name: "AT_SFH_0-1945",
+      },
+      {
+        category: "Multi family House",
+        country: "Austria",
+        name: "AT_MFH_1980-1989",
+      },
+      {
+        category: "Apartment buildings",
+        country: "Austria",
+        name: "AT_AB_2011-now",
+      },
+    ]);
+
+    const options = await service.getOptions();
+
+    expect(options.constructionPeriods.map((p) => p.value)).toEqual([
+      "pre-1945",
+      "1980-1989",
+      "2011-present",
+    ]);
+    expect(options.buildingTypes.map((t) => t.value)).toEqual([
+      "Apartment buildings",
+      "Multi family House",
+      "Single Family House",
+    ]);
+  });
+
+  test("findMatchingArchetype returns excellent quality for hyphenated-period names", async () => {
+    mockListArchetypes.mockResolvedValue([
+      {
+        category: "Apartment buildings",
+        country: "Austria",
+        name: "AT_AB_1980-1989",
+      },
+      {
+        category: "Apartment buildings",
+        country: "Austria",
+        name: "AT_AB_2011-now",
+      },
+    ]);
+
+    const result = await service.findMatchingArchetype(
+      "Apartment buildings",
+      "1980-1989",
+      { lat: 48.21, lng: 16.37 },
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.archetype.name).toBe("AT_AB_1980-1989");
+    expect(result!.matchQuality).toBe("excellent");
+    expect(result!.periodRelaxed).toBe(false);
+  });
 });

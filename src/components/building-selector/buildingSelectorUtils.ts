@@ -5,7 +5,7 @@ import type {
 import type { ArchetypeInfo } from "../../types/forecasting";
 import type { ArchetypeMatchResult } from "../../services/types";
 import { isApartmentLikeCategory } from "../../constants/buildingFormOptions";
-import { extractConstructionPeriod } from "../../utils/archetypeModifier";
+import { extractArchetypePeriod } from "../../utils/archetypePeriod";
 import {
   getCountryDisplayName,
   normalizeCountryName,
@@ -27,7 +27,7 @@ export function getArchetypeKey(archetype: {
 }
 
 export function getArchetypePeriod(archetype: Pick<ArchetypeInfo, "name">) {
-  return extractConstructionPeriod(archetype.name) ?? "";
+  return extractArchetypePeriod(archetype.name) ?? "";
 }
 
 export function getDisplayCountry(country: string | null | undefined): string {

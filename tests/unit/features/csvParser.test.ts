@@ -52,6 +52,30 @@ B,48.8,2.3,Single Family House,France,120,1971-1990,2,wall-insulation; windows ;
     ]);
   });
 
+  test("accepts catalogue-native construction periods", () => {
+    const csv = `building_name,lat,lng,category,country,floor_area,construction_period,number_of_floors
+A,48.2,16.4,Single Family House,Austria,120,0-1945,2
+B,48.2,16.4,Apartment buildings,Austria,4200,2011-now,8`;
+
+    const result = parseCSV(csv);
+
+    expect(result.errors).toEqual([]);
+    expect(result.buildings).toHaveLength(2);
+    expect(result.buildings[0].constructionPeriod).toBe("pre-1945");
+    expect(result.buildings[1].constructionPeriod).toBe("2011-present");
+  });
+
+  test("resolves the legacy Apartment category to Apartment buildings", () => {
+    const csv = `building_name,lat,lng,category,country,floor_area,construction_period,number_of_floors
+B,48.8,2.3,Apartment,France,120,1971-1990,2`;
+
+    const result = parseCSV(csv);
+
+    expect(result.errors).toEqual([]);
+    expect(result.buildings[0].category).toBe("Apartment buildings");
+    expect(result.buildings[0].propertyType).toBe("Apartment buildings");
+  });
+
   test("rejects invalid category values", () => {
     const csv = `building_name,lat,lng,category,country,floor_area,construction_period,number_of_floors
 B,48.8,2.3,Unknown,France,120,1971-1990,2`;

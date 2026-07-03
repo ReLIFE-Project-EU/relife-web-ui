@@ -5,24 +5,31 @@ import {
   getCountryFlag,
 } from "./countries";
 import { compareConstructionPeriods } from "./apiMappings";
-import { extractConstructionPeriod } from "./archetypeModifier";
+import { extractArchetypePeriod } from "./archetypePeriod";
+import {
+  ARCHETYPE_CATEGORIES,
+  findCategoryDef,
+} from "../constants/archetypeCategories";
 
 /**
  * Human-readable archetype label formatting.
  *
  * Backend archetype names use multiple conventions:
- *   New:  {CC}_{TYPE}_{PERIOD}    e.g. "GR_SFH_1946_1969", "IT_MFH_1980_1989"
+ *   New:  {CC}_{TYPE}_{PERIOD}    e.g. "AT_SFH_0-1945", "AT_AB_2011-now",
+ *                                      "GR_SFH_1946_1969"
  *   Old:  {TYPE}_{COUNTRY}_{PERIOD} e.g. "SFH_Greece_1946_1969"
  *   Legacy: {TYPE}_{PERIOD}          e.g. "SFH_0_1945" (Austria, no country token)
  */
 
-const TYPE_CODES: Record<string, string> = {
-  SFH: "Single-Family House",
-  MFH: "Multi-Family House",
-};
+const TYPE_CODES: Record<string, string> = Object.fromEntries(
+  ARCHETYPE_CATEGORIES.map((category) => [
+    category.code,
+    category.displayLabel,
+  ]),
+);
 
 export function formatArchetypeCategoryLabel(category: string): string {
-  return TYPE_CODES[category] ?? category;
+  return findCategoryDef(category)?.displayLabel ?? category;
 }
 
 export function countryNameToCode(name: string): string | undefined {
@@ -34,30 +41,20 @@ export function countryFlag(isoCode: string): string {
   return getCountryFlag(isoCode) ?? "";
 }
 
-function formatPeriod(parts: string[]): string {
-  if (parts.length === 0) return "";
-  // "0_1945" → "Pre-1945"
-  if (parts.length === 2 && parts[0] === "0" && /^\d{4}$/.test(parts[1])) {
-    return `Pre-${parts[1]}`;
+function formatPeriodLabel(name: string, fallbackParts: string[]): string {
+  const period = extractArchetypePeriod(name);
+  if (period) {
+    // "pre-1945" → "Pre-1945"
+    const pre = period.match(/^pre-(\d{4})$/);
+    if (pre) return `Pre-${pre[1]}`;
+    // "2011-present" → "2011–Present"
+    const present = period.match(/^(\d{4})-present$/);
+    if (present) return `${present[1]}–Present`;
+    // "1946-1969" → "1946–1969"
+    return period.replace("-", "–");
   }
-  // "1946_1969" → "1946–1969"
-  if (
-    parts.length === 2 &&
-    /^\d{4}$/.test(parts[0]) &&
-    /^\d{4}$/.test(parts[1])
-  ) {
-    return `${parts[0]}–${parts[1]}`;
-  }
-  // "2011_now" → "2011–Present"
-  if (
-    parts.length === 2 &&
-    /^\d{4}$/.test(parts[0]) &&
-    parts[1].toLowerCase() === "now"
-  ) {
-    return `${parts[0]}–Present`;
-  }
-  const raw = parts.join(" ");
-  return raw.charAt(0).toUpperCase() + raw.slice(1);
+  const raw = fallbackParts.join(" ");
+  return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : "";
 }
 
 /**
@@ -79,7 +76,7 @@ export function formatArchetypeName(name: string): string {
   if (countryByCode && parts.length >= 2 && TYPE_CODES[parts[1]]) {
     const country = countryByCode;
     const type = TYPE_CODES[parts[1]];
-    const period = formatPeriod(parts.slice(2));
+    const period = formatPeriodLabel(name, parts.slice(2));
     return [country, type, ...(period ? [period] : [])].join(" · ");
   }
 
@@ -90,11 +87,11 @@ export function formatArchetypeName(name: string): string {
     // If second token is a country name (starts with uppercase letter, not a digit)
     if (/^[A-Z]/.test(second) && !/^\d/.test(second)) {
       const country = getCountryDisplayName(second) ?? second;
-      const period = formatPeriod(parts.slice(2));
+      const period = formatPeriodLabel(name, parts.slice(2));
       return [country, type, ...(period ? [period] : [])].join(" · ");
     }
     // Legacy: {TYPE}_{PERIOD} (no country token)
-    const period = formatPeriod(parts.slice(1));
+    const period = formatPeriodLabel(name, parts.slice(1));
     return [type, ...(period ? [period] : [])].join(" · ");
   }
 
@@ -174,8 +171,8 @@ export function compareArchetypesForSelection(
   }
 
   const periodComparison = compareConstructionPeriods(
-    extractConstructionPeriod(left.name),
-    extractConstructionPeriod(right.name),
+    extractArchetypePeriod(left.name),
+    extractArchetypePeriod(right.name),
   );
   if (periodComparison !== 0) {
     return periodComparison;

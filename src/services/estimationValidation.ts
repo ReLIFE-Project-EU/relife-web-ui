@@ -8,10 +8,8 @@
  * single touchpoint for that review.
  */
 
-import {
-  ArchetypeMatchStrategy,
-  extractArchetypePeriod,
-} from "./archetypeMatching";
+import { ArchetypeMatchStrategy } from "./archetypeMatching";
+import { extractArchetypePeriod } from "../utils/archetypePeriod";
 import type { BuildingInfo, EstimationResult } from "../types/renovation";
 
 export type EstimationConfidence = "ok" | "low-confidence" | "unusable";
@@ -106,7 +104,7 @@ export function validateEstimation(
   const strategy =
     archetype?.matchStrategy ?? ArchetypeMatchStrategy.USER_SELECTED;
   const chosenPeriod = archetype
-    ? extractArchetypePeriod(archetype.name)
+    ? (extractArchetypePeriod(archetype.name) ?? undefined)
     : undefined;
   const userArea = building.floorArea ?? 0;
   const archetypeArea = estimation.archetypeFloorArea || 0;
