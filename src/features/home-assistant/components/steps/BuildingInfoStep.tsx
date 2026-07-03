@@ -226,6 +226,7 @@ export function BuildingInfoStep() {
             service={building}
             host="hra"
             adjustmentScope="limited"
+            flatUnitMode
             initialValue={selectorInitialValue}
             onSelectionChange={handleBuildingSelectionChange}
           />

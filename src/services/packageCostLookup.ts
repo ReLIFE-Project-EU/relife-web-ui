@@ -12,7 +12,10 @@
  */
 
 import { buildRenovationActions } from "./renovationActions";
-import { surfaceAreasFromBui } from "../utils/archetypeModifier";
+import {
+  applyFloorAreaModification,
+  surfaceAreasFromBui,
+} from "../utils/archetypeModifier";
 import { getCountryDisplayName } from "../utils/countries";
 import type {
   EstimatePackageCostsResult,
@@ -34,6 +37,13 @@ export interface PackageCostLookupParams {
   floorArea: number | null;
   /** Optional evaluation horizon (years). */
   projectLifetime?: number;
+  /**
+   * Scale the archetype's envelope surfaces proportionally to `floorArea`
+   * before pricing. Used when the modeled property is a share of the
+   * reference building (HRA apartments), so envelope measure costs match
+   * the linearly scaled energy savings instead of whole-building geometry.
+   */
+  scaleEnvelopeToFloorArea?: boolean;
 }
 
 export interface PackageCostLookupDeps {
@@ -111,10 +121,21 @@ export async function lookupPackageCosts(
     name: params.archetype.name,
   });
 
+  const scaledFloorArea =
+    params.scaleEnvelopeToFloorArea &&
+    typeof params.floorArea === "number" &&
+    params.floorArea > 0 &&
+    params.floorArea !== details.floorArea
+      ? params.floorArea
+      : null;
+
   return lookupPackageCostsFromDetails(
     {
       country,
-      bui: details.bui,
+      bui:
+        scaledFloorArea !== null
+          ? applyFloorAreaModification(details.bui, scaledFloorArea)
+          : details.bui,
       floorArea: params.floorArea ?? details.floorArea,
       measureIds: params.measureIds,
       projectLifetime: params.projectLifetime,

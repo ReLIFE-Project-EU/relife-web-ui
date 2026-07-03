@@ -10,6 +10,7 @@
 
 import { ArchetypeMatchStrategy } from "./archetypeMatching";
 import { extractArchetypePeriod } from "../utils/archetypePeriod";
+import { isApartmentLikeCategory } from "../constants/buildingFormOptions";
 import type { BuildingInfo, EstimationResult } from "../types/renovation";
 
 export type EstimationConfidence = "ok" | "low-confidence" | "unusable";
@@ -35,6 +36,7 @@ export interface EstimationDiagnostic {
 
 const MAX_OK_SCALE_FACTOR = 5.0;
 const MAX_LOW_CONFIDENCE_SCALE_FACTOR = 10.0;
+const MIN_APARTMENT_FLOOR_AREA = 10;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Per-strategy rules
@@ -126,25 +128,44 @@ export function validateEstimation(
     });
   }
 
-  if (archetypeArea > 0 && userArea > 0) {
-    const tooHigh = areaScaleFactor > MAX_LOW_CONFIDENCE_SCALE_FACTOR;
-    const tooLow = areaScaleFactor < 1 / MAX_LOW_CONFIDENCE_SCALE_FACTOR;
-    const outsideOk =
-      areaScaleFactor > MAX_OK_SCALE_FACTOR ||
-      areaScaleFactor < 1 / MAX_OK_SCALE_FACTOR;
+  // For apartment-like buildings a stated area SMALLER than the reference
+  // building means "my flat's share of the building" — the intended linear
+  // scaling mechanism, not an archetype mismatch. Scaling UP (a building
+  // larger than the reference) keeps the regular confidence penalties.
+  const flatShare =
+    isApartmentLikeCategory(building.buildingType) &&
+    userArea > 0 &&
+    userArea <= archetypeArea;
 
-    if (tooHigh || tooLow) {
-      level = "unusable";
-      reasons.push({
-        code: "scale",
-        message: `Area scale factor ${areaScaleFactor.toFixed(2)}× exceeds the unusable bound (${MAX_LOW_CONFIDENCE_SCALE_FACTOR}×). Linear scaling from the archetype distorts results too far.`,
-      });
-    } else if (outsideOk) {
-      if (level === "ok") level = "low-confidence";
-      reasons.push({
-        code: "scale",
-        message: `Area scale factor ${areaScaleFactor.toFixed(2)}× is outside the comfortable range (±${MAX_OK_SCALE_FACTOR}×). Results may be less representative.`,
-      });
+  if (archetypeArea > 0 && userArea > 0) {
+    if (flatShare) {
+      if (userArea < MIN_APARTMENT_FLOOR_AREA) {
+        level = "unusable";
+        reasons.push({
+          code: "scale",
+          message: `The stated apartment floor area (${Math.round(userArea)} m²) is below the minimum of ${MIN_APARTMENT_FLOOR_AREA} m².`,
+        });
+      }
+    } else {
+      const tooHigh = areaScaleFactor > MAX_LOW_CONFIDENCE_SCALE_FACTOR;
+      const tooLow = areaScaleFactor < 1 / MAX_LOW_CONFIDENCE_SCALE_FACTOR;
+      const outsideOk =
+        areaScaleFactor > MAX_OK_SCALE_FACTOR ||
+        areaScaleFactor < 1 / MAX_OK_SCALE_FACTOR;
+
+      if (tooHigh || tooLow) {
+        level = "unusable";
+        reasons.push({
+          code: "scale",
+          message: `Area scale factor ${areaScaleFactor.toFixed(2)}× exceeds the unusable bound (${MAX_LOW_CONFIDENCE_SCALE_FACTOR}×). Linear scaling from the archetype distorts results too far.`,
+        });
+      } else if (outsideOk) {
+        if (level === "ok") level = "low-confidence";
+        reasons.push({
+          code: "scale",
+          message: `Area scale factor ${areaScaleFactor.toFixed(2)}× is outside the comfortable range (±${MAX_OK_SCALE_FACTOR}×). Results may be less representative.`,
+        });
+      }
     }
   }
 

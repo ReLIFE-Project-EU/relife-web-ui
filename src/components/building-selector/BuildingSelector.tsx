@@ -22,7 +22,7 @@ import { AdjustmentPanel } from "./AdjustmentPanel";
 import { BrowseMode } from "./BrowseMode";
 import { MapMode } from "./MapMode";
 import { buildMatchFallbackText } from "./matchMessages";
-import { SELECTOR_COPY } from "./selectorConfig";
+import { SELECTOR_COPY, formatNumber } from "./selectorConfig";
 import { useArchetypeCatalog } from "./useArchetypeCatalog";
 import {
   buildDraftFromDetails,
@@ -31,6 +31,7 @@ import {
   getArchetypeKey,
   getArchetypePeriod,
   getDisplayCountry,
+  isFlatUnitSelection,
 } from "./buildingSelectorUtils";
 import type {
   BuildingSelectorAdjustmentScope,
@@ -94,6 +95,10 @@ interface BuildingSelectorProps {
   service: BuildingSelectorService;
   host: BuildingSelectorHost;
   adjustmentScope: BuildingSelectorAdjustmentScope;
+  /** Model apartment-like selections as a single flat inside the reference
+   *  building: the floor-area input describes the user's apartment and the
+   *  results are its share of the whole-building simulation. */
+  flatUnitMode?: boolean;
   compact?: boolean;
   initialValue?: BuildingSelectorInitialValue;
   onSelectionChange: (selection: BuildingSelectorSelection | null) => void;
@@ -104,6 +109,7 @@ export function BuildingSelector({
   service,
   host,
   adjustmentScope,
+  flatUnitMode = false,
   compact = false,
   initialValue,
   onSelectionChange,
@@ -166,7 +172,10 @@ export function BuildingSelector({
   const [appliedModifications, setAppliedModifications] = useState<
     BuildingModifications | undefined
   >(undefined);
-  const [adjustmentsOpen, { toggle: toggleAdjustments }] = useDisclosure(false);
+  const [
+    adjustmentsOpen,
+    { toggle: toggleAdjustments, open: openAdjustments },
+  ] = useDisclosure(false);
   const periodRequestIdRef = useRef(0);
   const matchRequestIdRef = useRef(0);
   const lastInitialValueSignatureRef = useRef<string | null>(null);
@@ -228,8 +237,9 @@ export function BuildingSelector({
       nextMatchResult?: ArchetypeMatchResult;
     }) => {
       const modifications =
-        buildModifications(params.details, params.nextDraft, adjustmentScope) ??
-        undefined;
+        buildModifications(params.details, params.nextDraft, adjustmentScope, {
+          flatUnit: flatUnitMode,
+        }) ?? undefined;
       setAppliedModifications(modifications);
       onSelectionChange(
         buildSelection({
@@ -241,10 +251,16 @@ export function BuildingSelector({
           constructionPeriod: params.constructionPeriod,
           coords: params.coords,
           matchResult: params.nextMatchResult,
+          flatUnit: flatUnitMode,
         }),
       );
+      // Surface the flat defaults (apartment area + level) right away so the
+      // user sees and can correct what will be modeled.
+      if (isFlatUnitSelection(flatUnitMode, params.details)) {
+        openAdjustments();
+      }
     },
-    [adjustmentScope, onSelectionChange],
+    [adjustmentScope, flatUnitMode, onSelectionChange, openAdjustments],
   );
 
   useEffect(() => {
@@ -283,6 +299,7 @@ export function BuildingSelector({
           details,
           initialValue.modifications,
           initialValue.apartmentLocation,
+          { flatUnit: flatUnitMode },
         );
         if (typeof initialValue.floorArea === "number") {
           nextDraft.floorArea = initialValue.floorArea;
@@ -316,6 +333,7 @@ export function BuildingSelector({
   }, [
     cacheDetails,
     clearSelection,
+    flatUnitMode,
     initialValue,
     initialValueSignature,
     service,
@@ -425,7 +443,9 @@ export function BuildingSelector({
         if (requestId !== matchRequestIdRef.current) return;
 
         const key = getArchetypeKey(details);
-        const nextDraft = buildDraftFromDetails(details);
+        const nextDraft = buildDraftFromDetails(details, undefined, undefined, {
+          flatUnit: flatUnitMode,
+        });
         cacheDetails(details);
         setSelectedDetails(details);
         setSelectedKey(key);
@@ -459,6 +479,7 @@ export function BuildingSelector({
     clearSelection,
     debouncedLat,
     debouncedLng,
+    flatUnitMode,
     mapCategory,
     mapPeriod,
     mode,
@@ -480,7 +501,9 @@ export function BuildingSelector({
       setBrowseError(null);
       try {
         const details = await ensureDetails(archetype);
-        const nextDraft = buildDraftFromDetails(details);
+        const nextDraft = buildDraftFromDetails(details, undefined, undefined, {
+          flatUnit: flatUnitMode,
+        });
         const period = getArchetypePeriod(details);
         setSelectedDetails(details);
         setSelectedKey(key);
@@ -502,7 +525,13 @@ export function BuildingSelector({
         setBrowseSelectingKey(null);
       }
     },
-    [clearSelection, ensureDetails, publishSelection, selectedKey],
+    [
+      clearSelection,
+      ensureDetails,
+      flatUnitMode,
+      publishSelection,
+      selectedKey,
+    ],
   );
 
   const handleMapLocationChange = useCallback(
@@ -534,7 +563,9 @@ export function BuildingSelector({
   const applyAdjustments = useCallback(() => {
     if (!selectedDetails || !draft) return;
     const validation = validateModifications(
-      buildModifications(selectedDetails, draft, adjustmentScope) ?? {},
+      buildModifications(selectedDetails, draft, adjustmentScope, {
+        flatUnit: flatUnitMode,
+      }) ?? {},
       selectedDetails,
     );
     if (!validation.isValid) return;
@@ -567,6 +598,7 @@ export function BuildingSelector({
   }, [
     adjustmentScope,
     draft,
+    flatUnitMode,
     mapLat,
     mapLng,
     mapPeriod,
@@ -576,19 +608,44 @@ export function BuildingSelector({
     selectedDetails,
   ]);
 
+  const flatUnit = selectedDetails
+    ? isFlatUnitSelection(flatUnitMode, selectedDetails)
+    : false;
   const activeModifications =
     selectedDetails && draft
-      ? buildModifications(selectedDetails, draft, adjustmentScope)
+      ? buildModifications(selectedDetails, draft, adjustmentScope, {
+          flatUnit: flatUnitMode,
+        })
       : undefined;
   const hasUnsavedChanges = !modificationsEqual(
     activeModifications,
     appliedModifications,
   );
-  const validationResult = selectedDetails
+  const modificationValidation = selectedDetails
     ? validateModifications(activeModifications ?? {}, selectedDetails)
     : { isValid: true, errors: [] };
+  // A flat cannot be larger than the reference building it sits in.
+  const flatAreaErrors =
+    flatUnit &&
+    selectedDetails &&
+    draft &&
+    typeof draft.floorArea === "number" &&
+    draft.floorArea > selectedDetails.floorArea
+      ? [
+          {
+            field: "floorArea",
+            message: `Apartment floor area cannot exceed the reference building (${formatNumber(selectedDetails.floorArea)} m2).`,
+          },
+        ]
+      : [];
+  const validationResult = {
+    isValid: modificationValidation.isValid && flatAreaErrors.length === 0,
+    errors: [...modificationValidation.errors, ...flatAreaErrors],
+  };
+  // In flat mode a small area vs. the whole building is expected, not a
+  // mismatch worth warning about.
   const areaWarning =
-    selectedDetails && draft && typeof draft.floorArea === "number"
+    !flatUnit && selectedDetails && draft && typeof draft.floorArea === "number"
       ? checkAreaArchetypeMismatch(draft.floorArea, selectedDetails.floorArea)
       : { warning: false, message: "" };
   const matchFallbackText = buildMatchFallbackText(
@@ -697,6 +754,7 @@ export function BuildingSelector({
           <AdjustmentPanel
             copy={copy}
             scope={adjustmentScope}
+            flatUnit={flatUnit}
             details={selectedDetails}
             draft={draft}
             mode={mode}

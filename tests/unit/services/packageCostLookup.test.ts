@@ -97,6 +97,40 @@ describe("lookupPackageCosts", () => {
     expect(estimatePackageCosts).toHaveBeenCalled();
   });
 
+  test("scales envelope surfaces to the flat's share when requested", async () => {
+    // Flat share = 100 / 2000: wall actions must be priced for 40 m2, not 800.
+    const flatShareDetails = {
+      bui: {
+        building: { net_floor_area: 2000, exposed_perimeter: 100 },
+        building_surface: [
+          { name: "wall_s", type: "opaque", area: 800, sky_view_factor: 0.5 },
+        ],
+      },
+      floorArea: 2000,
+    } as unknown as Awaited<
+      ReturnType<IBuildingService["getArchetypeDetails"]>
+    >;
+    const { deps, estimatePackageCosts } = makeDeps({
+      getArchetypeDetails: vi.fn().mockResolvedValue(flatShareDetails),
+    });
+
+    await lookupPackageCosts(
+      {
+        country: "Greece",
+        archetype,
+        measureIds: ["wall-insulation"],
+        floorArea: 100,
+        scaleEnvelopeToFloorArea: true,
+      },
+      deps,
+    );
+
+    const request = estimatePackageCosts.mock.calls[0][0] as {
+      renovationActions: Array<{ action: string; area_m2?: number }>;
+    };
+    expect(request.renovationActions[0].area_m2).toBeCloseTo(40, 6);
+  });
+
   test("throws when the country cannot be resolved", async () => {
     const { deps, getArchetypeDetails } = makeDeps();
 

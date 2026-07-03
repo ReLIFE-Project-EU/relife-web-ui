@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { lookupPackageCosts } from "../../../services/packageCostLookup";
+import { isApartmentLikeCategory } from "../../../constants/buildingFormOptions";
 import { useHomeAssistant } from "./useHomeAssistant";
 import { useHomeAssistantServices } from "./useHomeAssistantServices";
 
@@ -40,6 +41,9 @@ export function usePackageCostEstimation(): PackageCostEstimation {
   const buildingCountry = state.building.country;
   const buildingFloorArea = state.building.floorArea;
   const buildingProjectLifetime = state.building.projectLifetime;
+  // Apartment-like homes are modeled as a share of the reference building,
+  // so envelope measure costs must be scaled to the flat as well.
+  const isFlatShare = isApartmentLikeCategory(state.building.buildingType);
   const archetype = state.estimation?.archetype;
 
   const clearError = useCallback((packageId: string) => {
@@ -70,6 +74,7 @@ export function usePackageCostEstimation(): PackageCostEstimation {
             measureIds: pkg.measureIds,
             floorArea: buildingFloorArea,
             projectLifetime: buildingProjectLifetime,
+            scaleEnvelopeToFloorArea: isFlatShare,
           },
           { building, financial },
         );
@@ -106,6 +111,7 @@ export function usePackageCostEstimation(): PackageCostEstimation {
       buildingCountry,
       buildingFloorArea,
       buildingProjectLifetime,
+      isFlatShare,
       archetype,
     ],
   );

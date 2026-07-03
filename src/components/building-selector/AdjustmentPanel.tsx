@@ -25,6 +25,7 @@ import type {
 } from "../../types/archetype";
 import { APARTMENT_LOCATION_OPTIONS } from "../../constants/buildingFormOptions";
 import {
+  FLAT_LIMITED_FIELDS,
   FULL_FIELD_GROUPS,
   LIMITED_FIELDS,
   formatNumber,
@@ -56,6 +57,8 @@ interface AreaWarning {
 interface AdjustmentPanelProps {
   copy: SelectorCopy;
   scope: BuildingSelectorAdjustmentScope;
+  /** Model a single flat inside the reference building (HRA apartments). */
+  flatUnit: boolean;
   details: ArchetypeDetails;
   draft: BuildingSelectorDraft;
   mode: BuildingSelectorMode;
@@ -73,6 +76,7 @@ interface AdjustmentPanelProps {
 export function AdjustmentPanel({
   copy,
   scope,
+  flatUnit,
   details,
   draft,
   mode,
@@ -88,8 +92,21 @@ export function AdjustmentPanel({
 }: AdjustmentPanelProps) {
   const fieldGroups =
     scope === "limited"
-      ? [{ title: "Geometry", fields: LIMITED_FIELDS }]
+      ? [
+          {
+            title: "Geometry",
+            fields: flatUnit ? FLAT_LIMITED_FIELDS : LIMITED_FIELDS,
+          },
+        ]
       : FULL_FIELD_GROUPS;
+
+  const footerText = flatUnit
+    ? "We estimate your apartment's share of the building's simulated energy use, based on its floor area. Apartment level sets the floor number used in property valuation; it does not change the energy estimate."
+    : scope === "limited"
+      ? "Geometry changes affect the simulation."
+      : isApartmentSelection(details)
+        ? "Only changed values override the selected reference building. Apartment level sets the floor number used in property valuation; energy is simulated for the whole building."
+        : "Only changed values override the selected reference building.";
 
   return (
     <Paper withBorder radius="md" p="md" bg="gray.0">
@@ -163,10 +180,13 @@ export function AdjustmentPanel({
                 onChange={(value) =>
                   onDraftChange({
                     apartmentLocation:
-                      (value as ApartmentLocation | null) ?? null,
+                      (value as ApartmentLocation | null) ??
+                      (flatUnit ? draft.apartmentLocation : null),
                   })
                 }
-                clearable
+                clearable={!flatUnit}
+                withAsterisk={flatUnit}
+                allowDeselect={!flatUnit}
                 size="xs"
               />
             )}
@@ -190,9 +210,7 @@ export function AdjustmentPanel({
 
             <Group justify="space-between" align="center">
               <Text size="xs" c="dimmed">
-                {scope === "limited"
-                  ? "Geometry changes affect the simulation. Apartment level is property context only."
-                  : "Only changed values override the selected reference building."}
+                {footerText}
               </Text>
               <Button
                 size="xs"

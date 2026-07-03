@@ -102,6 +102,34 @@ describe("validateEstimation", () => {
     expect(diagnostic.reasons[0].code).toBe("period-gap");
   });
 
+  test("apartment flat share: a 28× downscale is ok, not an archetype mismatch", () => {
+    // 80 m² flat inside a 2249 m² apartment-building archetype (IE_AB case).
+    const diagnostic = validateEstimation(
+      makeEstimation(ArchetypeMatchStrategy.EXACT_FULL, 2249),
+      makeBuilding({ buildingType: "Apartment buildings", floorArea: 80 }),
+    );
+    expect(diagnostic.level).toBe("ok");
+    expect(diagnostic.reasons).toHaveLength(0);
+  });
+
+  test("apartment flat share below the minimum area is unusable", () => {
+    const diagnostic = validateEstimation(
+      makeEstimation(ArchetypeMatchStrategy.EXACT_FULL, 2249),
+      makeBuilding({ buildingType: "Apartment buildings", floorArea: 5 }),
+    );
+    expect(diagnostic.level).toBe("unusable");
+    expect(diagnostic.reasons[0].code).toBe("scale");
+  });
+
+  test("non-apartment downscale keeps the regular scale penalty", () => {
+    const diagnostic = validateEstimation(
+      makeEstimation(ArchetypeMatchStrategy.EXACT_FULL, 2249),
+      makeBuilding({ buildingType: "Single Family House", floorArea: 80 }),
+    );
+    expect(diagnostic.level).toBe("unusable");
+    expect(diagnostic.reasons[0].code).toBe("scale");
+  });
+
   test("scale factor 6× alone is low-confidence", () => {
     const diagnostic = validateEstimation(
       makeEstimation(ArchetypeMatchStrategy.EXACT_FULL, 100),

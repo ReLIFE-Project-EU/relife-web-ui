@@ -5,6 +5,7 @@ import type {
 import type { ArchetypeInfo } from "../../types/forecasting";
 import type { ArchetypeMatchResult } from "../../services/types";
 import { isApartmentLikeCategory } from "../../constants/buildingFormOptions";
+import { DEFAULT_FLAT_FLOOR_AREA } from "./selectorConfig";
 import { extractArchetypePeriod } from "../../utils/archetypePeriod";
 import {
   getCountryDisplayName,
@@ -54,16 +55,31 @@ export function mapApartmentLocationToFloorNumber(
   return Math.max(0, floors - 1);
 }
 
+/** Whether a selection should be modeled as a single flat inside the
+ *  reference building rather than the whole building. */
+export function isFlatUnitSelection(
+  flatUnitMode: boolean | undefined,
+  details: Pick<ArchetypeDetails, "category">,
+): boolean {
+  return Boolean(flatUnitMode) && isApartmentLikeCategory(details.category);
+}
+
 export function buildDraftFromDetails(
   details: ArchetypeDetails,
   modifications?: BuildingModifications,
   apartmentLocation?: ApartmentLocation,
+  options?: { flatUnit?: boolean },
 ): BuildingSelectorDraft {
+  const flatUnit = isFlatUnitSelection(options?.flatUnit, details);
+  const floorArea = flatUnit
+    ? Math.min(DEFAULT_FLAT_FLOOR_AREA, details.floorArea)
+    : (modifications?.floorArea ?? details.floorArea);
+
   return {
-    floorArea: modifications?.floorArea ?? details.floorArea,
+    floorArea,
     numberOfFloors: modifications?.numberOfFloors ?? details.numberOfFloors,
     floorHeight: modifications?.floorHeight ?? details.floorHeight,
-    apartmentLocation: apartmentLocation ?? null,
+    apartmentLocation: apartmentLocation ?? (flatUnit ? "middle" : null),
     wallUValue:
       modifications?.wallUValue ?? details.thermalProperties.wallUValue,
     roofUValue:
@@ -90,10 +106,17 @@ export function buildModifications(
   details: ArchetypeDetails,
   draft: BuildingSelectorDraft,
   scope: "limited" | "full",
+  options?: { flatUnit?: boolean },
 ): BuildingModifications | undefined {
   const modifications: BuildingModifications = {};
 
-  const floorArea = changedNumber(draft.floorArea, details.floorArea);
+  // In flat-unit mode the draft floor area describes the user's apartment,
+  // not a change to the reference building: it must flow through
+  // BuildingInfo.floorArea (linear share-of-building scaling) without
+  // triggering the modified custom-BUI simulation path.
+  const floorArea = isFlatUnitSelection(options?.flatUnit, details)
+    ? null
+    : changedNumber(draft.floorArea, details.floorArea);
   const numberOfFloors =
     typeof draft.numberOfFloors === "number" &&
     draft.numberOfFloors !== details.numberOfFloors
@@ -153,11 +176,13 @@ export function buildSelection(params: {
   constructionPeriod: string;
   coords: { lat: number; lng: number };
   matchResult?: ArchetypeMatchResult;
+  flatUnit?: boolean;
 }): BuildingSelectorSelection {
   const modifications = buildModifications(
     params.details,
     params.draft,
     params.scope,
+    { flatUnit: params.flatUnit },
   );
   const floorArea =
     typeof params.draft.floorArea === "number"
