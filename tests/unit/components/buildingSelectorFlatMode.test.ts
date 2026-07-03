@@ -4,6 +4,7 @@ import {
   buildDraftFromDetails,
   buildModifications,
   buildSelection,
+  mapApartmentLocationToFloorNumber,
 } from "../../../src/components/building-selector/buildingSelectorUtils";
 import { DEFAULT_FLAT_FLOOR_AREA } from "../../../src/components/building-selector/selectorConfig";
 import type { ArchetypeDetails } from "../../../src/types/archetype";
@@ -91,7 +92,13 @@ describe("building selector flat-unit mode", () => {
     expect(selection.floorArea).toBe(DEFAULT_FLAT_FLOOR_AREA);
     expect(selection.modifications).toBeUndefined();
     expect(selection.apartmentLocation).toBe("middle");
-    // middle of 4.6 floors -> floor(4.6 / 2) = 2
+    // middle of rounded 5-floor catalogue geometry -> floor(5 / 2) = 2
     expect(selection.floorNumber).toBe(2);
+  });
+
+  test("maps apartment levels from whole rounded floor counts", () => {
+    expect(mapApartmentLocationToFloorNumber("bottom", 5.4)).toBe(0);
+    expect(mapApartmentLocationToFloorNumber("middle", 5.4)).toBe(2);
+    expect(mapApartmentLocationToFloorNumber("top", 5.4)).toBe(4);
   });
 });

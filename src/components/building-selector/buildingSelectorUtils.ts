@@ -8,6 +8,12 @@ import { isApartmentLikeCategory } from "../../constants/buildingFormOptions";
 import { DEFAULT_FLAT_FLOOR_AREA } from "./selectorConfig";
 import { extractArchetypePeriod } from "../../utils/archetypePeriod";
 import {
+  clampFloorNumberForFloorCount,
+  getTopFloorNumberForFloorCount,
+  MIN_FLOOR_NUMBER,
+  toNearestWholeFloorCount,
+} from "../../utils/buildingFloorNumbers";
+import {
   getCountryDisplayName,
   normalizeCountryName,
 } from "../../utils/countries";
@@ -50,9 +56,16 @@ export function mapApartmentLocationToFloorNumber(
   location: ApartmentLocation,
   floors: number,
 ): number {
-  if (location === "bottom") return 0;
-  if (location === "middle") return Math.max(0, Math.floor(floors / 2));
-  return Math.max(0, floors - 1);
+  const floorCount = toNearestWholeFloorCount(floors);
+
+  if (location === "bottom") return MIN_FLOOR_NUMBER;
+  if (location === "middle") {
+    return clampFloorNumberForFloorCount(
+      Math.floor(floorCount / 2),
+      floorCount,
+    );
+  }
+  return getTopFloorNumberForFloorCount(floorCount);
 }
 
 /** Whether a selection should be modeled as a single flat inside the

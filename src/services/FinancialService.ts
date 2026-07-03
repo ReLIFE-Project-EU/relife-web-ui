@@ -12,6 +12,7 @@
 import { financial } from "../api";
 import type {
   ARVResult,
+  ArvUnavailableReason,
   BuildingInfo,
   FinancialResults,
   ScenarioId,
@@ -44,6 +45,7 @@ import {
   FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
 } from "./carrierSavingsService";
 import { resolveEpcRatingIntensity } from "./energyUtils";
+import { normalizeArvFloorFields } from "../utils/buildingFloorNumbers";
 
 /**
  * The CAPEX/OPEX lookup lives inside the risk-assessment endpoint, which still
@@ -53,6 +55,27 @@ import { resolveEpcRatingIntensity } from "./energyUtils";
  */
 const ESTIMATION_PLACEHOLDER_ANNUAL_ENERGY_SAVINGS_KWH = 1;
 const ESTIMATION_DEFAULT_PROJECT_LIFETIME_YEARS = 20;
+const DEFAULT_COORDINATE = 0;
+const HTTP_BAD_REQUEST_STATUS = 400;
+const HTTP_UNPROCESSABLE_ENTITY_STATUS = 422;
+const ARV_UNKNOWN_TARGET_COUNTRY_PATTERN = /unknown target_country/i;
+
+type ArvRequestBase = Pick<
+  ARVRequest,
+  | "lat"
+  | "lng"
+  | "floor_area"
+  | "construction_year"
+  | "floor_number"
+  | "number_of_floors"
+  | "property_type"
+  | "target_country"
+>;
+
+interface ArvAttemptResult {
+  result: ARVResult | null;
+  unavailableReason?: ArvUnavailableReason;
+}
 
 function resolveConstructionYear(building: BuildingInfo): number {
   return (
@@ -87,6 +110,53 @@ function resolveFinancialAssumptions(
     gasTariffEurPerKwh:
       partial?.gasTariffEurPerKwh ?? ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
   };
+}
+
+function buildArvRequestBase(
+  building: BuildingInfo,
+  floorArea: number,
+): ArvRequestBase {
+  return {
+    lat: building.lat ?? DEFAULT_COORDINATE,
+    lng: building.lng ?? DEFAULT_COORDINATE,
+    floor_area: floorArea,
+    construction_year: resolveConstructionYear(building),
+    ...normalizeArvFloorFields({
+      numberOfFloors: building.numberOfFloors,
+      floorNumber: building.floorNumber,
+    }),
+    property_type: toAPIPropertyType(building.buildingType),
+    target_country: building.country,
+  };
+}
+
+function stringifyArvError(error: APIError): string {
+  return [
+    error.statusText,
+    error.message,
+    error.validationErrors ? JSON.stringify(error.validationErrors) : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function classifyArvUnavailableReason(error: unknown): ArvUnavailableReason {
+  if (error instanceof APIError) {
+    const errorText = stringifyArvError(error);
+
+    if (
+      error.status === HTTP_BAD_REQUEST_STATUS &&
+      ARV_UNKNOWN_TARGET_COUNTRY_PATTERN.test(errorText)
+    ) {
+      return "unsupported-country";
+    }
+
+    if (error.status === HTTP_UNPROCESSABLE_ENTITY_STATUS) {
+      return "invalid-request";
+    }
+  }
+
+  return "api-error";
 }
 
 export class FinancialService implements IFinancialService {
@@ -139,21 +209,23 @@ export class FinancialService implements IFinancialService {
   private async tryCalculateARV(
     request: ARVRequest,
     auditCtx?: AuditCtx,
-  ): Promise<ARVResult | null> {
+  ): Promise<ArvAttemptResult> {
     try {
-      return await this.calculateARV(request);
+      return { result: await this.calculateARV(request) };
     } catch (error) {
+      const unavailableReason = classifyArvUnavailableReason(error);
       auditLog.warn(
         "financial",
         "financial.arv.skipped",
         {
           targetCountry: request.target_country,
-          reason: error instanceof APIError ? `api-${error.status}` : "error",
+          reason: unavailableReason,
+          apiStatus: error instanceof APIError ? error.status : undefined,
           message: error instanceof Error ? error.message : String(error),
         },
         auditCtx,
       );
-      return null;
+      return { result: null, unavailableReason };
     }
   }
 
@@ -327,14 +399,7 @@ export class FinancialService implements IFinancialService {
       if (scenario.id === "current") {
         // Current scenario: no renovation, just current ARV
         const arvRequest: ARVRequest = {
-          lat: resolvedBuilding.lat ?? 0,
-          lng: resolvedBuilding.lng ?? 0,
-          floor_area: resolvedFloorArea,
-          construction_year: resolveConstructionYear(resolvedBuilding),
-          number_of_floors: resolvedBuilding.numberOfFloors ?? 1,
-          floor_number: resolvedBuilding.floorNumber,
-          property_type: toAPIPropertyType(resolvedBuilding.buildingType),
-          target_country: resolvedBuilding.country,
+          ...buildArvRequestBase(resolvedBuilding, resolvedFloorArea),
           energy_consumption_after: baselineEnergyIntensity,
           renovated_last_5_years: false, // Current state, not recently renovated
         };
@@ -344,10 +409,14 @@ export class FinancialService implements IFinancialService {
           { request: arvRequest as unknown as Record<string, unknown> },
           auditCtx,
         );
-        const arvResult = await this.tryCalculateARV(arvRequest, auditCtx);
+        const arvAttempt = await this.tryCalculateARV(arvRequest, auditCtx);
+        const arvResult = arvAttempt.result;
 
         results[scenario.id] = {
           arv: arvResult,
+          ...(arvAttempt.unavailableReason
+            ? { arvUnavailableReason: arvAttempt.unavailableReason }
+            : {}),
           riskAssessment: null,
           capitalExpenditure: 0,
           annualMaintenanceCost: 0,
@@ -403,14 +472,7 @@ export class FinancialService implements IFinancialService {
 
       // ARV Request for renovated scenario
       const arvRequest: ARVRequest = {
-        lat: resolvedBuilding.lat ?? 0,
-        lng: resolvedBuilding.lng ?? 0,
-        floor_area: resolvedFloorArea,
-        construction_year: resolveConstructionYear(resolvedBuilding),
-        number_of_floors: resolvedBuilding.numberOfFloors ?? 1,
-        floor_number: resolvedBuilding.floorNumber,
-        property_type: toAPIPropertyType(resolvedBuilding.buildingType),
-        target_country: resolvedBuilding.country,
+        ...buildArvRequestBase(resolvedBuilding, resolvedFloorArea),
         energy_consumption_before: baselineEnergyIntensity,
         energy_consumption_after: resolveArvEnergyIntensity(
           {
@@ -513,13 +575,17 @@ export class FinancialService implements IFinancialService {
       }
 
       // Call APIs in parallel (risk assessment only when savings > 0)
-      const [arvResult, riskResult] = await Promise.all([
+      const [arvAttempt, riskResult] = await Promise.all([
         this.tryCalculateARV(arvRequest, auditCtx),
         hasSavings ? this.assessRisk(riskRequest) : Promise.resolve(null),
       ]);
+      const arvResult = arvAttempt.result;
 
       const scenarioResults: FinancialResults = {
         arv: arvResult,
+        ...(arvAttempt.unavailableReason
+          ? { arvUnavailableReason: arvAttempt.unavailableReason }
+          : {}),
         riskAssessment: riskResult,
         capitalExpenditure: riskResult
           ? Math.round(riskResult.metadata.capex)

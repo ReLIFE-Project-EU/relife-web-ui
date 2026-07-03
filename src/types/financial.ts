@@ -242,10 +242,10 @@ export interface ARVRequest {
   /** Year the building was originally constructed (1800-2030). */
   construction_year: number;
 
-  /** Floor number where property is located (0=ground). Can be null for houses. */
+  /** Integer floor number where property is located (0=ground). Can be null for houses. */
   floor_number?: number | null;
 
-  /** Total number of floors in the building (1-100). */
+  /** Integer total number of floors in the building (1-100). */
   number_of_floors: number;
 
   /** Type of property. */

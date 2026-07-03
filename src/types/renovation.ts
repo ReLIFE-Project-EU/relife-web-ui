@@ -393,9 +393,15 @@ export interface RiskAssessmentPercentiles {
 /**
  * Complete financial results combining ARV and Risk Assessment
  */
+export type ArvUnavailableReason =
+  | "unsupported-country"
+  | "invalid-request"
+  | "api-error";
+
 export interface FinancialResults {
   // From POST /arv
   arv: ARVResult | null;
+  arvUnavailableReason?: ArvUnavailableReason;
 
   // From POST /risk-assessment with output_level: "private"
   riskAssessment: {

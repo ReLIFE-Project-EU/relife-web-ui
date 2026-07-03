@@ -322,8 +322,8 @@ export interface ARVRequest {
   lng: number; // -180 to 180
   floor_area: number; // m², > 0
   construction_year: number; // 1800-2030
-  floor_number?: number | null; // Optional, for apartments (0 = ground floor)
-  number_of_floors: number; // 1-100
+  floor_number?: number | null; // Optional integer, for apartments (0 = ground floor)
+  number_of_floors: number; // Integer 1-100
   property_type: APIPropertyType; // API enum value
   target_country: string; // National EPC scale to apply
   energy_consumption_before?: number | null; // kWh/m²/year before renovation

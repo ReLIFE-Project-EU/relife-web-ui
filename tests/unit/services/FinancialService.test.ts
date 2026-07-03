@@ -251,6 +251,39 @@ describe("FinancialService", () => {
     );
   });
 
+  test("ARV request normalizes fractional catalogue floors to integer fields", async () => {
+    const service = new FinancialService();
+    const apartmentBuilding = {
+      ...mockBuilding,
+      buildingType: "Apartment buildings",
+      numberOfFloors: 5.4,
+      floorNumber: 4.4,
+    };
+
+    await service.calculateForAllScenarios({
+      scenarios: [currentScenario, renovatedScenario],
+      fundingOptions: selfFundedOptions,
+      floorArea: 80,
+      packageFinancialInputs,
+      building: apartmentBuilding,
+    });
+
+    expect(mockCalculateARV).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        number_of_floors: 5,
+        floor_number: 4,
+      }),
+    );
+    expect(mockCalculateARV).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        number_of_floors: 5,
+        floor_number: 4,
+      }),
+    );
+  });
+
   test("ARV request derives construction_year from constructionPeriod when constructionYear is null", async () => {
     const service = new FinancialService();
     const buildingWithoutYear = {
@@ -576,8 +609,12 @@ describe("FinancialService", () => {
 
     // ARV is absent for every scenario, but the run resolved.
     expect(results["current"].arv).toBeNull();
+    expect(results["current"].arvUnavailableReason).toBe("unsupported-country");
     expect(results["current"].afterRenovationValue).toBeNull();
     expect(results["renovated"].arv).toBeNull();
+    expect(results["renovated"].arvUnavailableReason).toBe(
+      "unsupported-country",
+    );
     expect(results["renovated"].afterRenovationValue).toBeNull();
 
     // Risk-derived metrics are still computed from the (working) risk endpoint.
