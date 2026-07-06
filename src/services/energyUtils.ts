@@ -292,3 +292,51 @@ export function calculateAnnualTotals(hourlyData: HourlyBuildingRecord[]): {
     Q_HC_total: totalsInWh.Q_HC_total / WH_TO_KWH,
   };
 }
+
+/**
+ * Operative-temperature comfort band (°C).
+ *
+ * Follows the EN 16798-1 Category II range commonly used for existing
+ * residential buildings (heating-season floor ~20 °C, cooling-season ceiling
+ * ~26 °C). A single symmetric band is used across the year rather than
+ * season-dependent bounds, so the metric is a coarse but honest comfort signal.
+ */
+export const COMFORT_BAND_MIN_C = 20;
+export const COMFORT_BAND_MAX_C = 26;
+const COMFORT_BAND_EPSILON_C = 1e-6;
+
+/**
+ * Share of simulated hours (0–100) whose operative temperature falls inside the
+ * comfort band, computed from the hourly `T_op` series the building simulation
+ * returns. Higher is more comfortable.
+ *
+ * Returns `undefined` when no hour carries a usable `T_op` value, so callers can
+ * fall back rather than report a misleading 0. Only hours with a finite `T_op`
+ * count toward the denominator.
+ */
+export function computeComfortBandIndex(
+  hourlyData: HourlyBuildingRecord[],
+): number | undefined {
+  let inBand = 0;
+  let total = 0;
+
+  for (const record of hourlyData) {
+    const tOp = record.T_op;
+    if (typeof tOp !== "number" || !Number.isFinite(tOp)) {
+      continue;
+    }
+    total += 1;
+    if (
+      tOp >= COMFORT_BAND_MIN_C - COMFORT_BAND_EPSILON_C &&
+      tOp <= COMFORT_BAND_MAX_C + COMFORT_BAND_EPSILON_C
+    ) {
+      inBand += 1;
+    }
+  }
+
+  if (total === 0) {
+    return undefined;
+  }
+
+  return (inBand / total) * 100;
+}

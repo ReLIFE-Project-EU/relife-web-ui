@@ -19,6 +19,7 @@ import type {
 import {
   DEFAULT_FLOOR_AREA,
   calculateAnnualTotals,
+  computeComfortBandIndex,
   extractUniTotals,
   getEPCClass,
   resolveEpcRatingIntensity,
@@ -71,6 +72,11 @@ const FORECASTING_SCENARIO_CONCURRENCY_LIMIT = 2;
  */
 interface EcmScenarioEnergy {
   scaledHvac: number;
+  /**
+   * Share of simulated hours (0–100) with operative temperature in the comfort
+   * band. Undefined when the simulation returned no usable T_op series.
+   */
+  comfortBandIndex?: number;
   deliveredTotal?: number;
   carrierBreakdown?: DeliveredEnergyCarrierBreakdown;
   primaryEnergy?: number;
@@ -380,10 +386,10 @@ export class RenovationService implements IRenovationService {
         measures: renovationPackage.measureIds.map(
           (measureId) => this.getMeasure(measureId)?.name ?? measureId,
         ),
-        comfortIndex: Math.min(
-          100,
-          estimation.comfortIndex + renovationPackage.measureIds.length * 2,
-        ),
+        // Comfort from the simulated hourly operative temperature (share of
+        // hours in the comfort band); falls back to the estimation scorecard
+        // only when the simulation returned no usable T_op series.
+        comfortIndex: energy.comfortBandIndex ?? estimation.comfortIndex,
         flexibilityIndex: estimation.flexibilityIndex,
       },
       energy,
@@ -468,7 +474,9 @@ export class RenovationService implements IRenovationService {
         label: "Current Status",
         measureIds: [],
         measures: [],
-        comfortIndex: estimation.comfortIndex,
+        // Same simulated comfort-band basis as the renovated scenarios, so the
+        // baseline and packages are compared on a like-for-like metric.
+        comfortIndex: energy.comfortBandIndex ?? estimation.comfortIndex,
         flexibilityIndex: estimation.flexibilityIndex,
       },
       energy,
@@ -545,6 +553,7 @@ export class RenovationService implements IRenovationService {
       ecmScenario.results.hourly_building,
     );
     const annualTotals = calculateAnnualTotals(hourlyRecords);
+    const comfortBandIndex = computeComfortBandIndex(hourlyRecords);
     const areaScaleFactor = userArea / archetypeFloorArea;
     const scaledHvac = annualTotals.Q_HC_total * areaScaleFactor;
 
@@ -648,6 +657,7 @@ export class RenovationService implements IRenovationService {
 
     return {
       scaledHvac,
+      comfortBandIndex,
       deliveredTotal,
       carrierBreakdown,
       primaryEnergy,
