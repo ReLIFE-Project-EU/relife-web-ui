@@ -68,7 +68,7 @@ sequenceDiagram
     participant FIN as Financial API
     participant TECH as Technical API
 
-    UI->>HRA: Submit building inputs
+    UI->>HRA: Show my energy profile
     HRA->>FCAST: listArchetypes / getArchetypeDetails
     FCAST-->>HRA: Archetype metadata for matching
     alt Modified archetype
@@ -82,15 +82,21 @@ sequenceDiagram
       HRA->>FCAST: simulateDirect(archetype=true)
       FCAST-->>HRA: Baseline simulation results
     end
+    HRA-->>UI: EPC profile and energy mix
 
-    UI->>HRA: Evaluate selected measures
+    opt Package selected with empty CAPEX or OPEX
+      HRA->>FIN: estimatePackageCosts via assessRisk metadata
+      FIN-->>HRA: CAPEX and maintenance defaults
+    end
+
+    UI->>HRA: Compare renovation options
     HRA->>FCAST: simulateECM(selected analyzable measures)
     FCAST-->>HRA: Current + renovated scenarios
     HRA->>FIN: calculateARV and assessRisk per scenario
     FIN-->>HRA: ARV and risk indicators
     HRA-->>UI: Render scenarios and financial outputs
 
-    UI->>HRA: Run persona ranking
+    UI->>HRA: Auto-rank on results step
     HRA->>TECH: runTopsis(persona + scenario KPIs)
     TECH-->>HRA: Ranked scenarios with closeness scores
     HRA->>HRA: Technical integration is partial - TOPSIS only, some KPIs are placeholders
@@ -134,14 +140,9 @@ flowchart LR
     style Output fill:#d1ecf1
 ```
 
-**Implementation status**
+#### Summary
 
-- Real Forecasting + Financial integrations are wired through `src/services/BuildingService.ts`, `src/services/EnergyService.ts`, `src/services/RenovationService.ts`, and `src/services/FinancialService.ts`.
-- Technical ranking is partially live: `src/features/home-assistant/context/ServiceContext.tsx` wires `src/services/TechnicalMCDAService.ts`, and `src/features/home-assistant/components/steps/ResultsStep.tsx` auto-ranks scenarios from the results step.
-- The Technical integration is still partial because only `POST /technical/mcda/topsis` is used; KPI assembly in `src/services/TechnicalMCDAService.ts` sends placeholder values for several non-envelope criteria while the live mapping is still being expanded.
-- Renovation simulation is partial: `src/services/RenovationService.ts` can send envelope, generation-change, and PV parameters to `forecasting.simulateECM(...)`, but the current package workflow is still limited to the analyzable measure set declared in that service.
-- This means energy and financial outputs are backend-backed, and the technical ranking is backend-assisted but still incomplete in KPI coverage.
-- The flow diagram above shows the current implementation; compare with the [design flow](docs/hra-tool-design.md#sequential-flow) to identify deviations.
+Energy and financial results come from the live Forecasting and Financial services. Package ranking uses the Technical service, but not all ranking criteria are fully populated yet. Compare with the [design flow](docs/hra-tool-design.md#sequential-flow).
 
 #### Current HRA Energy-Savings Semantic
 
@@ -170,10 +171,15 @@ sequenceDiagram
       FCAST-->>PRA: Baseline estimation
       PRA->>FCAST: evaluateScenarios
       FCAST-->>PRA: Scenario simulation results
+      opt CAPEX or OPEX missing
+        PRA->>FIN: lookupPackageCosts via assessRisk metadata
+        FIN-->>PRA: Cost defaults
+      end
       PRA->>FIN: calculateARV + assessRisk
       FIN-->>PRA: Financial outputs per scenario
       PRA-->>UI: Progress callback and per-building result
     end
+    PRA->>PRA: financingScheme passed but not applied in service layer
     PRA->>PRA: No Technical API call in portfolio analysis flow
     PRA->>PRA: Same ECM support as HRA - envelope, generation changes, and PV
     PRA-->>UI: Portfolio summary in results step
@@ -214,14 +220,9 @@ flowchart LR
     style ProfessionalUI fill:#d1ecf1
 ```
 
-**Implementation status**
+#### Summary
 
-- Real Forecasting + Financial calls are orchestrated in `src/features/portfolio-advisor/services/PortfolioAnalysisService.ts`, triggered from `src/features/portfolio-advisor/components/steps/FinancingStep.tsx`.
-- Service wiring in `src/features/portfolio-advisor/context/ServiceContext.tsx` uses real `EnergyService`, `RenovationService`, and `FinancialService` with concurrency-limited batches.
-- `MockMCDAService` is registered on the context as `mcda` but is not invoked by `PortfolioAnalysisService`; ranking and technical pillars are not part of the analyze flow today.
-- Technical API is not called in the PRA analysis path; `src/api/technical.ts` endpoints are currently outside this runtime workflow.
-- This means portfolio energy and finance outputs are backend-backed, while technical/MCDA backend scoring remains unimplemented in the production path.
-- The flow diagram above shows the current implementation; compare with the [design flow](docs/pra-tool-design.md#sequential-flow) to identify deviations.
+Each building is analyzed against the live Forecasting and Financial services. Technical ranking is not used, and advanced financing schemes shown in the UI are not yet applied in analysis. Compare with the [design flow](docs/pra-tool-design.md#sequential-flow).
 
 ### Renovation Strategy Explorer
 
@@ -288,12 +289,6 @@ flowchart LR
     style PolicyUI fill:#d1ecf1
 ```
 
-**Implementation status**
+#### Summary
 
-- The Strategy Explorer follows the same landing/tool route pattern as the other tools: `/strategy-explorer` serves a static landing page, and `/strategy-explorer/tool` mounts the multi-step wizard in `src/features/strategy-explorer/StrategyExplorer.tsx`.
-- Forecasting is **partial**: `src/features/strategy-explorer/services/archetypePortfolioService.ts` uses `BuildingService` for archetype metadata only. Per-package energy and CO2 for the comparison run come from the published Supabase cache loaded by `src/features/strategy-explorer/api/rseCacheApi.ts` and `src/features/strategy-explorer/services/rseForecastingCacheService.ts`, not from live `simulateECM` calls in the browser.
-- RSE cache entries must store a true unrenovated `baseline` plus the package `renovated` scenario. RSE energy savings use delivered system energy from UNI totals, while thermal needs remain a separate building-fabric metric.
-- Financial is **real** for the wizard run path: `src/features/strategy-explorer/services/rseFinancialService.ts` calls `financial.assessRisk` with concurrency limits orchestrated by `src/features/strategy-explorer/services/rseWorkflowService.ts`. ARV is intentionally skipped for RSE.
-- Technical API is **not used**; rankings are computed locally in `src/features/strategy-explorer/services/rseRankingService.ts`.
-- Offline cache generation that feeds the database tables lives under `scripts/rse-cache/` and is outside the SPA runtime; if no published cache version exists, the workflow returns an empty or unavailable result rather than calling Forecasting for simulations.
-- The flow diagram above shows the current implementation; compare with the [design flow](docs/rse-tool-design.md#sequential-flow) to identify deviations.
+Energy and CO₂ figures come from a pre-built cache, not live simulations when you run a comparison. Financial results are live; package order is calculated in the browser rather than by the Technical service. Compare with the [design flow](docs/rse-tool-design.md#sequential-flow).

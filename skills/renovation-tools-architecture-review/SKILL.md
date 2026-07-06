@@ -84,8 +84,8 @@ Each flow diagram must:
 - Three separate subsections, one for each tool, each containing:
   - The tool's sequence diagram in a fenced ` ```mermaid ` block.
   - The tool's flow diagram in a fenced ` ```mermaid ` block.
-  - 2–6 sentences explaining what is real vs mocked/stubbed/partial for that specific tool.
-  - Optional: links to key source files (preferred) to anchor the documentation.
+  - A `#### Summary` with 1–2 plain-language sentences per tool (no file paths or code symbols in README).
+  - A link to the tool's design flow document for comparison.
 
 ## Workflow (do this in order)
 
@@ -297,13 +297,15 @@ Comparison strategy:
 - For each tool subsection:
   - Insert that tool's sequence diagram in a fenced Mermaid block with a heading like `#### Sequence Diagram`
   - Insert that tool's flow diagram in a fenced Mermaid block with a heading like `#### Flow Diagram`
-  - Add an "Implementation status" section directly after the diagrams using proper Markdown bullet points:
-    - Start with a brief introductory sentence (optional)
-    - Use bullet points (`-`) to list:
-      - Which API(s) are mocked/stubbed/partial for this specific tool
-      - What that implies for users and contributors (e.g., "financial results are placeholder")
-      - Links to code evidence (paths) rather than making vague claims
-  - Optionally include a comparison note: "The flow diagram above shows the current implementation. Compare it with the [original design flow diagram](../../docs/hra-tool-design.md#sequential-flow) to identify deviations."
+  - Add a `#### Summary` section directly after the diagrams with 1–2 plain-language sentences plus a link to the design flow document (e.g., `docs/hra-tool-design.md#sequential-flow`).
+
+**Summary writing rules (README only):**
+
+- Write for a contributor who has not read the codebase.
+- Name the three services in plain terms (Forecasting, Financial, Technical), not wrapper classes or file paths.
+- State only what affects users or expectations (live vs cached vs not used).
+- Keep file paths and code evidence in the agent's working notes only — do not publish them in README.
+- Keep `MOCK` / `PARTIAL` / `STUB` labels in diagrams; prose should not re-list every endpoint or duplicate diagram labels verbatim.
 
 ### 6) Validate documentation correctness
 
@@ -318,7 +320,8 @@ Comparison strategy:
   - Visually review side-by-side to identify deviations.
   - Ensure styling differences make mock/stub status obvious.
   - Verify that annotations accurately describe what differs from design.
-- If uncertain about any interaction or component status, mark it explicitly in the README as "Unverified" and link to the relevant code for follow-up.
+- Ensure each `#### Summary` is plain language: 1–2 sentences, no file paths or code symbols, and does not duplicate diagram labels verbatim (diagrams carry technical detail).
+- If uncertain about any interaction or component status, record it in working notes with code evidence; mark "Unverified" in diagram annotations if it must appear in README.
 
 ## Mermaid skeleton (replace with real flows)
 
