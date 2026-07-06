@@ -301,8 +301,8 @@ function DataTransparencyContent() {
           <Text span size="xs" fw={500} c="dimmed">
             Financial indicators
           </Text>{" "}
-          (NPV, ROI, payback period) — Computed by the Financial Service using
-          Monte Carlo simulation.
+          (NPV, ROI, payback period) — Computed by the Financial Service; risk
+          ranges use Monte Carlo simulation when available.
         </Text>
       </List.Item>
     </List>

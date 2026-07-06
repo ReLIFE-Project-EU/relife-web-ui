@@ -30,7 +30,7 @@ function getRiskLevel(percentage: number): {
       color: "green",
       label: "Low Risk",
       icon: IconShieldCheck,
-      description: "High confidence in positive returns",
+      description: "Most simulated scenarios end profitably",
     };
   }
   if (percentage >= 60) {
@@ -38,14 +38,15 @@ function getRiskLevel(percentage: number): {
       color: "yellow",
       label: "Moderate Risk",
       icon: IconAlertTriangle,
-      description: "Good chance of positive returns",
+      description: "A majority of simulated scenarios end profitably",
     };
   }
   return {
     color: "red",
     label: "Higher Risk",
     icon: IconAlertCircle,
-    description: "Consider reviewing the renovation plan",
+    description:
+      "Many simulated scenarios do not end profitably — review the plan",
   };
 }
 

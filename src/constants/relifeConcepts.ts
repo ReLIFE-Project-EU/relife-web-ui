@@ -102,7 +102,7 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     id: "scenario-epc-comparison-note",
     label: "Estimated EPC in scenario comparison",
     description:
-      "Some columns include a heating-system upgrade and/or solar (PV). The estimated class is derived from modeled primary energy per m² (UNI EP_total), so heating-system and PV benefits are reflected in the class wherever the simulation returns primary energy. This is not an official Energy Performance Certificate.",
+      "Some columns include a heating-system upgrade and/or solar (PV). The estimated class is derived from modeled primary energy per m² (UNI EP_total). Heating-system upgrades change that primary-energy figure, so they can move the class. Solar (PV) self-consumption lowers delivered energy and running costs, but is not netted out of the primary-energy figure the class is based on — so a PV package can save money and grid electricity without changing the estimated class. This is not an official Energy Performance Certificate.",
   },
   "energy-intensity": {
     id: "energy-intensity",
@@ -218,6 +218,8 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     description:
       "Share of financial simulations where the renovation is profitable.",
     unit: "%",
+    caveat:
+      "This is a modeled probability from simulating uncertain energy prices, inflation and interest rates — not a guarantee that the renovation will be profitable.",
     professionalDetail:
       "Computed from Monte Carlo risk assessment outputs when available.",
   },
@@ -260,8 +262,10 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     label: "MCDA",
     description:
       "Professional multi-criteria method used behind the recommendation ranking.",
+    caveat:
+      "Environmental-impact scoring (embodied carbon and lifecycle emissions) is not yet available in the current data pipeline, so that criterion does not currently differentiate packages. Rankings reflect the energy, renewable-integration, comfort and financial criteria.",
     professionalDetail:
-      "Multi-Criteria Decision Analysis combines technical, financial, comfort, sustainability, and energy criteria using persona weights.",
+      "Multi-Criteria Decision Analysis is designed to combine energy, renewable-integration, sustainability, comfort and financial criteria using persona weights. The sustainability criterion (embodied carbon / GWP) is not yet populated with data and is currently neutralized.",
   },
   "rse-energy-saved-per-eur": {
     id: "rse-energy-saved-per-eur",
@@ -276,6 +280,8 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     description:
       "Aggregate primary energy savings (UNI EP_total) across the entire building stock for one renovation package.",
     unit: "kWh/year",
+    caveat:
+      "Modeled estimate: a representative archetype simulation scaled by the number of buildings, not a measured stock total.",
   },
   "rse-co2-reduced-per-eur": {
     id: "rse-co2-reduced-per-eur",
@@ -290,6 +296,8 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     description:
       "Aggregate CO₂ emissions reduction across the entire building stock for one renovation package.",
     unit: "t CO₂e/year",
+    caveat:
+      "Modeled estimate: a representative archetype simulation scaled by the number of buildings, not a measured stock total.",
   },
   "rse-renovatable-buildings": {
     id: "rse-renovatable-buildings",

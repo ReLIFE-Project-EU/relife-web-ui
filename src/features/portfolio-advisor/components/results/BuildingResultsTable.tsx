@@ -187,7 +187,7 @@ export function BuildingResultsTable({
           data={[
             { value: "all", label: "All buildings" },
             { value: "success", label: "Successful" },
-            { value: "no-savings", label: "No savings" },
+            { value: "no-savings", label: "Not financially viable (NPV ≤ 0)" },
             { value: "rejected", label: "Rejected" },
             { value: "error", label: "Errored" },
             { value: "pending", label: "Pending" },

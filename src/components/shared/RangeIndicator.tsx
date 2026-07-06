@@ -8,17 +8,20 @@ import { Box, Group, Text, Tooltip } from "@mantine/core";
 import type { MantineColor } from "@mantine/core";
 
 export interface RangeIndicatorProps {
-  /** Minimum value (P10 - pessimistic estimate) */
+  /** Lower bound of the 80% confidence interval (10th percentile, P10) */
   min: number;
-  /** Median value (P50 - typical outcome) */
+  /** Median outcome (50th percentile, P50) */
   median: number;
-  /** Maximum value (P90 - optimistic estimate) */
+  /** Upper bound of the 80% confidence interval (90th percentile, P90) */
   max: number;
   /** Formatter function for display values */
   formatter: (value: number) => string;
   /** Color scheme for the range bar */
   color?: MantineColor;
-  /** Whether lower values are better (e.g., payback period) */
+  /**
+   * Whether lower values are better (e.g., payback period). Retained for
+   * callers; the tooltip is labeled by percentile so it is not used here.
+   */
   lowerIsBetter?: boolean;
   /** Size variant */
   size?: "sm" | "md" | "lg";
@@ -38,7 +41,6 @@ export function RangeIndicator({
   max,
   formatter,
   color = "blue",
-  lowerIsBetter = false,
   size = "md",
   showLabels = true,
 }: RangeIndicatorProps) {
@@ -48,10 +50,6 @@ export function RangeIndicator({
   const range = max - min;
   const medianPosition = range > 0 ? ((median - min) / range) * 100 : 50;
 
-  // Determine colors based on whether lower is better
-  const leftLabel = lowerIsBetter ? "Optimistic" : "Pessimistic";
-  const rightLabel = lowerIsBetter ? "Pessimistic" : "Optimistic";
-
   return (
     <Box>
       {/* Range bar container */}
@@ -59,20 +57,20 @@ export function RangeIndicator({
         label={
           <Box>
             <Text size="xs" fw={500}>
-              Range of outcomes
+              80% confidence interval (P10–P90)
             </Text>
-            <Text size="xs">
-              {leftLabel}: {formatter(min)}
-            </Text>
-            <Text size="xs">Typical: {formatter(median)}</Text>
-            <Text size="xs">
-              {rightLabel}: {formatter(max)}
+            <Text size="xs">Lower (P10): {formatter(min)}</Text>
+            <Text size="xs">Median (P50): {formatter(median)}</Text>
+            <Text size="xs">Upper (P90): {formatter(max)}</Text>
+            <Text size="xs" c="dimmed">
+              About 80% of modeled outcomes fall in this range; ~10% fall below
+              and ~10% above.
             </Text>
           </Box>
         }
         withArrow
         multiline
-        w={180}
+        w={210}
       >
         <Box
           style={{

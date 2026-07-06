@@ -353,8 +353,8 @@ export function EnergyRenovationStep() {
         <Grid>
           <Grid.Col span={{ base: 12, sm: 6 }}>
             <NumberInput
-              label="Total CAPEX (EUR)"
-              description="Override applied to buildings without a per-building CAPEX. Leave blank to auto-estimate."
+              label="Per-building CAPEX override (EUR)"
+              description="Applied to each building that has no per-building CAPEX of its own. Leave blank to auto-estimate."
               placeholder="Auto-estimated from reference data"
               value={state.renovation.estimatedCapex ?? ""}
               onChange={(val) =>

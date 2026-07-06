@@ -18,6 +18,7 @@ import {
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 import { EPCBadge } from "../../../../components/shared";
+import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
 import type {
   FinancialResults,
   MCDARankingResult,
@@ -80,7 +81,7 @@ export function RecommendationHero({
         <div className={classes.recoBand}>
           <span className={classes.recoRank}>#1</span>
           <span className={classes.recoBandTitle}>
-            Recommended for {personaLabel}
+            Recommended for {personaLabel} <ConceptExplainer conceptId="mcda" />
           </span>
           <span className={classes.recoBandScore}>
             <IconAward size={16} />
