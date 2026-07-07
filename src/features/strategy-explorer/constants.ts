@@ -2,7 +2,7 @@ import type { RenovationMeasureId } from "../../types/renovation";
 import {
   ENERGY_TARIFF_DEFAULTS,
   FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
-} from "../../services/carrierSavingsService";
+} from "../../services/carrierSavingsService.ts";
 
 export const RSE_CACHE_PAYLOAD_SCHEMA_VERSION = 1;
 
