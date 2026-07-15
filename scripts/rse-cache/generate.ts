@@ -51,6 +51,9 @@ const DEFAULT_RSE_SEED_FAILURE_DIR = ".work/rse-cache/failures";
 const DEFAULT_RSE_SEED_MAX_ATTEMPTS = 4;
 const DEFAULT_RSE_SEED_RETRY_INITIAL_DELAY_MS = 30_000;
 const DEFAULT_RSE_SEED_RETRY_MAX_DELAY_MS = 300_000;
+// Matches fixture-style versions such as "1.test.abc1234" so a smoke run
+// cannot accidentally write them to the shared Supabase instance.
+const TEST_CACHE_VERSION_PATTERN = /(^|\.)test(\.|$)/i;
 const RETRYABLE_HTTP_STATUSES = new Set([
   408, 409, 425, 429, 500, 502, 503, 504,
 ]);
@@ -1756,6 +1759,7 @@ interface RSESeedCliOptions {
   publish: boolean;
   publishPartial: boolean;
   apply: boolean;
+  allowTestVersion: boolean;
   dryRun: boolean;
   fresh: boolean;
   status: boolean;
@@ -1829,6 +1833,11 @@ function buildCliProgram(
     .option(
       "--apply",
       "Apply directly to Supabase after generating SQL.",
+      false,
+    )
+    .option(
+      "--allow-test-version",
+      "Allow --apply with a test-looking cache version (containing a '.test.' segment).",
       false,
     )
     .option(
@@ -2526,6 +2535,16 @@ export async function runRSESeedCli(
 
     if (options.publish && options.publishPartial) {
       throw new Error("--publish cannot be combined with --publish-partial");
+    }
+
+    if (
+      options.apply &&
+      TEST_CACHE_VERSION_PATTERN.test(cacheVersion) &&
+      !options.allowTestVersion
+    ) {
+      throw new Error(
+        `Cache version '${cacheVersion}' looks like a test fixture; refusing --apply. Pass --allow-test-version to override.`,
+      );
     }
 
     if (options.status) {

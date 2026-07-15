@@ -555,6 +555,7 @@ describe("runRSESeedCli", () => {
       [
         "--cache-version",
         "1.test.apply",
+        "--allow-test-version",
         "--archetypes",
         '[{"country":"IT","category":"Residential","name":"Detached 1980"}]',
         "--forecasting-base-url",
@@ -626,6 +627,7 @@ describe("runRSESeedCli", () => {
         [
           "--cache-version",
           "1.test.apply-fail",
+          "--allow-test-version",
           "--archetypes",
           '[{"country":"IT","category":"Residential","name":"Detached 1980"}]',
           "--forecasting-base-url",
@@ -671,6 +673,7 @@ describe("runRSESeedCli", () => {
         [
           "--cache-version",
           "1.test.apply-no-env",
+          "--allow-test-version",
           "--archetypes",
           '[{"country":"IT","category":"Residential","name":"Detached 1980"}]',
           "--forecasting-base-url",
@@ -691,6 +694,50 @@ describe("runRSESeedCli", () => {
         },
       ),
     ).rejects.toThrow("SUPABASE_URL and SUPABASE_KEY are required for --apply");
+
+    expect(simulateCalls).toEqual([]);
+    expect(applied).toEqual([]);
+  });
+
+  test("refuses --apply for a test-looking cache version without --allow-test-version", async () => {
+    const { client, simulateCalls } = makeForecastingClient({
+      scenarios: [
+        makeScenario("baseline", 12_000, { thermalKwh: 12_000 }),
+        makeScenario("wall", 8_000, { thermalKwh: 8_000 }),
+      ],
+    });
+    const applied: RSEGeneratedSeed[] = [];
+
+    await expect(
+      runRSESeedCli(
+        [
+          "--cache-version",
+          "1.test.abc1234",
+          "--archetypes",
+          '[{"country":"IT","category":"Residential","name":"Detached 1980"}]',
+          "--forecasting-base-url",
+          "http://forecasting.test",
+          "--packages",
+          "envelope",
+          "--apply",
+        ],
+        {
+          env: {
+            SUPABASE_URL: "https://example.supabase.co",
+            SUPABASE_KEY: "service-role-key",
+          },
+          stdout: () => undefined,
+          writeFile: async () => undefined,
+          applySeed: async (generated) => {
+            applied.push(generated);
+          },
+          makeForecastingClient: () => client,
+          now: () => new Date("2026-05-12T10:04:00.000Z"),
+        },
+      ),
+    ).rejects.toThrow(
+      "Cache version '1.test.abc1234' looks like a test fixture; refusing --apply. Pass --allow-test-version to override.",
+    );
 
     expect(simulateCalls).toEqual([]);
     expect(applied).toEqual([]);
@@ -1068,6 +1115,7 @@ describe("runRSESeedCli", () => {
       [
         "--cache-version",
         "1.test.partial-apply",
+        "--allow-test-version",
         "--archetypes",
         '[{"country":"IT","category":"Residential","name":"A"},{"country":"IT","category":"Residential","name":"B"}]',
         "--forecasting-base-url",
