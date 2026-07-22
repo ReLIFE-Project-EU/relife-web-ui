@@ -3,9 +3,19 @@
  * Screen 1: Collects building information and triggers EPC estimation.
  */
 
-import { Alert, Badge, Box, Grid, Stack, Text, Title } from "@mantine/core";
+import {
+  Alert,
+  Badge,
+  Box,
+  Button,
+  Grid,
+  Stack,
+  Text,
+  Title,
+} from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
 import { IconInfoCircle } from "@tabler/icons-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import {
   BuildingSelector,
   type BuildingSelectorInitialValue,
@@ -25,7 +35,7 @@ import { deriveConstructionYear } from "../../../../utils/apiMappings";
 export function BuildingInfoStep() {
   const { state, dispatch } = useHomeAssistant();
   const { energy, building } = useHomeAssistantServices();
-  const [showHowItWorks, setShowHowItWorks] = useState(true);
+  const [howItWorksOpened, howItWorks] = useDisclosure(true);
 
   const hasCoordinates =
     state.building.lat !== null && state.building.lng !== null;
@@ -200,14 +210,14 @@ export function BuildingInfoStep() {
         </Text>
       </Box>
 
-      {/* Dismissible "How matching works" info card */}
-      {showHowItWorks && (
+      {/* Collapsible "How matching works" info card, restorable once hidden */}
+      {howItWorksOpened ? (
         <Alert
           variant="light"
           color="blue"
           icon={<IconInfoCircle size={16} />}
           withCloseButton
-          onClose={() => setShowHowItWorks(false)}
+          onClose={howItWorks.close}
           title="How this works"
         >
           <Text size="sm">
@@ -216,6 +226,16 @@ export function BuildingInfoStep() {
             You can review the match before continuing.
           </Text>
         </Alert>
+      ) : (
+        <Button
+          variant="subtle"
+          size="compact-xs"
+          w="fit-content"
+          leftSection={<IconInfoCircle size={14} />}
+          onClick={howItWorks.open}
+        >
+          How this works
+        </Button>
       )}
 
       {/* Two-column: selector + sticky summary */}
