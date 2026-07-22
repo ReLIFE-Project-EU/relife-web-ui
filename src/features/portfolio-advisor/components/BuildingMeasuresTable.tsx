@@ -19,10 +19,12 @@ import { IconArrowBackUp, IconSettings } from "@tabler/icons-react";
 import type { RenovationMeasureId } from "../../../types/renovation";
 import type { PRABuilding } from "../context/types";
 import { usePortfolioAdvisor } from "../hooks/usePortfolioAdvisor";
+import { usePortfolioAdvisorServices } from "../hooks/usePortfolioAdvisorServices";
 import { BuildingMeasuresModal } from "./BuildingMeasuresModal";
 
 export function BuildingMeasuresTable() {
   const { state, dispatch } = usePortfolioAdvisor();
+  const { renovation } = usePortfolioAdvisorServices();
   const [opened, { open, close }] = useDisclosure(false);
   const [selectedBuilding, setSelectedBuilding] = useState<PRABuilding | null>(
     null,
@@ -56,7 +58,6 @@ export function BuildingMeasuresTable() {
 
   if (state.buildings.length === 0) return null;
 
-  const globalMeasureCount = state.renovation.selectedMeasures.length;
   const overrideCount = state.buildings.filter(
     (b) => b.selectedMeasures != null,
   ).length;
@@ -90,9 +91,12 @@ export function BuildingMeasuresTable() {
           <Table.Tbody>
             {state.buildings.map((building) => {
               const hasOverride = building.selectedMeasures != null;
-              const measureCount = hasOverride
-                ? building.selectedMeasures!.length
-                : globalMeasureCount;
+              // Name what will be simulated, not where the selection came from.
+              const measureNames = (
+                building.selectedMeasures ?? state.renovation.selectedMeasures
+              )
+                .map((id) => renovation.getMeasure(id)?.name ?? id)
+                .join(", ");
 
               return (
                 <Table.Tr key={building.id}>
@@ -102,15 +106,15 @@ export function BuildingMeasuresTable() {
                     </Text>
                   </Table.Td>
                   <Table.Td>
-                    {hasOverride ? (
-                      <Badge color="blue" variant="light">
-                        Custom ({measureCount} measures)
+                    <Tooltip label={measureNames} multiline maw={320}>
+                      <Badge
+                        color={hasOverride ? "blue" : "gray"}
+                        variant="light"
+                        maw={280}
+                      >
+                        {measureNames}
                       </Badge>
-                    ) : (
-                      <Badge color="gray" variant="light">
-                        Portfolio Default ({measureCount})
-                      </Badge>
-                    )}
+                    </Tooltip>
                   </Table.Td>
                   <Table.Td>
                     <Group gap="xs">
