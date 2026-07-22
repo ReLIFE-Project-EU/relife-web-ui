@@ -23,6 +23,7 @@ import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 import { getRankingScenarioStatuses } from "../../../../services/TechnicalMCDAService";
 import { CashFlowChart } from "../results/CashFlowChart";
 import { CompareAllTable } from "../results/CompareAllTable";
+import { EnergyCostChart } from "../results/EnergyCostChart";
 import { EnergyDeepDive } from "../results/EnergyDeepDive";
 import { FinancialDeepDive } from "../results/FinancialDeepDive";
 import { RecommendationHero } from "../results/RecommendationHero";
@@ -113,6 +114,9 @@ export function ResultsStep() {
     null,
   );
   const winnerId = mcdaRanking?.[0]?.scenarioId ?? null;
+  // The running-cost chart follows the recommendation, like the hero card,
+  // rather than the deep-dive selection inside the collapsed sections.
+  const winnerScenario = renovationScenarios.find((s) => s.id === winnerId);
 
   // Snap the deep-dive selection to the winner when it changes, using the
   // render-time "adjust state on change" pattern instead of an effect.
@@ -224,8 +228,9 @@ export function ResultsStep() {
           Your renovation results
         </Title>
         <Text c="dimmed" size="sm">
-          A recommended pick tuned to your priorities. Switch profiles to
-          re-rank, or open the sections below for the full numbers.
+          Your best option based on what matters most to you. Change the profile
+          to see a different recommendation, or open a section below for the
+          full numbers.
         </Text>
       </Box>
 
@@ -260,6 +265,12 @@ export function ResultsStep() {
         selectedScenarioId={fallbackSelectedId}
         onSelectPersona={handleSelectPersona}
         onSelectScenario={handleSelectScenario}
+      />
+
+      <EnergyCostChart
+        current={currentScenario}
+        winner={winnerScenario}
+        gasTariffEurPerKwh={state.gasTariffEurPerKwh}
       />
 
       {/* Everything below the recommendation is secondary detail: kept

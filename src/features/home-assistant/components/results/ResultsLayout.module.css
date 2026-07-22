@@ -18,7 +18,8 @@
 
 .recoCard,
 .sideCard,
-.deep {
+.deep,
+.panel {
   background: var(--mantine-color-body);
   border: 1px solid var(--mantine-color-gray-2);
   border-radius: var(--mantine-radius-md);
@@ -587,6 +588,26 @@
   font-weight: 700;
   color: var(--mantine-color-red-7);
   margin-bottom: 4px;
+}
+
+/* ───────── Primary-view panel (running-cost chart) ───────── */
+.panel {
+  padding: var(--mantine-spacing-lg);
+}
+
+.panelHead {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  margin-bottom: var(--mantine-spacing-sm);
+  color: var(--mantine-color-gray-7);
+}
+
+.panelHead h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--mantine-color-dark-9);
+  margin: 0;
 }
 
 /* ───────── Compare-all table ───────── */

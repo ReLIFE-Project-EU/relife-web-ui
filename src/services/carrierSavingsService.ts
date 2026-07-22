@@ -103,18 +103,31 @@ export function totalCarrierEnergyKwh(
   return breakdown.naturalGasKwh + breakdown.gridElectricityKwh;
 }
 
+/**
+ * Annual cost of a carrier breakdown at the given tariffs (EUR/year).
+ *
+ * Covers HVAC end uses only, because the breakdown derives from delivered
+ * energy. Domestic hot water, lighting and appliances are not included, so
+ * this is not a household energy bill.
+ */
+export function computeCarrierAnnualCostEur(
+  breakdown: DeliveredEnergyCarrierBreakdown,
+  tariffs: CarrierSavingsTariffs,
+): number {
+  return (
+    breakdown.naturalGasKwh * tariffs.gasTariffEurPerKwh +
+    breakdown.gridElectricityKwh * tariffs.electricityReferencePriceEurPerKwh
+  );
+}
+
 export function computeCarrierAnnualSavingsEur(
   baseline: DeliveredEnergyCarrierBreakdown,
   renovated: DeliveredEnergyCarrierBreakdown,
   tariffs: CarrierSavingsTariffs,
 ): number {
-  const gasDeltaKwh = baseline.naturalGasKwh - renovated.naturalGasKwh;
-  const gridDeltaKwh =
-    baseline.gridElectricityKwh - renovated.gridElectricityKwh;
-
   return (
-    gasDeltaKwh * tariffs.gasTariffEurPerKwh +
-    gridDeltaKwh * tariffs.electricityReferencePriceEurPerKwh
+    computeCarrierAnnualCostEur(baseline, tariffs) -
+    computeCarrierAnnualCostEur(renovated, tariffs)
   );
 }
 

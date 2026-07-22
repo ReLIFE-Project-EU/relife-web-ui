@@ -76,10 +76,12 @@ test("homeowner completes the HRA journey with plausible results", async ({
   ).toBeVisible({ timeout: 480_000 });
 
   // The MCDA ranking runs client-side *after* the results step renders
-  // (ResultsStep's auto-rank effect calls the technical service). Wait for
-  // the recommendation band to show a score — i.e. ranking finished — so the
-  // audit trace contains mcda.rank.end before we capture it.
-  await expect(page.getByText(/Score \d/).first()).toBeVisible({
+  // (ResultsStep's auto-rank effect calls the technical service). The hero
+  // metric tiles render only once a winner exists, so waiting on one of their
+  // labels means ranking finished, so the audit trace contains mcda.rank.end
+  // before we capture it. (The numeric TOPSIS score this used to wait on is
+  // deliberately no longer shown to homeowners.)
+  await expect(page.getByText("Yearly savings").first()).toBeVisible({
     timeout: 120_000,
   });
 

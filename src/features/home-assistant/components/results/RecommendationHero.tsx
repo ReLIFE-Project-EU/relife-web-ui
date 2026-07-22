@@ -26,6 +26,7 @@ import type {
 } from "../../context/types";
 import type { MCDAPersona } from "../../../../services/types";
 import {
+  formatApproxCurrency,
   formatCurrency,
   formatNumber,
   formatPaybackYears,
@@ -70,9 +71,9 @@ export function RecommendationHero({
 }: RecommendationHeroProps) {
   const winner = getWinner(renovationScenarios, ranking);
   const winnerResult = winner ? financialResults[winner.id] : undefined;
-  const winnerScore = ranking?.[0]?.score;
   const personaLabel =
     personas.find((p) => p.id === selectedPersona)?.name ?? "your priorities";
+  const savings = resolveSavingsState(currentScenario, winner, winnerResult);
 
   return (
     <div className={classes.hero}>
@@ -84,13 +85,7 @@ export function RecommendationHero({
           </span>
           <span className={classes.recoBandScore}>
             <IconAward size={16} />
-            {winnerScore !== undefined ? (
-              <>Score {formatNumber(winnerScore * 100)}</>
-            ) : isRanking ? (
-              "Ranking…"
-            ) : (
-              "Score —"
-            )}
+            {isRanking ? "Ranking…" : "Best overall fit"}
           </span>
         </div>
 
@@ -122,6 +117,7 @@ export function RecommendationHero({
                     current={currentScenario}
                     winner={winner}
                     result={winnerResult}
+                    savings={savings}
                   />
                 </div>
                 <div className={classes.recoEpcSwap}>
@@ -147,16 +143,8 @@ export function RecommendationHero({
                 <Metric
                   icon={<IconCoin size={14} />}
                   label="Yearly savings"
-                  value={
-                    winnerResult?.riskAssessment?.pointForecasts
-                      .MonthlyAvgSavings !== undefined
-                      ? `${formatCurrency(
-                          winnerResult.riskAssessment.pointForecasts
-                            .MonthlyAvgSavings * 12,
-                        )}/yr`
-                      : "—"
-                  }
-                  hint="modeled average, net of running costs"
+                  value={savingsTileValue(savings)}
+                  hint={savingsTileHint(savings)}
                 />
                 <Metric
                   icon={<IconClockHour3 size={14} />}
@@ -164,8 +152,12 @@ export function RecommendationHero({
                   value={
                     winnerResult
                       ? formatPaybackYears(
-                          winnerResult.riskAssessment?.pointForecasts.PBP ??
-                            winnerResult.paybackTime,
+                          // Rounded for the headline; the deep-dive keeps the
+                          // exact figure. Censoring is handled downstream.
+                          Math.round(
+                            winnerResult.riskAssessment?.pointForecasts.PBP ??
+                              winnerResult.paybackTime,
+                          ),
                           winnerResult.riskAssessment?.metadata
                             .project_lifetime,
                         )
@@ -278,7 +270,6 @@ export function RecommendationHero({
                           pct={entry.score * 100}
                           scenarioId={scenario.id}
                         />
-                        {formatNumber(entry.score * 100)}
                       </span>
                     </button>
                   </li>
@@ -366,13 +357,75 @@ function paybackRangeHint(result: FinancialResults | undefined): string {
   return `P10–P90: ${formatNumber(p10)}–${p90Label} yr`;
 }
 
+/**
+ * How the yearly-savings figure should be presented. Distinguishing these
+ * states is what keeps an unpriceable or unprofitable package from rendering
+ * as a bare, unexplained "€0".
+ */
+type SavingsState =
+  | { kind: "ok"; yearlyEur: number; monthlyEur: number }
+  | { kind: "unprofitable" }
+  | { kind: "not-priceable" }
+  | { kind: "unknown" };
+
+/**
+ * A package can only be priced when both the baseline and the renovated
+ * scenario carry a carrier breakdown; otherwise FinancialService submits zero
+ * energy savings and every downstream figure collapses to zero for reasons the
+ * user cannot see.
+ */
+function resolveSavingsState(
+  current: RenovationScenario | undefined,
+  winner: RenovationScenario | undefined,
+  result: FinancialResults | undefined,
+): SavingsState {
+  if (!current || !winner) return { kind: "unknown" };
+
+  if (!current.carrierBreakdown || !winner.carrierBreakdown) {
+    return { kind: "not-priceable" };
+  }
+
+  const monthlyEur = result?.riskAssessment?.pointForecasts.MonthlyAvgSavings;
+  if (monthlyEur === undefined) return { kind: "unknown" };
+  if (monthlyEur <= 0) return { kind: "unprofitable" };
+
+  return { kind: "ok", yearlyEur: monthlyEur * 12, monthlyEur };
+}
+
+function savingsTileValue(savings: SavingsState): string {
+  switch (savings.kind) {
+    case "ok":
+      return `${formatApproxCurrency(savings.yearlyEur)}/yr`;
+    case "unprofitable":
+      return "No net saving";
+    case "not-priceable":
+      return "Not available";
+    case "unknown":
+      return "—";
+  }
+}
+
+function savingsTileHint(savings: SavingsState): string {
+  switch (savings.kind) {
+    case "ok":
+      return "roughly, after running costs";
+    case "unprofitable":
+      return "costs more to run and repay than it saves";
+    case "not-priceable":
+      return "we could not work out this package's running costs";
+    case "unknown":
+      return "";
+  }
+}
+
 interface SavingsCopyProps {
   current: RenovationScenario;
   winner: RenovationScenario;
   result: FinancialResults | undefined;
+  savings: SavingsState;
 }
 
-function SavingsCopy({ current, winner, result }: SavingsCopyProps) {
+function SavingsCopy({ current, winner, result, savings }: SavingsCopyProps) {
   const thermalNeedsChangePct =
     current.annualEnergyNeeds > 0
       ? ((winner.annualEnergyNeeds - current.annualEnergyNeeds) /
@@ -380,12 +433,25 @@ function SavingsCopy({ current, winner, result }: SavingsCopyProps) {
         100
       : null;
   const pbp = result?.riskAssessment?.pointForecasts.PBP ?? result?.paybackTime;
-  const monthly = result?.riskAssessment?.pointForecasts.MonthlyAvgSavings;
+
+  if (savings.kind === "not-priceable") {
+    return (
+      <Text size="sm" c="dark.6" mt={8} maw={560}>
+        {formatThermalNeedsChange(thermalNeedsChangePct)}. We could not work out
+        what this package costs to run, so we cannot show savings or payback for
+        it.
+      </Text>
+    );
+  }
 
   return (
     <Text size="sm" c="dark.6" mt={8} maw={560}>
       {formatThermalNeedsChange(thermalNeedsChangePct)}
-      {pbp !== undefined ? (
+      {savings.kind === "unprofitable" ? (
+        <>
+          , but <b>does not pay for itself</b> over the project horizon
+        </>
+      ) : pbp !== undefined ? (
         isPaybackBeyondHorizon(
           pbp,
           result?.riskAssessment?.metadata.project_lifetime,
@@ -399,9 +465,10 @@ function SavingsCopy({ current, winner, result }: SavingsCopyProps) {
           </>
         )
       ) : null}
-      {monthly !== undefined ? (
+      {savings.kind === "ok" ? (
         <>
-          , with a modeled cash benefit of <b>{formatCurrency(monthly)}/mo</b>
+          , with a modeled cash benefit of{" "}
+          <b>{formatCurrency(savings.monthlyEur)}/mo</b>
         </>
       ) : null}
       .

@@ -17,7 +17,6 @@ import type {
 import {
   formatCurrency,
   formatEnergyPerYear,
-  formatNumber,
   formatPaybackYears,
 } from "../../utils/formatters";
 import classes from "./ResultsLayout.module.css";
@@ -152,14 +151,10 @@ export function CompareAllTable({
                       style={{
                         display: "inline-flex",
                         alignItems: "center",
-                        gap: 8,
                         justifyContent: "flex-end",
                       }}
                     >
                       <ScoreBar pct={score * 100} scenarioId={scenario.id} />
-                      <Text component="span" fw={700} size="sm">
-                        {formatNumber(score * 100)}
-                      </Text>
                     </span>
                   ) : (
                     <Text component="span" size="sm" c="dimmed">

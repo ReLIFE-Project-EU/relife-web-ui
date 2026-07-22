@@ -90,6 +90,23 @@ export function formatCurrency(value: number): string {
   return currencyFormatter.format(value);
 }
 
+/**
+ * Format a value as approximate EUR currency, rounded to two significant
+ * figures. Used for homeowner-facing headline figures, which should not imply
+ * more precision than the model has.
+ * Example: 1237 -> "€1,200"; 18432 -> "€18,000"; 47 -> "€47"
+ */
+export function formatApproxCurrency(value: number): string {
+  if (!Number.isFinite(value) || value === 0) {
+    return formatCurrency(0);
+  }
+
+  const magnitude = Math.floor(Math.log10(Math.abs(value)));
+  const step = Math.pow(10, Math.max(0, magnitude - 1));
+
+  return formatCurrency(Math.round(value / step) * step);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Percentage Formatting
 // ─────────────────────────────────────────────────────────────────────────────

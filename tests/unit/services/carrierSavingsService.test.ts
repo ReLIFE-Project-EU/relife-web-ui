@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
+  computeCarrierAnnualCostEur,
   computeCarrierAnnualSavingsEur,
   computeCarrierFinancialEnergySavings,
   extractCarrierSourceBreakdown,
@@ -24,6 +25,21 @@ describe("carrierSavingsService", () => {
     });
 
     expect(savingsEur).toBeCloseTo(690 - 4_000 * elecRef, 5);
+
+    // Savings are defined as the difference of two annual costs, so the HRA
+    // running-cost chart and the Financial API request cannot disagree about
+    // what a package costs to run.
+    expect(savingsEur).toBeCloseTo(
+      computeCarrierAnnualCostEur(baseline, {
+        gasTariffEurPerKwh: gasTariff,
+        electricityReferencePriceEurPerKwh: elecRef,
+      }) -
+        computeCarrierAnnualCostEur(renovated, {
+          gasTariffEurPerKwh: gasTariff,
+          electricityReferencePriceEurPerKwh: elecRef,
+        }),
+      5,
+    );
   });
 
   test("round-trips carrier savings to electricity-equivalent kWh", () => {

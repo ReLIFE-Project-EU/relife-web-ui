@@ -1,6 +1,9 @@
 /**
  * RiskGauge Component
- * Displays success probability as a visual gauge with color-coded risk levels.
+ * Displays the modeled success probability as a low/moderate/high risk
+ * category. Homeowners see the category only, because the exact percentage
+ * implies a precision the Monte Carlo simulation does not support. PRA keeps
+ * the exact probabilities for professional users.
  */
 
 import { Card, Group, Progress, Stack, Text, ThemeIcon } from "@mantine/core";
@@ -10,13 +13,10 @@ import {
   IconAlertCircle,
 } from "@tabler/icons-react";
 import { MetricExplainer } from "../shared";
-import { formatNumber } from "../../utils/formatters";
 
 interface RiskGaugeProps {
   /** Success rate as a decimal (0-1) */
   successRate: number;
-  /** Whether to show in compact mode */
-  compact?: boolean;
 }
 
 function getRiskLevel(percentage: number): {
@@ -50,26 +50,10 @@ function getRiskLevel(percentage: number): {
   };
 }
 
-export function RiskGauge({ successRate, compact = false }: RiskGaugeProps) {
+export function RiskGauge({ successRate }: RiskGaugeProps) {
   const percentage = Math.round(successRate * 100);
   const risk = getRiskLevel(percentage);
   const Icon = risk.icon;
-
-  if (compact) {
-    return (
-      <Group gap="xs" wrap="nowrap">
-        <Progress
-          value={percentage}
-          color={risk.color}
-          size="lg"
-          style={{ flex: 1, minWidth: 60 }}
-        />
-        <Text size="sm" fw={600} c={`${risk.color}.7`}>
-          {formatNumber(percentage)}%
-        </Text>
-      </Group>
-    );
-  }
 
   return (
     <Card withBorder radius="md" p="md">
@@ -77,31 +61,30 @@ export function RiskGauge({ successRate, compact = false }: RiskGaugeProps) {
         {/* Header */}
         <Group gap={6} wrap="nowrap">
           <Text size="sm" c="dimmed" style={{ flex: 1 }}>
-            Success Probability
+            How likely is this to pay off?
           </Text>
           <MetricExplainer metric="SuccessRate" />
         </Group>
 
-        {/* Main gauge */}
+        {/* Category gauge. The bar still encodes the probability; only the
+         * number is withheld. */}
         <Group gap="md" align="center" wrap="nowrap">
           <ThemeIcon size="xl" radius="xl" color={risk.color} variant="light">
             <Icon size={24} />
           </ThemeIcon>
           <Stack gap={4} style={{ flex: 1 }}>
-            <Group justify="space-between" align="baseline">
-              <Text size="xl" fw={700} c={`${risk.color}.7`}>
-                {formatNumber(percentage)}%
-              </Text>
-              <Text size="sm" fw={500} c={`${risk.color}.6`}>
-                {risk.label}
-              </Text>
-            </Group>
+            <Text size="lg" fw={700} c={`${risk.color}.7`}>
+              {risk.label}
+            </Text>
             <Progress
               value={percentage}
               color={risk.color}
               size="lg"
               radius="xl"
             />
+            <Text size="xs" c="dimmed">
+              {risk.description}
+            </Text>
           </Stack>
         </Group>
       </Stack>
