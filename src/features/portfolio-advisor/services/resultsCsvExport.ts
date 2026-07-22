@@ -9,6 +9,7 @@
 
 import { serializeCsv, type CsvColumn } from "../../../utils/csvExport";
 import { calculatePercentChange } from "../../../utils/formatters";
+import { getCountryCode } from "../../../utils/countries";
 import { getEPCImprovement } from "../../../utils/epcUtils";
 import type { PortfolioStats } from "../components/steps/ResultsStep";
 import type { BuildingAnalysisResult, PRABuilding } from "../context/types";
@@ -130,8 +131,19 @@ export const buildingExportColumns: CsvColumn<BuildingExportRow>[] = [
   },
   {
     key: "arv",
-    header: "ARV (EUR)",
-    value: (r) => r.result.financialResults?.afterRenovationValue,
+    header: "ARV (EUR - Greek market model)",
+    // The ARV model is trained on Greek property data only, so absolute prices
+    // for other markets are extrapolations and are not exported. The relative
+    // uplift below still carries an indicative signal.
+    value: (r) =>
+      getCountryCode(r.building.country) === "GR"
+        ? r.result.financialResults?.afterRenovationValue
+        : undefined,
+  },
+  {
+    key: "arvUpliftPct",
+    header: "ARV uplift (% - Greek market model)",
+    value: (r) => r.result.financialResults?.arv?.priceIncreasePct,
   },
   {
     key: "npv",

@@ -191,10 +191,10 @@ export class FinancialService implements IFinancialService {
       energyClass: fromAPIEnergyClass(
         response.after.greek_epc_class as APIEnergyClass,
       ),
+      priceIncreasePct: response.uplift?.price_increase_pct,
       metadata: {
         ...response.metadata,
         before: response.before,
-        uplift: response.uplift,
         epcResolution: response.after.epc_resolution,
       },
     };

@@ -290,6 +290,9 @@ export interface ARVResult {
   totalPrice: number; // EUR
   floorArea: number; // Echo of input
   energyClass: string; // Resolved Greek EPC label
+  // Value uplift over the pre-renovation state, already scaled to percent by
+  // the Financial API. Absent when the request carried no before-consumption.
+  priceIncreasePct?: number; // %
   metadata?: Record<string, unknown>;
 }
 

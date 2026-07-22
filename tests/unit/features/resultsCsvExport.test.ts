@@ -45,6 +45,7 @@ const successResult = {
   financialResults: {
     capitalExpenditure: 50000,
     afterRenovationValue: 250000,
+    arv: { priceIncreasePct: 12.5 },
     netPresentValue: 30000,
     returnOnInvestment: 0.12,
     paybackTime: 8.5,
@@ -108,6 +109,10 @@ describe("buildBuildingsCsv", () => {
     // Lifetime-dynamic probability keys are matched by prefix, not literally.
     expect(cell(row, "Pr(PBP < project lifetime)")).toBe("0.71");
     expect(cell(row, "Pr(DPP < project lifetime)")).toBe("0.64");
+    // The ARV model is Greek-only: absolute prices are withheld outside Greece
+    // (these fixtures are Italian), while the relative uplift is kept as-is.
+    expect(cell(row, "ARV (EUR - Greek market model)")).toBe("");
+    expect(cell(row, "ARV uplift (% - Greek market model)")).toBe("12.5");
   });
 
   test("blanks metric cells for non-success rows but keeps status", () => {
