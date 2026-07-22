@@ -18,8 +18,7 @@
 
 .recoCard,
 .sideCard,
-.deep,
-.compareCard {
+.deep {
   background: var(--mantine-color-body);
   border: 1px solid var(--mantine-color-gray-2);
   border-radius: var(--mantine-radius-md);
@@ -115,7 +114,7 @@
 
 .recoMetrics {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--mantine-spacing-sm);
 }
 
@@ -590,25 +589,7 @@
   margin-bottom: 4px;
 }
 
-/* ───────── Compare-all card ───────── */
-.compareCard {
-  padding: var(--mantine-spacing-lg);
-}
-
-.compareCardHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--mantine-spacing-sm);
-}
-
-.compareCardHead h3 {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--mantine-color-dark-9);
-  margin: 0;
-}
-
+/* ───────── Compare-all table ───────── */
 .table {
   width: 100%;
   border-collapse: separate;

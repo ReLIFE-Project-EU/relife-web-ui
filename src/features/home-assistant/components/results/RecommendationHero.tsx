@@ -14,7 +14,6 @@ import {
   IconInfoCircle,
   IconLeaf,
   IconTemperature,
-  IconTrendingUp,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 import { EPCBadge } from "../../../../components/shared";
@@ -146,17 +145,18 @@ export function RecommendationHero({
 
               <div className={classes.recoMetrics}>
                 <Metric
-                  icon={<IconTrendingUp size={14} />}
-                  label="Net present value"
+                  icon={<IconCoin size={14} />}
+                  label="Yearly savings"
                   value={
-                    winnerResult
-                      ? formatCurrency(
-                          winnerResult.riskAssessment?.pointForecasts.NPV ??
-                            winnerResult.netPresentValue,
-                        )
+                    winnerResult?.riskAssessment?.pointForecasts
+                      .MonthlyAvgSavings !== undefined
+                      ? `${formatCurrency(
+                          winnerResult.riskAssessment.pointForecasts
+                            .MonthlyAvgSavings * 12,
+                        )}/yr`
                       : "—"
                   }
-                  hint="over project horizon"
+                  hint="modeled average, net of running costs"
                 />
                 <Metric
                   icon={<IconClockHour3 size={14} />}
@@ -172,20 +172,6 @@ export function RecommendationHero({
                       : "—"
                   }
                   hint={paybackRangeHint(winnerResult)}
-                />
-                <Metric
-                  icon={<IconCoin size={14} />}
-                  label="Monthly cash benefit"
-                  value={
-                    winnerResult?.riskAssessment?.pointForecasts
-                      .MonthlyAvgSavings !== undefined
-                      ? `${formatCurrency(
-                          winnerResult.riskAssessment.pointForecasts
-                            .MonthlyAvgSavings,
-                        )}/mo`
-                      : "—"
-                  }
-                  hint="avg over horizon"
                 />
               </div>
 
@@ -362,7 +348,6 @@ function RecoSkeleton() {
       <Skeleton height={32} width="60%" />
       <Skeleton height={20} width="80%" />
       <div className={classes.recoMetrics}>
-        <Skeleton height={84} />
         <Skeleton height={84} />
         <Skeleton height={84} />
       </div>

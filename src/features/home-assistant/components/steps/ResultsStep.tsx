@@ -1,22 +1,23 @@
 /**
  * ResultsStep Component
  * Screen 3: Recommendation-first dashboard built around the active MCDA
- * persona. Auto-ranks scenarios whenever the persona changes.
+ * persona. Auto-ranks scenarios whenever the persona changes. The headline
+ * answer (recommended package, yearly savings, payback, ranking) stays in
+ * view; per-package detail and the comparison table sit behind collapsed
+ * sections so the D3.2 indicators remain reachable without crowding it.
  */
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  Accordion,
   Alert,
   Box,
-  Button,
-  Collapse,
-  Group,
   Stack,
   Text,
+  ThemeIcon,
   Title,
 } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
-import { IconChevronDown, IconChevronUp } from "@tabler/icons-react";
+import { IconLayoutGrid, IconTable } from "@tabler/icons-react";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 import { getRankingScenarioStatuses } from "../../../../services/TechnicalMCDAService";
@@ -111,7 +112,6 @@ export function ResultsStep() {
   const [selectedDetailId, setSelectedDetailId] = useState<ScenarioId | null>(
     null,
   );
-  const [showCashFlow, { toggle: toggleCashFlow }] = useDisclosure(false);
   const winnerId = mcdaRanking?.[0]?.scenarioId ?? null;
 
   // Snap the deep-dive selection to the winner when it changes, using the
@@ -224,8 +224,8 @@ export function ResultsStep() {
           Your renovation results
         </Title>
         <Text c="dimmed" size="sm">
-          A recommended pick tuned to your priorities, with the full numbers
-          below. Switch profiles or packages to compare.
+          A recommended pick tuned to your priorities. Switch profiles to
+          re-rank, or open the sections below for the full numbers.
         </Text>
       </Box>
 
@@ -262,76 +262,88 @@ export function ResultsStep() {
         onSelectScenario={handleSelectScenario}
       />
 
-      {renovationScenarios.length > 0 ? (
-        <Stack gap={0}>
-          <ScenarioTabs
-            renovationScenarios={renovationScenarios}
-            ranking={mcdaRanking}
-            selectedScenarioId={fallbackSelectedId}
-            onSelectScenario={handleSelectScenario}
-          />
-
-          <section className={classes.deep}>
-            {selectedScenario && currentScenario ? (
-              <div className={classes.deepCols}>
-                <EnergyDeepDive
-                  current={currentScenario}
-                  selected={selectedScenario}
-                  floorArea={state.building.floorArea ?? undefined}
-                />
-                <FinancialDeepDive
-                  selected={selectedScenario}
-                  result={selectedResult}
-                  funding={funding}
-                />
-              </div>
-            ) : (
-              <Text c="dimmed" size="sm">
-                Select a package above to inspect its details.
-              </Text>
-            )}
-          </section>
-        </Stack>
-      ) : null}
-
-      {selectedResult?.riskAssessment?.cashFlowData ? (
-        <Stack gap="xs">
-          <Group>
-            <Button
-              variant="subtle"
-              size="xs"
-              onClick={toggleCashFlow}
-              leftSection={
-                showCashFlow ? (
-                  <IconChevronUp size={14} />
-                ) : (
-                  <IconChevronDown size={14} />
-                )
+      {/* Everything below the recommendation is secondary detail: kept
+       * reachable, but collapsed so the headline answer stays uncluttered. */}
+      <Accordion chevronPosition="right" variant="default" multiple>
+        {renovationScenarios.length > 0 ? (
+          <Accordion.Item value="package-details">
+            <Accordion.Control
+              icon={
+                <ThemeIcon color="gray" variant="light" size="sm">
+                  <IconLayoutGrid size={16} />
+                </ThemeIcon>
               }
             >
-              {showCashFlow
-                ? "Hide cash flow timeline"
-                : "Show cash flow timeline"}
-            </Button>
-          </Group>
-          <Collapse in={showCashFlow}>
-            <CashFlowChart
-              data={selectedResult.riskAssessment.cashFlowData}
-              projectLifetime={state.building.projectLifetime ?? undefined}
-              scenarioLabel={selectedScenario?.label}
-            />
-          </Collapse>
-        </Stack>
-      ) : null}
+              Package details
+            </Accordion.Control>
+            <Accordion.Panel>
+              <Stack gap="md">
+                <Stack gap={0}>
+                  <ScenarioTabs
+                    renovationScenarios={renovationScenarios}
+                    ranking={mcdaRanking}
+                    selectedScenarioId={fallbackSelectedId}
+                    onSelectScenario={handleSelectScenario}
+                  />
 
-      <CompareAllTable
-        current={currentScenario}
-        renovationScenarios={renovationScenarios}
-        financialResults={financialResults}
-        ranking={mcdaRanking}
-        selectedScenarioId={fallbackSelectedId}
-        onSelectScenario={handleSelectScenario}
-      />
+                  <section className={classes.deep}>
+                    {selectedScenario && currentScenario ? (
+                      <div className={classes.deepCols}>
+                        <EnergyDeepDive
+                          current={currentScenario}
+                          selected={selectedScenario}
+                          floorArea={state.building.floorArea ?? undefined}
+                        />
+                        <FinancialDeepDive
+                          selected={selectedScenario}
+                          result={selectedResult}
+                          funding={funding}
+                        />
+                      </div>
+                    ) : (
+                      <Text c="dimmed" size="sm">
+                        Select a package above to inspect its details.
+                      </Text>
+                    )}
+                  </section>
+                </Stack>
+
+                {selectedResult?.riskAssessment?.cashFlowData ? (
+                  <CashFlowChart
+                    data={selectedResult.riskAssessment.cashFlowData}
+                    projectLifetime={
+                      state.building.projectLifetime ?? undefined
+                    }
+                    scenarioLabel={selectedScenario?.label}
+                  />
+                ) : null}
+              </Stack>
+            </Accordion.Panel>
+          </Accordion.Item>
+        ) : null}
+
+        <Accordion.Item value="compare-all">
+          <Accordion.Control
+            icon={
+              <ThemeIcon color="gray" variant="light" size="sm">
+                <IconTable size={16} />
+              </ThemeIcon>
+            }
+          >
+            Compare all packages
+          </Accordion.Control>
+          <Accordion.Panel>
+            <CompareAllTable
+              current={currentScenario}
+              renovationScenarios={renovationScenarios}
+              financialResults={financialResults}
+              ranking={mcdaRanking}
+              selectedScenarioId={fallbackSelectedId}
+              onSelectScenario={handleSelectScenario}
+            />
+          </Accordion.Panel>
+        </Accordion.Item>
+      </Accordion>
 
       <ErrorAlert error={state.error} />
 

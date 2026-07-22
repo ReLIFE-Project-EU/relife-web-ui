@@ -1,7 +1,8 @@
 /**
- * CompareAllTable — single comparison table at the bottom of the results
- * screen. Includes a baseline (current home) row and one row per renovation
- * scenario, with click-to-inspect behavior tied to the deep-dive selection.
+ * CompareAllTable — comparison table shown inside the "Compare all packages"
+ * results section. Includes a baseline (current home) row and one row per
+ * renovation scenario, with click-to-inspect behavior tied to the deep-dive
+ * selection. The surrounding section supplies the heading and card chrome.
  */
 
 import { Text } from "@mantine/core";
@@ -45,142 +46,132 @@ export function CompareAllTable({
   );
 
   return (
-    <section className={classes.compareCard}>
-      <div className={classes.compareCardHead}>
-        <h3>Compare all packages</h3>
-      </div>
-      <div className={classes.tableScroll}>
-        <table className={classes.table}>
-          <thead>
-            <tr>
-              <th>Package</th>
-              <th>EPC</th>
-              <th>Thermal needs</th>
-              <th>Investment</th>
-              <th>NPV</th>
-              <th>Payback</th>
-              <th>Monthly cash benefit</th>
-              <th>Score</th>
+    <div className={classes.tableScroll}>
+      <table className={classes.table}>
+        <thead>
+          <tr>
+            <th>Package</th>
+            <th>EPC</th>
+            <th>Thermal needs</th>
+            <th>Investment</th>
+            <th>NPV</th>
+            <th>Payback</th>
+            <th>Monthly cash benefit</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          {current ? (
+            <tr className={classes.baseline}>
+              <td>
+                <div className={classes.rowName}>
+                  <ScenDot scenarioId={current.id} />
+                  <div>
+                    <span className={classes.baselineTag}>Baseline</span>
+                    Current home
+                  </div>
+                </div>
+              </td>
+              <td>
+                <EPCBadge epcClass={current.epcClass} size="sm" estimated />
+              </td>
+              <td>{formatEnergyPerYear(current.annualEnergyNeeds)}</td>
+              <td>—</td>
+              <td>—</td>
+              <td>—</td>
+              <td>—</td>
+              <td>—</td>
             </tr>
-          </thead>
-          <tbody>
-            {current ? (
-              <tr className={classes.baseline}>
+          ) : null}
+          {renovationScenarios.map((scenario) => {
+            const result = financialResults[scenario.id];
+            const isSel = scenario.id === selectedScenarioId;
+            const score = scoreById.get(scenario.id);
+            const npv =
+              result?.riskAssessment?.pointForecasts.NPV ??
+              result?.netPresentValue;
+            const pbp =
+              result?.riskAssessment?.pointForecasts.PBP ?? result?.paybackTime;
+            const monthly =
+              result?.riskAssessment?.pointForecasts.MonthlyAvgSavings;
+
+            return (
+              <tr
+                key={scenario.id}
+                className={`${classes.scen} ${isSel ? classes.sel : ""}`}
+                onClick={() => onSelectScenario(scenario.id)}
+              >
                 <td>
                   <div className={classes.rowName}>
-                    <ScenDot scenarioId={current.id} />
-                    <div>
-                      <span className={classes.baselineTag}>Baseline</span>
-                      Current home
-                    </div>
+                    <ScenDot scenarioId={scenario.id} />
+                    <span>{scenario.label}</span>
+                    {scenario.id === winnerId ? (
+                      <IconCrown
+                        size={14}
+                        color="var(--mantine-color-relife-8)"
+                      />
+                    ) : null}
                   </div>
                 </td>
                 <td>
-                  <EPCBadge epcClass={current.epcClass} size="sm" estimated />
+                  <EPCBadge epcClass={scenario.epcClass} size="sm" estimated />
                 </td>
-                <td>{formatEnergyPerYear(current.annualEnergyNeeds)}</td>
-                <td>—</td>
-                <td>—</td>
-                <td>—</td>
-                <td>—</td>
-                <td>—</td>
-              </tr>
-            ) : null}
-            {renovationScenarios.map((scenario) => {
-              const result = financialResults[scenario.id];
-              const isSel = scenario.id === selectedScenarioId;
-              const score = scoreById.get(scenario.id);
-              const npv =
-                result?.riskAssessment?.pointForecasts.NPV ??
-                result?.netPresentValue;
-              const pbp =
-                result?.riskAssessment?.pointForecasts.PBP ??
-                result?.paybackTime;
-              const monthly =
-                result?.riskAssessment?.pointForecasts.MonthlyAvgSavings;
-
-              return (
-                <tr
-                  key={scenario.id}
-                  className={`${classes.scen} ${isSel ? classes.sel : ""}`}
-                  onClick={() => onSelectScenario(scenario.id)}
+                <td>{formatEnergyPerYear(scenario.annualEnergyNeeds)}</td>
+                <td>
+                  {result?.capitalExpenditure !== undefined
+                    ? formatCurrency(result.capitalExpenditure)
+                    : "—"}
+                </td>
+                <td
+                  style={{
+                    color:
+                      npv !== undefined && npv < 0
+                        ? "var(--mantine-color-red-7)"
+                        : undefined,
+                    fontWeight: 600,
+                  }}
                 >
-                  <td>
-                    <div className={classes.rowName}>
-                      <ScenDot scenarioId={scenario.id} />
-                      <span>{scenario.label}</span>
-                      {scenario.id === winnerId ? (
-                        <IconCrown
-                          size={14}
-                          color="var(--mantine-color-relife-8)"
-                        />
-                      ) : null}
-                    </div>
-                  </td>
-                  <td>
-                    <EPCBadge
-                      epcClass={scenario.epcClass}
-                      size="sm"
-                      estimated
-                    />
-                  </td>
-                  <td>{formatEnergyPerYear(scenario.annualEnergyNeeds)}</td>
-                  <td>
-                    {result?.capitalExpenditure !== undefined
-                      ? formatCurrency(result.capitalExpenditure)
-                      : "—"}
-                  </td>
-                  <td
-                    style={{
-                      color:
-                        npv !== undefined && npv < 0
-                          ? "var(--mantine-color-red-7)"
-                          : undefined,
-                      fontWeight: 600,
-                    }}
-                  >
-                    {npv !== undefined ? formatCurrency(npv) : "—"}
-                  </td>
-                  <td>
-                    {pbp !== undefined
-                      ? formatPaybackYears(
-                          pbp,
-                          result?.riskAssessment?.metadata.project_lifetime,
-                        )
-                      : "—"}
-                  </td>
-                  <td>
-                    {monthly !== undefined
-                      ? `${formatCurrency(monthly)}/mo`
-                      : "—"}
-                  </td>
-                  <td>
-                    {score !== undefined ? (
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 8,
-                          justifyContent: "flex-end",
-                        }}
-                      >
-                        <ScoreBar pct={score * 100} scenarioId={scenario.id} />
-                        <Text component="span" fw={700} size="sm">
-                          {formatNumber(score * 100)}
-                        </Text>
-                      </span>
-                    ) : (
-                      <Text component="span" size="sm" c="dimmed">
-                        —
+                  {npv !== undefined ? formatCurrency(npv) : "—"}
+                </td>
+                <td>
+                  {pbp !== undefined
+                    ? formatPaybackYears(
+                        pbp,
+                        result?.riskAssessment?.metadata.project_lifetime,
+                      )
+                    : "—"}
+                </td>
+                <td>
+                  {monthly !== undefined
+                    ? `${formatCurrency(monthly)}/mo`
+                    : "—"}
+                </td>
+                <td>
+                  {score !== undefined ? (
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 8,
+                        justifyContent: "flex-end",
+                      }}
+                    >
+                      <ScoreBar pct={score * 100} scenarioId={scenario.id} />
+                      <Text component="span" fw={700} size="sm">
+                        {formatNumber(score * 100)}
                       </Text>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </section>
+                    </span>
+                  ) : (
+                    <Text component="span" size="sm" c="dimmed">
+                      —
+                    </Text>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
