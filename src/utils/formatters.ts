@@ -242,9 +242,16 @@ export function formatPaybackYears(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Format CO₂ value in tonnes.
- * Example: 1250 -> "1,250 t CO₂e"
+ * Format CO₂ value in tonnes. `decimal` keeps one fraction digit for
+ * single-building magnitudes.
+ * Example: 1250 -> "1,250 t CO₂e"; 2.53 with decimal -> "2.5 t CO₂e"
  */
-export function formatTonnageCo2(value: number): string {
-  return `${formatNumber(value)} t CO₂e`;
+export function formatTonnageCo2(
+  value: number,
+  options?: { decimal?: boolean },
+): string {
+  const formatted = options?.decimal
+    ? formatDecimal(value)
+    : formatNumber(value);
+  return `${formatted} t CO₂e`;
 }

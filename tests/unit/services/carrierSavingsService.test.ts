@@ -5,6 +5,7 @@ import {
   computeCarrierAnnualCostEur,
   computeCarrierAnnualSavingsEur,
   computeCarrierFinancialEnergySavings,
+  computeOperationalEmissionsTonCo2e,
   extractCarrierSourceBreakdown,
   extractUniCarrierBreakdown,
   toElectricityEquivalentKwh,
@@ -127,5 +128,58 @@ describe("carrierSavingsService", () => {
   test("returns non-positive equivalent kWh for non-positive euro savings", () => {
     expect(toElectricityEquivalentKwh(-100, elecRef)).toBeLessThan(0);
     expect(toElectricityEquivalentKwh(0, elecRef)).toBe(0);
+  });
+
+  // EU factors from the Forecasting service EMISSION_FACTORS table
+  // (relife-forecasting-service co2_reduction.py).
+  const euFactors = {
+    natural_gas: 0.202,
+    grid_electricity: 0.255,
+    solar_pv: 0.04,
+  };
+
+  test("converts per-carrier emissions from kg to t CO₂e", () => {
+    expect(
+      computeOperationalEmissionsTonCo2e(
+        { naturalGasKwh: 10_000, gridElectricityKwh: 2_000 },
+        euFactors,
+      ),
+    ).toBeCloseTo((10_000 * 0.202 + 2_000 * 0.255) / 1000, 10); // 2.53 t
+  });
+
+  test("values PV self-consumption at the solar factor on top of net grid import", () => {
+    // gridElectricityKwh is already net of PV self-consumption (see
+    // extractUniCarrierBreakdown), so the PV term must add to — not replace —
+    // the grid term, and grid export contributes nothing.
+    expect(
+      computeOperationalEmissionsTonCo2e(
+        { naturalGasKwh: 0, gridElectricityKwh: 700 },
+        euFactors,
+        300,
+      ),
+    ).toBeCloseTo((700 * 0.255 + 300 * 0.04) / 1000, 10);
+  });
+
+  test("returns undefined when a needed emission factor is missing", () => {
+    const withoutSolar = {
+      natural_gas: 0.202,
+      grid_electricity: 0.255,
+    };
+
+    expect(
+      computeOperationalEmissionsTonCo2e(
+        { naturalGasKwh: 1_000, gridElectricityKwh: 500 },
+        withoutSolar,
+        300,
+      ),
+    ).toBeUndefined();
+
+    // A missing factor for a zero carrier is irrelevant.
+    expect(
+      computeOperationalEmissionsTonCo2e(
+        { naturalGasKwh: 1_000, gridElectricityKwh: 500 },
+        withoutSolar,
+      ),
+    ).toBeCloseTo((1_000 * 0.202 + 500 * 0.255) / 1000, 10);
   });
 });

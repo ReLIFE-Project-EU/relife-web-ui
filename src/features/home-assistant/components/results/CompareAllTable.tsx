@@ -8,6 +8,7 @@
 import { Text } from "@mantine/core";
 import { IconCrown } from "@tabler/icons-react";
 import { EPCBadge } from "../../../../components/shared";
+import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
 import type {
   FinancialResults,
   MCDARankingResult,
@@ -18,6 +19,7 @@ import {
   formatCurrency,
   formatEnergyPerYear,
   formatPaybackYears,
+  formatTonnageCo2,
 } from "../../utils/formatters";
 import classes from "./ResultsLayout.module.css";
 import { ScenDot, ScoreBar } from "./resultsAtoms";
@@ -52,6 +54,9 @@ export function CompareAllTable({
             <th>Package</th>
             <th>EPC</th>
             <th>Thermal needs</th>
+            <th>
+              CO₂ <ConceptExplainer conceptId="operational-co2-emissions" />
+            </th>
             <th>Investment</th>
             <th>NPV</th>
             <th>Payback</th>
@@ -75,6 +80,13 @@ export function CompareAllTable({
                 <EPCBadge epcClass={current.epcClass} size="sm" estimated />
               </td>
               <td>{formatEnergyPerYear(current.annualEnergyNeeds)}</td>
+              <td>
+                {current.annualEmissionsTonCo2e !== undefined
+                  ? formatTonnageCo2(current.annualEmissionsTonCo2e, {
+                      decimal: true,
+                    })
+                  : "—"}
+              </td>
               <td>—</td>
               <td>—</td>
               <td>—</td>
@@ -93,6 +105,12 @@ export function CompareAllTable({
               result?.riskAssessment?.pointForecasts.PBP ?? result?.paybackTime;
             const monthly =
               result?.riskAssessment?.pointForecasts.MonthlyAvgSavings;
+            const emissionsDelta =
+              scenario.annualEmissionsTonCo2e !== undefined &&
+              current?.annualEmissionsTonCo2e !== undefined
+                ? scenario.annualEmissionsTonCo2e -
+                  current.annualEmissionsTonCo2e
+                : undefined;
 
             return (
               <tr
@@ -116,6 +134,25 @@ export function CompareAllTable({
                   <EPCBadge epcClass={scenario.epcClass} size="sm" estimated />
                 </td>
                 <td>{formatEnergyPerYear(scenario.annualEnergyNeeds)}</td>
+                <td>
+                  {scenario.annualEmissionsTonCo2e !== undefined
+                    ? formatTonnageCo2(scenario.annualEmissionsTonCo2e, {
+                        decimal: true,
+                      })
+                    : "—"}
+                  {emissionsDelta !== undefined && emissionsDelta !== 0 ? (
+                    <Text
+                      component="span"
+                      display="block"
+                      size="xs"
+                      fw={600}
+                      c={emissionsDelta < 0 ? "green" : "red"}
+                    >
+                      {emissionsDelta > 0 ? "+" : ""}
+                      {formatTonnageCo2(emissionsDelta, { decimal: true })}
+                    </Text>
+                  ) : null}
+                </td>
                 <td>
                   {result?.capitalExpenditure !== undefined
                     ? formatCurrency(result.capitalExpenditure)

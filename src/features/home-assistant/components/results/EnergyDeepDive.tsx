@@ -8,6 +8,7 @@ import { Text } from "@mantine/core";
 import {
   IconBolt,
   IconCertificate,
+  IconCloud,
   IconPlug,
   IconSolarPanel,
   IconSun,
@@ -23,8 +24,10 @@ import type { RenovationScenario } from "../../context/types";
 import { getScenarioColor } from "../../utils/colorUtils";
 import {
   calculatePercentChange,
+  formatDecimal,
   formatEnergyPerYear,
   formatNumber,
+  formatTonnageCo2,
 } from "../../utils/formatters";
 import { getEnergyIntensity } from "../../../../utils/epcUtils";
 import classes from "./ResultsLayout.module.css";
@@ -118,6 +121,33 @@ export function EnergyDeepDive({
                 />
                 <Text size="xs" c="dimmed" component="span">
                   delivered to building
+                </Text>
+              </>
+            }
+          />
+        ) : null}
+
+        {selected.annualEmissionsTonCo2e !== undefined &&
+        current.annualEmissionsTonCo2e !== undefined ? (
+          <MiniMetric
+            icon={<IconCloud size={14} />}
+            conceptId="operational-co2-emissions"
+            value={formatDecimal(selected.annualEmissionsTonCo2e)}
+            delta={
+              <>
+                <DeltaBadge
+                  delta={calculatePercentChange(
+                    current.annualEmissionsTonCo2e,
+                    selected.annualEmissionsTonCo2e,
+                  )}
+                  higherIsBetter={false}
+                />
+                <Text size="xs" c="dimmed" component="span">
+                  vs.{" "}
+                  {formatTonnageCo2(current.annualEmissionsTonCo2e, {
+                    decimal: true,
+                  })}{" "}
+                  today
                 </Text>
               </>
             }

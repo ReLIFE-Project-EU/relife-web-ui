@@ -1,5 +1,10 @@
 import type { UNI11300Results } from "../types/forecasting";
 import type { DeliveredEnergyCarrierBreakdown } from "../types/energy";
+import {
+  GRID_ELECTRICITY_EMISSION_SOURCE,
+  MVP_THERMAL_EMISSION_SOURCE,
+  PV_SELF_CONSUMPTION_EMISSION_SOURCE,
+} from "../constants/emissionSources";
 
 export type { DeliveredEnergyCarrierBreakdown };
 
@@ -101,6 +106,45 @@ export function totalCarrierEnergyKwh(
   }
 
   return breakdown.naturalGasKwh + breakdown.gridElectricityKwh;
+}
+
+/**
+ * Annual operational CO₂e emissions of a carrier breakdown in t CO₂e/year.
+ *
+ * Multiplies each delivered-energy carrier by its Forecasting emission factor
+ * (kgCO₂eq/kWh). `gridElectricityKwh` is already net of PV self-consumption
+ * (see `extractUniCarrierBreakdown`), so self-consumed PV is added separately
+ * at the `solar_pv` factor. Grid export does not contribute.
+ *
+ * Returns undefined when a factor needed by a non-zero carrier is missing.
+ */
+export function computeOperationalEmissionsTonCo2e(
+  breakdown: DeliveredEnergyCarrierBreakdown,
+  factorsKgCo2ePerKwh: Record<string, number>,
+  pvSelfConsumptionKwh?: number,
+): number | undefined {
+  const pvKwh = pvSelfConsumptionKwh ?? 0;
+  const terms: Array<[number, string]> = [
+    [breakdown.naturalGasKwh, MVP_THERMAL_EMISSION_SOURCE],
+    [breakdown.gridElectricityKwh, GRID_ELECTRICITY_EMISSION_SOURCE],
+    [pvKwh, PV_SELF_CONSUMPTION_EMISSION_SOURCE],
+  ];
+
+  let totalKg = 0;
+  for (const [consumptionKwh, source] of terms) {
+    if (!Number.isFinite(consumptionKwh) || consumptionKwh <= 0) {
+      continue;
+    }
+
+    const factor = factorsKgCo2ePerKwh[source];
+    if (factor === undefined || !Number.isFinite(factor)) {
+      return undefined;
+    }
+
+    totalKg += consumptionKwh * factor;
+  }
+
+  return totalKg / 1000;
 }
 
 /**

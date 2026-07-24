@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-const { mockSimulateECM } = vi.hoisted(() => ({
+const { mockSimulateECM, mockGetEmissionFactors } = vi.hoisted(() => ({
   mockSimulateECM: vi.fn(),
+  mockGetEmissionFactors: vi.fn(),
 }));
 
 vi.mock("../../../src/api", () => ({
   forecasting: {
     simulateECM: mockSimulateECM,
+    getEmissionFactors: mockGetEmissionFactors,
   },
 }));
 
@@ -74,6 +76,7 @@ import {
 import type {
   BuildingInfo,
   EstimationResult,
+  RenovationPackage,
 } from "../../../src/types/renovation";
 
 function createDeferred<T>() {
@@ -176,6 +179,15 @@ describe("RenovationService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSimulateECM.mockResolvedValue(stubECMResponse);
+    mockGetEmissionFactors.mockResolvedValue({
+      country: "EU",
+      emission_factors_kg_co2eq_per_kwh: {
+        natural_gas: 0.202,
+        grid_electricity: 0.255,
+        solar_pv: 0.04,
+      },
+      sources: ["natural_gas", "grid_electricity", "solar_pv"],
+    });
     service = new RenovationService();
   });
 
@@ -867,5 +879,97 @@ describe("RenovationService", () => {
       naturalGasKwh: 1600,
       gridElectricityKwh: 400,
     });
+  });
+
+  test("evaluateScenarios attaches operational emissions from one factors fetch", async () => {
+    const scenarios = await service.evaluateScenarios(
+      mockBuilding,
+      mockEstimation,
+      [
+        {
+          id: "package-wall-insulation",
+          label: "Wall Insulation",
+          measureIds: ["wall-insulation"],
+        },
+        {
+          id: "package-roof-insulation",
+          label: "Roof Insulation",
+          measureIds: ["roof-insulation"],
+        },
+      ],
+    );
+
+    // One fetch per run, with the ISO code resolved from the display name.
+    expect(mockGetEmissionFactors).toHaveBeenCalledTimes(1);
+    expect(mockGetEmissionFactors).toHaveBeenCalledWith("GR");
+
+    // Baseline is found by id, never by array position: stub carrier splits
+    // are current {1600 gas, 400 grid} and packages {1000 gas, 250 grid}.
+    const current = scenarios.find((scenario) => scenario.id === "current");
+    expect(current?.annualEmissionsTonCo2e).toBeCloseTo(
+      (1600 * 0.202 + 400 * 0.255) / 1000,
+      10,
+    );
+    for (const scenario of scenarios) {
+      if (scenario.id === "current") continue;
+      expect(scenario.annualEmissionsTonCo2e).toBeCloseTo(
+        (1000 * 0.202 + 250 * 0.255) / 1000,
+        10,
+      );
+      expect(scenario.annualEmissionsTonCo2e!).toBeLessThan(
+        current!.annualEmissionsTonCo2e!,
+      );
+    }
+
+    // A second run on the same instance (PRA shares one instance across a
+    // portfolio) reuses the cached factors instead of refetching.
+    await service.evaluateScenarios(mockBuilding, mockEstimation, [
+      {
+        id: "package-wall-insulation",
+        label: "Wall Insulation",
+        measureIds: ["wall-insulation"],
+      },
+    ]);
+    expect(mockGetEmissionFactors).toHaveBeenCalledTimes(1);
+  });
+
+  test("evaluateScenarios returns unannotated scenarios when factors are unavailable", async () => {
+    mockGetEmissionFactors.mockRejectedValueOnce(new Error("factors down"));
+
+    const packages: RenovationPackage[] = [
+      {
+        id: "package-wall-insulation",
+        label: "Wall Insulation",
+        measureIds: ["wall-insulation"],
+      },
+    ];
+    const scenarios = await service.evaluateScenarios(
+      mockBuilding,
+      mockEstimation,
+      packages,
+    );
+
+    expect(scenarios.map((scenario) => scenario.id)).toEqual([
+      "current",
+      "package-wall-insulation",
+    ]);
+    for (const scenario of scenarios) {
+      expect(scenario.annualEmissionsTonCo2e).toBeUndefined();
+    }
+
+    // The rejection is not cached: the next run on the same instance
+    // refetches (falling through to the default resolved factors) and
+    // annotates normally.
+    const retried = await service.evaluateScenarios(
+      mockBuilding,
+      mockEstimation,
+      packages,
+    );
+    expect(mockGetEmissionFactors).toHaveBeenCalledTimes(2);
+    const current = retried.find((scenario) => scenario.id === "current");
+    expect(current?.annualEmissionsTonCo2e).toBeCloseTo(
+      (1600 * 0.202 + 400 * 0.255) / 1000,
+      10,
+    );
   });
 });

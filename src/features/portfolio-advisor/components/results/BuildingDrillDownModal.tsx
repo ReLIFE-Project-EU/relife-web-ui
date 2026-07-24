@@ -16,6 +16,7 @@ import {
   Text,
 } from "@mantine/core";
 import { IconArrowRight, IconInfoCircle } from "@tabler/icons-react";
+import { ConceptMetricCard } from "../../../../components/shared/ConceptMetricCard";
 import { EPCBadge } from "../../../../components/shared/EPCBadge";
 import { ErrorAlert } from "../../../../components/shared/ErrorAlert";
 import { MetricCard } from "../../../../components/shared/MetricCard";
@@ -24,6 +25,7 @@ import {
   formatDecimal,
   formatNumber,
   formatPaybackYears,
+  formatTonnageCo2,
   getEnergyReduction,
 } from "../../../../utils/formatters";
 import { formatArchetypeName } from "../../../../utils/archetypeLabels";
@@ -48,7 +50,11 @@ export function BuildingDrillDownModal({
 }: BuildingDrillDownModalProps) {
   const archetype = result?.estimation?.archetype;
   const renovated = result?.scenarios?.find((s) => s.id === "renovated");
+  const baseline = result?.scenarios?.find((s) => s.id === "current");
   const fr = result?.financialResults;
+
+  const co2Before = baseline?.annualEmissionsTonCo2e;
+  const co2After = renovated?.annualEmissionsTonCo2e;
 
   const energyReduction = getEnergyReduction(
     result?.estimation?.annualEnergyNeeds,
@@ -138,6 +144,42 @@ export function BuildingDrillDownModal({
                   energyReduction !== undefined
                     ? `${formatDecimal(energyReduction)}%`
                     : "—"
+                }
+              />
+              <ConceptMetricCard
+                conceptId="operational-co2-emissions"
+                value={
+                  co2Before !== undefined && co2After !== undefined ? (
+                    <Stack gap={0}>
+                      <Group gap={6} wrap="nowrap">
+                        <Text span size="lg" fw={600}>
+                          {formatTonnageCo2(co2Before, { decimal: true })}
+                        </Text>
+                        <IconArrowRight
+                          size={14}
+                          color="var(--mantine-color-gray-5)"
+                        />
+                        <Text span size="lg" fw={600}>
+                          {formatTonnageCo2(co2After, { decimal: true })}
+                        </Text>
+                      </Group>
+                      {co2Before !== co2After ? (
+                        <Text
+                          size="xs"
+                          fw={600}
+                          c={co2After < co2Before ? "green" : "red"}
+                        >
+                          {co2After < co2Before ? "−" : "+"}
+                          {formatTonnageCo2(Math.abs(co2After - co2Before), {
+                            decimal: true,
+                          })}
+                          /year
+                        </Text>
+                      ) : null}
+                    </Stack>
+                  ) : (
+                    "—"
+                  )
                 }
               />
               <MetricCard

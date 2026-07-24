@@ -6,7 +6,11 @@
  */
 
 import { forecasting } from "../api";
-import type { ECMApplicationParams, ECMScenario } from "../types/forecasting";
+import type {
+  ECMApplicationParams,
+  ECMScenario,
+  EmissionFactorResponse,
+} from "../types/forecasting";
 import type { EpcEnergyBasis } from "../types/energy";
 import type {
   BuildingInfo,
@@ -26,11 +30,13 @@ import {
   transformColumnarToRowFormat,
 } from "./energyUtils";
 import {
+  computeOperationalEmissionsTonCo2e,
   extractUniCarrierBreakdown,
   scaleCarrierBreakdown,
   totalCarrierEnergyKwh,
   type DeliveredEnergyCarrierBreakdown,
 } from "./carrierSavingsService";
+import { getCountryCode } from "../utils/countries";
 import {
   MEASURE_CATEGORIES,
   RENOVATION_MEASURES,
@@ -99,6 +105,18 @@ type ScenarioEvaluationUnit =
   | { kind: "package"; package: RenovationPackage };
 
 export class RenovationService implements IRenovationService {
+  /**
+   * Emission-factor fetches keyed by requested country. Factor tables are
+   * static per country, and PRA shares one service instance across a
+   * concurrent portfolio run, so caching the in-flight promise collapses N
+   * identical requests into one. Rejections are evicted so a transient
+   * failure on one building does not disable emissions for the rest.
+   */
+  private emissionFactorsByCountry = new Map<
+    string,
+    Promise<EmissionFactorResponse>
+  >();
+
   getMeasures(): RenovationMeasure[] {
     return RENOVATION_MEASURES;
   }
@@ -258,6 +276,8 @@ export class RenovationService implements IRenovationService {
             ),
     );
 
+    await this.annotateScenarioEmissions(building, scenarios, auditCtx);
+
     auditLog.info(
       "renovation",
       "renovation.evaluate.end",
@@ -266,6 +286,83 @@ export class RenovationService implements IRenovationService {
     );
 
     return scenarios;
+  }
+
+  /**
+   * Attach operational CO₂e emissions (t CO₂e/year) to each scenario with a
+   * carrier breakdown, using Forecasting emission factors fetched once per
+   * run. Heat-pump scenarios carry all consumption as grid electricity, so
+   * they are valued at the grid factor rather than `heat_pump_electric`,
+   * consistent with the RSE carrier mapping. Emissions are optional: any
+   * failure leaves the scenarios unannotated instead of failing the run.
+   */
+  private async annotateScenarioEmissions(
+    building: BuildingInfo,
+    scenarios: RenovationScenario[],
+    auditCtx?: AuditCtx,
+  ): Promise<void> {
+    try {
+      // building.country holds a display name ("Italy"); the emission-factor
+      // endpoint expects an ISO code, with unsupported codes resolved to the
+      // default factor country by the API wrapper.
+      const country = getCountryCode(building.country) ?? building.country;
+      const factors = await this.getEmissionFactorsCached(country);
+
+      auditLog.debug(
+        "renovation",
+        "renovation.emissions.factors",
+        { requestedCountry: country, response: factors },
+        auditCtx,
+      );
+
+      for (const scenario of scenarios) {
+        if (!scenario.carrierBreakdown) {
+          continue;
+        }
+
+        scenario.annualEmissionsTonCo2e = computeOperationalEmissionsTonCo2e(
+          scenario.carrierBreakdown,
+          factors.emission_factors_kg_co2eq_per_kwh,
+          scenario.pvSelfConsumption,
+        );
+      }
+
+      auditLog.info(
+        "renovation",
+        "renovation.emissions.end",
+        {
+          factorCountry: factors.country,
+          emissionsTonCo2eById: Object.fromEntries(
+            scenarios.map((s) => [s.id, s.annualEmissionsTonCo2e]),
+          ),
+        },
+        auditCtx,
+      );
+    } catch (error) {
+      auditLog.warn(
+        "renovation",
+        "renovation.emissions.unavailable",
+        { error: error instanceof Error ? error.message : String(error) },
+        auditCtx,
+      );
+    }
+  }
+
+  private getEmissionFactorsCached(
+    country: string,
+  ): Promise<EmissionFactorResponse> {
+    const cached = this.emissionFactorsByCountry.get(country);
+    if (cached) {
+      return cached;
+    }
+
+    const pending = forecasting.getEmissionFactors(country);
+    this.emissionFactorsByCountry.set(country, pending);
+    pending.catch(() => {
+      this.emissionFactorsByCountry.delete(country);
+    });
+
+    return pending;
   }
 
   private createPackage(measureIds: RenovationMeasureId[]): RenovationPackage {

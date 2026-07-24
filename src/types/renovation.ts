@@ -270,6 +270,7 @@ export interface RenovationScenario {
   pvGridExport?: number; // kWh/year PV grid export, when available
   pvSelfConsumptionRate?: number; // 0-1 PV self-consumption rate, when available
   pvSelfSufficiencyRate?: number; // 0-1 PV self-sufficiency rate, when available
+  annualEmissionsTonCo2e?: number; // t CO₂e/year operational HVAC emissions from the carrier split, when available
   flexibilityIndex: number;
   comfortIndex: number;
   packageId: string | null;

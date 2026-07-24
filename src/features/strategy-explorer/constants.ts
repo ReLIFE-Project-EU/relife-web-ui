@@ -1,5 +1,10 @@
 import type { RenovationMeasureId } from "../../types/renovation";
 import {
+  GRID_ELECTRICITY_EMISSION_SOURCE,
+  MVP_THERMAL_EMISSION_SOURCE,
+  PV_SELF_CONSUMPTION_EMISSION_SOURCE,
+} from "../../constants/emissionSources";
+import {
   ENERGY_TARIFF_DEFAULTS,
   FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
 } from "../../services/carrierSavingsService.ts";
@@ -50,9 +55,11 @@ export const RSE_REFERENCE_DATA_COST_NOTE =
 export const RSE_HEATING_STOPGAP_NOTE =
   "Heat pump and boiler capacities are sized from floor area with a temporary heuristic, so their costs are rough estimates.";
 
-export const RSE_MVP_THERMAL_EMISSION_SOURCE = "natural_gas";
-export const RSE_GRID_ELECTRICITY_EMISSION_SOURCE = "grid_electricity";
-export const RSE_PV_SELF_CONSUMPTION_EMISSION_SOURCE = "solar_pv";
+export const RSE_MVP_THERMAL_EMISSION_SOURCE = MVP_THERMAL_EMISSION_SOURCE;
+export const RSE_GRID_ELECTRICITY_EMISSION_SOURCE =
+  GRID_ELECTRICITY_EMISSION_SOURCE;
+export const RSE_PV_SELF_CONSUMPTION_EMISSION_SOURCE =
+  PV_SELF_CONSUMPTION_EMISSION_SOURCE;
 
 export const RSE_EMISSION_ENERGY_SOURCES = [
   RSE_MVP_THERMAL_EMISSION_SOURCE,

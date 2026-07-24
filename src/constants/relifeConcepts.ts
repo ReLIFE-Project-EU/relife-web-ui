@@ -10,6 +10,7 @@ export type ConceptId =
   | "pv-self-consumption"
   | "pv-grid-export"
   | "pv-self-consumption-rate"
+  | "operational-co2-emissions"
   | "investment"
   | "annual-maintenance-cost"
   | "npv"
@@ -140,6 +141,17 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     description:
       "Fraction of PV generation that is consumed on-site rather than exported.",
     unit: "%",
+  },
+  "operational-co2-emissions": {
+    id: "operational-co2-emissions",
+    label: "CO₂ emissions",
+    description:
+      "The greenhouse gases released each year to produce the energy your heating and cooling use.",
+    unit: "t CO₂e/year",
+    caveat:
+      "Hot water, lighting, and appliances are not counted, and neither is the carbon released in making and installing the renovation materials themselves. Figures are based on how electricity and gas are typically produced in your country, or on a European average when figures for your country aren't available.",
+    professionalDetail:
+      "Per-carrier calculation from the delivered-energy split: natural gas and net grid electricity at the Forecasting service's country factors (kgCO₂eq/kWh), plus self-consumed PV at the solar_pv lifecycle factor. Grid import is already net of PV self-consumption; grid export is not credited.",
   },
   investment: {
     id: "investment",
