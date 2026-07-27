@@ -44,7 +44,10 @@ export function ConceptMetricCard({
             size="xs"
           />
         </Group>
-        <Text size="lg" fw={600}>
+        {/* `value` is a ReactNode, so callers pass elements (see the CO₂
+            before/after stack in BuildingDrillDownModal). Text defaults to a
+            <p>, which cannot legally contain them — same as MetricCard. */}
+        <Text component="div" size="lg" fw={600}>
           {value}
         </Text>
       </Stack>
