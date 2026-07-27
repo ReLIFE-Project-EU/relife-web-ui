@@ -240,13 +240,19 @@ describe("homeAssistantReducer package financial inputs", () => {
         ],
       },
       {
-        type: "UPDATE_INCENTIVE",
-        field: "upfrontPercentage",
-        value: 15,
+        type: "SET_INCENTIVES",
+        incentives: {
+          mode: "percentage",
+          upfrontPercentage: 15,
+          upfrontAmount: 4_000,
+        },
       },
     );
 
     expect(state.funding.incentives.upfrontPercentage).toBe(15);
+    // Both values are retained so switching mode does not discard the other
+    // entry; only `mode` decides which one is applied.
+    expect(state.funding.incentives.upfrontAmount).toBe(4_000);
     expect(state.financialResults).toEqual({});
     expect(state.mcdaRanking).toBeNull();
   });

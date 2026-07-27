@@ -114,7 +114,7 @@ const mockBuilding = {
 const selfFundedOptions: FundingOptions = {
   financingType: "self-funded",
   loan: { percentage: 0, duration: 0 },
-  incentives: { upfrontPercentage: 0 },
+  incentives: { mode: "percentage", upfrontPercentage: 0, upfrontAmount: 0 },
 };
 
 const renovatedScenario = {
@@ -529,7 +529,11 @@ describe("FinancialService", () => {
     const fundedOptions: FundingOptions = {
       financingType: "loan",
       loan: { percentage: 50, duration: 12 },
-      incentives: { upfrontPercentage: 0 },
+      incentives: {
+        mode: "percentage",
+        upfrontPercentage: 0,
+        upfrontAmount: 0,
+      },
     };
 
     await service.calculateForAllScenarios({
@@ -565,7 +569,11 @@ describe("FinancialService", () => {
     const fundedOptions: FundingOptions = {
       financingType: "loan",
       loan: { percentage: 50, duration: 12 },
-      incentives: { upfrontPercentage: 20 },
+      incentives: {
+        mode: "percentage",
+        upfrontPercentage: 20,
+        upfrontAmount: 0,
+      },
     };
 
     await service.calculateForAllScenarios({

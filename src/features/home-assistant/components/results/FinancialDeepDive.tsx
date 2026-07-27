@@ -4,7 +4,8 @@
  * probability gauge, and a row of secondary IRR / ROI / DPP indicators.
  */
 
-import { Badge, Group, Text } from "@mantine/core";
+import { Text } from "@mantine/core";
+import { FundingPills } from "../../../../components/shared";
 import type {
   FinancialResults,
   FundingOptions,
@@ -110,25 +111,6 @@ export function FinancialDeepDive({
         </>
       )}
     </div>
-  );
-}
-
-function FundingPills({ funding }: { funding: FundingOptions }) {
-  const pills: string[] = [];
-  pills.push(funding.financingType === "loan" ? "Loan" : "Self-funded");
-  if (funding.incentives.upfrontPercentage > 0) {
-    pills.push(
-      `${formatPercent(funding.incentives.upfrontPercentage)} upfront grant`,
-    );
-  }
-  return (
-    <Group gap={6} wrap="wrap">
-      {pills.map((pill) => (
-        <Badge key={pill} variant="light" color="blue" radius="sm">
-          {pill}
-        </Badge>
-      ))}
-    </Group>
   );
 }
 

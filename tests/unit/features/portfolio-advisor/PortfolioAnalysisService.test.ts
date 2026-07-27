@@ -102,7 +102,9 @@ const funding: FundingOptions = {
   financingType: "self-funded",
   loan: { percentage: 0, duration: 0 },
   incentives: {
+    mode: "percentage",
     upfrontPercentage: 0,
+    upfrontAmount: 0,
   },
 };
 
@@ -203,7 +205,6 @@ describe("PortfolioAnalysisService", () => {
     const results = await service.analyzePortfolio({
       buildings: [createBuilding()],
       selectedMeasures: ["condensing-boiler"],
-      financingScheme: "equity",
       funding,
       projectLifetime: 20,
       onProgress: vi.fn(),
@@ -234,7 +235,6 @@ describe("PortfolioAnalysisService", () => {
     await service.analyzePortfolio({
       buildings: [createBuilding()],
       selectedMeasures: ["wall-insulation", "air-water-heat-pump"],
-      financingScheme: "equity",
       funding,
       projectLifetime: 20,
       onProgress: vi.fn(),
@@ -260,7 +260,6 @@ describe("PortfolioAnalysisService", () => {
     await service.analyzePortfolio({
       buildings: [createBuilding()],
       selectedMeasures: ["wall-insulation"],
-      financingScheme: "equity",
       funding,
       projectLifetime: 20,
       onProgress: vi.fn(),
@@ -282,7 +281,6 @@ describe("PortfolioAnalysisService", () => {
     const results = await service.analyzePortfolio({
       buildings: [createBuilding()],
       selectedMeasures: ["condensing-boiler", "air-water-heat-pump"],
-      financingScheme: "equity",
       funding,
       projectLifetime: 20,
       onProgress: vi.fn(),
@@ -317,7 +315,6 @@ describe("PortfolioAnalysisService", () => {
     const results = await service.analyzePortfolio({
       buildings: [createBuilding()],
       selectedMeasures: ["pv"],
-      financingScheme: "equity",
       funding,
       projectLifetime: 20,
       onProgress: vi.fn(),
@@ -347,7 +344,6 @@ describe("PortfolioAnalysisService", () => {
     const results = await service.analyzePortfolio({
       buildings: [createBuilding()],
       selectedMeasures: ["wall-insulation"],
-      financingScheme: "equity",
       funding,
       projectLifetime: 20,
       onProgress: vi.fn(),
@@ -381,7 +377,6 @@ describe("PortfolioAnalysisService", () => {
       // Per-building CAPEX overrides; OPEX falls back to the global override.
       buildings: [createBuilding({ estimatedCapex: 25000 })],
       selectedMeasures: ["wall-insulation"],
-      financingScheme: "equity",
       funding,
       projectLifetime: 20,
       onProgress: vi.fn(),
@@ -421,7 +416,6 @@ describe("PortfolioAnalysisService", () => {
         }),
       ],
       selectedMeasures: ["wall-insulation"],
-      financingScheme: "equity",
       funding,
       projectLifetime: 20,
       onProgress: vi.fn(),
@@ -477,7 +471,6 @@ describe("PortfolioAnalysisService", () => {
     const results = await service.analyzePortfolio({
       buildings: [createBuilding()],
       selectedMeasures: ["wall-insulation"],
-      financingScheme: "equity",
       funding,
       projectLifetime: 20,
       onProgress: vi.fn(),
@@ -505,7 +498,6 @@ describe("PortfolioAnalysisService", () => {
     const results = await service.analyzePortfolio({
       buildings: [createBuilding()],
       selectedMeasures: ["solar-thermal"],
-      financingScheme: "equity",
       funding,
       projectLifetime: 20,
       onProgress: vi.fn(),
@@ -525,7 +517,6 @@ describe("PortfolioAnalysisService", () => {
     const results = await service.analyzePortfolio({
       buildings: [createBuilding()],
       selectedMeasures: [],
-      financingScheme: "equity",
       funding,
       projectLifetime: 20,
       onProgress: vi.fn(),

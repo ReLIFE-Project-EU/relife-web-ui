@@ -60,4 +60,22 @@ describe("relifeConcepts ontology", () => {
       expect(relifeConcepts[conceptId].unit?.trim()).not.toBe("");
     }
   });
+
+  test("financing scheme concepts are shared across the tools", () => {
+    // The financing vocabulary is defined once here so HRA and PRA cannot
+    // drift apart (issue #72). The loan and subsidy caveats are rendered as
+    // visible copy, so they must be present.
+    for (const conceptId of [
+      "own-funds",
+      "renovation-loan",
+      "upfront-subsidy",
+    ] as const) {
+      const concept = relifeConcepts[conceptId];
+      expect(concept.label.trim()).not.toBe("");
+      expect(concept.description.trim()).not.toBe("");
+    }
+
+    expect(relifeConcepts["renovation-loan"].caveat?.trim()).toBeTruthy();
+    expect(relifeConcepts["upfront-subsidy"].caveat?.trim()).toBeTruthy();
+  });
 });

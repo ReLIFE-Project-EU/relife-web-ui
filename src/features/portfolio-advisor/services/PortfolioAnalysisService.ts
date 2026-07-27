@@ -62,7 +62,6 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     const {
       buildings,
       selectedMeasures,
-      financingScheme,
       funding,
       projectLifetime,
       onProgress,
@@ -70,7 +69,6 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       globalMaintenanceCost,
       financialAssumptions,
     } = request;
-    void financingScheme;
     const results: Record<string, BuildingAnalysisResult> = {};
     let completed = 0;
 
@@ -80,7 +78,7 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       "portfolio.run.start",
       {
         buildingCount: buildings.length,
-        financingScheme,
+        financingType: funding.financingType,
         projectLifetime,
         globalCapex,
         globalMaintenanceCost,

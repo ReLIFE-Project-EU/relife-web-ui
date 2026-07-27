@@ -459,10 +459,8 @@ export class FinancialService implements IFinancialService {
 
       const renovationCost = packageInput.capex;
       const annualMaintenanceCost = packageInput.annualMaintenanceCost;
-      const { effectiveCost, loanAmount } = applyFundingReduction(
-        renovationCost,
-        resolvedFundingOptions,
-      );
+      const { effectiveCost, loanAmount, subsidyAmount } =
+        applyFundingReduction(renovationCost, resolvedFundingOptions);
 
       // Calculate loan term based on financing type
       const loanTerm =
@@ -523,8 +521,8 @@ export class FinancialService implements IFinancialService {
           effectiveCost,
           loanAmount,
           loanTerm,
-          upfrontIncentivePercentage:
-            resolvedFundingOptions.incentives.upfrontPercentage,
+          subsidyAmount,
+          incentiveMode: resolvedFundingOptions.incentives.mode,
         },
         auditCtx,
       );
@@ -539,9 +537,13 @@ export class FinancialService implements IFinancialService {
         loan_term: loanTerm,
       };
 
-      // The risk-assessment endpoint requires annual_energy_savings > 0.
-      // If the renovation produces no measurable savings, skip that call.
+      // The risk-assessment endpoint requires annual_energy_savings > 0 and
+      // capex > 0. Skip the call when the renovation produces no measurable
+      // savings, or when a subsidy covers the whole cost so there is no
+      // investment left to appraise.
       const hasSavings = riskRequest.annual_energy_savings > 0;
+      const isFullySubsidized = effectiveCost <= 0;
+      const canAssessRisk = hasSavings && !isFullySubsidized;
 
       auditLog.debug(
         "financial",
@@ -549,7 +551,7 @@ export class FinancialService implements IFinancialService {
         { request: arvRequest as unknown as Record<string, unknown> },
         auditCtx,
       );
-      if (hasSavings) {
+      if (canAssessRisk) {
         auditLog.debug(
           "financial",
           "financial.risk.request",
@@ -564,20 +566,25 @@ export class FinancialService implements IFinancialService {
           "financial.risk.skipped",
           {
             scenarioId: scenario.id,
-            reason: canUseCarrierPricing
-              ? "non-positive-carrier-aware-savings"
-              : "missing-carrier-breakdown",
+            reason: isFullySubsidized
+              ? "fully-subsidized"
+              : canUseCarrierPricing
+                ? "non-positive-carrier-aware-savings"
+                : "missing-carrier-breakdown",
             annualSavingsEur: carrierSavings.annualSavingsEur,
             electricityEquivalentKwh: carrierSavings.electricityEquivalentKwh,
+            renovationCost,
+            subsidyAmount,
+            effectiveCost,
           },
           auditCtx,
         );
       }
 
-      // Call APIs in parallel (risk assessment only when savings > 0)
+      // Call APIs in parallel (risk assessment only when it can be computed)
       const [arvAttempt, riskResult] = await Promise.all([
         this.tryCalculateARV(arvRequest, auditCtx),
-        hasSavings ? this.assessRisk(riskRequest) : Promise.resolve(null),
+        canAssessRisk ? this.assessRisk(riskRequest) : Promise.resolve(null),
       ]);
       const arvResult = arvAttempt.result;
 

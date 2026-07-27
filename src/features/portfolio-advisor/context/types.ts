@@ -9,15 +9,13 @@ import type {
   FinancialRiskIndicator,
   FinancingType,
   FundingOptions,
+  IncentiveDetails,
   LoanDetails,
   RenovationMeasureId,
   RenovationScenario,
   RenovationSelections,
 } from "../../../types/renovation";
 import type { BuildingModifications } from "../../../types/archetype";
-import type { FinancingScheme } from "../constants";
-
-export type { FinancingScheme };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Building Types
@@ -119,7 +117,6 @@ export interface PortfolioAdvisorState {
   buildings: PRABuilding[];
   renovation: RenovationSelections;
   projectLifetime: number;
-  financingScheme: FinancingScheme;
   funding: FundingOptions;
   gasTariffEurPerKwh: number;
   buildingResults: Record<string, BuildingAnalysisResult>;
@@ -153,9 +150,9 @@ export type PortfolioAdvisorAction =
   | { type: "SET_ESTIMATED_CAPEX"; capex: number | null }
   | { type: "SET_ESTIMATED_MAINTENANCE_COST"; cost: number | null }
   | { type: "SET_PROJECT_LIFETIME"; years: number }
-  | { type: "SET_FINANCING_SCHEME"; scheme: FinancingScheme }
   | { type: "SET_FINANCING_TYPE"; financingType: FinancingType }
-  | { type: "UPDATE_LOAN"; field: keyof LoanDetails; value: number }
+  | { type: "SET_LOAN"; loan: LoanDetails }
+  | { type: "SET_INCENTIVES"; incentives: IncentiveDetails }
   | { type: "SET_GAS_TARIFF"; gasTariffEurPerKwh: number }
   | { type: "START_ANALYSIS" }
   | {

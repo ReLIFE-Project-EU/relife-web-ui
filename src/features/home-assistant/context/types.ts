@@ -138,8 +138,8 @@ export type HomeAssistantAction =
 
   // Funding options
   | { type: "SET_FINANCING_TYPE"; financingType: FinancingType }
-  | { type: "UPDATE_LOAN"; field: keyof LoanDetails; value: number }
-  | { type: "UPDATE_INCENTIVE"; field: keyof IncentiveDetails; value: number }
+  | { type: "SET_LOAN"; loan: LoanDetails }
+  | { type: "SET_INCENTIVES"; incentives: IncentiveDetails }
   | { type: "SET_GAS_TARIFF"; gasTariffEurPerKwh: number }
 
   // Evaluation

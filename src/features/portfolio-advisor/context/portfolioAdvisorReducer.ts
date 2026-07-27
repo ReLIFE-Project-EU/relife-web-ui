@@ -22,7 +22,6 @@ export const initialState: PortfolioAdvisorState = {
     estimatedMaintenanceCost: null,
   },
   projectLifetime: PRA_DEFAULT_PROJECT_LIFETIME,
-  financingScheme: "equity",
   funding: {
     financingType: "self-funded",
     loan: {
@@ -30,7 +29,9 @@ export const initialState: PortfolioAdvisorState = {
       duration: 10,
     },
     incentives: {
+      mode: "percentage",
       upfrontPercentage: 0,
+      upfrontAmount: 0,
     },
   },
   gasTariffEurPerKwh: ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
@@ -171,20 +172,6 @@ export function portfolioAdvisorReducer(
     // ─────────────────────────────────────────────────────────────────────────
     // Financing
     // ─────────────────────────────────────────────────────────────────────────
-    case "SET_FINANCING_SCHEME": {
-      // Map scheme to financing type
-      const financingType = action.scheme === "debt" ? "loan" : "self-funded";
-      return {
-        ...state,
-        financingScheme: action.scheme,
-        funding: {
-          ...state.funding,
-          financingType,
-        },
-        ...clearedAnalysisResults,
-      };
-    }
-
     case "SET_FINANCING_TYPE":
       return {
         ...state,
@@ -195,16 +182,17 @@ export function portfolioAdvisorReducer(
         ...clearedAnalysisResults,
       };
 
-    case "UPDATE_LOAN":
+    case "SET_LOAN":
       return {
         ...state,
-        funding: {
-          ...state.funding,
-          loan: {
-            ...state.funding.loan,
-            [action.field]: action.value,
-          },
-        },
+        funding: { ...state.funding, loan: action.loan },
+        ...clearedAnalysisResults,
+      };
+
+    case "SET_INCENTIVES":
+      return {
+        ...state,
+        funding: { ...state.funding, incentives: action.incentives },
         ...clearedAnalysisResults,
       };
 

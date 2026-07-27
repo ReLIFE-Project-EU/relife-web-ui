@@ -13,13 +13,11 @@ import type {
   FundingOptions,
   RenovationMeasureId,
 } from "../../../types/renovation";
-import type { FinancingScheme } from "../constants";
 import type { BuildingAnalysisResult, PRABuilding } from "../context/types";
 
 export interface PortfolioAnalysisRequest {
   buildings: PRABuilding[];
   selectedMeasures: RenovationMeasureId[];
-  financingScheme: FinancingScheme;
   funding: FundingOptions;
   projectLifetime: number;
   onProgress: (completed: number, total: number, current: string) => void;

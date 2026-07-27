@@ -13,6 +13,9 @@ export type ConceptId =
   | "operational-co2-emissions"
   | "investment"
   | "annual-maintenance-cost"
+  | "own-funds"
+  | "renovation-loan"
+  | "upfront-subsidy"
   | "npv"
   | "irr"
   | "roi"
@@ -169,6 +172,34 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     unit: "EUR/year",
     professionalDetail:
       "Also referred to as annual O&M (operation and maintenance) cost in professional financial outputs.",
+  },
+  "own-funds": {
+    id: "own-funds",
+    label: "Own funds",
+    description:
+      "Paying for the renovation outright, without borrowing. Any subsidy is applied first, and the rest is paid at the start of the project.",
+    professionalDetail:
+      "Sent to the Financial service as the `equity` scheme. It carries no amount of its own: the modeled outflow at year 0 is the whole post-subsidy CAPEX.",
+  },
+  "renovation-loan": {
+    id: "renovation-loan",
+    label: "Loan",
+    description:
+      "Borrowing part of the renovation cost and repaying it over a fixed number of years. Any subsidy is applied first, and the loan covers a share of what is left.",
+    caveat:
+      "The interest rate is not something you enter. The Financial service models it from market conditions, testing a range of rates rather than assuming a single one.",
+    professionalDetail:
+      "Sent as the `bank_loan` scheme with `loan_amount` and `term_years`. The service samples the rate stochastically (roughly 2.5-5.5%) and amortises the principal straight-line, so year 0 shows only the equity remainder.",
+  },
+  "upfront-subsidy": {
+    id: "upfront-subsidy",
+    label: "Subsidy",
+    description:
+      "A grant or public contribution that lowers the renovation cost at the start, entered either as a share of the cost or as a fixed amount.",
+    caveat:
+      "The subsidy is subtracted from the renovation cost before anything else is worked out, so every financial result shown is based on what you actually pay, not on the full cost.",
+    professionalDetail:
+      "The Financial service has no subsidy field, so the grant is netted off `capex` client-side. NPV, IRR, ROI, PBP and DPP are therefore all computed on the net investment.",
   },
   npv: {
     id: "npv",

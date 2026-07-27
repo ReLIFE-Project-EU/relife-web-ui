@@ -1,113 +1,26 @@
 /**
  * FinancingStep Component
- * Step 2: Financing scheme selection and portfolio analysis trigger.
+ * Step 2: Financing configuration and portfolio analysis trigger.
  */
 
-import {
-  Badge,
-  Box,
-  Card,
-  Grid,
-  Group,
-  NumberInput,
-  SimpleGrid,
-  Stack,
-  Text,
-  Title,
-  UnstyledButton,
-} from "@mantine/core";
-import { IconCash } from "@tabler/icons-react";
-import { memo, useCallback, useMemo } from "react";
+import { Box, Card, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import { useMemo } from "react";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
 import { ErrorAlert } from "../../../../components/shared/ErrorAlert";
 import { EnergyTariffPanel } from "../../../../components/shared/EnergyTariffPanel";
 import { MetricCard } from "../../../../components/shared/MetricCard";
 import {
-  browserNumberSeparators,
-  formatCurrency,
-} from "../../../../utils/formatters";
-import { FINANCING_SCHEMES, type FinancingScheme } from "../../constants";
+  FinancingTypeCards,
+  SubsidyInput,
+} from "../../../../components/shared";
+import { formatCurrency } from "../../../../utils/formatters";
+import { applyFundingReduction } from "../../../../utils/financialCalculations";
 import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
 import { usePortfolioAdvisorServices } from "../../hooks/usePortfolioAdvisorServices";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Scheme Card
-// ─────────────────────────────────────────────────────────────────────────────
-
-const SchemeCard = memo(function SchemeCard({
-  scheme,
-  schemeId,
-  selected,
-  onSelect,
-}: {
-  scheme: (typeof FINANCING_SCHEMES)[number];
-  schemeId: FinancingScheme;
-  selected: boolean;
-  onSelect: (schemeId: FinancingScheme) => void;
-}) {
-  const isDisabled = !scheme.supported;
-  const handleClick = useCallback(
-    () => onSelect(schemeId),
-    [onSelect, schemeId],
-  );
-
-  return (
-    <UnstyledButton
-      onClick={isDisabled ? undefined : handleClick}
-      w="100%"
-      style={{ cursor: isDisabled ? "not-allowed" : "pointer" }}
-    >
-      <Card
-        withBorder
-        radius="md"
-        p="md"
-        bg={selected ? "relife.0" : isDisabled ? "gray.0" : undefined}
-        style={{
-          borderColor: selected ? "var(--mantine-color-relife-7)" : undefined,
-          borderWidth: selected ? 2 : 1,
-          opacity: isDisabled ? 0.6 : 1,
-        }}
-      >
-        <Group justify="space-between" mb="xs">
-          <Group gap="xs">
-            <IconCash size={18} />
-            <Text fw={600} size="sm">
-              {scheme.label}
-            </Text>
-          </Group>
-          {!scheme.supported && (
-            <Badge size="xs" color="gray" variant="light">
-              Coming Soon
-            </Badge>
-          )}
-          {selected && (
-            <Badge size="xs" color="relife" variant="filled">
-              Selected
-            </Badge>
-          )}
-        </Group>
-        <Text size="xs" c="dimmed">
-          {scheme.description}
-        </Text>
-      </Card>
-    </UnstyledButton>
-  );
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Main Component
-// ─────────────────────────────────────────────────────────────────────────────
 
 export function FinancingStep() {
   const { state, dispatch } = usePortfolioAdvisor();
   const services = usePortfolioAdvisorServices();
-
-  const handleSelectScheme = useCallback(
-    (scheme: FinancingScheme) => {
-      dispatch({ type: "SET_FINANCING_SCHEME", scheme });
-    },
-    [dispatch],
-  );
 
   const handlePrevious = () => {
     dispatch({ type: "SET_STEP", step: 1 });
@@ -120,7 +33,6 @@ export function FinancingStep() {
       const results = await services.portfolioAnalysis.analyzePortfolio({
         buildings: state.buildings,
         selectedMeasures: state.renovation.selectedMeasures,
-        financingScheme: state.financingScheme,
         funding: state.funding,
         projectLifetime: state.projectLifetime,
         onProgress: (completed, total, current) => {
@@ -151,32 +63,46 @@ export function FinancingStep() {
     }
   };
 
-  // Loan summary derived from existing state. Total CAPEX sums the buildings
-  // whose cost is known up front (per-building override or global override).
-  // Buildings with neither are auto-estimated during analysis, so they are not
-  // counted here — `hasAutoEstimated` flags that the figures are partial.
-  const { totalCapex, hasAutoEstimated } = useMemo(() => {
-    let total = 0;
-    let autoEstimated = false;
-    for (const b of state.buildings) {
-      const capex =
-        typeof b.estimatedCapex === "number"
-          ? b.estimatedCapex
-          : state.renovation.estimatedCapex;
-      if (capex == null) {
-        autoEstimated = true;
-      } else {
-        total += capex;
-      }
-    }
-    return { totalCapex: total, hasAutoEstimated: autoEstimated };
-  }, [state.buildings, state.renovation.estimatedCapex]);
+  // Funding summary derived from existing state. Totals sum the buildings whose
+  // cost is known up front (per-building override or global override); buildings
+  // with neither are auto-estimated during analysis, so they are not counted
+  // here — `hasAutoEstimated` flags that the figures are partial.
+  //
+  // The split runs through the same `applyFundingReduction` the analysis uses,
+  // per building, so this preview cannot drift from what is actually sent.
+  const { totalCapex, totalSubsidy, totalLoan, totalEquity, hasAutoEstimated } =
+    useMemo(() => {
+      let capexTotal = 0;
+      let subsidyTotal = 0;
+      let loanTotal = 0;
+      let equityTotal = 0;
+      let autoEstimated = false;
 
-  const loanAmount =
-    state.financingScheme === "debt"
-      ? totalCapex * (state.funding.loan.percentage / 100)
-      : 0;
-  const ownerEquity = totalCapex - loanAmount;
+      for (const b of state.buildings) {
+        const capex =
+          typeof b.estimatedCapex === "number"
+            ? b.estimatedCapex
+            : state.renovation.estimatedCapex;
+        if (capex == null) {
+          autoEstimated = true;
+          continue;
+        }
+        const { effectiveCost, loanAmount, subsidyAmount } =
+          applyFundingReduction(capex, state.funding);
+        capexTotal += capex;
+        subsidyTotal += subsidyAmount;
+        loanTotal += loanAmount;
+        equityTotal += effectiveCost - loanAmount;
+      }
+
+      return {
+        totalCapex: capexTotal,
+        totalSubsidy: subsidyTotal,
+        totalLoan: loanTotal,
+        totalEquity: equityTotal,
+        hasAutoEstimated: autoEstimated,
+      };
+    }, [state.buildings, state.renovation.estimatedCapex, state.funding]);
 
   return (
     <Stack gap="xl">
@@ -186,105 +112,63 @@ export function FinancingStep() {
           Financing Configuration
         </Title>
         <Text c="dimmed" size="sm">
-          Select a financing scheme and configure loan terms if applicable.
+          Choose how the renovation is paid for and add any subsidy that lowers
+          the cost first.
         </Text>
       </Box>
 
-      {/* Financing Schemes */}
       <Card withBorder radius="md" p="lg">
-        <Title order={4} mb="md">
-          Financing Scheme
-        </Title>
-        <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="sm">
-          {FINANCING_SCHEMES.map((scheme) => (
-            <SchemeCard
-              key={scheme.id}
-              scheme={scheme}
-              schemeId={scheme.id}
-              selected={state.financingScheme === scheme.id}
-              onSelect={handleSelectScheme}
-            />
-          ))}
-        </SimpleGrid>
+        <Stack gap="lg">
+          <FinancingTypeCards
+            value={state.funding.financingType}
+            onChange={(financingType) =>
+              dispatch({ type: "SET_FINANCING_TYPE", financingType })
+            }
+            loan={state.funding.loan}
+            onLoanChange={(loan) => dispatch({ type: "SET_LOAN", loan })}
+            loanPercentageLabel="Loan percentage"
+            loanPercentageDescription="Share of the post-subsidy CAPEX financed by the loan."
+          />
+
+          <SubsidyInput
+            incentives={state.funding.incentives}
+            onChange={(incentives) =>
+              dispatch({ type: "SET_INCENTIVES", incentives })
+            }
+            amountHelperText="Applied to each building in the portfolio."
+          />
+
+          {/* Funding summary — derived from existing state, no new fields */}
+          <div>
+            <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="md">
+              <MetricCard
+                label="Total CAPEX"
+                value={formatCurrency(totalCapex)}
+              />
+              <MetricCard
+                label="Subsidy"
+                value={formatCurrency(totalSubsidy)}
+              />
+              <MetricCard
+                label="Loan amount"
+                value={formatCurrency(totalLoan)}
+                variant="highlight"
+              />
+              <MetricCard
+                label="Owner equity"
+                value={formatCurrency(totalEquity)}
+              />
+            </SimpleGrid>
+            {hasAutoEstimated && (
+              <Text size="xs" c="dimmed" mt="xs">
+                Figures cover only buildings with a set CAPEX. Buildings without
+                a cost override are auto-estimated from EU reference data during
+                analysis and are not included here.
+              </Text>
+            )}
+          </div>
+        </Stack>
       </Card>
-
-      {/* Loan Configuration (visible when debt selected) */}
-      {state.financingScheme === "debt" && (
-        <Card withBorder radius="md" p="lg">
-          <Title order={4} mb="md">
-            Loan Configuration
-          </Title>
-          <Grid>
-            <Grid.Col span={{ base: 12, sm: 6 }}>
-              <NumberInput
-                label="Loan Percentage (%)"
-                description="Share of total CAPEX financed by the loan."
-                value={state.funding.loan.percentage}
-                onChange={(val) => {
-                  if (typeof val === "number") {
-                    dispatch({
-                      type: "UPDATE_LOAN",
-                      field: "percentage",
-                      value: val,
-                    });
-                  }
-                }}
-                min={0}
-                max={100}
-                suffix="%"
-                {...browserNumberSeparators}
-              />
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, sm: 6 }}>
-              <NumberInput
-                label="Loan Term (years)"
-                description="Repayment horizon."
-                value={state.funding.loan.duration}
-                onChange={(val) => {
-                  if (typeof val === "number") {
-                    dispatch({
-                      type: "UPDATE_LOAN",
-                      field: "duration",
-                      value: val,
-                    });
-                  }
-                }}
-                min={1}
-                max={30}
-                {...browserNumberSeparators}
-              />
-            </Grid.Col>
-          </Grid>
-          <Text size="xs" c="dimmed" mt="xs">
-            The loan interest rate is modeled by the Financial service from
-            market conditions and is no longer entered here.
-          </Text>
-
-          {/* Loan summary — derived from existing state, no new fields */}
-          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" mt="lg">
-            <MetricCard
-              label="Total CAPEX"
-              value={formatCurrency(totalCapex)}
-            />
-            <MetricCard
-              label="Loan amount"
-              value={formatCurrency(loanAmount)}
-              variant="highlight"
-            />
-            <MetricCard
-              label="Owner equity"
-              value={formatCurrency(ownerEquity)}
-            />
-          </SimpleGrid>
-          {hasAutoEstimated && (
-            <Text size="xs" c="dimmed" mt="xs">
-              Figures cover only buildings with a set CAPEX. Buildings without a
-              cost override are auto-estimated from EU reference data during
-              analysis and are not included here.
-            </Text>
-          )}
-        </Card>
-      )}
 
       <EnergyTariffPanel
         appliedGasTariff={state.gasTariffEurPerKwh}

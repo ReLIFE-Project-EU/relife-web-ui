@@ -209,9 +209,19 @@ export interface LoanDetails {
   duration: number;
 }
 
+/** How an upfront subsidy is expressed by the user. */
+export type IncentiveMode = "percentage" | "amount";
+
 export interface IncentiveDetails {
-  /** Upfront incentive as a percentage of CAPEX (0-100). Folded into CAPEX before risk assessment. */
+  /** Which of the two values below is applied. */
+  mode: IncentiveMode;
+  /** Upfront subsidy as a percentage of CAPEX (0-100). Used when mode is "percentage". */
   upfrontPercentage: number;
+  /**
+   * Upfront subsidy as an absolute amount in EUR. Used when mode is "amount",
+   * and applied per package (HRA) / per building (PRA), not portfolio-wide.
+   */
+  upfrontAmount: number;
 }
 
 export interface FundingOptions {

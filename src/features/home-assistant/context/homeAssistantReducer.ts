@@ -74,7 +74,9 @@ const initialFunding: FundingOptions = {
     duration: 10, // 10 years
   },
   incentives: {
+    mode: "percentage",
     upfrontPercentage: 0,
+    upfrontAmount: 0,
   },
 };
 
@@ -367,30 +369,18 @@ export function homeAssistantReducer(
       };
     }
 
-    case "UPDATE_LOAN": {
+    case "SET_LOAN": {
       return {
         ...state,
-        funding: {
-          ...state.funding,
-          loan: {
-            ...state.funding.loan,
-            [action.field]: action.value,
-          },
-        },
+        funding: { ...state.funding, loan: action.loan },
         ...clearedFinancialResults,
       };
     }
 
-    case "UPDATE_INCENTIVE": {
+    case "SET_INCENTIVES": {
       return {
         ...state,
-        funding: {
-          ...state.funding,
-          incentives: {
-            ...state.funding.incentives,
-            [action.field]: action.value,
-          },
-        },
+        funding: { ...state.funding, incentives: action.incentives },
         ...clearedFinancialResults,
       };
     }

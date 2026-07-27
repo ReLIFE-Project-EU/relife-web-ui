@@ -8,6 +8,7 @@
 
 import { Badge, Card, Group, Loader, Stack, Text } from "@mantine/core";
 import { useMemo } from "react";
+import { FundingPills } from "../../../components/shared";
 import { formatCurrency, formatNumber } from "../../../utils/formatters";
 import type { PortfolioAdvisorState } from "../context/types";
 
@@ -115,6 +116,9 @@ export function PortfolioSummaryStrip({ state }: PortfolioSummaryStripProps) {
           <Text component="span" size="xs" c="dimmed" ml={4}>
             years
           </Text>
+        </Cell>
+        <Cell label="Financing">
+          <FundingPills funding={state.funding} />
         </Cell>
         <Cell label="Status" alignEnd>
           <Badge
