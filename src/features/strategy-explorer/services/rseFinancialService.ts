@@ -4,7 +4,9 @@ import { lookupPackageCostsFromDetails } from "../../../services/packageCostLook
 import {
   buildSchemes,
   mapWireRiskResponse,
+  type EmittedSchemeType,
 } from "../../../services/riskAssessmentAdapter";
+import { applyFundingReduction } from "../../../utils/financialCalculations";
 import { computeCarrierFinancialEnergySavings } from "../../../services/carrierSavingsService";
 import type { EstimatePackageCostsResult } from "../../../services/types";
 import type { ArchetypeDetails } from "../../../types/archetype";
@@ -110,14 +112,12 @@ export async function computeFinancials(
   const capexEur = costs.capex;
   const annualMaintenanceEur = costs.annualMaintenanceCost;
 
-  // Fold the upfront incentive into CAPEX (the new contract has no incentive
-  // fields). RSE is always self-funded, so the scheme is always equity. The
-  // effective value is the basis of every indicator the API returns; the
-  // gross value stays for display.
-  const effectiveCapexEur = Math.max(
-    0,
-    capexEur * (1 - assumptions.upfrontIncentivePercentage / 100),
-  );
+  // Resolve the portfolio-wide financing scenario. The subsidy is folded into
+  // CAPEX because the service has no incentive fields; the effective value is
+  // the basis of every indicator the API returns, while the gross value stays
+  // for display.
+  const { effectiveCost: effectiveCapexEur, loanAmount } =
+    applyFundingReduction(capexEur, assumptions.funding);
 
   const { electricityEquivalentKwh } = computeCarrierFinancialEnergySavings(
     input.carrierSourceBreakdown.baseline,
@@ -128,6 +128,22 @@ export async function computeFinancials(
         RSE_FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
     },
   );
+
+  if (effectiveCapexEur <= 0) {
+    return {
+      archetype: input.archetype,
+      packageId: input.packageId,
+      capexEur,
+      effectiveCapexEur,
+      annualMaintenanceEur,
+      annualEnergySavingsKwh: 0,
+      status: "unavailable",
+      unavailableReason: RSE_UNAVAILABLE_REASONS.fullySubsidized,
+      unavailableMessage:
+        "Financial indicators are unavailable because the subsidy covers the full renovation cost for this archetype and package, leaving no investment to appraise.",
+      pointForecasts: {},
+    };
+  }
 
   if (electricityEquivalentKwh <= 0) {
     return {
@@ -145,7 +161,13 @@ export async function computeFinancials(
     };
   }
 
-  const { schemes } = buildSchemes({ loanAmount: 0, loanTerm: 0 });
+  const { schemes, schemeType } = buildSchemes({
+    loanAmount,
+    loanTerm:
+      assumptions.funding.financingType === "loan"
+        ? assumptions.funding.loan.duration
+        : 0,
+  });
 
   const riskRequest: RiskAssessmentRequest = {
     capex: effectiveCapexEur,
@@ -167,6 +189,7 @@ export async function computeFinancials(
     electricityEquivalentKwh,
     response,
     assumptions.projectLifetimeYears,
+    schemeType,
   );
 }
 
@@ -177,11 +200,7 @@ function resolveFinancialAssumptions(
     projectLifetimeYears:
       partial?.projectLifetimeYears ??
       RSE_FINANCIAL_DEFAULTS.projectLifetimeYears,
-    financingType:
-      partial?.financingType ?? RSE_FINANCIAL_DEFAULTS.financingType,
-    upfrontIncentivePercentage:
-      partial?.upfrontIncentivePercentage ??
-      RSE_FINANCIAL_DEFAULTS.upfrontIncentivePercentage,
+    funding: partial?.funding ?? RSE_FINANCIAL_DEFAULTS.funding,
     gasTariffEurPerKwh:
       partial?.gasTariffEurPerKwh ?? RSE_ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
   };
@@ -205,9 +224,10 @@ function normalizeRiskResponse(
   annualEnergySavingsKwh: number,
   response: RiskAssessmentResponse,
   projectLifetime: number,
+  schemeType: EmittedSchemeType,
 ): RSEFinancialResult {
   const mapped = mapWireRiskResponse(response, {
-    schemeType: "equity",
+    schemeType,
     projectLifetime,
   });
   const pf = mapped.pointForecasts;

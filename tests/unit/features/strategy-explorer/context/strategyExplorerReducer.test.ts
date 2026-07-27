@@ -8,6 +8,7 @@ import {
   RSE_ENERGY_TARIFF_DEFAULTS,
   RSE_PACKAGE_IDS,
 } from "../../../../../src/features/strategy-explorer/constants";
+import { DEFAULT_FUNDING_OPTIONS } from "../../../../../src/constants/funding";
 
 const mockWorkflowResult: NonNullable<StrategyExplorerState["workflowResult"]> =
   {
@@ -17,8 +18,7 @@ const mockWorkflowResult: NonNullable<StrategyExplorerState["workflowResult"]> =
       packageIds: ["envelope"],
       financialAssumptions: {
         projectLifetimeYears: 20,
-        financingType: "self-funded",
-        upfrontIncentivePercentage: 0,
+        funding: DEFAULT_FUNDING_OPTIONS,
         gasTariffEurPerKwh: RSE_ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
       },
     },

@@ -15,6 +15,7 @@ import {
   CompareStrategiesTable,
   ComparisonCharts,
   EnergyTariffPanel,
+  FinancingPanel,
   PackageDeepDive,
   PackageTabs,
   ScoreCompositionChart,
@@ -137,6 +138,8 @@ export function ResultsStep() {
           />
 
           <EnergyTariffPanel />
+
+          <FinancingPanel />
 
           <Alert
             color="blue"

@@ -4,6 +4,7 @@ import {
   RSE_FINANCIAL_DEFAULTS,
 } from "../constants";
 import { runWorkflow } from "../services/rseWorkflowService";
+import type { FundingOptions } from "../../../types/renovation";
 import type { RSEWorkflowRequest } from "../types";
 import { useStrategyExplorer } from "./useStrategyExplorer";
 
@@ -11,7 +12,10 @@ export function useRSEWorkflow() {
   const { state, dispatch } = useStrategyExplorer();
 
   const run = useCallback(
-    async (options?: { gasTariffEurPerKwh?: number }) => {
+    async (options?: {
+      gasTariffEurPerKwh?: number;
+      funding?: FundingOptions;
+    }) => {
       if (
         !state.goal ||
         state.portfolio.selections.length === 0 ||
@@ -29,9 +33,10 @@ export function useRSEWorkflow() {
           packageIds: state.packageIds,
           financialAssumptions: {
             projectLifetimeYears: RSE_FINANCIAL_DEFAULTS.projectLifetimeYears,
-            financingType: RSE_FINANCIAL_DEFAULTS.financingType,
-            upfrontIncentivePercentage:
-              RSE_FINANCIAL_DEFAULTS.upfrontIncentivePercentage,
+            funding:
+              options?.funding ??
+              state.funding ??
+              RSE_FINANCIAL_DEFAULTS.funding,
             gasTariffEurPerKwh:
               options?.gasTariffEurPerKwh ??
               state.gasTariffEurPerKwh ??
@@ -54,6 +59,7 @@ export function useRSEWorkflow() {
       state.portfolio,
       state.packageIds,
       state.gasTariffEurPerKwh,
+      state.funding,
       dispatch,
     ],
   );

@@ -10,9 +10,11 @@ vi.mock("../../../../../src/api/financial", () => ({
   },
 }));
 
+import { DEFAULT_FUNDING_OPTIONS } from "../../../../../src/constants/funding";
 import {
   RSE_ENERGY_TARIFF_DEFAULTS,
   RSE_FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
+  RSE_UNAVAILABLE_REASONS,
 } from "../../../../../src/features/strategy-explorer/constants";
 import {
   computeFinancials,
@@ -113,8 +115,7 @@ function makeCarrierInput(overrides?: {
     },
     financialAssumptions: {
       projectLifetimeYears: 20,
-      financingType: "self-funded" as const,
-      upfrontIncentivePercentage: 0,
+      funding: DEFAULT_FUNDING_OPTIONS,
       gasTariffEurPerKwh:
         overrides?.gasTariffEurPerKwh ??
         RSE_ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
@@ -256,14 +257,20 @@ describe("computeFinancials", () => {
     expect(request.annual_maintenance_cost).toBeGreaterThanOrEqual(0);
   });
 
-  test("stays equity-only and folds the upfront incentive into CAPEX", async () => {
+  test("folds a percentage subsidy into CAPEX and stays on the equity scheme", async () => {
     const input = makeCarrierInput();
     const result = await computeFinancials({
       ...input,
       financialAssumptions: {
         projectLifetimeYears: 25,
-        financingType: "self-funded",
-        upfrontIncentivePercentage: 10,
+        funding: {
+          ...DEFAULT_FUNDING_OPTIONS,
+          incentives: {
+            mode: "percentage",
+            upfrontPercentage: 10,
+            upfrontAmount: 0,
+          },
+        },
         gasTariffEurPerKwh: 0.115,
       },
     });
@@ -274,6 +281,72 @@ describe("computeFinancials", () => {
     expect(request.capex).toBe(19_800);
     expect(result.capexEur).toBe(22_000);
     expect(result.effectiveCapexEur).toBe(19_800);
+  });
+
+  test("sends a bank loan drawn on the post-subsidy cost", async () => {
+    // The response is keyed by scheme_type, so the loan run must read back a
+    // bank_loan entry rather than the default equity fixture.
+    const loanResponse = makeFixtureResponse();
+    loanResponse.results = {
+      bank_loan: loanResponse.results.equity,
+    } as unknown as typeof loanResponse.results;
+    mockAssessRisk.mockResolvedValue(loanResponse);
+
+    const input = makeCarrierInput();
+    const result = await computeFinancials({
+      ...input,
+      financialAssumptions: {
+        projectLifetimeYears: 20,
+        funding: {
+          financingType: "loan",
+          loan: { percentage: 50, duration: 12 },
+          incentives: {
+            mode: "percentage",
+            upfrontPercentage: 10,
+            upfrontAmount: 0,
+          },
+        },
+        gasTariffEurPerKwh: 0.115,
+      },
+    });
+
+    // 22,000 gross − 10% = 19,800 effective; the loan covers 50% of that.
+    const [request] = mockAssessRisk.mock.calls[1];
+    expect(request.capex).toBe(19_800);
+    expect(request.schemes).toEqual([
+      { scheme_type: "bank_loan", loan_amount: 9_900, term_years: 12 },
+    ]);
+    expect(result.effectiveCapexEur).toBe(19_800);
+  });
+
+  test("returns unavailable when a subsidy covers the whole cost", async () => {
+    const callsBefore = mockAssessRisk.mock.calls.length;
+    const input = makeCarrierInput();
+    const result = await computeFinancials({
+      ...input,
+      financialAssumptions: {
+        projectLifetimeYears: 20,
+        funding: {
+          ...DEFAULT_FUNDING_OPTIONS,
+          incentives: {
+            mode: "amount",
+            upfrontPercentage: 0,
+            upfrontAmount: 50_000,
+          },
+        },
+        gasTariffEurPerKwh: 0.115,
+      },
+    });
+
+    // The subsidy is clamped to the 22,000 cost, leaving nothing to appraise;
+    // the service rejects capex <= 0, so no risk call must be made.
+    expect(result.status).toBe("unavailable");
+    expect(result.unavailableReason).toBe(
+      RSE_UNAVAILABLE_REASONS.fullySubsidized,
+    );
+    expect(result.capexEur).toBe(22_000);
+    expect(result.effectiveCapexEur).toBe(0);
+    expect(mockAssessRisk.mock.calls.length).toBe(callsBefore + 1);
   });
 
   test("returns unavailable when carrier-aware savings are not positive", async () => {

@@ -3,6 +3,7 @@
  */
 
 import { PACKAGE_SELECTION_MAX, PROJECT_LIFETIME_DEFAULT } from "../constants";
+import { DEFAULT_FUNDING_OPTIONS } from "../../../constants/funding";
 import { ENERGY_TARIFF_DEFAULTS } from "../../../services/carrierSavingsService";
 import type {
   BuildingInfo,
@@ -67,18 +68,7 @@ const initialRenovation: RenovationSelections = {
   estimatedMaintenanceCost: null,
 };
 
-const initialFunding: FundingOptions = {
-  financingType: "self-funded", // Default: homeowner pays upfront
-  loan: {
-    percentage: 80, // 80% of renovation cost
-    duration: 10, // 10 years
-  },
-  incentives: {
-    mode: "percentage",
-    upfrontPercentage: 0,
-    upfrontAmount: 0,
-  },
-};
+const initialFunding: FundingOptions = DEFAULT_FUNDING_OPTIONS;
 
 export const initialState: HomeAssistantState = {
   currentStep: 0,

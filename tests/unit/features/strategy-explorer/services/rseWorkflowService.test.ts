@@ -5,6 +5,7 @@ import {
   RSEWorkflowError,
 } from "../../../../../src/features/strategy-explorer/services/rseWorkflowService";
 import { auditLog } from "../../../../../src/utils/auditLogger";
+import { DEFAULT_FUNDING_OPTIONS } from "../../../../../src/constants/funding";
 import type { RSECacheMatrixRequest } from "../../../../../src/features/strategy-explorer/api/rseCacheApi";
 import type {
   RSEArchetypeRef,
@@ -37,8 +38,7 @@ function makeRequest(
     packageIds,
     financialAssumptions: {
       projectLifetimeYears: 20,
-      financingType: "self-funded",
-      upfrontIncentivePercentage: 0,
+      funding: DEFAULT_FUNDING_OPTIONS,
       gasTariffEurPerKwh: 0.115,
     },
   };

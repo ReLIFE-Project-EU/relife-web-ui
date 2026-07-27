@@ -3,6 +3,7 @@
  */
 
 import { PRA_DEFAULT_PROJECT_LIFETIME } from "../constants";
+import { DEFAULT_FUNDING_OPTIONS } from "../../../constants/funding";
 import { ENERGY_TARIFF_DEFAULTS } from "../../../services/carrierSavingsService";
 import type { PortfolioAdvisorAction, PortfolioAdvisorState } from "./types";
 
@@ -22,18 +23,7 @@ export const initialState: PortfolioAdvisorState = {
     estimatedMaintenanceCost: null,
   },
   projectLifetime: PRA_DEFAULT_PROJECT_LIFETIME,
-  funding: {
-    financingType: "self-funded",
-    loan: {
-      percentage: 80,
-      duration: 10,
-    },
-    incentives: {
-      mode: "percentage",
-      upfrontPercentage: 0,
-      upfrontAmount: 0,
-    },
-  },
+  funding: DEFAULT_FUNDING_OPTIONS,
   gasTariffEurPerKwh: ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
   buildingResults: {},
   analysisProgress: null,

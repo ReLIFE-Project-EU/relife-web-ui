@@ -13,6 +13,7 @@ import {
   IconInfoCircle,
 } from "@tabler/icons-react";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
+import { FundingPills } from "../../../../components/shared/FundingPills";
 import {
   formatCurrency,
   formatEnergy,
@@ -84,6 +85,9 @@ export function StrategyHero({
                   ? ` · ${formatCurrency(winnerAggregate.totalCapexEur)} gross investment`
                   : null}
               </Text>
+              <FundingPills
+                funding={result.request.financialAssumptions.funding}
+              />
             </div>
             <Text component="h2" fz={26} fw={700} lh={1.15} m={0}>
               {winnerPackage.label}

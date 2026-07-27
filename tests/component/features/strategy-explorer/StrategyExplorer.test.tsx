@@ -99,7 +99,9 @@ vi.mock(
 
 vi.mock(
   "../../../../src/features/strategy-explorer/services/rseWorkflowService",
-  () => ({
+  // Async factory so the shared funding default can be imported: vi.mock is
+  // hoisted above the file's imports, so a top-level binding is unusable here.
+  async () => ({
     runWorkflow: vi.fn().mockResolvedValue({
       request: {
         portfolio: {
@@ -114,8 +116,8 @@ vi.mock(
         packageIds: ["envelope", "combined"],
         financialAssumptions: {
           projectLifetimeYears: 20,
-          financingType: "self-funded",
-          upfrontIncentivePercentage: 0,
+          funding: (await import("../../../../src/constants/funding"))
+            .DEFAULT_FUNDING_OPTIONS,
           gasTariffEurPerKwh: 0.115,
         },
       },

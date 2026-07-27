@@ -1,4 +1,5 @@
 import type {
+  FundingOptions,
   RenovationMeasureId,
   RiskAssessmentPercentiles,
 } from "../../types/renovation";
@@ -6,7 +7,6 @@ import type { DeliveredEnergyCarrierBreakdown } from "../../types/energy";
 import type { ArchetypeDetails } from "../../types/archetype";
 import type {
   RSE_CACHE_PAYLOAD_SCHEMA_VERSION,
-  RSE_FINANCIAL_DEFAULTS,
   RSE_MVP_THERMAL_EMISSION_SOURCE,
 } from "./constants";
 import type {
@@ -183,8 +183,12 @@ export interface RSEEmissionSavingResult {
 
 export interface RSEFinancialAssumptions {
   projectLifetimeYears: number;
-  financingType: typeof RSE_FINANCIAL_DEFAULTS.financingType;
-  upfrontIncentivePercentage: number;
+  /**
+   * Portfolio-wide financing scenario. Unlike HRA/PRA this is a modelling
+   * assumption rather than an individual owner's choice: it applies to every
+   * archetype and package in the run.
+   */
+  funding: FundingOptions;
   /** User-editable gas tariff (EUR/kWh) for carrier-aware savings valuation. */
   gasTariffEurPerKwh: number;
 }

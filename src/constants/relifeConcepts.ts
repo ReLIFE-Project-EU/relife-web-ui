@@ -349,7 +349,7 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
       "Number of buildings that can be renovated within the specified budget when using a given package.",
     unit: "buildings",
     caveat:
-      "Computed with proportional stock scaling, not by selecting cheapest archetypes first.",
+      "Computed with proportional stock scaling, not by selecting cheapest archetypes first. The budget is treated as covering the owner's share only: any subsidy is assumed to be funded from outside it, so a subsidy makes the budget reach further. If the subsidy would instead come out of this same budget, the figure is optimistic.",
   },
 };
 

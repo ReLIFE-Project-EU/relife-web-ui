@@ -151,9 +151,12 @@ export function aggregatePackage(
   };
 
   if (input.goal.kind === "financial") {
-    // Budget fit compares against the post-incentive cost. Open product
-    // question for when incentives become user-facing: if the subsidy draws
-    // from the same budget the user entered, the gross CAPEX would apply.
+    // Budget fit compares against the post-subsidy cost: the budget is defined
+    // as the owner's share, with any subsidy funded from outside it, so a
+    // subsidy makes the budget reach further. Stated for the reader in the
+    // `rse-renovatable-buildings` concept caveat. (Were the subsidy drawn from
+    // this same budget, gross CAPEX would apply instead and a subsidy would not
+    // change reach at all.)
     const equivalent = divideOrZero(
       totalBuildings * input.goal.maxBudgetEur,
       totalEffectiveCapexEur,

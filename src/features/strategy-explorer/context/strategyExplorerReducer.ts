@@ -1,4 +1,8 @@
-import { RSE_ENERGY_TARIFF_DEFAULTS, RSE_PACKAGE_IDS } from "../constants";
+import {
+  RSE_ENERGY_TARIFF_DEFAULTS,
+  RSE_FINANCIAL_DEFAULTS,
+  RSE_PACKAGE_IDS,
+} from "../constants";
 import type { StrategyExplorerAction, StrategyExplorerState } from "./types";
 
 export const initialState: StrategyExplorerState = {
@@ -7,6 +11,7 @@ export const initialState: StrategyExplorerState = {
   goal: null,
   packageIds: [...RSE_PACKAGE_IDS],
   gasTariffEurPerKwh: RSE_ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
+  funding: RSE_FINANCIAL_DEFAULTS.funding,
   availableArchetypes: [],
   workflowResult: null,
   isRunningWorkflow: false,
@@ -50,6 +55,13 @@ export function strategyExplorerReducer(
       return {
         ...state,
         gasTariffEurPerKwh: action.gasTariffEurPerKwh,
+        ...clearedWorkflowResults,
+      };
+
+    case "SET_FUNDING":
+      return {
+        ...state,
+        funding: action.funding,
         ...clearedWorkflowResults,
       };
 

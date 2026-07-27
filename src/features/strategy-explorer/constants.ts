@@ -4,6 +4,7 @@ import {
   MVP_THERMAL_EMISSION_SOURCE,
   PV_SELF_CONSUMPTION_EMISSION_SOURCE,
 } from "../../constants/emissionSources";
+import { DEFAULT_FUNDING_OPTIONS } from "../../constants/funding";
 import {
   ENERGY_TARIFF_DEFAULTS,
   FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
@@ -97,14 +98,14 @@ export const RSE_UNAVAILABLE_REASONS = {
   invalidCacheEntry: "invalid-cache-entry",
   costLookupFailed: "cost-lookup-failed",
   nonPositiveEnergySavings: "non-positive-energy-savings",
+  fullySubsidized: "fully-subsidized",
 } as const;
 export type RSEUnavailableReason =
   (typeof RSE_UNAVAILABLE_REASONS)[keyof typeof RSE_UNAVAILABLE_REASONS];
 
 export const RSE_FINANCIAL_DEFAULTS = {
   projectLifetimeYears: 20,
-  financingType: "self-funded",
-  upfrontIncentivePercentage: 0,
+  funding: DEFAULT_FUNDING_OPTIONS,
 } as const;
 
 /**
