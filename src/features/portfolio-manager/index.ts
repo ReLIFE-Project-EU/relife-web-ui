@@ -25,12 +25,7 @@ export { PortfolioProvider } from "./context/PortfolioContext";
 export type { PortfolioState, PortfolioAction } from "./context/types";
 
 // Hooks
-export {
-  usePortfolio,
-  usePortfolios,
-  useCurrentPortfolioId,
-  usePortfoliosLoading,
-} from "./hooks/usePortfolio";
+export { usePortfolio } from "./hooks/usePortfolio";
 export { useFileUpload } from "./hooks/useFileUpload";
 export { useQuota } from "./hooks/useQuota";
 

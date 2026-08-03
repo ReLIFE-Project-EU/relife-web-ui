@@ -1,16 +1,6 @@
 import { useContext, useEffect } from "react";
 import { GlobalLoadingContext } from "./GlobalLoadingContextDefinition";
 
-export function useGlobalLoading() {
-  return useContext(GlobalLoadingContext);
-}
-
-export function useGlobalLoadingTrigger() {
-  const { startLoading, stopLoading, withLoading } =
-    useContext(GlobalLoadingContext);
-  return { startLoading, stopLoading, withLoading };
-}
-
 export function useGlobalLoadingState() {
   const { isLoading, loadingCount, sources } = useContext(GlobalLoadingContext);
   return { isLoading, loadingCount, sources };

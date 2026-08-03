@@ -84,8 +84,6 @@ export const RSE_FINANCIAL_OUTPUT_LEVEL = "professional";
 
 export const RSE_FINANCIAL_CONCURRENCY_LIMIT = 2;
 
-export const RSE_BUDGET_FIT_ROUNDING = "floor";
-
 export const RSE_INVALID_PAYBACK_YEAR_OFFSET = 1;
 
 export const RSE_UNAVAILABLE_REASONS = {

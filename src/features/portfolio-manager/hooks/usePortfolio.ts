@@ -128,31 +128,3 @@ export function usePortfolio(): PortfolioContextValue & {
     refreshPortfolios,
   };
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Selector Hooks
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Get all portfolios
- */
-export function usePortfolios() {
-  const { state } = usePortfolio();
-  return state.portfolios;
-}
-
-/**
- * Get current portfolio ID
- */
-export function useCurrentPortfolioId() {
-  const { state } = usePortfolio();
-  return state.currentPortfolioId;
-}
-
-/**
- * Get loading state for portfolios
- */
-export function usePortfoliosLoading() {
-  const { state } = usePortfolio();
-  return state.isLoadingPortfolios;
-}

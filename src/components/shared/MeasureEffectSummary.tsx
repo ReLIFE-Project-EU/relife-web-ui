@@ -1,5 +1,4 @@
 import {
-  Badge,
   Box,
   Group,
   Pill,
@@ -115,21 +114,5 @@ function EffectPill({ statement }: { statement: MeasureEffectStatement }) {
         </Text>
       </Group>
     </Pill>
-  );
-}
-
-export function MeasureEffectBadges({
-  measureIds,
-}: {
-  measureIds: RenovationMeasureId[];
-}) {
-  return (
-    <Group gap="xs">
-      {measureIds.map((measureId) => (
-        <Badge key={measureId} variant="light" color="gray">
-          {measureEffectProfiles[measureId].summary}
-        </Badge>
-      ))}
-    </Group>
   );
 }

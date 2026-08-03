@@ -30,16 +30,11 @@ import type {
 
 // Re-export all shared domain types for backward compatibility
 export type {
-  ARVResult,
   BuildingInfo,
-  CashFlowData,
   EstimationResult,
   FinancialResults,
-  FinancialScenario,
   FinancingType,
   FundingOptions,
-  IncentiveDetails,
-  LoanDetails,
   MCDARankingResult,
   PackageFinancialInput,
   PackageFinancialInputsById,
@@ -48,9 +43,6 @@ export type {
   RenovationMeasureId,
   RenovationScenario,
   RenovationSelections,
-  RiskAssessmentMetadata,
-  RiskAssessmentPercentiles,
-  RiskAssessmentPointForecasts,
   ScenarioId,
 } from "../../../types/renovation";
 

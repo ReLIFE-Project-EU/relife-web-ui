@@ -1,26 +1,8 @@
 import {
-  CANONICAL_COUNTRY_REFERENCE_LOCATIONS,
   getCountryDisplayNameByCode,
   getCountryReferenceLocation,
 } from "../utils/countries";
 import { detectEuropeanCountryCode } from "../utils/geo/europeanCountryDetector";
-
-/**
- * Reference locations for archetype countries (capital cities).
- *
- * WORKAROUND: The Forecasting API BUI data has incorrect coordinates
- * (all archetypes share Greece coords). This mapping provides correct
- * reference locations for distance-based matching.
- *
- * Covers all 27 EU member states for future archetype additions.
- *
- * TODO: Remove this when backend fixes BUI coordinates or adds lat/lng
- * to the /building/available response.
- */
-export const ARCHETYPE_REFERENCE_LOCATIONS: Record<
-  string,
-  { lat: number; lng: number }
-> = CANONICAL_COUNTRY_REFERENCE_LOCATIONS;
 
 /**
  * Maximum distance between any two EU capitals (approx. Helsinki to Lisbon).

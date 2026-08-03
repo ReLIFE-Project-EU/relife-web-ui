@@ -489,10 +489,3 @@ function dedupeAndValidatePackageIds(
 
   return deduped;
 }
-
-export function rseWorkflowCombinationKey(
-  archetype: RSEArchetypeRef,
-  packageId: RSEPackageId,
-): string {
-  return rseArchetypePackageKey(archetype, packageId);
-}

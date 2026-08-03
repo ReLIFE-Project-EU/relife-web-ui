@@ -34,17 +34,6 @@ export const KEYCLOAK_CONFIG = {
   clientId: import.meta.env.VITE_KEYCLOAK_CLIENT_ID || "",
 };
 
-// API Configuration
-export const API_CONFIG = {
-  url: import.meta.env.VITE_API_URL || "/api",
-};
-
-// App Configuration
-export const APP_CONFIG = {
-  name: "ReLIFE Web UI",
-  description: "ReLIFE Platform Web Interface",
-};
-
 // Build helper functions for generating URLs and other derived config values
 export function getKeycloakLogoutUrl(): string | undefined {
   const { url, realm, clientId } = KEYCLOAK_CONFIG;

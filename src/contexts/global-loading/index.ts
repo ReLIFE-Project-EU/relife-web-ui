@@ -16,8 +16,6 @@ export { GlobalLoadingProvider } from "./GlobalLoadingContext";
 
 // Consumer Hooks
 export {
-  useGlobalLoading,
   useGlobalLoadingState,
-  useGlobalLoadingTrigger,
   useSyncGlobalLoading,
 } from "./useGlobalLoading";
