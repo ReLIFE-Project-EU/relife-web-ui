@@ -7,10 +7,10 @@
 
 import { useEffect, useMemo, type ReactNode } from "react";
 import type { IHomeAssistantServices } from "../services/types";
-import { buildingService } from "../services/BuildingService";
-import { EnergyService } from "../services/EnergyService";
-import { FinancialService } from "../services/FinancialService";
-import { RenovationService } from "../services/RenovationService";
+import { buildingService } from "../../../services/BuildingService";
+import { EnergyService } from "../../../services/EnergyService";
+import { FinancialService } from "../../../services/FinancialService";
+import { RenovationService } from "../../../services/RenovationService";
 import { TechnicalMCDAService } from "../../../services/TechnicalMCDAService";
 import { MockMCDAService } from "../../../services/mock/MockMCDAService";
 import { ServiceContext } from "./ServiceContextDefinition";

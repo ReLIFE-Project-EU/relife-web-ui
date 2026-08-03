@@ -18,7 +18,6 @@ export { SelectionSummaryPanel } from "./SelectionSummaryPanel";
 export type { SelectionSummaryItem } from "./SelectionSummaryPanel";
 export { StepNavigation } from "./StepNavigation";
 export { StepProgressFooter } from "./StepProgressFooter";
-export { StepSectionCard } from "./StepSectionCard";
 export { ConceptExplainer } from "./ConceptExplainer";
 export { ConceptLabel } from "./ConceptLabel";
 export { ConceptMetricCard } from "./ConceptMetricCard";

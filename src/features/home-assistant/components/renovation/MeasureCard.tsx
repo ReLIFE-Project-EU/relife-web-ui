@@ -1,5 +1,5 @@
 import type { RenovationMeasureId } from "../../context/types";
-import type { RenovationMeasure } from "../../services";
+import type { RenovationMeasure } from "../../../../services/types";
 import { RenovationMeasureCard } from "../../../../components/shared/RenovationMeasureCard";
 
 interface MeasureCardProps {

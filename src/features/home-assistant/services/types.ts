@@ -1,29 +1,9 @@
 /**
  * Service interfaces for the Home Renovation Assistant.
  *
- * Shared service interfaces are defined in src/services/types.ts.
- * This file re-exports them and adds the HRA-specific aggregated interface.
+ * Shared service interfaces are defined in src/services/types.ts; import them
+ * from there directly. This file holds only the HRA-specific aggregate.
  */
-
-// Re-export all shared service types
-export type {
-  SelectOption,
-  BuildingOptions,
-  IBuildingService,
-  IEnergyService,
-  IRenovationService,
-  IFinancialService,
-  IMCDAService,
-  MCDAPersona,
-  MeasureCategory,
-  MeasureCategoryInfo,
-  RenovationMeasure,
-  ARVRequest,
-  RiskAssessmentServiceRequest,
-  RiskAssessmentServiceResponse,
-  TechnicalPillarRequest,
-  TechnicalPillarResponse,
-} from "../../../services/types";
 
 import type {
   IBuildingService,
