@@ -161,11 +161,11 @@ reasoning. The upstream GitHub URLs are in `AGENTS.md` § Backend API contracts.
 
 Read the MCDA service implementation used by the tool:
 
-- **MockMCDAService** (frontend-local TOPSIS) → `src/services/mock/MockMCDAService.ts`
-- **TechnicalMCDAService** (backend TOPSIS API) → `src/services/TechnicalMCDAService.ts`
+- **TechnicalMCDAService** (default backend TOPSIS API) → `src/services/TechnicalMCDAService.ts`
+- **Custom injected service** → trace the `IHomeAssistantServices.mcda` implementation from the provider or test injection site
 
-These use different algorithms and normalization strategies. The audit approach
-differs accordingly.
+Use the concrete implementation to determine the algorithm, normalization, and
+mapping strategy. The default application path is the Technical service.
 
 ---
 
@@ -290,14 +290,6 @@ Answer these questions:
 
 Read the active MCDA service (determined in Service Environment Detection).
 
-**If frontend-local (MockMCDAService)** → read `src/services/mock/MockMCDAService.ts`:
-
-- How are criteria values extracted from scenario + financial data?
-- What normalization is applied to ROI? NPV? What caps?
-- Is the TOPSIS implementation correct? (weighted matrix → ideal points → distances → closeness)
-- Are persona weights applied correctly? Where are they defined?
-- How are baseline energy needs used for normalization?
-
 **If backend API (TechnicalMCDAService)** → read `src/services/TechnicalMCDAService.ts`:
 
 - How are KPI values mapped to scenario fields?
@@ -305,6 +297,10 @@ Read the active MCDA service (determined in Service Environment Detection).
 - How are min/max bounds derived for normalization?
 - Is the persona ID mapped to a profile? How?
 - How are ranking eligibility and exclusion reasons determined?
+
+**If custom injected service** → locate its `IMCDAService` implementation and
+trace its scenario mapping, normalization, persona handling, ranking algorithm,
+and audit output directly.
 
 ### HRA-7: Validate Specific Output Values
 

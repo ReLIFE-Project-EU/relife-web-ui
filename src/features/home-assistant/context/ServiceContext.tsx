@@ -12,7 +12,6 @@ import { EnergyService } from "../../../services/EnergyService";
 import { FinancialService } from "../../../services/FinancialService";
 import { RenovationService } from "../../../services/RenovationService";
 import { TechnicalMCDAService } from "../../../services/TechnicalMCDAService";
-import { MockMCDAService } from "../../../services/mock/MockMCDAService";
 import { ServiceContext } from "./ServiceContextDefinition";
 import { auditLog } from "../../../utils/auditLogger";
 
@@ -56,9 +55,7 @@ export function HomeAssistantServiceProvider({
       mcdaPath:
         value.mcda instanceof TechnicalMCDAService
           ? "technical-backend"
-          : value.mcda instanceof MockMCDAService
-            ? "mock-frontend"
-            : "custom",
+          : "custom",
       financialOutputLevel: "private",
     });
   }, [value, services]);
