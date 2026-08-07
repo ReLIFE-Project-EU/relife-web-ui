@@ -3,8 +3,8 @@ import {
   GRID_ELECTRICITY_EMISSION_SOURCE,
   MVP_THERMAL_EMISSION_SOURCE,
   PV_SELF_CONSUMPTION_EMISSION_SOURCE,
-} from "../../constants/emissionSources";
-import { DEFAULT_FUNDING_OPTIONS } from "../../constants/funding";
+} from "../../constants/emissionSources.ts";
+import { DEFAULT_FUNDING_OPTIONS } from "../../constants/funding.ts";
 import {
   ENERGY_TARIFF_DEFAULTS,
   FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,

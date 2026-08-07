@@ -4,7 +4,7 @@ import {
   GRID_ELECTRICITY_EMISSION_SOURCE,
   MVP_THERMAL_EMISSION_SOURCE,
   PV_SELF_CONSUMPTION_EMISSION_SOURCE,
-} from "../constants/emissionSources";
+} from "../constants/emissionSources.ts";
 
 export type { DeliveredEnergyCarrierBreakdown };
 
