@@ -2,7 +2,7 @@
  * ReLIFE technical sheet dataset.
  *
  * Eleven sheets covering envelope materials, heating/cooling systems and
- * on-site renewables, transcribed from the D3.2 source documents. See
+ * on-site renewables, transcribed from the ReLIFE technical sheet PDFs. See
  * `README.md` in this directory for provenance, unit conventions and the
  * data-quality register.
  */

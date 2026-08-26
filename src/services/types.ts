@@ -199,7 +199,7 @@ export interface IEnergyService {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Renovation Service Types
-// D3.2 defines individual renovation measures that users can multi-select
+// Individual renovation measures that users can multi-select
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -221,7 +221,7 @@ export interface MeasureCategoryInfo {
  * Each measure can be independently selected by users
  *
  * NOTE: Cost and energy savings data are NOT included here.
- * Per D3.2 design document:
+ * Current service responsibilities:
  * - CAPEX/costs: Retrieved from ReLIFE Database or Financial API
  * - Energy savings: Calculated by Forecasting API through building simulation
  */

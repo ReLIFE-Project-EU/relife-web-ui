@@ -1,11 +1,11 @@
 /**
  * Renovation Measures Data
- * Defines the 8 individual renovation measures as specified in D3.2 requirements.
+ * Defines the 8 individual renovation measures available in the application.
  *
  * Users can multi-select from these measures to build their renovation plan.
  *
  * NOTE: Cost estimates and energy savings are NOT defined here.
- * Per D3.2 design document:
+ * Current service responsibilities:
  * - CAPEX/costs: Retrieved from ReLIFE Database or Financial API
  * - Energy savings: Calculated by Forecasting API through building simulation
  *

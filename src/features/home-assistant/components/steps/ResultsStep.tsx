@@ -4,7 +4,7 @@
  * persona. Auto-ranks scenarios whenever the persona changes. The headline
  * answer (recommended package, yearly savings, payback, ranking) stays in
  * view; per-package detail and the comparison table sit behind collapsed
- * sections so the D3.2 indicators remain reachable without crowding it.
+ * sections so secondary indicators remain reachable without crowding it.
  */
 
 import { useEffect, useMemo, useState } from "react";

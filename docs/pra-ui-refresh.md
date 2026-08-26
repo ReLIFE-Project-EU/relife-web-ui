@@ -98,9 +98,9 @@ The prototype's CSS variables (`--persona-finance` teal, `--persona-soft`, `--pe
   6. Step 3 tabs: switching between Portfolio summary / Per building / Report works; sort by NPV desc by default; status filter narrows rows; row click opens drill-down. Cash-flow table shows up to 5 yearly rows (plus Year 0 when `initial_investment` is present) sourced from `CashFlowData` arrays — visible row count is bounded by `cashFlowData.years.length`, not by `projectLifetime`. Charts show non-zero bars when results contain renovated scenarios.
   7. `Start Over` resets state and returns to Step 0.
 
-## D3.2 alignment note
+## Scope preservation note
 
-D3.2 lists single-interface scenario comparison as a PRA requirement (UR1 / TR18-level). This refresh **preserves the current functional scope** and does **not** close that gap — scenario compare remains absent here as it is in `main` today. Flagged so reviewers don't read this plan as the comparison work item.
+This refresh **preserves the current functional scope** and does not add single-interface scenario comparison, which remains absent here as it is in `main` today. Flagged so reviewers don't read this plan as the comparison work item.
 
 ## Verification additions (Codex round 1)
 

@@ -22,7 +22,7 @@ export const SYSTEM_SHEETS = [
     name: "Air to Air Heat Pump",
     category: "systems",
     // No matching RenovationMeasureId: the measure catalog covers air-water
-    // heat pumps only. Retained because it is part of the D3.2 sheet set.
+    // heat pumps only. Retained because it is part of the source sheet set.
     relatedMeasureIds: [],
     description:
       "An air-to-air heat pump is a versatile HVAC system that extracts heat from the outdoor air and transfers it indoors for heating or reverses the cycle to remove indoor heat and provide cooling. Using a refrigeration cycle, it offers an energy-efficient alternative to traditional heating and cooling systems.",

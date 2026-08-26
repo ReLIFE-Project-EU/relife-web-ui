@@ -6,16 +6,14 @@ Guidance for AI agents working in this repository.
 
 Before starting work:
 
-1. **D3.2**: if the task touches HRA/PRA/RSE, building data input, financial indicators, MCDA, EPC reporting, renovation service flows, or compliance, read [D32_WEB_UI_GUIDANCE.md](./D32_WEB_UI_GUIDANCE.md).
-2. **Versions**: use only the documented dependency versions below and those already present in `package.json` / lockfile.
-3. **Scope**: solve the stated problem with the smallest direct change.
-4. **Conflict**: if the request conflicts with D3.2, current architecture, or an adjacent requirement, stop and ask.
-5. **Ambiguity**: if multiple valid interpretations remain after repo inspection, ask before coding.
-6. **API/client types**: if changing `src/api/` or service-related types, verify request/response shapes from service source, running stack, or integration tests. Ask if contracts cannot be verified.
+1. **Versions**: use only the documented dependency versions below and those already present in `package.json` / lockfile.
+2. **Scope**: solve the stated problem with the smallest direct change.
+3. **Conflict**: if the request conflicts with current architecture or an adjacent requirement, stop and ask.
+4. **Ambiguity**: if multiple valid interpretations remain after repo inspection, ask before coding.
+5. **API/client types**: if changing `src/api/` or service-related types, verify request/response shapes from service source, running stack, or integration tests. Ask if contracts cannot be verified.
 
 Stop and ask when:
 
-- D3.2 conflicts with the task or user instruction.
 - Adding a dependency is being considered.
 - The change would touch more than about 3 files in ways not directly requested.
 - A user-visible assumption has not been stated explicitly.
@@ -26,7 +24,7 @@ Stop and ask when:
 
 This repository implements the **ReLIFE Web UI**, part of the EU LIFE ReLIFE project for building energy renovation in Europe.
 
-D3.2 defines:
+The current application includes:
 
 - **Three tools**: Renovation Strategy Explorer (policy/research), Portfolio Renovation Advisor (financial institutions/ESCOs/large owners), Home Renovation Assistant (homeowners/tenants/small owners).
 - **Three backend services**: Financial, Forecasting, Technical.

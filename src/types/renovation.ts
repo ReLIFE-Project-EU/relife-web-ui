@@ -166,11 +166,11 @@ export interface EstimationResult {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Renovation Selection Types (Screen 2)
-// D3.2 defines 8 individual renovation measures that users can multi-select
+// Eight individual renovation measures that users can multi-select
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Individual renovation measure IDs as defined in D3.2 requirements.
+ * Individual renovation measure IDs available in the application.
  * Users can select multiple measures to include in their renovation plan.
  */
 export type RenovationMeasureId =

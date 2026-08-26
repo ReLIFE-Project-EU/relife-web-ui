@@ -1,10 +1,9 @@
 /**
  * Technical sheet dataset types.
  *
- * Models the eight-section technical sheet structure defined by D3.2
- * (see `D32_WEB_UI_GUIDANCE.md`): description, application, generic
- * advantages/disadvantages, technical information, embodied carbon,
- * installation data, maintenance data, labour/material cost.
+ * Models the source sheets' eight-section structure: description, application,
+ * generic advantages/disadvantages, technical information, embodied carbon,
+ * installation data, maintenance data, and labour/material cost.
  *
  * The dataset is a faithful record of the source documents, not a curated LCA
  * database. Values are transcribed verbatim; suspect ones carry a

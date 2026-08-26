@@ -96,8 +96,7 @@ instruction; this is mandatory, not optional.
 4. Frontend service code (`src/services/`, `src/features/*/services/`)
 5. Frontend utility functions (`src/utils/`)
 6. Type definitions (`src/types/`)
-7. D3.2 documentation (`D32_WEB_UI_GUIDANCE.md`)
-8. This skill's methodology
+7. This skill's methodology
 
 ### Rule: No Hardcoded Knowledge
 
