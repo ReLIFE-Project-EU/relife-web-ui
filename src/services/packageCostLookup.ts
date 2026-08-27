@@ -115,6 +115,48 @@ export async function lookupPackageCosts(
     );
   }
 
+  const geometry = await resolveArchetypeGeometry(
+    {
+      archetype: params.archetype,
+      floorArea: params.floorArea,
+      scaleEnvelopeToFloorArea: params.scaleEnvelopeToFloorArea,
+    },
+    { building: deps.building },
+  );
+
+  return lookupPackageCostsFromDetails(
+    {
+      country,
+      bui: geometry.bui,
+      floorArea: geometry.floorArea,
+      measureIds: params.measureIds,
+      projectLifetime: params.projectLifetime,
+    },
+    { financial: deps.financial },
+  );
+}
+
+export interface ResolvedArchetypeGeometry {
+  /** Envelope geometry, scaled to the modeled floor area where requested. */
+  bui: BuildingPayload;
+  /** Floor area used to size HVAC/PV capacity. */
+  floorArea: number;
+}
+
+/**
+ * Fetch an archetype's geometry and apply the optional floor-area scaling.
+ * Shared with the embodied-carbon calculation so both derive their quantities
+ * from identical geometry; `getArchetypeDetails` is instance-cached, so the
+ * second caller costs no extra request.
+ */
+export async function resolveArchetypeGeometry(
+  params: {
+    archetype: ArchetypeInfo;
+    floorArea: number | null;
+    scaleEnvelopeToFloorArea?: boolean;
+  },
+  deps: Pick<PackageCostLookupDeps, "building">,
+): Promise<ResolvedArchetypeGeometry> {
   const details = await deps.building.getArchetypeDetails({
     category: params.archetype.category,
     country: params.archetype.country,
@@ -129,17 +171,11 @@ export async function lookupPackageCosts(
       ? params.floorArea
       : null;
 
-  return lookupPackageCostsFromDetails(
-    {
-      country,
-      bui:
-        scaledFloorArea !== null
-          ? applyFloorAreaModification(details.bui, scaledFloorArea)
-          : details.bui,
-      floorArea: params.floorArea ?? details.floorArea,
-      measureIds: params.measureIds,
-      projectLifetime: params.projectLifetime,
-    },
-    { financial: deps.financial },
-  );
+  return {
+    bui:
+      scaledFloorArea !== null
+        ? applyFloorAreaModification(details.bui, scaledFloorArea)
+        : details.bui,
+    floorArea: params.floorArea ?? details.floorArea,
+  };
 }

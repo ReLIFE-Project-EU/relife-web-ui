@@ -350,36 +350,90 @@ function isVerticalSurface(surface: BuildingSurface): boolean {
  */
 const GROUND_SKY_VIEW_FACTOR_MAX = 0.01;
 
+export type EnvelopeElement = "wall" | "roof" | "floor" | "window";
+
+export interface EnvelopeElementGeometry {
+  areaM2: number;
+  /**
+   * Area-weighted mean U-value (W/m²K) across the element's surfaces, or null
+   * when the building has none of that element.
+   */
+  uValue: number | null;
+}
+
 /**
- * Sum the building's surface areas (m²) by envelope element, reusing the same
- * surface conventions as the modification helpers: transparent surfaces are
- * windows; opaque surfaces are roof (by name), floor (by name or near-zero
- * sky-view factor), otherwise wall.
+ * Classify a surface into an envelope element, reusing the same conventions as
+ * the modification helpers: transparent surfaces are windows; opaque surfaces
+ * are roof (by name), floor (by name or near-zero sky-view factor), otherwise
+ * wall.
  */
+function classifyEnvelopeSurface(surface: BuildingSurface): EnvelopeElement {
+  if (surface.type === "transparent") return "window";
+
+  const name = surface.name.toLowerCase();
+  if (name.includes("roof")) return "roof";
+  if (
+    name.includes("slab") ||
+    name.includes("ground") ||
+    surface.sky_view_factor <= GROUND_SKY_VIEW_FACTOR_MAX
+  ) {
+    return "floor";
+  }
+  return "wall";
+}
+
+/**
+ * Aggregate the building's surfaces into per-element area and area-weighted
+ * U-value. The U-values let callers work out how much thermal resistance a
+ * renovation has to add to reach a target U, which is what the embodied-carbon
+ * calculation uses to pick an insulation thickness.
+ */
+export function envelopeElementsFromBui(
+  bui: BuildingPayload,
+): Record<EnvelopeElement, EnvelopeElementGeometry> {
+  const totals: Record<EnvelopeElement, { areaM2: number; uArea: number }> = {
+    wall: { areaM2: 0, uArea: 0 },
+    roof: { areaM2: 0, uArea: 0 },
+    floor: { areaM2: 0, uArea: 0 },
+    window: { areaM2: 0, uArea: 0 },
+  };
+
+  for (const surface of bui.building_surface) {
+    const element = totals[classifyEnvelopeSurface(surface)];
+    element.areaM2 += surface.area;
+    element.uArea += surface.u_value * surface.area;
+  }
+
+  const toGeometry = (t: {
+    areaM2: number;
+    uArea: number;
+  }): EnvelopeElementGeometry => ({
+    areaM2: t.areaM2,
+    uValue: t.areaM2 > 0 ? t.uArea / t.areaM2 : null,
+  });
+
+  return {
+    wall: toGeometry(totals.wall),
+    roof: toGeometry(totals.roof),
+    floor: toGeometry(totals.floor),
+    window: toGeometry(totals.window),
+  };
+}
+
+/** Sum the building's surface areas (m²) by envelope element. */
 export function surfaceAreasFromBui(bui: BuildingPayload): {
   wallM2: number;
   roofM2: number;
   floorM2: number;
   windowM2: number;
 } {
-  const areas = { wallM2: 0, roofM2: 0, floorM2: 0, windowM2: 0 };
-  for (const surface of bui.building_surface) {
-    const name = surface.name.toLowerCase();
-    const isGroundContact =
-      name.includes("slab") ||
-      name.includes("ground") ||
-      surface.sky_view_factor <= GROUND_SKY_VIEW_FACTOR_MAX;
-    if (surface.type === "transparent") {
-      areas.windowM2 += surface.area;
-    } else if (name.includes("roof")) {
-      areas.roofM2 += surface.area;
-    } else if (isGroundContact) {
-      areas.floorM2 += surface.area;
-    } else {
-      areas.wallM2 += surface.area;
-    }
-  }
-  return areas;
+  const elements = envelopeElementsFromBui(bui);
+  return {
+    wallM2: elements.wall.areaM2,
+    roofM2: elements.roof.areaM2,
+    floorM2: elements.floor.areaM2,
+    windowM2: elements.window.areaM2,
+  };
 }
 
 function calculateTotalWallArea(bui: BuildingPayload): number {

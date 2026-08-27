@@ -6,7 +6,12 @@ import type {
 import type { RenovationMeasureId } from "../types/renovation";
 import { PV_DEFAULTS, pvKwpFromFloorArea } from "./pvConfig.ts";
 
-const U_VALUE_TARGETS: Partial<Record<RenovationMeasureId, number>> = {
+/**
+ * Element U-values (W/m²K) the ECM engine is asked to reach. Exported because
+ * the embodied-carbon calculation derives insulation thickness and glazing from
+ * the same targets, keeping material carbon consistent with simulated energy.
+ */
+export const U_VALUE_TARGETS: Partial<Record<RenovationMeasureId, number>> = {
   "wall-insulation": 0.25,
   "roof-insulation": 0.2,
   "floor-insulation": 0.25,
