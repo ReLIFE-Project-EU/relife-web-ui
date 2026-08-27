@@ -205,6 +205,8 @@ export interface RSEFinancialResult {
   effectiveCapexEur: number;
   annualMaintenanceEur: number;
   annualEnergySavingsKwh: number;
+  /** One-off material carbon of the package's measures, per building. */
+  embodiedCarbonKgCo2e?: number;
   status: "available" | "unavailable";
   unavailableReason?: RSEUnavailableReason;
   unavailableMessage?: string;
@@ -240,6 +242,12 @@ export interface RSEPackageAggregate {
   totalAnnualMaintenanceEur: number;
   totalAnnualEnergySavingsKwh: number;
   totalAnnualCo2ReductionTon: number;
+  /**
+   * One-off material carbon across the renovated stock. Undefined when any
+   * archetype in the portfolio has no estimate, so a gap reads as "—" rather
+   * than as a smaller total.
+   */
+  totalEmbodiedCarbonTon?: number;
   energySavedPerEur: number;
   co2ReducedTonPerEur: number;
   financialIndicators: {

@@ -139,6 +139,8 @@ export function getAggregateValue(
       return agg.co2ReducedTonPerEur;
     case "totalAnnualCo2ReductionTon":
       return agg.totalAnnualCo2ReductionTon;
+    case "totalEmbodiedCarbonTon":
+      return agg.totalEmbodiedCarbonTon;
     case "totalBuildings":
       return agg.totalBuildings;
     case "totalCapexEur":

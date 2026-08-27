@@ -42,10 +42,18 @@ const KPI_KEYS: McdaKpiKey[] = [
   "arv_kpi",
 ];
 
+/**
+ * KPIs the pipeline cannot populate. They are sent as 0 across a fixed [-1, 1]
+ * range so every technology normalizes identically and the criterion drops out
+ * of the TOPSIS distances — the backend requires the keys and rejects a
+ * degenerate range, so they cannot simply be omitted.
+ *
+ * `gwp_kpi` stays here: the technical sheets carry no module boundary, country
+ * breakdown or EPD references, so there is no lifecycle figure to send.
+ */
 const NEUTRALIZED_KPI_KEYS: McdaKpiKey[] = [
   "window_kpi",
   "st_coverage_kpi",
-  "embodied_carbon_kpi",
   "gwp_kpi",
   "thermal_comfort_humidity_kpi",
 ];
@@ -204,7 +212,7 @@ export function deriveTechnologyKpis(
       (scenario.pvSelfSufficiencyRate ?? scenario.pvSelfConsumptionRate ?? 0) *
       100,
     net_energy_export_kpi: scenario.pvGridExport ?? 0,
-    embodied_carbon_kpi: 0,
+    embodied_carbon_kpi: scenario.embodiedCarbonKgCo2e ?? 0,
     gwp_kpi: 0,
     thermal_comfort_air_temp_kpi: scenario.comfortIndex,
     thermal_comfort_humidity_kpi: 0,
@@ -289,6 +297,13 @@ function getRankingExclusionReason(
     !isFiniteNumber(scenario.coolingPrimaryEnergy)
   ) {
     return "Energy data is incomplete";
+  }
+
+  // Embodied carbon is scored lower-is-better, so a missing value falling
+  // through to 0 in `deriveTechnologyKpis` would score a perfect result on the
+  // criterion that carries the most weight for the environmental persona.
+  if (!isFiniteNumber(scenario.embodiedCarbonKgCo2e)) {
+    return "Material carbon data is missing";
   }
 
   if (scenario.measureIds.includes("pv")) {

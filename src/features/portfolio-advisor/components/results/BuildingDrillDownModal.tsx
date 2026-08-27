@@ -55,6 +55,7 @@ export function BuildingDrillDownModal({
 
   const co2Before = baseline?.annualEmissionsTonCo2e;
   const co2After = renovated?.annualEmissionsTonCo2e;
+  const embodiedCarbonKg = renovated?.embodiedCarbonKgCo2e;
 
   const energyReduction = getEnergyReduction(
     result?.estimation?.annualEnergyNeeds,
@@ -180,6 +181,16 @@ export function BuildingDrillDownModal({
                   ) : (
                     "—"
                   )
+                }
+              />
+              <ConceptMetricCard
+                conceptId="embodied-carbon"
+                value={
+                  embodiedCarbonKg !== undefined
+                    ? formatTonnageCo2(embodiedCarbonKg / 1000, {
+                        decimal: true,
+                      })
+                    : "—"
                 }
               />
               <MetricCard

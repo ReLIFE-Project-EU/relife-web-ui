@@ -13,6 +13,7 @@ import type {
 } from "../../../services/types";
 import { normalizeSystemSelection } from "../../../services/measureNormalization";
 import { packageUsesHeatingStopgap } from "../../../services/renovationActions";
+import { estimatePackageEmbodiedCarbon } from "../../../services/embodiedCarbon";
 import { lookupPackageCosts } from "../../../services/packageCostLookup";
 import type {
   BuildingInfo,
@@ -258,6 +259,20 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       packages,
       auditCtx,
     );
+
+    // Material carbon, from the same geometry the cost lookup below uses.
+    for (const scenario of scenarios) {
+      if (scenario.measureIds.length === 0) continue;
+      scenario.embodiedCarbonKgCo2e =
+        (await estimatePackageEmbodiedCarbon(
+          {
+            archetype: estimation.archetype,
+            floorArea: building.floorArea,
+            measureIds: scenario.measureIds,
+          },
+          { building: this.building },
+        )) ?? undefined;
+    }
 
     // Step 3: Calculate financial results.
     // Cost precedence (per field): per-building / CSV value → global override →

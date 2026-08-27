@@ -95,6 +95,16 @@ export function PackageDeepDive({ aggregate, goal }: PackageDeepDiveProps) {
               conceptId="rse-co2-reduced-per-eur"
               value={`${formatDecimal(aggregate.co2ReducedTonPerEur * 1000)} kg/€`}
             />
+            <MiniMetric
+              icon={<IconLeaf size={14} />}
+              label="Material carbon"
+              conceptId="embodied-carbon"
+              value={
+                aggregate.totalEmbodiedCarbonTon !== undefined
+                  ? formatTonnageCo2(aggregate.totalEmbodiedCarbonTon)
+                  : "—"
+              }
+            />
           </div>
         </div>
 

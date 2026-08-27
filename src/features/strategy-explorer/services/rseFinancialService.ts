@@ -1,5 +1,6 @@
 import { financial } from "../../../api/financial";
 import { FinancialService } from "../../../services/FinancialService";
+import { estimatePackageEmbodiedCarbonFromBui } from "../../../services/embodiedCarbon";
 import { lookupPackageCostsFromDetails } from "../../../services/packageCostLookup";
 import {
   buildSchemes,
@@ -230,6 +231,11 @@ function normalizeRiskResponse(
     schemeType,
     projectLifetime,
   });
+  const embodiedCarbonKgCo2e = estimatePackageEmbodiedCarbonFromBui({
+    bui: input.details.bui,
+    floorArea: input.details.floorArea,
+    measureIds: RSE_PACKAGES[input.packageId].measureIds,
+  });
   const pf = mapped.pointForecasts;
 
   return {
@@ -239,6 +245,7 @@ function normalizeRiskResponse(
     effectiveCapexEur,
     annualMaintenanceEur,
     annualEnergySavingsKwh,
+    embodiedCarbonKgCo2e: embodiedCarbonKgCo2e ?? undefined,
     status: "available",
     pointForecasts: {
       NPV: pf.NPV,

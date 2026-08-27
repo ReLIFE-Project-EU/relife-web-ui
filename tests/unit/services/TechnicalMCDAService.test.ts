@@ -35,6 +35,7 @@ const wallScenario: RenovationScenario = {
   coolingPrimaryEnergy: 1500,
   flexibilityIndex: 50,
   comfortIndex: 72,
+  embodiedCarbonKgCo2e: 1200,
   measureIds: ["wall-insulation"],
   measures: ["Wall Insulation"],
 };
@@ -50,6 +51,7 @@ const windowScenario: RenovationScenario = {
   coolingPrimaryEnergy: 1300,
   flexibilityIndex: 50,
   comfortIndex: 74,
+  embodiedCarbonKgCo2e: 1700,
   measureIds: ["windows"],
   measures: ["Window Replacement"],
 };
@@ -119,6 +121,8 @@ describe("TechnicalMCDAService helpers", () => {
       window_kpi: 0,
       heating_system_kpi: 9200,
       cooling_system_kpi: 1300,
+      embodied_carbon_kpi: 1700,
+      gwp_kpi: 0,
       thermal_comfort_air_temp_kpi: 74,
       thermal_comfort_humidity_kpi: 0,
       ii_kpi: 9000,
@@ -138,6 +142,10 @@ describe("TechnicalMCDAService helpers", () => {
 
     expect(minsMaxes.window_kpi).toEqual([-1, 1]);
     expect(minsMaxes.thermal_comfort_humidity_kpi).toEqual([-1, 1]);
+    // The sheets carry no lifecycle GWP figure, so that half of the
+    // sustainability pillar stays neutralized while embodied carbon does not.
+    expect(minsMaxes.gwp_kpi).toEqual([-1, 1]);
+    expect(minsMaxes.embodied_carbon_kpi).toEqual([1200, 1700]);
     expect(minsMaxes.heating_system_kpi).toEqual([9200, 10000]);
   });
 
@@ -178,6 +186,26 @@ describe("TechnicalMCDAService helpers", () => {
           ...wallFinancial,
           riskAssessment: null,
         },
+        [windowScenario.id]: windowFinancial,
+      },
+      "environmentally-conscious",
+    );
+
+    expect(request.technologies.map((technology) => technology.name)).toEqual([
+      "package-windows",
+    ]);
+  });
+
+  test("buildMcdaTopsisRequest excludes scenarios without embodied carbon", () => {
+    // Sending 0 for a missing figure would rank the scenario best; see the
+    // exclusion guard in TechnicalMCDAService.ts.
+    const withoutCarbon: RenovationScenario = { ...wallScenario };
+    delete withoutCarbon.embodiedCarbonKgCo2e;
+
+    const request = buildMcdaTopsisRequest(
+      [baselineScenario, withoutCarbon, windowScenario],
+      {
+        [wallScenario.id]: wallFinancial,
         [windowScenario.id]: windowFinancial,
       },
       "environmentally-conscious",

@@ -38,6 +38,8 @@ export function aggregatePackage(
   let totalAnnualMaintenanceEur = 0;
   let totalAnnualEnergySavingsKwh = 0;
   let totalAnnualCo2ReductionTon = 0;
+  let totalEmbodiedCarbonTon = 0;
+  let hasEmbodiedCarbon = true;
   let aggregateNPV = 0;
   let hasNPV = false;
   let netProfitEur = 0;
@@ -70,6 +72,12 @@ export function aggregatePackage(
       simulation.annualEnergySavingsKwh * buildingCount;
     totalAnnualCo2ReductionTon +=
       simulation.annualCo2ReductionTon * buildingCount;
+    if (financial.embodiedCarbonKgCo2e === undefined) {
+      hasEmbodiedCarbon = false;
+    } else {
+      totalEmbodiedCarbonTon +=
+        (financial.embodiedCarbonKgCo2e / 1000) * buildingCount;
+    }
 
     // Summing P50 values is an approximation (the median of a sum is not the
     // sum of medians), acceptable here because all archetypes share the same
@@ -129,6 +137,9 @@ export function aggregatePackage(
     totalAnnualMaintenanceEur,
     totalAnnualEnergySavingsKwh,
     totalAnnualCo2ReductionTon,
+    totalEmbodiedCarbonTon: hasEmbodiedCarbon
+      ? totalEmbodiedCarbonTon
+      : undefined,
     energySavedPerEur: divideOrZero(
       totalAnnualEnergySavingsKwh,
       totalEffectiveCapexEur,

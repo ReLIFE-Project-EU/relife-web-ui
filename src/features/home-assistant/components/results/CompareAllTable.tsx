@@ -57,6 +57,9 @@ export function CompareAllTable({
             <th>
               CO₂ <ConceptExplainer conceptId="operational-co2-emissions" />
             </th>
+            <th>
+              Material carbon <ConceptExplainer conceptId="embodied-carbon" />
+            </th>
             <th>Investment</th>
             <th>NPV</th>
             <th>Payback</th>
@@ -87,6 +90,7 @@ export function CompareAllTable({
                     })
                   : "—"}
               </td>
+              <td>—</td>
               <td>—</td>
               <td>—</td>
               <td>—</td>
@@ -152,6 +156,13 @@ export function CompareAllTable({
                       {formatTonnageCo2(emissionsDelta, { decimal: true })}
                     </Text>
                   ) : null}
+                </td>
+                <td>
+                  {scenario.embodiedCarbonKgCo2e !== undefined
+                    ? formatTonnageCo2(scenario.embodiedCarbonKgCo2e / 1000, {
+                        decimal: true,
+                      })
+                    : "—"}
                 </td>
                 <td>
                   {result?.capitalExpenditure !== undefined

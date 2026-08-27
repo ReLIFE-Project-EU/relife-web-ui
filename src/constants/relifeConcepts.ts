@@ -11,6 +11,7 @@ export type ConceptId =
   | "pv-grid-export"
   | "pv-self-consumption-rate"
   | "operational-co2-emissions"
+  | "embodied-carbon"
   | "investment"
   | "annual-maintenance-cost"
   | "own-funds"
@@ -155,6 +156,17 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
       "Hot water, lighting, and appliances are not counted, and neither is the carbon released in making and installing the renovation materials themselves. Figures are based on how electricity and gas are typically produced in your country, or on a European average when figures for your country aren't available.",
     professionalDetail:
       "Per-carrier calculation from the delivered-energy split: natural gas and net grid electricity at the Forecasting service's country factors (kgCO₂eq/kWh), plus self-consumed PV at the solar_pv lifecycle factor. Grid import is already net of PV self-consumption; grid export is not credited.",
+  },
+  "embodied-carbon": {
+    id: "embodied-carbon",
+    label: "Material carbon",
+    description:
+      "The greenhouse gases released to make and deliver the materials and equipment a renovation installs. Unlike the emissions from running your home, this is a one-off amount, paid when the work is done.",
+    unit: "t CO₂e",
+    caveat:
+      "An estimate from European average figures, not a quote for the products you would actually buy. It assumes EPS boards for insulation and PVC frames for windows, with the panel thickness and glazing worked out from the energy performance the renovation is modelled to reach. Solar panel inverters are not counted, and neither is installation, transport to site, maintenance or disposal.",
+    professionalDetail:
+      "Embodied carbon (kgCO₂e) from the ReLIFE technical sheets, aggregated per package. Envelope measures take the panel thickness or glazing that meets the ECM engine's element U-value targets against the archetype's area-weighted baseline U, extrapolating linearly past the sheet's thickest row; heating capacity and PV array size come from the same floor-area heuristics used for CAPEX. Figures are European averages with no country breakdown, module boundary or EPD references. The PV inverter row (1040 kgCO₂e per 3 kW unit) is excluded as an implausible outlier against published EPDs.",
   },
   investment: {
     id: "investment",
@@ -306,9 +318,9 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     description:
       "Professional multi-criteria method used behind the recommendation ranking.",
     caveat:
-      "Environmental-impact scoring (embodied carbon and lifecycle emissions) is not yet available in the current data pipeline, so that criterion does not currently differentiate packages. Rankings reflect the energy, renewable-integration, comfort and financial criteria.",
+      "The environmental criterion counts only the carbon embodied in renovation materials, because lifecycle operating emissions are not yet available. It therefore rewards packages that use less material without crediting the emissions they go on to avoid, which weighs against deeper renovations. Read it alongside the energy and CO₂ figures rather than on its own.",
     professionalDetail:
-      "Multi-Criteria Decision Analysis is designed to combine energy, renewable-integration, sustainability, comfort and financial criteria using persona weights. The sustainability criterion (embodied carbon / GWP) is not yet populated with data and is currently neutralized.",
+      "Multi-Criteria Decision Analysis combines energy, renewable-integration, sustainability, comfort and financial criteria using persona weights. The sustainability pillar's embodied-carbon KPI is populated from the ReLIFE technical sheets; its GWP KPI stays neutralized because the sheets carry no module boundary, country breakdown or EPD references. A neutralized KPI contributes an identical constant to every alternative and so drops out of the TOPSIS distances, which leaves embodied carbon carrying the pillar's full weight — the largest single term for the Environment-Oriented profile.",
   },
   "rse-energy-saved-per-eur": {
     id: "rse-energy-saved-per-eur",

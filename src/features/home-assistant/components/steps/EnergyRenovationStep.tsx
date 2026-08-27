@@ -7,6 +7,8 @@ import { useEffect } from "react";
 import { Alert, Box, Divider, Stack, Text, Title } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { EnergyTariffPanel } from "../../../../components/shared/EnergyTariffPanel";
+import { isApartmentLikeCategory } from "../../../../constants/buildingFormOptions";
+import { estimatePackageEmbodiedCarbon } from "../../../../services/embodiedCarbon";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 import { usePackageCostEstimation } from "../../hooks/usePackageCostEstimation";
@@ -21,7 +23,7 @@ import { ErrorAlert, StepNavigation } from "../shared";
 
 export function EnergyRenovationStep() {
   const { state, dispatch } = useHomeAssistant();
-  const { financial, renovation } = useHomeAssistantServices();
+  const { building, financial, renovation } = useHomeAssistantServices();
 
   const selectedMeasures = state.renovation.selectedMeasures;
   const suggestedPackages = state.suggestedPackages;
@@ -79,11 +81,38 @@ export function EnergyRenovationStep() {
         selectedPackageIds.includes(pkg.id),
       );
 
-      const scenarios = await renovation.evaluateScenarios(
+      const evaluated = await renovation.evaluateScenarios(
         state.building,
         state.estimation,
         selectedPackages,
       );
+
+      // Material carbon rides along with the scenarios so ranking eligibility
+      // sees it, from the same geometry and apartment scaling as the cost lookup.
+      const embodiedCarbon = await Promise.all(
+        evaluated.map((scenario) =>
+          scenario.measureIds.length === 0
+            ? null
+            : estimatePackageEmbodiedCarbon(
+                {
+                  archetype: state.estimation?.archetype,
+                  floorArea: state.building.floorArea,
+                  measureIds: scenario.measureIds,
+                  scaleEnvelopeToFloorArea: isApartmentLikeCategory(
+                    state.building.buildingType,
+                  ),
+                },
+                { building },
+              ),
+        ),
+      );
+
+      const scenarios = evaluated.map((scenario, index) => {
+        const kgCO2e = embodiedCarbon[index];
+        return kgCO2e === null
+          ? scenario
+          : { ...scenario, embodiedCarbonKgCo2e: kgCO2e };
+      });
 
       // Calculate financial results for all scenarios
       const financialResults = await financial.calculateForAllScenarios({
