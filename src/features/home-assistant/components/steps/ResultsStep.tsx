@@ -348,6 +348,7 @@ export function ResultsStep() {
               current={currentScenario}
               renovationScenarios={renovationScenarios}
               financialResults={financialResults}
+              projectLifetime={state.building.projectLifetime}
               ranking={mcdaRanking}
               selectedScenarioId={fallbackSelectedId}
               onSelectScenario={handleSelectScenario}

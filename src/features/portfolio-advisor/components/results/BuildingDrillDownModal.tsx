@@ -28,6 +28,7 @@ import {
   formatTonnageCo2,
   getEnergyReduction,
 } from "../../../../utils/formatters";
+import { computeLifetimeCarbonKgCo2e } from "../../../../services/carrierSavingsService";
 import { formatArchetypeName } from "../../../../utils/archetypeLabels";
 import { CashFlowChart } from "../../../../components/shared/CashFlowChart";
 import type { PRABuilding, BuildingAnalysisResult } from "../../context/types";
@@ -69,6 +70,11 @@ export function BuildingDrillDownModal({
     projectLifetime ??
     fr?.riskAssessment?.metadata.project_lifetime ??
     undefined;
+  const lifetimeCarbonKg = computeLifetimeCarbonKgCo2e({
+    embodiedCarbonKgCo2e: embodiedCarbonKg,
+    annualOperationalEmissionsTonCo2e: co2After,
+    projectLifetimeYears: horizonYears,
+  });
 
   if (!building || !result) {
     return null;
@@ -188,6 +194,16 @@ export function BuildingDrillDownModal({
                 value={
                   embodiedCarbonKg !== undefined
                     ? formatTonnageCo2(embodiedCarbonKg / 1000, {
+                        decimal: true,
+                      })
+                    : "—"
+                }
+              />
+              <ConceptMetricCard
+                conceptId="whole-life-carbon"
+                value={
+                  lifetimeCarbonKg !== undefined
+                    ? formatTonnageCo2(lifetimeCarbonKg / 1000, {
                         decimal: true,
                       })
                     : "—"

@@ -12,6 +12,7 @@ export type ConceptId =
   | "pv-self-consumption-rate"
   | "operational-co2-emissions"
   | "embodied-carbon"
+  | "whole-life-carbon"
   | "investment"
   | "annual-maintenance-cost"
   | "own-funds"
@@ -168,6 +169,17 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     professionalDetail:
       "Embodied carbon (kgCO₂e) from the ReLIFE technical sheets, aggregated per package. Envelope measures take the panel thickness or glazing that meets the ECM engine's element U-value targets against the archetype's area-weighted baseline U, extrapolating linearly past the sheet's thickest row; heating capacity and PV array size come from the same floor-area heuristics used for CAPEX. Figures are European averages with no country breakdown, module boundary or EPD references. The PV inverter row (1040 kgCO₂e per 3 kW unit) is excluded as an implausible outlier against published EPDs.",
   },
+  "whole-life-carbon": {
+    id: "whole-life-carbon",
+    label: "Lifetime carbon",
+    description:
+      "Material carbon and yearly emissions in one figure: the one-off carbon of the materials, plus each year's heating and cooling emissions added up over the period the renovation is appraised for. It shows what a renovation costs in carbon alongside what it goes on to emit.",
+    unit: "t CO₂e",
+    caveat:
+      "This is a total, not a saving, so every option shows a positive number and the lower one is better. The period is the project lifetime behind the financial results, 20 years unless you change it, not the life of the building. It inherits the limits of both halves: only the manufacture of the materials is counted, with nothing for transport, installation, maintenance, replacements or disposal, and only heating and cooling on the running side, leaving out hot water, lighting and appliances. Electricity and gas are assumed to stay as carbon-intensive as they are today, so a grid that cleans up over time would bring the real figure down.",
+    professionalDetail:
+      "Material carbon (kgCO₂e) plus annual operational emissions × 1000 × project lifetime, held per building in kgCO₂e and aggregated in tonnes across the stock for RSE. The horizon is the Financial service's project_lifetime (RSE: financialAssumptions.projectLifetimeYears), an appraisal period rather than a service life. Module coverage is partial and asymmetric: product stage only on the material side, from the ReLIFE technical sheets, plus operational energy on the other, restricted to HVAC end uses because the carrier split derives from delivered heating and cooling energy. Transport, installation, maintenance, replacement and end-of-life are absent, as is any discounting of future emissions or grid-decarbonization trajectory. Undefined whenever the material figure, the annual emissions or the horizon is missing, so a gap never reads as a smaller total.",
+  },
   investment: {
     id: "investment",
     label: "Investment",
@@ -318,9 +330,9 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     description:
       "Professional multi-criteria method used behind the recommendation ranking.",
     caveat:
-      "The environmental criterion counts only the carbon embodied in renovation materials, because lifecycle operating emissions are not yet available. It therefore rewards packages that use less material without crediting the emissions they go on to avoid, which weighs against deeper renovations. Read it alongside the energy and CO₂ figures rather than on its own.",
+      "The environmental criterion counts both sides of the carbon picture: the one-off carbon of the renovation materials, and the emissions your home still produces over the period analysed. Material carbon separates options that perform similarly rather than counting against the deeper ones. Read it alongside the energy and CO₂ figures.",
     professionalDetail:
-      "Multi-Criteria Decision Analysis combines energy, renewable-integration, sustainability, comfort and financial criteria using persona weights. The sustainability pillar's embodied-carbon KPI is populated from the ReLIFE technical sheets; its GWP KPI stays neutralized because the sheets carry no module boundary, country breakdown or EPD references. A neutralized KPI contributes an identical constant to every alternative and so drops out of the TOPSIS distances, which leaves embodied carbon carrying the pillar's full weight — the largest single term for the Environment-Oriented profile.",
+      "Multi-Criteria Decision Analysis combines energy, renewable-integration, sustainability, comfort and financial criteria using persona weights. The sustainability pillar sends both of its KPIs: embodied carbon from the ReLIFE technical sheets, and GWP as lifetime carbon (material carbon plus operational emissions across the project lifetime). Both share one normalization scale, from zero to the largest lifetime figure among the alternatives, because material carbon is a component of that total and independent min/max normalization would give a term worth a few percent of it equal weight. When operational emissions are unavailable the GWP KPI is neutralized for that run: it then contributes an identical constant to every alternative and drops out of the TOPSIS distances.",
   },
   "rse-energy-saved-per-eur": {
     id: "rse-energy-saved-per-eur",

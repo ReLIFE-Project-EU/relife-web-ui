@@ -6,6 +6,7 @@ import type {
   RSERenovationGoal,
   RSESimulationResult,
 } from "../types";
+import { computeLifetimeCarbonKgCo2e } from "../../../services/carrierSavingsService";
 import { rseArchetypePackageKey, rseArchetypeKey } from "./rseKeys";
 
 export interface RSEPackageAggregationInput {
@@ -14,6 +15,8 @@ export interface RSEPackageAggregationInput {
   simulations: RSESimulationResult[];
   financials: RSEFinancialResult[];
   goal: RSERenovationGoal;
+  /** Horizon for lifetime carbon; the same lifetime the ranking uses. */
+  projectLifetimeYears: number;
 }
 
 export function aggregatePackage(
@@ -40,6 +43,8 @@ export function aggregatePackage(
   let totalAnnualCo2ReductionTon = 0;
   let totalEmbodiedCarbonTon = 0;
   let hasEmbodiedCarbon = true;
+  let totalWholeLifeCarbonTon = 0;
+  let hasWholeLifeCarbon = true;
   let aggregateNPV = 0;
   let hasNPV = false;
   let netProfitEur = 0;
@@ -74,9 +79,21 @@ export function aggregatePackage(
       simulation.annualCo2ReductionTon * buildingCount;
     if (financial.embodiedCarbonKgCo2e === undefined) {
       hasEmbodiedCarbon = false;
+      hasWholeLifeCarbon = false;
     } else {
       totalEmbodiedCarbonTon +=
         (financial.embodiedCarbonKgCo2e / 1000) * buildingCount;
+      const wholeLifeKgCo2e = computeLifetimeCarbonKgCo2e({
+        embodiedCarbonKgCo2e: financial.embodiedCarbonKgCo2e,
+        annualOperationalEmissionsTonCo2e:
+          simulation.renovatedAnnualEmissionsTonCo2eq,
+        projectLifetimeYears: input.projectLifetimeYears,
+      });
+      if (wholeLifeKgCo2e === undefined) {
+        hasWholeLifeCarbon = false;
+      } else {
+        totalWholeLifeCarbonTon += (wholeLifeKgCo2e / 1000) * buildingCount;
+      }
     }
 
     // Summing P50 values is an approximation (the median of a sum is not the
@@ -139,6 +156,9 @@ export function aggregatePackage(
     totalAnnualCo2ReductionTon,
     totalEmbodiedCarbonTon: hasEmbodiedCarbon
       ? totalEmbodiedCarbonTon
+      : undefined,
+    totalWholeLifeCarbonTon: hasWholeLifeCarbon
+      ? totalWholeLifeCarbonTon
       : undefined,
     energySavedPerEur: divideOrZero(
       totalAnnualEnergySavingsKwh,

@@ -73,6 +73,7 @@ function makeFinancial(
   options: {
     effectiveCapexEur?: number;
     cashFlow?: RSEFinancialResult["cashFlow"];
+    embodiedCarbonKgCo2e?: number;
   } = {},
 ): RSEFinancialResult {
   return {
@@ -82,6 +83,7 @@ function makeFinancial(
     effectiveCapexEur: options.effectiveCapexEur ?? capexEur,
     annualMaintenanceEur: name === "A" ? 10 : 20,
     annualEnergySavingsKwh: name === "A" ? 1_000 : 2_000,
+    embodiedCarbonKgCo2e: options.embodiedCarbonKgCo2e,
     status: "available",
     pointForecasts,
     cashFlow: options.cashFlow,
@@ -114,6 +116,7 @@ describe("aggregatePackage", () => {
         }),
       ],
       goal: { kind: "energy" },
+      projectLifetimeYears: 20,
     });
 
     expect(result.totalBuildings).toBe(4);
@@ -138,6 +141,7 @@ describe("aggregatePackage", () => {
         makeFinancial("B", 300, { ROI: 0.1 }),
       ],
       goal: { kind: "energy" },
+      projectLifetimeYears: 20,
     });
 
     expect(result.financialIndicators.aggregateROI).toBeCloseTo(0.14);
@@ -157,6 +161,7 @@ describe("aggregatePackage", () => {
         makeFinancial("B", 300, { ROI: 0.1 }),
       ],
       goal: { kind: "financial", maxBudgetEur: 450 },
+      projectLifetimeYears: 20,
     });
 
     expect(result.renovatableBuildingEquivalent).toBe(1.8);
@@ -198,6 +203,7 @@ describe("aggregatePackage", () => {
         ),
       ],
       goal: { kind: "energy" },
+      projectLifetimeYears: 20,
     });
 
     // Pooled euros: invest 3_100, recover 1_300/year -> 2 + 500/1300 years.
@@ -253,6 +259,7 @@ describe("aggregatePackage", () => {
         ),
       ],
       goal: { kind: "energy" },
+      projectLifetimeYears: 20,
     });
 
     expect(result.financialIndicators.aggregatePaybackYears).toBeUndefined();
@@ -271,6 +278,7 @@ describe("aggregatePackage", () => {
         makeFinancial("B", 300, { ROI: 0.1 }, { effectiveCapexEur: 270 }),
       ],
       goal: { kind: "financial", maxBudgetEur: 450 },
+      projectLifetimeYears: 20,
     });
 
     expect(result.totalCapexEur).toBe(1_000);
@@ -292,6 +300,7 @@ describe("aggregatePackage", () => {
       simulations: [makeSimulation("A", 1_000, 0.2)],
       financials: [makeFinancial("A", 0, { ROI: 0.5 })],
       goal: { kind: "energy" },
+      projectLifetimeYears: 20,
     });
 
     expect(result.energySavedPerEur).toBe(0);
@@ -309,6 +318,7 @@ describe("aggregatePackage", () => {
       ],
       financials: [makeFinancial("A", 100, {}), makeFinancial("B", 300, {})],
       goal: { kind: "energy" },
+      projectLifetimeYears: 20,
     });
 
     expect(result.financialIndicators.aggregateROI).toBeUndefined();
@@ -328,6 +338,7 @@ describe("aggregatePackage", () => {
         },
       ],
       goal: { kind: "energy" },
+      projectLifetimeYears: 20,
     });
 
     expect(result.totalBuildings).toBe(1);
@@ -361,8 +372,49 @@ describe("aggregatePackage", () => {
         makeFinancial("B", 300, { ROI: 0.1, PBP: 2 }),
       ],
       goal: { kind: "energy" },
+      projectLifetimeYears: 20,
     });
 
     expect(result.financialIndicators.aggregatePaybackYears).toBeUndefined();
+  });
+  test("sums lifetime carbon per building over the project lifetime", () => {
+    const result = aggregatePackage({
+      packageId: "envelope",
+      portfolio: makePortfolio(),
+      simulations: [
+        makeSimulation("A", 1_000, 0.2),
+        makeSimulation("B", 2_000, 0.5),
+      ],
+      financials: [
+        makeFinancial("A", 100, { NPV: 10 }, { embodiedCarbonKgCo2e: 6_000 }),
+        makeFinancial("B", 200, { NPV: 20 }, { embodiedCarbonKgCo2e: 10_000 }),
+      ],
+      goal: { kind: "energy" },
+      projectLifetimeYears: 20,
+    });
+
+    // A: 1 x (6 t + 1.8 t/yr x 20) = 42 t. B: 3 x (10 t + 1.5 t/yr x 20) = 120 t.
+    expect(result.totalWholeLifeCarbonTon).toBeCloseTo(162, 10);
+    expect(result.totalEmbodiedCarbonTon).toBeCloseTo(36, 10);
+  });
+
+  test("a missing material-carbon estimate blanks both carbon totals", () => {
+    const result = aggregatePackage({
+      packageId: "envelope",
+      portfolio: makePortfolio(),
+      simulations: [
+        makeSimulation("A", 1_000, 0.2),
+        makeSimulation("B", 2_000, 0.5),
+      ],
+      financials: [
+        makeFinancial("A", 100, { NPV: 10 }, { embodiedCarbonKgCo2e: 6_000 }),
+        makeFinancial("B", 200, { NPV: 20 }),
+      ],
+      goal: { kind: "energy" },
+      projectLifetimeYears: 20,
+    });
+
+    expect(result.totalEmbodiedCarbonTon).toBeUndefined();
+    expect(result.totalWholeLifeCarbonTon).toBeUndefined();
   });
 });

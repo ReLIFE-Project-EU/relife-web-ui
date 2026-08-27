@@ -310,6 +310,8 @@ async function runWorkflowWithDependencies(
             (result) => result.packageId === packageId,
           ),
           goal: request.goal,
+          projectLifetimeYears:
+            request.financialAssumptions.projectLifetimeYears,
         }),
       ];
     });

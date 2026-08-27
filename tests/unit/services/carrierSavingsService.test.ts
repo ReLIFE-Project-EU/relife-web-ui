@@ -5,6 +5,7 @@ import {
   computeCarrierAnnualCostEur,
   computeCarrierAnnualSavingsEur,
   computeCarrierFinancialEnergySavings,
+  computeLifetimeCarbonKgCo2e,
   computeOperationalEmissionsTonCo2e,
   extractCarrierSourceBreakdown,
   extractUniCarrierBreakdown,
@@ -181,5 +182,23 @@ describe("carrierSavingsService", () => {
         withoutSolar,
       ),
     ).toBeCloseTo((1_000 * 0.202 + 500 * 0.255) / 1000, 10);
+  });
+  test("computeLifetimeCarbonKgCo2e adds material carbon to lifetime operations", () => {
+    expect(
+      computeLifetimeCarbonKgCo2e({
+        embodiedCarbonKgCo2e: 6_000,
+        annualOperationalEmissionsTonCo2e: 2,
+        projectLifetimeYears: 20,
+      }),
+    ).toBe(46_000);
+
+    // All-or-nothing: a partial sum would read as a genuinely small total.
+    expect(
+      computeLifetimeCarbonKgCo2e({
+        embodiedCarbonKgCo2e: 6_000,
+        annualOperationalEmissionsTonCo2e: undefined,
+        projectLifetimeYears: 20,
+      }),
+    ).toBeUndefined();
   });
 });

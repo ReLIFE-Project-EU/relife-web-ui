@@ -13,6 +13,7 @@ import type {
   McdaTopsisRequest,
 } from "../types/technical";
 import type { IMCDAService, MCDAPersona } from "./types";
+import { computeLifetimeCarbonKgCo2e } from "./carrierSavingsService";
 import { MCDA_PERSONAS } from "./mock/data/personas";
 import { auditLog, type AuditCtx } from "../utils/auditLogger";
 
@@ -43,19 +44,35 @@ const KPI_KEYS: McdaKpiKey[] = [
 ];
 
 /**
- * KPIs the pipeline cannot populate. They are sent as 0 across a fixed [-1, 1]
- * range so every technology normalizes identically and the criterion drops out
- * of the TOPSIS distances — the backend requires the keys and rejects a
- * degenerate range, so they cannot simply be omitted.
+ * KPIs the pipeline can never populate. Sent as 0 across a fixed [-1, 1] range
+ * so every technology normalizes identically and the criterion drops out of the
+ * TOPSIS distances; the backend requires the keys and rejects a degenerate
+ * range, so they cannot be omitted.
  *
- * `gwp_kpi` stays here: the technical sheets carry no module boundary, country
- * breakdown or EPD references, so there is no lifecycle figure to send.
+ * Keep this list as short as the data allows: a neutralized KPI hands its
+ * pillar-mates the pillar's whole weight. With `gwp_kpi` here,
+ * `embodied_carbon_kpi` alone carried 57.6% of the Environment-Oriented
+ * decision; it is now resolved per run by `resolveNeutralizedKpiKeys`.
  */
-const NEUTRALIZED_KPI_KEYS: McdaKpiKey[] = [
+const BASE_NEUTRALIZED_KPI_KEYS: McdaKpiKey[] = [
   "window_kpi",
   "st_coverage_kpi",
-  "gwp_kpi",
   "thermal_comfort_humidity_kpi",
+];
+
+/**
+ * Groups measured in the same unit where one metric is a component of another.
+ * Normalized independently they each stretch to a full 0-100, hiding that
+ * material carbon is a few percent of lifetime carbon, so the group shares one
+ * scale: 0 (the floor for a burden) to the group's largest value.
+ *
+ * Membership needs both: same unit AND containment. Mere siblings do not
+ * qualify — heating/cooling primary energy was rejected because a shared kWh
+ * axis compresses cooling below its discriminating range, draining weight from
+ * the energy pillar.
+ */
+const SHARED_SCALE_KPI_GROUPS: McdaKpiKey[][] = [
+  ["embodied_carbon_kpi", "gwp_kpi"],
 ];
 
 export interface RankingScenarioStatus {
@@ -98,12 +115,24 @@ export class TechnicalMCDAService implements IMCDAService {
       auditCtx,
     );
 
+    const rankableScenarios = getRankingScenarioStatuses(
+      scenarios,
+      financialResults,
+    )
+      .filter((status) => status.eligible)
+      .map((status) => status.scenario);
+    const neutralizedKpis = resolveNeutralizedKpiKeys(
+      rankableScenarios,
+      financialResults,
+    );
+
     auditLog.debug(
       "mcda",
       "mcda.kpi.mapping",
       {
         engine: "technical-topsis-backend",
-        neutralizedKpis: NEUTRALIZED_KPI_KEYS,
+        neutralizedKpis,
+        lifetimeCarbonAvailable: !neutralizedKpis.includes("gwp_kpi"),
         technologies: request.technologies,
         minsMaxes: request.mins_maxes,
       },
@@ -172,16 +201,21 @@ export function buildMcdaTopsisRequest(
   const technologies = rankableScenarios.map((scenario) =>
     deriveTechnologyKpis(scenario, financialResults[scenario.id]),
   );
+  const neutralizedKeys = resolveNeutralizedKpiKeys(
+    rankableScenarios,
+    financialResults,
+  );
 
   return {
     profile,
     technologies,
     mins_maxes:
       technologies.length > 0
-        ? createMcdaMinsMaxes(technologies)
-        : createMcdaMinsMaxes([
-            deriveTechnologyKpis(baselineScenario, undefined),
-          ]),
+        ? createMcdaMinsMaxes(technologies, neutralizedKeys)
+        : createMcdaMinsMaxes(
+            [deriveTechnologyKpis(baselineScenario, undefined)],
+            neutralizedKeys,
+          ),
   };
 }
 
@@ -213,7 +247,7 @@ export function deriveTechnologyKpis(
       100,
     net_energy_export_kpi: scenario.pvGridExport ?? 0,
     embodied_carbon_kpi: scenario.embodiedCarbonKgCo2e ?? 0,
-    gwp_kpi: 0,
+    gwp_kpi: getLifetimeCarbonKgCo2e(scenario, financial) ?? 0,
     thermal_comfort_air_temp_kpi: scenario.comfortIndex,
     thermal_comfort_humidity_kpi: 0,
     ii_kpi: financial?.capitalExpenditure ?? 0,
@@ -225,14 +259,51 @@ export function deriveTechnologyKpis(
   };
 }
 
+/**
+ * `gwp_kpi` joins the neutralized list unless every rankable scenario yields a
+ * finite lifetime-carbon figure.
+ *
+ * Resolved per run rather than excluding scenarios, because operational
+ * emissions are optional by design (`RenovationService.annotateScenarioEmissions`
+ * leaves scenarios unannotated on failure). Excluding would turn one failed
+ * emission-factor request into a ranking with no eligible packages, so the
+ * degraded state is "rank without the lifecycle criterion", never "no ranking".
+ */
+export function resolveNeutralizedKpiKeys(
+  rankableScenarios: RenovationScenario[],
+  financialResults: Record<ScenarioId, FinancialResults>,
+): McdaKpiKey[] {
+  const available =
+    rankableScenarios.length > 0 &&
+    rankableScenarios.every((scenario) =>
+      isFiniteNumber(
+        getLifetimeCarbonKgCo2e(scenario, financialResults[scenario.id]),
+      ),
+    );
+
+  return available
+    ? BASE_NEUTRALIZED_KPI_KEYS
+    : [...BASE_NEUTRALIZED_KPI_KEYS, "gwp_kpi"];
+}
+
+// Required, not defaulted: the shared-scale rule below would otherwise fire on
+// placeholder values whenever a caller omitted the resolved list.
 export function createMcdaMinsMaxes(
   technologies: McdaTechnology[],
+  neutralizedKeys: McdaKpiKey[],
 ): McdaMinsMaxes {
   const minsMaxes = {} as McdaMinsMaxes;
+  const sharedScales = resolveSharedScales(technologies, neutralizedKeys);
 
   for (const key of KPI_KEYS) {
-    if (NEUTRALIZED_KPI_KEYS.includes(key)) {
+    if (neutralizedKeys.includes(key)) {
       minsMaxes[key] = [-1, 1];
+      continue;
+    }
+
+    const shared = sharedScales.get(key);
+    if (shared) {
+      minsMaxes[key] = shared;
       continue;
     }
 
@@ -250,6 +321,35 @@ export function createMcdaMinsMaxes(
   }
 
   return minsMaxes;
+}
+
+/**
+ * Ranges for `SHARED_SCALE_KPI_GROUPS`. Skips a group when a member is
+ * neutralized (its constant would set the ceiling) or the largest value is not
+ * positive, leaving the per-key epsilon path to satisfy the backend's max > min.
+ */
+function resolveSharedScales(
+  technologies: McdaTechnology[],
+  neutralizedKeys: McdaKpiKey[],
+): Map<McdaKpiKey, [number, number]> {
+  const scales = new Map<McdaKpiKey, [number, number]>();
+
+  for (const group of SHARED_SCALE_KPI_GROUPS) {
+    if (group.some((key) => neutralizedKeys.includes(key))) continue;
+
+    const max = Math.max(
+      ...group.flatMap((key) =>
+        technologies.map((technology) => technology[key]),
+      ),
+    );
+    if (!Number.isFinite(max) || max <= 0) continue;
+
+    for (const key of group) {
+      scales.set(key, [0, max]);
+    }
+  }
+
+  return scales;
 }
 
 export function getRankingScenarioStatuses(
@@ -321,6 +421,22 @@ function getRankingExclusionReason(
   }
 
   return null;
+}
+
+/**
+ * Derived here rather than stored on the scenario so a caller cannot leave it
+ * unpopulated. Eligibility already requires `riskAssessment`, whose metadata
+ * echoes the building's project lifetime.
+ */
+function getLifetimeCarbonKgCo2e(
+  scenario: RenovationScenario,
+  financial: FinancialResults | undefined,
+): number | undefined {
+  return computeLifetimeCarbonKgCo2e({
+    embodiedCarbonKgCo2e: scenario.embodiedCarbonKgCo2e,
+    annualOperationalEmissionsTonCo2e: scenario.annualEmissionsTonCo2e,
+    projectLifetimeYears: financial?.riskAssessment?.metadata.project_lifetime,
+  });
 }
 
 function getAnnualMaintenanceCost(

@@ -9,6 +9,7 @@ import {
   deriveTechnologyKpis,
   getRankingScenarioStatuses,
   mapPersonaToProfile,
+  resolveNeutralizedKpiKeys,
 } from "../../../src/services/TechnicalMCDAService";
 
 const baselineScenario: RenovationScenario = {
@@ -135,25 +136,35 @@ describe("TechnicalMCDAService helpers", () => {
   });
 
   test("createMcdaMinsMaxes neutralizes unavailable KPI ranges", () => {
-    const minsMaxes = createMcdaMinsMaxes([
-      deriveTechnologyKpis(wallScenario, wallFinancial),
-      deriveTechnologyKpis(windowScenario, windowFinancial),
-    ]);
+    // These scenarios carry no operational emissions, so lifetime carbon is
+    // unavailable and gwp_kpi is neutralized for the run.
+    const scenarios = [wallScenario, windowScenario];
+    const minsMaxes = createMcdaMinsMaxes(
+      [
+        deriveTechnologyKpis(wallScenario, wallFinancial),
+        deriveTechnologyKpis(windowScenario, windowFinancial),
+      ],
+      resolveNeutralizedKpiKeys(scenarios, {
+        [wallScenario.id]: wallFinancial,
+        [windowScenario.id]: windowFinancial,
+      }),
+    );
 
     expect(minsMaxes.window_kpi).toEqual([-1, 1]);
     expect(minsMaxes.thermal_comfort_humidity_kpi).toEqual([-1, 1]);
-    // The sheets carry no lifecycle GWP figure, so that half of the
-    // sustainability pillar stays neutralized while embodied carbon does not.
     expect(minsMaxes.gwp_kpi).toEqual([-1, 1]);
     expect(minsMaxes.embodied_carbon_kpi).toEqual([1200, 1700]);
     expect(minsMaxes.heating_system_kpi).toEqual([9200, 10000]);
   });
 
   test("createMcdaMinsMaxes uses real min/max for thermal_comfort_air_temp_kpi when comfort values differ", () => {
-    const minsMaxes = createMcdaMinsMaxes([
-      deriveTechnologyKpis(wallScenario, wallFinancial),
-      deriveTechnologyKpis(windowScenario, windowFinancial),
-    ]);
+    const minsMaxes = createMcdaMinsMaxes(
+      [
+        deriveTechnologyKpis(wallScenario, wallFinancial),
+        deriveTechnologyKpis(windowScenario, windowFinancial),
+      ],
+      [],
+    );
 
     expect(minsMaxes.thermal_comfort_air_temp_kpi).toEqual([72, 74]);
   });
@@ -308,5 +319,68 @@ describe("TechnicalMCDAService helpers", () => {
 
     expect(technology.onsite_res_kpi).toBe(35);
     expect(technology.net_energy_export_kpi).toBe(1400);
+  });
+  // The audited HRA run (Italy SFH 1946-1969, 125 m², 20-year lifetime) whose
+  // ranking the shared carbon scale was verified against.
+  const auditedPackages = [
+    { id: "package-windows", embodied: 3405.6, annualTon: 15.218166 },
+    { id: "package-floor-insulation", embodied: 864, annualTon: 15.088818 },
+    {
+      id: "package-wall-insulation-roof-insulation-windows-floor-insulation",
+      embodied: 6835.77680672269,
+      annualTon: 4.973622,
+    },
+  ];
+
+  const auditedScenarios = (): RenovationScenario[] =>
+    auditedPackages.map((pkg) => ({
+      ...wallScenario,
+      id: pkg.id,
+      packageId: pkg.id,
+      embodiedCarbonKgCo2e: pkg.embodied,
+      annualEmissionsTonCo2e: pkg.annualTon,
+    }));
+
+  const auditedFinancials: Record<string, FinancialResults> =
+    Object.fromEntries(auditedPackages.map((pkg) => [pkg.id, wallFinancial]));
+
+  test("buildMcdaTopsisRequest shares one carbon scale between material and lifetime carbon", () => {
+    const request = buildMcdaTopsisRequest(
+      [baselineScenario, ...auditedScenarios()],
+      auditedFinancials,
+      "environmentally-conscious",
+    );
+
+    expect(
+      request.technologies.map((technology) => technology.gwp_kpi),
+    ).toEqual([307768.92, 302640.36, 106308.21680672267]);
+    // Material carbon is a component of lifetime carbon, so normalizing them
+    // independently would hide that it is a few percent of the total.
+    expect(request.mins_maxes.gwp_kpi).toEqual([0, 307768.92]);
+    expect(request.mins_maxes.embodied_carbon_kpi).toEqual([0, 307768.92]);
+  });
+
+  test("missing operational emissions neutralize lifetime carbon rather than emptying the ranking", () => {
+    const scenarios = auditedScenarios();
+    delete scenarios[1].annualEmissionsTonCo2e;
+
+    const statuses = getRankingScenarioStatuses(scenarios, auditedFinancials);
+    expect(statuses.map((status) => status.eligible)).toEqual([
+      true,
+      true,
+      true,
+    ]);
+
+    const request = buildMcdaTopsisRequest(
+      [baselineScenario, ...scenarios],
+      auditedFinancials,
+      "environmentally-conscious",
+    );
+
+    expect(request.technologies).toHaveLength(3);
+    expect(request.mins_maxes.gwp_kpi).toEqual([-1, 1]);
+    expect(request.mins_maxes.embodied_carbon_kpi).toEqual([
+      864, 6835.77680672269,
+    ]);
   });
 });

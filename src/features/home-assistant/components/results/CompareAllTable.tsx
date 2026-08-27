@@ -9,6 +9,7 @@ import { Text } from "@mantine/core";
 import { IconCrown } from "@tabler/icons-react";
 import { EPCBadge } from "../../../../components/shared";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
+import { computeLifetimeCarbonKgCo2e } from "../../../../services/carrierSavingsService";
 import type {
   FinancialResults,
   MCDARankingResult,
@@ -28,6 +29,7 @@ interface CompareAllTableProps {
   current: RenovationScenario | undefined;
   renovationScenarios: RenovationScenario[];
   financialResults: Record<ScenarioId, FinancialResults>;
+  projectLifetime: number;
   ranking: MCDARankingResult[] | null;
   selectedScenarioId: ScenarioId | null;
   onSelectScenario: (scenarioId: ScenarioId) => void;
@@ -37,10 +39,19 @@ export function CompareAllTable({
   current,
   renovationScenarios,
   financialResults,
+  projectLifetime,
   ranking,
   selectedScenarioId,
   onSelectScenario,
 }: CompareAllTableProps) {
+  // Doing nothing installs no materials, so the baseline's lifetime carbon is
+  // its operational emissions alone. It is the anchor the packages are read
+  // against, which is why it gets a figure where material carbon gets a dash.
+  const baselineLifetimeCarbonKg = computeLifetimeCarbonKgCo2e({
+    embodiedCarbonKgCo2e: 0,
+    annualOperationalEmissionsTonCo2e: current?.annualEmissionsTonCo2e,
+    projectLifetimeYears: projectLifetime,
+  });
   const winnerId = ranking?.[0]?.scenarioId ?? null;
   const scoreById = new Map(
     (ranking ?? []).map((entry) => [entry.scenarioId, entry.score]),
@@ -59,6 +70,9 @@ export function CompareAllTable({
             </th>
             <th>
               Material carbon <ConceptExplainer conceptId="embodied-carbon" />
+            </th>
+            <th>
+              Lifetime carbon <ConceptExplainer conceptId="whole-life-carbon" />
             </th>
             <th>Investment</th>
             <th>NPV</th>
@@ -91,6 +105,13 @@ export function CompareAllTable({
                   : "—"}
               </td>
               <td>—</td>
+              <td>
+                {baselineLifetimeCarbonKg !== undefined
+                  ? formatTonnageCo2(baselineLifetimeCarbonKg / 1000, {
+                      decimal: true,
+                    })
+                  : "—"}
+              </td>
               <td>—</td>
               <td>—</td>
               <td>—</td>
@@ -115,6 +136,12 @@ export function CompareAllTable({
                 ? scenario.annualEmissionsTonCo2e -
                   current.annualEmissionsTonCo2e
                 : undefined;
+            const lifetimeCarbonKg = computeLifetimeCarbonKgCo2e({
+              embodiedCarbonKgCo2e: scenario.embodiedCarbonKgCo2e,
+              annualOperationalEmissionsTonCo2e:
+                scenario.annualEmissionsTonCo2e,
+              projectLifetimeYears: projectLifetime,
+            });
 
             return (
               <tr
@@ -160,6 +187,13 @@ export function CompareAllTable({
                 <td>
                   {scenario.embodiedCarbonKgCo2e !== undefined
                     ? formatTonnageCo2(scenario.embodiedCarbonKgCo2e / 1000, {
+                        decimal: true,
+                      })
+                    : "—"}
+                </td>
+                <td>
+                  {lifetimeCarbonKg !== undefined
+                    ? formatTonnageCo2(lifetimeCarbonKg / 1000, {
                         decimal: true,
                       })
                     : "—"}

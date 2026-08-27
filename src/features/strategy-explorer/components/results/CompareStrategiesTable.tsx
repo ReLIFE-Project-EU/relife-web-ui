@@ -61,6 +61,12 @@ const ALWAYS_ON_COLUMNS: RankingColumn[] = [
     formatter: formatTonnageCo2,
     conceptId: "embodied-carbon",
   },
+  {
+    key: "totalWholeLifeCarbonTon",
+    label: "Lifetime carbon",
+    formatter: formatTonnageCo2,
+    conceptId: "whole-life-carbon",
+  },
 ];
 
 interface SortState {

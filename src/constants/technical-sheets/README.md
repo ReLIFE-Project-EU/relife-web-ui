@@ -49,4 +49,4 @@ Flags on `embodiedCarbon.dataQuality` or individual values: `european-average`, 
 - XPS embodied carbon and R-values duplicate EPS (`suspected-duplicate`)—do not treat as distinct until source is corrected.
 - Mineral wool and condensing boiler embodied carbon extrapolated from single datapoints.
 - Empty sections flagged `missingInSource`: mineral wool maintenance, air-to-air HP cost, air-to-water HP application, condensing boiler application.
-- No GWP module boundary, country breakdown, or EPD references—cannot populate `gwp_kpi` in `src/types/technical.ts`.
+- No GWP module boundary, country breakdown, or EPD references. The sheets alone cannot populate `gwp_kpi` in `src/types/technical.ts`; the pipeline pairs their product-stage figures with Forecasting emission factors to send lifetime carbon instead (`computeLifetimeCarbonKgCo2e`).

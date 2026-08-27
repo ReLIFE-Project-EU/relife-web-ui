@@ -105,6 +105,17 @@ export function PackageDeepDive({ aggregate, goal }: PackageDeepDiveProps) {
                   : "—"
               }
             />
+            <MiniMetric
+              icon={<IconLeaf size={14} />}
+              label="Lifetime carbon"
+              conceptId="whole-life-carbon"
+              value={
+                aggregate.totalWholeLifeCarbonTon !== undefined
+                  ? formatTonnageCo2(aggregate.totalWholeLifeCarbonTon)
+                  : "—"
+              }
+              hint="over the project lifetime"
+            />
           </div>
         </div>
 

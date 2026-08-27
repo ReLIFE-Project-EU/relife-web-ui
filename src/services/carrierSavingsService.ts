@@ -148,6 +148,45 @@ export function computeOperationalEmissionsTonCo2e(
 }
 
 /**
+ * Lifetime carbon (kgCO₂e): one-off material carbon plus operational emissions
+ * over the appraisal horizon. Annual term is in tonnes because both
+ * `RenovationScenario.annualEmissionsTonCo2e` and
+ * `RSESimulationResult.renovatedAnnualEmissionsTonCo2eq` carry it that way.
+ *
+ * Partial module boundary, HVAC end uses only, static emission factor; the
+ * `whole-life-carbon` concept documents it for readers. Returns undefined on a
+ * missing term rather than a partial sum, as `estimatePackageEmbodiedCarbonFromBui` does.
+ */
+export function computeLifetimeCarbonKgCo2e(params: {
+  embodiedCarbonKgCo2e: number | undefined;
+  annualOperationalEmissionsTonCo2e: number | undefined;
+  projectLifetimeYears: number | undefined;
+}): number | undefined {
+  const {
+    embodiedCarbonKgCo2e,
+    annualOperationalEmissionsTonCo2e,
+    projectLifetimeYears,
+  } = params;
+
+  if (
+    !isFiniteNumber(embodiedCarbonKgCo2e) ||
+    !isFiniteNumber(annualOperationalEmissionsTonCo2e) ||
+    !isFiniteNumber(projectLifetimeYears)
+  ) {
+    return undefined;
+  }
+
+  return (
+    embodiedCarbonKgCo2e +
+    annualOperationalEmissionsTonCo2e * 1000 * projectLifetimeYears
+  );
+}
+
+function isFiniteNumber(value: number | undefined): value is number {
+  return value !== undefined && Number.isFinite(value);
+}
+
+/**
  * Annual cost of a carrier breakdown at the given tariffs (EUR/year).
  *
  * Covers HVAC end uses only, because the breakdown derives from delivered

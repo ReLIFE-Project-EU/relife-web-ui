@@ -248,6 +248,12 @@ export interface RSEPackageAggregate {
    * than as a smaller total.
    */
   totalEmbodiedCarbonTon?: number;
+  /**
+   * Material carbon plus the operational emissions the renovated stock still
+   * produces over the project lifetime. Undefined on the same all-or-nothing
+   * rule as `totalEmbodiedCarbonTon`.
+   */
+  totalWholeLifeCarbonTon?: number;
   energySavedPerEur: number;
   co2ReducedTonPerEur: number;
   financialIndicators: {
