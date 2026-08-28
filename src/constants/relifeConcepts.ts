@@ -512,33 +512,6 @@ export const supportedRenovationMeasureIds = Object.keys(
   measureEffectProfiles,
 ) as RenovationMeasureId[];
 
-export const hraResultMetricConceptIds = [
-  "estimated-epc",
-  "annual-building-thermal-needs",
-  "system-energy-consumption",
-  "investment",
-  "npv",
-  "payback-period",
-  "monthly-cash-benefit",
-  "irr",
-  "roi",
-  "discounted-payback-period",
-  "break-even-year",
-  "success-probability",
-  "priority-profile",
-  "ranking-score",
-] as const satisfies readonly ConceptId[];
-
-export const praResultMetricConceptIds = [
-  "estimated-epc",
-  "annual-building-thermal-needs",
-  "system-energy-consumption",
-  "investment",
-  "npv",
-  "roi",
-  "payback-period",
-] as const satisfies readonly ConceptId[];
-
 export const financialMetricConceptIds = {
   NPV: "npv",
   PBP: "payback-period",

@@ -1,8 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
-  hraResultMetricConceptIds,
   measureEffectProfiles,
-  praResultMetricConceptIds,
   relifeConcepts,
   supportedRenovationMeasureIds,
 } from "../../../src/constants/relifeConcepts";
@@ -20,24 +18,13 @@ describe("relifeConcepts ontology", () => {
     expect([...supportedRenovationMeasureIds].sort()).toEqual(measureIds);
   });
 
-  test("every HRA and PRA result metric maps to a concept entry", () => {
-    const mappedConceptIds = [
-      ...hraResultMetricConceptIds,
-      ...praResultMetricConceptIds,
-    ];
-
-    for (const conceptId of mappedConceptIds) {
-      expect(relifeConcepts[conceptId]).toBeDefined();
-    }
-  });
-
   test("scenario EPC comparison footnote concept is defined", () => {
     const concept = relifeConcepts["scenario-epc-comparison-note"];
     expect(concept.label.trim()).not.toBe("");
     expect(concept.description.trim()).not.toBe("");
   });
 
-  test("HRA-required concepts include labels, descriptions, and applicable units", () => {
+  test("every concept has a label and description, and units where applicable", () => {
     const unitRequiredConcepts = [
       "annual-building-thermal-needs",
       "system-energy-consumption",
@@ -50,8 +37,7 @@ describe("relifeConcepts ontology", () => {
       "ranking-score",
     ] as const;
 
-    for (const conceptId of hraResultMetricConceptIds) {
-      const concept = relifeConcepts[conceptId];
+    for (const concept of Object.values(relifeConcepts)) {
       expect(concept.label.trim()).not.toBe("");
       expect(concept.description.trim()).not.toBe("");
     }
