@@ -47,3 +47,60 @@ export function applyFundingReduction(
 
   return { effectiveCost, loanAmount, subsidyAmount };
 }
+
+/**
+ * Payback from a pooled cash-flow series: each contributor's net cash flows are
+ * scaled by its count and summed, then the break-even point is interpolated
+ * linearly within the break-even year (the same convention as the backend PBP).
+ * Averaging individual payback periods would weight buildings instead of euros
+ * and silently drop the ones that never break even, so it is avoided.
+ *
+ * Returns `undefined` when a contributor lacks a series, the series disagree on
+ * length, or the pooled series never breaks even.
+ */
+export function computePooledPaybackYears(
+  contributions: Array<{ netByYear: number[]; count: number } | null>,
+): number | undefined {
+  if (contributions.length === 0) {
+    return undefined;
+  }
+  const series: Array<{ netByYear: number[]; count: number }> = [];
+  for (const contribution of contributions) {
+    if (contribution === null) {
+      return undefined;
+    }
+    series.push(contribution);
+  }
+
+  const yearCount = series[0].netByYear.length;
+  if (
+    yearCount < 2 ||
+    series.some((entry) => entry.netByYear.length !== yearCount)
+  ) {
+    return undefined;
+  }
+
+  const pooled = new Array<number>(yearCount).fill(0);
+  for (const entry of series) {
+    for (let year = 0; year < yearCount; year++) {
+      pooled[year] += entry.netByYear[year] * entry.count;
+    }
+  }
+
+  const investment = -pooled[0];
+  if (investment <= 0) {
+    return 0;
+  }
+
+  let cumulative = 0;
+  for (let year = 1; year < yearCount; year++) {
+    const previous = cumulative;
+    cumulative += pooled[year];
+    if (cumulative >= investment) {
+      const flow = pooled[year];
+      return flow > 0 ? year - 1 + (investment - previous) / flow : year;
+    }
+  }
+
+  return undefined;
+}

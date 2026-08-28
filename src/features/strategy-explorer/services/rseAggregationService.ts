@@ -7,6 +7,7 @@ import type {
   RSESimulationResult,
 } from "../types";
 import { computeLifetimeCarbonKgCo2e } from "../../../services/carrierSavingsService";
+import { computePooledPaybackYears } from "../../../utils/financialCalculations";
 import { rseArchetypePackageKey, rseArchetypeKey } from "./rseKeys";
 
 export interface RSEPackageAggregationInput {
@@ -202,65 +203,6 @@ export function aggregatePackage(
   }
 
   return aggregate;
-}
-
-/**
- * Package payback from the pooled cash-flow series: per-archetype P50 net
- * cash flows are scaled by building count and summed, then the break-even
- * point is interpolated linearly within the break-even year (same convention
- * as the backend PBP). Averaging per-archetype payback periods would weight
- * buildings instead of euros and silently drop never-breaking-even
- * archetypes, so it is deliberately avoided here.
- *
- * Returns `undefined` when any archetype lacks a cash-flow series or the
- * pooled series never breaks even; ranking then falls back to its
- * invalid-payback handling.
- */
-function computePooledPaybackYears(
-  contributions: Array<{ netByYear: number[]; count: number } | null>,
-): number | undefined {
-  if (contributions.length === 0) {
-    return undefined;
-  }
-  const series: Array<{ netByYear: number[]; count: number }> = [];
-  for (const contribution of contributions) {
-    if (contribution === null) {
-      return undefined;
-    }
-    series.push(contribution);
-  }
-
-  const yearCount = series[0].netByYear.length;
-  if (
-    yearCount < 2 ||
-    series.some((entry) => entry.netByYear.length !== yearCount)
-  ) {
-    return undefined;
-  }
-
-  const pooled = new Array<number>(yearCount).fill(0);
-  for (const entry of series) {
-    for (let year = 0; year < yearCount; year++) {
-      pooled[year] += entry.netByYear[year] * entry.count;
-    }
-  }
-
-  const investment = -pooled[0];
-  if (investment <= 0) {
-    return 0;
-  }
-
-  let cumulative = 0;
-  for (let year = 1; year < yearCount; year++) {
-    const previous = cumulative;
-    cumulative += pooled[year];
-    if (cumulative >= investment) {
-      const flow = pooled[year];
-      return flow > 0 ? year - 1 + (investment - previous) / flow : year;
-    }
-  }
-
-  return undefined;
 }
 
 function appendPerArchetypeMetric(
