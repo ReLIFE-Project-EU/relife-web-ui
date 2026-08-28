@@ -37,6 +37,10 @@ import {
 } from "../../../../utils/formatters";
 import { getEnergyIntensity } from "../../../../utils/epcUtils";
 import type { PRABuilding, BuildingAnalysisResult } from "../../context/types";
+import {
+  PRA_BASELINE_SCENARIO_ID,
+  PRA_PACKAGE_ID,
+} from "../../constants";
 
 export type StatusFilter =
   | "all"
@@ -82,7 +86,7 @@ function buildRowVms(
       const result = results[building.id];
       if (!result) return null;
       const isSuccess = result.status === "success";
-      const renovated = result.scenarios?.find((s) => s.id === "renovated");
+      const renovated = result.scenarios?.find((s) => s.id === PRA_PACKAGE_ID);
       const fr = result.financialResults;
       const noSavings = isSuccess && fr?.riskAssessment === null && !!renovated;
       const energyBefore = result.estimation?.annualEnergyNeeds;
@@ -100,6 +104,11 @@ function buildRowVms(
       } satisfies RowVm;
     })
     .filter((v): v is RowVm => v !== null);
+}
+
+/** Baseline scenario for a result, where the comparable "before" figures live. */
+function baselineOf(result: BuildingAnalysisResult) {
+  return result.scenarios?.find((s) => s.id === PRA_BASELINE_SCENARIO_ID);
 }
 
 function applyStatusFilter(rows: RowVm[], filter: StatusFilter): RowVm[] {
@@ -161,9 +170,9 @@ export function BuildingResultsTable({
   );
 
   const showDeliveredEnergyColumn = visibleRows.some(({ result }) => {
-    const renovated = result.scenarios?.find((s) => s.id === "renovated");
+    const renovated = result.scenarios?.find((s) => s.id === PRA_PACKAGE_ID);
     return (
-      result.estimation?.deliveredTotal !== undefined ||
+      baselineOf(result)?.deliveredTotal !== undefined ||
       renovated?.deliveredTotal !== undefined
     );
   });
@@ -309,7 +318,7 @@ function ResultsRow({
 }) {
   const { building, result, isSuccess, noSavings, energyReduction } = row;
   const fr = result.financialResults;
-  const renovated = result.scenarios?.find((s) => s.id === "renovated");
+  const renovated = result.scenarios?.find((s) => s.id === PRA_PACKAGE_ID);
   const epcBefore = result.estimation?.estimatedEPC;
   const epcAfter = renovated?.epcClass;
   const intensityBefore = getEnergyIntensity(
@@ -320,7 +329,10 @@ function ResultsRow({
     renovated ?? {},
     building.floorArea,
   );
-  const deliveredBefore = result.estimation?.deliveredTotal;
+  // Baseline scenario, not the step-1 estimation: this is the figure the
+  // Financial service prices savings against, and what the portfolio summary
+  // above this table already sums.
+  const deliveredBefore = baselineOf(result)?.deliveredTotal;
   const deliveredAfter = renovated?.deliveredTotal;
   const deliveredEnergyReduction = getEnergyReduction(
     deliveredBefore,

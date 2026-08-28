@@ -20,6 +20,13 @@ export const PRA_DEFAULT_PROJECT_LIFETIME = 20;
  */
 export const PRA_PACKAGE_ID = "renovated";
 
+/**
+ * Scenario id of the re-simulated, unrenovated building. This, not the step-1
+ * estimation, is what the Financial service prices savings against; the two
+ * disagree materially on delivered energy.
+ */
+export const PRA_BASELINE_SCENARIO_ID = "current";
+
 // CSV column schema
 export const CSV_REQUIRED_COLUMNS = [
   "building_name",

@@ -12,11 +12,9 @@
  */
 
 import type { BuildingAnalysisResult } from "../context/types";
+import { PRA_BASELINE_SCENARIO_ID } from "../constants";
 import { computeLifetimeCarbonKgCo2e } from "../../../services/carrierSavingsService";
 import { computePooledPaybackYears } from "../../../utils/financialCalculations";
-
-/** Scenario id of the re-simulated, unrenovated building. */
-const BASELINE_SCENARIO_ID = "current";
 
 const KG_PER_TONNE = 1000;
 
@@ -70,7 +68,7 @@ export interface PortfolioPackageAggregate {
  */
 function baselineOf(result: BuildingAnalysisResult) {
   const scenario = result.scenarios?.find(
-    (candidate) => candidate.id === BASELINE_SCENARIO_ID,
+    (candidate) => candidate.id === PRA_BASELINE_SCENARIO_ID,
   );
   return {
     thermalKwh: result.estimation?.annualEnergyNeeds,
