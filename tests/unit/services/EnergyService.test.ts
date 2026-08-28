@@ -9,23 +9,17 @@ import type {
 
 // ── Mock setup ──────────────────────────────────────────────────────────────
 
-const {
-  mockListArchetypes,
-  mockSimulateDirect,
-  mockSimulateCustomBuilding,
-  mockValidateCustomBuilding,
-} = vi.hoisted(() => ({
-  mockListArchetypes: vi.fn(),
-  mockSimulateDirect: vi.fn(),
-  mockSimulateCustomBuilding: vi.fn(),
-  mockValidateCustomBuilding: vi.fn(),
-}));
+const { mockListArchetypes, mockSimulateECM, mockValidateCustomBuilding } =
+  vi.hoisted(() => ({
+    mockListArchetypes: vi.fn(),
+    mockSimulateECM: vi.fn(),
+    mockValidateCustomBuilding: vi.fn(),
+  }));
 
 vi.mock("../../../src/api", () => ({
   forecasting: {
     listArchetypes: mockListArchetypes,
-    simulateDirect: mockSimulateDirect,
-    simulateCustomBuilding: mockSimulateCustomBuilding,
+    simulateECM: mockSimulateECM,
     validateCustomBuilding: mockValidateCustomBuilding,
   },
 }));
@@ -59,17 +53,16 @@ const archetypeList = [
 ];
 
 const stubSimulationResponse = {
-  source: "test",
-  name: "test",
-  category: "SFH",
-  country: "Greece",
-  weather_source: "pvgis",
+  scenario_id: "baseline",
+  description: "Baseline",
+  elements: [],
+  u_values: { roof: null, wall: null, window: null, slab: null },
   results: {
-    hourly_building: Array(8760).fill({
-      timestamp: "",
-      Q_H: 200,
-      Q_C: 100,
-    }),
+    // ECM returns hourly data columnar, unlike /simulate.
+    hourly_building: {
+      Q_H: Array(8760).fill(200),
+      Q_C: Array(8760).fill(100),
+    },
     primary_energy_uni11300: {
       summary: {
         E_delivered_thermal_kWh: 1200,
@@ -79,6 +72,9 @@ const stubSimulationResponse = {
     },
   },
 };
+
+/** ECM responses wrap scenarios; the baseline is the only one requested here. */
+const stubEcmResponse = { scenarios: [stubSimulationResponse] };
 
 const realisticBui: BuildingPayload = {
   building: {
@@ -213,23 +209,24 @@ describe("EnergyService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockListArchetypes.mockResolvedValue(archetypeList);
-    mockSimulateDirect.mockResolvedValue(stubSimulationResponse);
-    mockSimulateCustomBuilding.mockResolvedValue(stubSimulationResponse);
+    mockSimulateECM.mockResolvedValue(stubEcmResponse);
     (
       mockBuildingService.getArchetypeDetails as ReturnType<typeof vi.fn>
     ).mockResolvedValue(stubArchetypeDetails);
     service = new EnergyService(mockBuildingService);
   });
 
-  test("unmodified building calls simulateDirect only", async () => {
+  test("unmodified building runs one ECM baseline and no validation", async () => {
     await service.estimateEPC(unmodifiedBuilding);
 
-    expect(mockSimulateDirect).toHaveBeenCalledOnce();
+    expect(mockSimulateECM).toHaveBeenCalledOnce();
+    expect(mockSimulateECM.mock.calls[0][0]).toMatchObject({
+      baseline_only: true,
+    });
     expect(mockValidateCustomBuilding).not.toHaveBeenCalled();
-    expect(mockSimulateCustomBuilding).not.toHaveBeenCalled();
   });
 
-  test("modified building calls validateCustomBuilding, simulateCustomBuilding, and simulateDirect", async () => {
+  test("modified building validates, then simulates itself and its reference", async () => {
     mockValidateCustomBuilding.mockResolvedValue({
       bui_checked: realisticBui,
       system_checked: realisticSystem,
@@ -246,8 +243,7 @@ describe("EnergyService", () => {
     await service.estimateEPC(modifiedBuilding);
 
     expect(mockValidateCustomBuilding).toHaveBeenCalledOnce();
-    expect(mockSimulateCustomBuilding).toHaveBeenCalledOnce();
-    expect(mockSimulateDirect).toHaveBeenCalledOnce();
+    expect(mockSimulateECM).toHaveBeenCalledTimes(2);
   });
 
   test("identical archetype simulations reuse the in-flight request", async () => {
@@ -256,35 +252,35 @@ describe("EnergyService", () => {
       service.estimateEPC(unmodifiedBuilding),
     ]);
 
-    expect(mockSimulateDirect).toHaveBeenCalledOnce();
+    expect(mockSimulateECM).toHaveBeenCalledOnce();
   });
 
   test("failed archetype simulations are evicted from cache", async () => {
-    mockSimulateDirect
+    mockSimulateECM
       .mockRejectedValueOnce(new TypeError("fetch failed"))
-      .mockResolvedValueOnce(stubSimulationResponse);
+      .mockResolvedValueOnce(stubEcmResponse);
 
     await expect(service.estimateEPC(unmodifiedBuilding)).rejects.toThrow();
     await service.estimateEPC(unmodifiedBuilding);
 
-    expect(mockSimulateDirect).toHaveBeenCalledTimes(2);
+    expect(mockSimulateECM).toHaveBeenCalledTimes(2);
   });
 
-  test("simulateDirect receives correct archetype params", async () => {
+  test("the ECM baseline request carries the archetype", async () => {
     await service.estimateEPC(unmodifiedBuilding);
 
-    expect(mockSimulateDirect).toHaveBeenCalledWith(
+    expect(mockSimulateECM).toHaveBeenCalledWith(
       expect.objectContaining({
         category: "SFH",
         country: "Greece",
         name: "GR_SFH_1961_1980",
-        weatherSource: "pvgis",
+        baseline_only: true,
       }),
     );
   });
 
   test("estimateEPC exposes UNI delivered and primary energy when available", async () => {
-    const estimation = await service.estimateEPC(unmodifiedBuilding);
+    const { estimation } = await service.estimateEPC(unmodifiedBuilding);
 
     expect(estimation.deliveredTotal).toBe(1500);
     expect(estimation.carrierBreakdown).toEqual({
@@ -316,9 +312,12 @@ describe("EnergyService", () => {
 
     await service.estimateEPC(modifiedBuilding);
 
-    expect(mockSimulateCustomBuilding).toHaveBeenCalledWith(
-      { bui: validatedBui, system: realisticSystem },
-      "pvgis",
+    expect(mockSimulateECM).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bui: validatedBui,
+        system: realisticSystem,
+        baseline_only: true,
+      }),
     );
   });
 
@@ -329,16 +328,16 @@ describe("EnergyService", () => {
       selectedArchetype: undefined,
     };
 
-    const result = await service.estimateEPC(spanishBuilding);
+    const { estimation } = await service.estimateEPC(spanishBuilding);
 
-    expect(mockSimulateDirect).toHaveBeenCalledWith(
+    expect(mockSimulateECM).toHaveBeenCalledWith(
       expect.objectContaining({
         country: "Greece",
         category: "SFH",
         name: "GR_SFH_1961_1980",
       }),
     );
-    expect(result).toBeDefined();
+    expect(estimation).toBeDefined();
   });
 
   test("findMatchingArchetype normalizes country aliases before exact matching", async () => {
@@ -350,7 +349,7 @@ describe("EnergyService", () => {
 
     await service.estimateEPC(czechBuilding);
 
-    expect(mockSimulateDirect).toHaveBeenCalledWith(
+    expect(mockSimulateECM).toHaveBeenCalledWith(
       expect.objectContaining({
         country: "Czechia",
         category: "SFH",
@@ -385,7 +384,7 @@ describe("EnergyService", () => {
 
     // The 0-1945 archetype comes first, so getting 2011-now proves the match
     // was period-aware (EXACT_FULL) rather than first-in-country fallback.
-    expect(mockSimulateDirect).toHaveBeenCalledWith(
+    expect(mockSimulateECM).toHaveBeenCalledWith(
       expect.objectContaining({
         country: "Austria",
         category: "Apartment buildings",

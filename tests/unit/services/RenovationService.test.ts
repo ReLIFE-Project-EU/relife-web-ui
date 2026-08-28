@@ -69,6 +69,7 @@ vi.mock("../../../src/services/mock/data/renovationMeasures", () => ({
 
 import { RenovationService } from "../../../src/services/RenovationService";
 import { ArchetypeMatchStrategy } from "../../../src/services/archetypeMatching";
+import { buildECMParams } from "../../../src/services/renovationEcmParams";
 import {
   PV_DEFAULTS,
   pvKwpFromFloorArea,
@@ -132,6 +133,9 @@ const mockEstimation: EstimationResult = {
   },
 };
 
+/** The baseline now arrives from the energy estimate, not a second ECM call. */
+let mockBaseline: Parameters<RenovationService["evaluateScenarios"]>[2];
+
 const stubECMResponse = {
   scenarios: [
     {
@@ -179,6 +183,7 @@ describe("RenovationService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSimulateECM.mockResolvedValue(stubECMResponse);
+    mockBaseline = stubECMResponse.scenarios[0] as typeof mockBaseline;
     mockGetEmissionFactors.mockResolvedValue({
       country: "EU",
       emission_factors_kg_co2eq_per_kwh: {
@@ -411,6 +416,7 @@ describe("RenovationService", () => {
     const scenarios = await service.evaluateScenarios(
       mockBuilding,
       mockEstimation,
+      mockBaseline,
       packages,
     );
 
@@ -428,17 +434,22 @@ describe("RenovationService", () => {
     ]);
   });
 
-  test("evaluateScenarios calls forecasting once per package plus the baseline", async () => {
+  test("evaluateScenarios calls forecasting once per package, never for the baseline", async () => {
     const packages = service.suggestPackages([
       "wall-insulation",
       "roof-insulation",
       "windows",
     ]);
 
-    await service.evaluateScenarios(mockBuilding, mockEstimation, packages);
+    await service.evaluateScenarios(
+      mockBuilding,
+      mockEstimation,
+      mockBaseline,
+      packages,
+    );
 
-    // One ECM call per package, plus one baseline_only call for "current".
-    expect(mockSimulateECM).toHaveBeenCalledTimes(packages.length + 1);
+    // The baseline comes from the energy estimate, so it costs no call here.
+    expect(mockSimulateECM).toHaveBeenCalledTimes(packages.length);
   });
 
   test("evaluateScenarios limits forecasting concurrency to two requests", async () => {
@@ -473,6 +484,7 @@ describe("RenovationService", () => {
     const evaluationPromise = service.evaluateScenarios(
       mockBuilding,
       mockEstimation,
+      mockBaseline,
       packages,
     );
 
@@ -490,7 +502,7 @@ describe("RenovationService", () => {
 
     const scenarios = await evaluationPromise;
 
-    expect(mockSimulateECM).toHaveBeenCalledTimes(packages.length + 1);
+    expect(mockSimulateECM).toHaveBeenCalledTimes(packages.length);
     expect(scenarios.map((scenario) => scenario.id)).toEqual([
       "current",
       "package-wall-insulation",
@@ -505,6 +517,7 @@ describe("RenovationService", () => {
     const scenarios = await service.evaluateScenarios(
       mockBuilding,
       mockEstimation,
+      mockBaseline,
       [
         {
           id: "package-wall-insulation",
@@ -568,6 +581,7 @@ describe("RenovationService", () => {
     const scenarios = await service.evaluateScenarios(
       mockBuilding,
       mockEstimation,
+      mockBaseline,
       [
         {
           id: "scenario-condensing-boiler",
@@ -634,6 +648,7 @@ describe("RenovationService", () => {
     const scenarios = await service.evaluateScenarios(
       mockBuilding,
       mockEstimation,
+      mockBaseline,
       [
         {
           id: "package-wall-insulation-air-water-heat-pump",
@@ -669,13 +684,18 @@ describe("RenovationService", () => {
   });
 
   test("evaluateScenarios sends PV params without scenario_elements for PV-only packages", async () => {
-    await service.evaluateScenarios(mockBuilding, mockEstimation, [
-      {
-        id: "scenario-pv",
-        label: "PV Panels",
-        measureIds: ["pv"],
-      },
-    ]);
+    await service.evaluateScenarios(
+      mockBuilding,
+      mockEstimation,
+      mockBaseline,
+      [
+        {
+          id: "scenario-pv",
+          label: "PV Panels",
+          measureIds: ["pv"],
+        },
+      ],
+    );
 
     expect(mockSimulateECM).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -691,23 +711,27 @@ describe("RenovationService", () => {
         annual_pv_yield_kwh_per_kwp: PV_DEFAULTS.annualYieldKwhPerKwp,
       }),
     );
-    // calls[0] is the baseline_only simulation; calls[1] is the PV-only package.
-    expect(mockSimulateECM.mock.calls[1]?.[0]).not.toHaveProperty(
+    expect(mockSimulateECM.mock.calls[0]?.[0]).not.toHaveProperty(
       "scenario_elements",
     );
-    expect(mockSimulateECM.mock.calls[1]?.[0]).not.toHaveProperty(
+    expect(mockSimulateECM.mock.calls[0]?.[0]).not.toHaveProperty(
       "include_baseline",
     );
   });
 
   test("evaluateScenarios sends envelope scenario_elements without pv", async () => {
-    await service.evaluateScenarios(mockBuilding, mockEstimation, [
-      {
-        id: "package-wall-insulation-pv",
-        label: "Wall Insulation + PV Panels",
-        measureIds: ["wall-insulation", "pv"],
-      },
-    ]);
+    await service.evaluateScenarios(
+      mockBuilding,
+      mockEstimation,
+      mockBaseline,
+      [
+        {
+          id: "package-wall-insulation-pv",
+          label: "Wall Insulation + PV Panels",
+          measureIds: ["wall-insulation", "pv"],
+        },
+      ],
+    );
 
     expect(mockSimulateECM).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -719,57 +743,53 @@ describe("RenovationService", () => {
   });
 
   test("evaluateScenarios includes baseline only for pure generation changes", async () => {
-    await service.evaluateScenarios(mockBuilding, mockEstimation, [
-      {
-        id: "scenario-air-water-heat-pump",
-        label: "Heat Pump",
-        measureIds: ["air-water-heat-pump"],
-      },
-      {
-        id: "package-wall-insulation-air-water-heat-pump",
-        label: "Wall Insulation + Heat Pump",
-        measureIds: ["wall-insulation", "air-water-heat-pump"],
-      },
-      {
-        id: "package-pv-air-water-heat-pump",
-        label: "PV Panels + Heat Pump",
-        measureIds: ["pv", "air-water-heat-pump"],
-      },
-    ]);
+    await service.evaluateScenarios(
+      mockBuilding,
+      mockEstimation,
+      mockBaseline,
+      [
+        {
+          id: "scenario-air-water-heat-pump",
+          label: "Heat Pump",
+          measureIds: ["air-water-heat-pump"],
+        },
+        {
+          id: "package-wall-insulation-air-water-heat-pump",
+          label: "Wall Insulation + Heat Pump",
+          measureIds: ["wall-insulation", "air-water-heat-pump"],
+        },
+        {
+          id: "package-pv-air-water-heat-pump",
+          label: "PV Panels + Heat Pump",
+          measureIds: ["pv", "air-water-heat-pump"],
+        },
+      ],
+    );
 
-    // calls[0] is the dedicated baseline_only simulation for "current".
-    expect(mockSimulateECM.mock.calls[0]?.[0]).toEqual(
-      expect.objectContaining({ baseline_only: true }),
-    );
-    expect(mockSimulateECM.mock.calls[0]?.[0]).not.toHaveProperty(
-      "include_baseline",
-    );
     // Pure generation change still requests the in-response baseline scenario.
-    expect(mockSimulateECM.mock.calls[1]?.[0]).toEqual(
+    expect(mockSimulateECM.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({ include_baseline: true }),
+    );
+    expect(mockSimulateECM.mock.calls[1]?.[0]).not.toHaveProperty(
+      "include_baseline",
     );
     expect(mockSimulateECM.mock.calls[2]?.[0]).not.toHaveProperty(
       "include_baseline",
     );
-    expect(mockSimulateECM.mock.calls[3]?.[0]).not.toHaveProperty(
-      "include_baseline",
-    );
   });
 
-  test("evaluateScenarios rejects PV packages without a valid archetype floor area", async () => {
-    await expect(
-      service.evaluateScenarios(
-        mockBuilding,
-        { ...mockEstimation, archetypeFloorArea: 0 },
-        [
-          {
-            id: "scenario-pv",
-            label: "PV Panels",
-            measureIds: ["pv"],
-          },
-        ],
-      ),
-    ).rejects.toThrow("PV measure requires a valid archetype floor area");
+  test("buildECMParams rejects PV without a valid archetype floor area", () => {
+    expect(() =>
+      buildECMParams(["pv"], {
+        kind: "archetype",
+        archetype: {
+          category: "SFH",
+          country: "Greece",
+          name: "GR_SFH_1961_1980",
+        },
+        floorArea: 0,
+      }),
+    ).toThrow("PV measure requires a valid archetype floor area");
   });
 
   test("evaluateScenarios credits PV self-consumption to delivered energy only", async () => {
@@ -812,6 +832,7 @@ describe("RenovationService", () => {
     const scenarios = await service.evaluateScenarios(
       mockBuilding,
       mockEstimation,
+      mockBaseline,
       [
         {
           id: "package-wall-insulation-pv",
@@ -838,25 +859,21 @@ describe("RenovationService", () => {
     expect(scenarios[1]?.heatingCoolingNeeds).toBe(876);
   });
 
-  test("evaluateScenarios derives the baseline from the ECM engine, not the estimation", async () => {
-    // Regression for the cross-engine savings bug: the "current" baseline used
-    // to copy the energy-estimation result (a different forecasting endpoint),
-    // so comparing it against ECM-simulated packages mixed two engines. For a
-    // low-impact measure that lowered thermal demand, delivered energy could
-    // still come out higher than the estimation baseline, producing negative
-    // savings -> NPV 0 -> the package being excluded from ranking. The baseline
-    // must instead come from the ECM engine (baseline_only) so it stays
-    // comparable with the renovated scenarios.
+  test("evaluateScenarios uses the supplied baseline and never re-simulates it", async () => {
+    // Regression for the cross-engine savings bug: the "current" baseline must
+    // come from the same ECM engine as the packages, or a low-impact measure
+    // can show delivered energy rising while thermal demand falls, producing
+    // negative savings and an unrankable package. The baseline now arrives from
+    // the energy estimate, so this also pins that it costs no extra call.
     const estimationWithDivergentBaseline: EstimationResult = {
       ...mockEstimation,
       deliveredTotal: 99999,
-      carrierBreakdown: { naturalGasKwh: 90000, gridElectricityKwh: 9999 },
-      primaryEnergy: 120000,
     };
 
     const scenarios = await service.evaluateScenarios(
       mockBuilding,
       estimationWithDivergentBaseline,
+      mockBaseline,
       [
         {
           id: "package-windows",
@@ -866,13 +883,11 @@ describe("RenovationService", () => {
       ],
     );
 
-    // A dedicated baseline_only ECM simulation is issued for "current".
-    expect(mockSimulateECM).toHaveBeenCalledWith(
+    expect(mockSimulateECM).toHaveBeenCalledOnce();
+    expect(mockSimulateECM).not.toHaveBeenCalledWith(
       expect.objectContaining({ baseline_only: true }),
     );
 
-    // The baseline reflects the ECM engine (stub UNI totals), not the divergent
-    // estimation values — keeping savings on a single engine.
     const current = scenarios.find((scenario) => scenario.id === "current");
     expect(current?.deliveredTotal).toBe(2000);
     expect(current?.carrierBreakdown).toEqual({
@@ -885,6 +900,7 @@ describe("RenovationService", () => {
     const scenarios = await service.evaluateScenarios(
       mockBuilding,
       mockEstimation,
+      mockBaseline,
       [
         {
           id: "package-wall-insulation",
@@ -923,13 +939,18 @@ describe("RenovationService", () => {
 
     // A second run on the same instance (PRA shares one instance across a
     // portfolio) reuses the cached factors instead of refetching.
-    await service.evaluateScenarios(mockBuilding, mockEstimation, [
-      {
-        id: "package-wall-insulation",
-        label: "Wall Insulation",
-        measureIds: ["wall-insulation"],
-      },
-    ]);
+    await service.evaluateScenarios(
+      mockBuilding,
+      mockEstimation,
+      mockBaseline,
+      [
+        {
+          id: "package-wall-insulation",
+          label: "Wall Insulation",
+          measureIds: ["wall-insulation"],
+        },
+      ],
+    );
     expect(mockGetEmissionFactors).toHaveBeenCalledTimes(1);
   });
 
@@ -946,6 +967,7 @@ describe("RenovationService", () => {
     const scenarios = await service.evaluateScenarios(
       mockBuilding,
       mockEstimation,
+      mockBaseline,
       packages,
     );
 
@@ -963,6 +985,7 @@ describe("RenovationService", () => {
     const retried = await service.evaluateScenarios(
       mockBuilding,
       mockEstimation,
+      mockBaseline,
       packages,
     );
     expect(mockGetEmissionFactors).toHaveBeenCalledTimes(2);

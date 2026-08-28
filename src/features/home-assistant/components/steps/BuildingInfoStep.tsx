@@ -142,8 +142,15 @@ export function BuildingInfoStep() {
     });
 
     try {
-      const result = await energy.estimateEPC(state.building, auditCtx);
-      dispatch({ type: "SET_ESTIMATION", result });
+      const { estimation, baselineSimulation } = await energy.estimateEPC(
+        state.building,
+        auditCtx,
+      );
+      dispatch({
+        type: "SET_ESTIMATION",
+        result: estimation,
+        baselineSimulation,
+      });
       dispatch({ type: "NEXT_STEP" });
     } catch (error) {
       dispatch({

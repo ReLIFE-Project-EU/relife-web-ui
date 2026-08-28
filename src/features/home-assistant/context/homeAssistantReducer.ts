@@ -74,6 +74,7 @@ export const initialState: HomeAssistantState = {
   currentStep: 0,
   building: initialBuilding,
   estimation: null,
+  baselineSimulation: null,
   renovation: initialRenovation,
   funding: initialFunding,
   gasTariffEurPerKwh: ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
@@ -227,6 +228,7 @@ export function homeAssistantReducer(
       return {
         ...state,
         estimation: action.result,
+        baselineSimulation: action.baselineSimulation,
         isEstimating: false,
         error: null,
       };

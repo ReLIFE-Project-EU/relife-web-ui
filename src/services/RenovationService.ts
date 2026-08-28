@@ -6,11 +6,7 @@
  */
 
 import { forecasting } from "../api";
-import type {
-  ECMApplicationParams,
-  ECMScenario,
-  EmissionFactorResponse,
-} from "../types/forecasting";
+import type { ECMScenario, EmissionFactorResponse } from "../types/forecasting";
 import type { EpcEnergyBasis } from "../types/energy";
 import type {
   BuildingInfo,
@@ -98,11 +94,6 @@ interface EcmScenarioEnergy {
   epcBasis: EpcEnergyBasis;
   epcClass: string;
 }
-
-/** One unit of work in the forecasting batch: the baseline or a package. */
-type ScenarioEvaluationUnit =
-  | { kind: "baseline" }
-  | { kind: "package"; package: RenovationPackage };
 
 export class RenovationService implements IRenovationService {
   /**
@@ -228,6 +219,7 @@ export class RenovationService implements IRenovationService {
   async evaluateScenarios(
     building: BuildingInfo,
     estimation: EstimationResult,
+    baselineSimulation: ECMScenario,
     packages: RenovationPackage[],
     auditCtx?: AuditCtx,
   ): Promise<RenovationScenario[]> {
@@ -248,33 +240,23 @@ export class RenovationService implements IRenovationService {
       throw new Error("Missing archetype on baseline estimation result");
     }
 
-    // Re-simulate the baseline through the ECM engine instead of reusing the
-    // energy-estimation result. The estimation comes from a different
-    // forecasting endpoint, so comparing it against ECM-simulated packages
-    // mixed two engines and produced spurious savings for low-impact measures
-    // (delivered energy could rise even as thermal demand fell). Running the
-    // baseline as one more unit of the same concurrency-limited batch keeps the
-    // whole comparison on one engine while bounding forecasting load.
-    const units: ScenarioEvaluationUnit[] = [
-      { kind: "baseline" },
-      ...packages.map(
-        (pkg): ScenarioEvaluationUnit => ({ kind: "package", package: pkg }),
-      ),
-    ];
-
-    const scenarios = await mapWithConcurrencyLimit(
-      units,
-      FORECASTING_SCENARIO_CONCURRENCY_LIMIT,
-      (unit) =>
-        unit.kind === "baseline"
-          ? this.evaluateBaselineScenario(building, estimation, auditCtx)
-          : this.evaluatePackageScenario(
-              building,
-              estimation,
-              unit.package,
-              auditCtx,
-            ),
+    // The baseline and the packages must come from the same engine, or
+    // low-impact measures produce spurious negative savings.
+    const baseline = this.buildBaselineScenario(
+      building,
+      estimation,
+      baselineSimulation,
+      auditCtx,
     );
+
+    const packageScenarios = await mapWithConcurrencyLimit(
+      packages,
+      FORECASTING_SCENARIO_CONCURRENCY_LIMIT,
+      (pkg) =>
+        this.evaluatePackageScenario(building, estimation, pkg, auditCtx),
+    );
+
+    const scenarios = [baseline, ...packageScenarios];
 
     await this.annotateScenarioEmissions(building, scenarios, auditCtx);
 
@@ -521,11 +503,12 @@ export class RenovationService implements IRenovationService {
    * Uses the same custom/archetype context resolution as the package
    * scenarios, keeping the modified-BUI and default-archetype paths consistent.
    */
-  private async evaluateBaselineScenario(
+  private buildBaselineScenario(
     building: BuildingInfo,
     estimation: EstimationResult,
+    baselineScenario: ECMScenario,
     parentCtx?: AuditCtx,
-  ): Promise<RenovationScenario> {
+  ): RenovationScenario {
     const auditCtx = parentCtx?.child({ scenarioId: "current" });
 
     auditLog.info(
@@ -534,27 +517,6 @@ export class RenovationService implements IRenovationService {
       { packageId: "current", packageLabel: "Current Status", measureIds: [] },
       auditCtx,
     );
-
-    const ecmParams: ECMApplicationParams = {
-      ...buildECMParams([], this.buildEcmContext(estimation)),
-      baseline_only: true,
-    };
-    auditLog.debug(
-      "renovation",
-      "renovation.ecm.params",
-      { ecmParams: ecmParams as unknown as Record<string, unknown> },
-      auditCtx,
-    );
-
-    const ecmResponse = await forecasting.simulateECM(ecmParams);
-    const baselineScenario =
-      ecmResponse.scenarios.find(
-        (scenario) => scenario.scenario_id === "baseline",
-      ) ?? ecmResponse.scenarios[0];
-
-    if (!baselineScenario?.results?.hourly_building) {
-      throw new Error("ECM API did not return a valid baseline scenario");
-    }
 
     const energy = this.extractEcmScenarioEnergy(baselineScenario, {
       userArea: building.floorArea || DEFAULT_FLOOR_AREA,

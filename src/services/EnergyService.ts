@@ -19,10 +19,7 @@
 
 import { forecasting } from "../api";
 import { APIError } from "../types/common";
-import type {
-  ArchetypeInfo,
-  SimulateDirectResponse,
-} from "../types/forecasting";
+import type { ArchetypeInfo, ECMScenario } from "../types/forecasting";
 import type { BuildingInfo, EstimationResult } from "../types/renovation";
 import {
   DEFAULT_FLOOR_AREA,
@@ -30,12 +27,21 @@ import {
   extractUniTotals,
   getEPCClass,
   resolveEpcRatingIntensity,
+  transformColumnarToRowFormat,
 } from "./energyUtils";
+import {
+  buildECMParams,
+  type BuildECMParamsContext,
+} from "./renovationEcmParams";
 import {
   extractUniCarrierBreakdown,
   scaleCarrierBreakdown,
 } from "./carrierSavingsService";
-import type { IEnergyService, IBuildingService } from "./types";
+import type {
+  IEnergyService,
+  IBuildingService,
+  EstimationOutcome,
+} from "./types";
 import {
   applyAllModifications,
   validateModifications,
@@ -231,13 +237,26 @@ function getClimateRegion(country: string): string | null {
   return null;
 }
 
-function getSimulationValidationNotes(
-  simulationResponse: SimulateDirectResponse,
-): string[] {
-  const buiIssues = simulationResponse.validation?.bui_issues ?? [];
-  const systemMessages = simulationResponse.validation?.system_messages ?? [];
+/** Run an ECM simulation with no measures applied and return its baseline scenario. */
+async function simulateEcmBaseline(
+  context: BuildECMParamsContext,
+): Promise<ECMScenario> {
+  const response = await forecasting.simulateECM({
+    ...buildECMParams([], context),
+    baseline_only: true,
+  });
+  const baseline =
+    response.scenarios.find(
+      (scenario) => scenario.scenario_id === "baseline",
+    ) ?? response.scenarios[0];
 
-  return [...buiIssues, ...systemMessages].filter(Boolean);
+  if (!baseline?.results?.hourly_building) {
+    throw new APIResponseError(
+      "ECM API did not return a valid baseline scenario",
+    );
+  }
+
+  return baseline;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -248,7 +267,7 @@ export class EnergyService implements IEnergyService {
   private archetypesCache: ArchetypeInfo[] | null = null;
   private readonly archetypeSimulationCache = new Map<
     string,
-    Promise<SimulateDirectResponse>
+    Promise<ECMScenario>
   >();
   private readonly buildingService: IBuildingService;
 
@@ -300,7 +319,8 @@ export class EnergyService implements IEnergyService {
     country: string;
     name: string;
     weatherSource?: "pvgis" | "epw";
-  }): Promise<SimulateDirectResponse> {
+    floorArea: number | null;
+  }): Promise<ECMScenario> {
     const cacheKey = this.getArchetypeSimulationCacheKey(params);
     const cachedPromise = this.archetypeSimulationCache.get(cacheKey);
 
@@ -308,12 +328,18 @@ export class EnergyService implements IEnergyService {
       return cachedPromise;
     }
 
-    const simulationPromise = forecasting
-      .simulateDirect(params)
-      .catch((error: unknown) => {
-        this.archetypeSimulationCache.delete(cacheKey);
-        throw error;
-      });
+    const simulationPromise = simulateEcmBaseline({
+      kind: "archetype",
+      archetype: {
+        category: params.category,
+        country: params.country,
+        name: params.name,
+      },
+      floorArea: params.floorArea,
+    }).catch((error: unknown) => {
+      this.archetypeSimulationCache.delete(cacheKey);
+      throw error;
+    });
 
     this.archetypeSimulationCache.set(cacheKey, simulationPromise);
 
@@ -528,7 +554,7 @@ export class EnergyService implements IEnergyService {
   }
 
   private buildEstimationFromSimulation(params: {
-    simulationResponse: SimulateDirectResponse;
+    simulationResponse: ECMScenario;
     archetype: ArchetypeInfo;
     matchStrategy: ArchetypeMatchStrategy;
     building: BuildingInfo;
@@ -554,12 +580,10 @@ export class EnergyService implements IEnergyService {
       auditCtx,
     } = params;
 
-    const hourlyData = simulationResponse.results?.hourly_building;
-    if (!hourlyData || !Array.isArray(hourlyData)) {
-      throw new APIResponseError(
-        `Simulation response has invalid hourly_building data. Type: ${typeof hourlyData}, Value: ${JSON.stringify(hourlyData)}`,
-      );
-    }
+    // ECM returns hourly data columnar; the rest of this method works on rows.
+    const hourlyData = transformColumnarToRowFormat(
+      simulationResponse.results?.hourly_building,
+    );
     if (hourlyData.length === 0) {
       throw new APIResponseError(
         "Simulation response has empty hourly building data array",
@@ -716,7 +740,7 @@ export class EnergyService implements IEnergyService {
   async estimateEPC(
     building: BuildingInfo,
     auditCtx?: AuditCtx,
-  ): Promise<EstimationResult> {
+  ): Promise<EstimationOutcome> {
     auditLog.info(
       "energy",
       "energy.estimate.start",
@@ -798,15 +822,19 @@ export class EnergyService implements IEnergyService {
         const validatedSystem = validationResponse.system_checked ?? system;
 
         const [customSimulation, referenceSimulation] = await Promise.all([
-          forecasting.simulateCustomBuilding(
-            { bui: validatedBui, system: validatedSystem },
-            "pvgis",
-          ),
+          simulateEcmBaseline({
+            kind: "custom",
+            modifiedBui: validatedBui,
+            modifiedSystem: validatedSystem,
+            floorArea:
+              building.modifications.floorArea ?? archetypeDetails.floorArea,
+          }),
           this.simulateArchetype({
             category: archetype.category,
             country: archetype.country,
             name: archetype.name,
             weatherSource: "pvgis",
+            floorArea: archetypeDetails.floorArea,
           }),
         ]);
 
@@ -826,7 +854,6 @@ export class EnergyService implements IEnergyService {
         const validationNotes = [
           ...validationResponse.bui_issues,
           ...validationResponse.system_messages,
-          ...getSimulationValidationNotes(customSimulation),
         ];
 
         const result = this.buildEstimationFromSimulation({
@@ -868,7 +895,7 @@ export class EnergyService implements IEnergyService {
           },
           auditCtx,
         );
-        return result;
+        return { estimation: result, baselineSimulation: customSimulation };
       } catch (error) {
         this.handleSimulationError(error);
       }
@@ -886,6 +913,7 @@ export class EnergyService implements IEnergyService {
         country: archetype.country,
         name: archetype.name,
         weatherSource: "pvgis",
+        floorArea: archetypeDetails.floorArea,
       });
 
       const result = this.buildEstimationFromSimulation({
@@ -895,7 +923,6 @@ export class EnergyService implements IEnergyService {
         building,
         archetypeArea: archetypeDetails.floorArea,
         userArea: building.floorArea || DEFAULT_FLOOR_AREA,
-        validationNotes: getSimulationValidationNotes(simulationResponse),
         auditCtx,
       });
       auditLog.info(
@@ -912,7 +939,7 @@ export class EnergyService implements IEnergyService {
         },
         auditCtx,
       );
-      return result;
+      return { estimation: result, baselineSimulation: simulationResponse };
     } catch (error) {
       if (error instanceof TypeError && error.message.includes("fetch")) {
         throw new APIConnectionError();

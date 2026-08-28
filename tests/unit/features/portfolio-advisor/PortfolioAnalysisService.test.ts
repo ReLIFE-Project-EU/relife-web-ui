@@ -160,7 +160,10 @@ describe("PortfolioAnalysisService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockEstimateEPC.mockResolvedValue(estimation);
+    mockEstimateEPC.mockResolvedValue({
+      estimation,
+      baselineSimulation: { scenario_id: "baseline" },
+    });
     mockGetArchetypeDetails.mockResolvedValue(archetypeDetails);
     mockEstimatePackageCosts.mockResolvedValue({
       capex: 8000,
@@ -215,6 +218,7 @@ describe("PortfolioAnalysisService", () => {
     expect(mockEvaluateScenarios).toHaveBeenCalledWith(
       expect.any(Object),
       estimation,
+      expect.any(Object),
       [
         {
           id: "renovated",
@@ -245,6 +249,7 @@ describe("PortfolioAnalysisService", () => {
     expect(mockEvaluateScenarios).toHaveBeenCalledWith(
       expect.any(Object),
       estimation,
+      expect.any(Object),
       [
         {
           id: "renovated",
@@ -291,6 +296,7 @@ describe("PortfolioAnalysisService", () => {
     expect(mockEvaluateScenarios).toHaveBeenCalledWith(
       expect.any(Object),
       estimation,
+      expect.any(Object),
       [
         {
           id: "renovated",
@@ -325,6 +331,7 @@ describe("PortfolioAnalysisService", () => {
     expect(mockEvaluateScenarios).toHaveBeenCalledWith(
       expect.any(Object),
       estimation,
+      expect.any(Object),
       [
         {
           id: "renovated",

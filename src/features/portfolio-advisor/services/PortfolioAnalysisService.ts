@@ -196,8 +196,11 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
 
     const buildingInfo = this.toBuildingInfo(building, projectLifetime);
 
-    // Step 1: Estimate EPC
-    const estimation = await this.energy.estimateEPC(buildingInfo, auditCtx);
+    // Step 1: Estimate EPC. The same run supplies the comparison baseline.
+    const { estimation, baselineSimulation } = await this.energy.estimateEPC(
+      buildingInfo,
+      auditCtx,
+    );
 
     // Step 1b: Validate the archetype match. If `validateEstimation` classifies
     // the match as `unusable`, abort the pipeline here — before any ECM, ARV,
@@ -256,6 +259,7 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     const scenarios = await this.renovation.evaluateScenarios(
       buildingInfo,
       estimation,
+      baselineSimulation,
       packages,
       auditCtx,
     );
