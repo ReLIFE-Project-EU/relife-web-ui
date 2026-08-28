@@ -39,18 +39,8 @@ export interface ValidateCustomBuildingResponse {
 }
 
 // ============================================================================
-// Direct Simulation Types (POST /simulate with archetype=true)
+// Hourly Simulation Output
 // ============================================================================
-
-/**
- * Parameters for direct simulation with archetype mode
- */
-export interface SimulateDirectParams {
-  category: string; // Building category
-  country: string; // Country
-  name: string; // Archetype name
-  weatherSource?: "pvgis" | "epw"; // Weather source, default: "pvgis"
-}
 
 /**
  * Hourly building data record from simulation
@@ -63,39 +53,6 @@ export interface HourlyBuildingRecord {
   Q_C?: number; // Cooling load (Wh) — converted to kWh/year by calculateAnnualTotals()
   Q_HC?: number; // Total heating/cooling load (Wh) — converted to kWh/year by calculateAnnualTotals()
   [key: string]: unknown; // Additional fields
-}
-
-/**
- * Validation messages from the simulation
- */
-export interface SimulationValidation {
-  bui_issues: string[];
-  system_messages: string[];
-}
-
-/**
- * Results container from simulation
- */
-export interface SimulationResults {
-  hourly_building: HourlyBuildingRecord[];
-  primary_energy_uni11300?: UNI11300Results;
-}
-
-/**
- * Response from POST /simulate endpoint
- *
- * Note: The API returns hourly data nested under `results.hourly_building`.
- * Annual totals must be calculated by summing hourly values.
- */
-export interface SimulateDirectResponse {
-  source: string; // "archetype" or "custom"
-  name: string; // Archetype name
-  category: string; // Building category
-  country: string; // Country
-  weather_source: string; // "pvgis" or "epw"
-  validation?: SimulationValidation;
-  results: SimulationResults;
-  [key: string]: unknown; // Additional fields the API may return
 }
 
 // ============================================================================

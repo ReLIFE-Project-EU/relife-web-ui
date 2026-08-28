@@ -7,13 +7,9 @@ interface LongRunningRequestDefinition {
 const LONG_RUNNING_REQUESTS: LongRunningRequestDefinition[] = [
   {
     method: "POST",
-    pattern: /^\/forecasting\/simulate/,
-    message: "Running building energy simulation",
-  },
-  {
-    method: "POST",
     pattern: /^\/forecasting\/ecm_application/,
-    message: "Running renovation scenario simulation",
+    // Covers both the baseline estimate and the renovation scenarios.
+    message: "Running building energy simulation",
   },
   {
     method: "POST",

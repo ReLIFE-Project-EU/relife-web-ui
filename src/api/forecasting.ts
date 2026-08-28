@@ -17,8 +17,6 @@ import type {
   PlantPayload,
   PlantTemplateResponse,
   PlantUploadResponse,
-  SimulateDirectParams,
-  SimulateDirectResponse,
   SimulateResponse,
   ValidateCustomBuildingResponse,
 } from "../types/forecasting";
@@ -84,56 +82,6 @@ export const forecasting = {
         body: JSON.stringify(payload),
       },
     ),
-
-  /**
-   * Simulate with custom building configuration
-   * POST /forecasting/simulate?archetype=false&weather_source=pvgis
-   *
-   * Use this when user has modified archetype parameters
-   */
-  simulateCustomBuilding: (
-    payload: { bui: unknown; system: unknown },
-    weatherSource: "pvgis" | "epw" = "pvgis",
-  ) => {
-    const searchParams = new URLSearchParams({
-      archetype: "false",
-      weather_source: weatherSource,
-    });
-
-    const formData = new FormData();
-    formData.append("bui_json", JSON.stringify(payload.bui));
-    formData.append("system_json", JSON.stringify(payload.system));
-
-    return uploadRequest<SimulateDirectResponse>(
-      `/forecasting/simulate?${searchParams.toString()}`,
-      formData,
-    );
-  },
-
-  /**
-   * Run simulation directly with archetype and PVGIS weather data
-   * POST /forecasting/simulate?archetype=true&weather_source=pvgis&...
-   *
-   * This is the simpler API path that doesn't require project creation
-   * or EPW file uploads.
-   */
-  simulateDirect: (params: SimulateDirectParams) => {
-    const searchParams = new URLSearchParams({
-      archetype: "true",
-      category: params.category,
-      country: params.country,
-      name: params.name,
-      weather_source: params.weatherSource || "pvgis",
-    });
-
-    // Use uploadRequest since the endpoint expects multipart/form-data
-    // Even though we're not uploading files, we need to send an empty FormData
-    const formData = new FormData();
-    return uploadRequest<SimulateDirectResponse>(
-      `/forecasting/simulate?${searchParams.toString()}`,
-      formData,
-    );
-  },
 
   // ============================================================================
   // ECM Application (POST /ecm_application)
