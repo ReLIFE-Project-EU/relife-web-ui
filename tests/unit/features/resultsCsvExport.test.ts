@@ -7,7 +7,7 @@ import type {
   BuildingAnalysisResult,
   PRABuilding,
 } from "../../../src/features/portfolio-advisor/context/types";
-import type { PortfolioStats } from "../../../src/features/portfolio-advisor/components/steps/ResultsStep";
+import type { PortfolioPackageAggregate } from "../../../src/features/portfolio-advisor/services/portfolioAggregation";
 
 function building(id: string, name: string): PRABuilding {
   return {
@@ -128,28 +128,56 @@ describe("buildBuildingsCsv", () => {
 });
 
 describe("buildSummaryCsv", () => {
-  test("emits a Metric,Value table with raw aggregates", () => {
-    const stats: PortfolioStats = {
+  const aggregate: PortfolioPackageAggregate = {
+    packageId: "renovated",
+    coverage: {
       totalBuildings: 3,
-      successCount: 1,
-      errorCount: 1,
-      rejectedCount: 1,
-      totalCapex: 50000,
-      avgNPV: 30000,
-      avgROI: 0.12,
-      avgPBP: 8.5,
-      avgEnergyReduction: -40,
-      avgEPCImprovement: 2,
-      totalEnergyBefore: 20000,
-      totalEnergyAfter: 12000,
-    };
+      contributing: 1,
+      errored: 1,
+      rejected: 1,
+      withoutPackage: 0,
+    },
+    totalCapexEur: 50000,
+    totalNpvEur: 30000,
+    totalAnnualMaintenanceEur: 600,
+    totalThermalNeedsBeforeKwh: 20000,
+    totalThermalNeedsAfterKwh: 12000,
+    totalDeliveredBeforeKwh: undefined,
+    totalDeliveredAfterKwh: undefined,
+    totalAnnualEmissionsBeforeTon: 8,
+    totalAnnualEmissionsAfterTon: 3,
+    totalEmbodiedCarbonTon: 12,
+    totalWholeLifeCarbonTon: 72,
+    portfolioRoi: 0.12,
+    portfolioPaybackYears: 8.5,
+    epcCountsBefore: { E: 1 },
+    epcCountsAfter: { B: 1 },
+  };
 
-    const csv = buildSummaryCsv(stats);
+  test("emits a Metric,Value table with raw aggregates", () => {
+    const csv = buildSummaryCsv(aggregate);
     const lines = csv.split("\r\n");
 
     expect(lines[0]).toBe("Metric,Value");
     expect(lines).toContain("Total buildings,3");
-    expect(lines).toContain("Avg ROI (ratio),0.12");
-    expect(lines).toContain("Avg energy reduction (%),-40");
+    expect(lines).toContain("Buildings in totals,1");
+    expect(lines).toContain("Portfolio ROI (ratio),0.12");
+    expect(lines).toContain("Total NPV (EUR),30000");
+    expect(lines).toContain("Total material carbon (t CO2e),12");
+  });
+
+  test("leaves unavailable totals empty rather than writing a zero", () => {
+    const lines = buildSummaryCsv(aggregate).split("\r\n");
+
+    expect(lines).toContain("Total system energy before (kWh/year),");
+  });
+
+  test("lists only the EPC classes the portfolio occupies", () => {
+    const lines = buildSummaryCsv(aggregate).split("\r\n");
+
+    expect(lines).toContain("EPC B before (buildings),0");
+    expect(lines).toContain("EPC B after (buildings),1");
+    expect(lines).toContain("EPC E before (buildings),1");
+    expect(lines.some((line) => line.startsWith("EPC G "))).toBe(false);
   });
 });

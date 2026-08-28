@@ -16,13 +16,14 @@ import {
   buildBuildingsCsv,
   buildSummaryCsv,
 } from "../../services/resultsCsvExport";
-import type { PortfolioStats } from "../steps/ResultsStep";
+import type { PortfolioPackageAggregate } from "../../services/portfolioAggregation";
 import type { BuildingAnalysisResult, PRABuilding } from "../../context/types";
 
 interface ResultsExportMenuProps {
   buildings: PRABuilding[];
   results: Record<string, BuildingAnalysisResult>;
-  stats: PortfolioStats;
+  aggregate: PortfolioPackageAggregate;
+  projectLifetime: number;
 }
 
 function datedFilename(kind: string): string {
@@ -33,12 +34,13 @@ function datedFilename(kind: string): string {
 export function ResultsExportMenu({
   buildings,
   results,
-  stats,
+  aggregate,
+  projectLifetime,
 }: ResultsExportMenuProps) {
   const exportBuildings = () => {
     downloadCsv(
       datedFilename("buildings"),
-      buildBuildingsCsv(buildings, results),
+      buildBuildingsCsv(buildings, results, projectLifetime),
     );
     auditLog.info("portfolio", "results.csv_export", {
       kind: "buildings",
@@ -47,10 +49,10 @@ export function ResultsExportMenu({
   };
 
   const exportSummary = () => {
-    downloadCsv(datedFilename("summary"), buildSummaryCsv(stats));
+    downloadCsv(datedFilename("summary"), buildSummaryCsv(aggregate));
     auditLog.info("portfolio", "results.csv_export", {
       kind: "summary",
-      buildingCount: stats.totalBuildings,
+      buildingCount: aggregate.coverage.totalBuildings,
     });
   };
 

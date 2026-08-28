@@ -36,7 +36,7 @@ export function getEPCColor(epcClass: string): string {
 /**
  * EPC classes ordered from worst to best.
  */
-const EPC_ORDER = ["G", "F", "E", "D", "C", "B", "A", "A+"];
+export const EPC_ORDER = ["G", "F", "E", "D", "C", "B", "A", "A+"];
 
 /**
  * Get the numeric index of an EPC class (0 = G, 7 = A+).

@@ -1,7 +1,7 @@
 /**
  * ResultsStep Component
  * Step 3: Portfolio analysis results display, organized in two tabs:
- *   1. Portfolio summary — aggregate metrics + EPC distribution + energy charts
+ *   1. Portfolio summary — portfolio totals + EPC distribution + energy charts
  *   2. Per building     — sortable / filterable results table with row drill-down
  *   Methodology / data transparency is shown inline under Portfolio summary
  */
@@ -21,6 +21,7 @@ import {
   Title,
 } from "@mantine/core";
 import {
+  IconArrowRight,
   IconBuilding,
   IconChartBar,
   IconInfoCircle,
@@ -38,17 +39,23 @@ import {
   calculatePercentChange,
   formatCurrency,
   formatDecimal,
+  formatTonnageCo2,
+  formatYears,
 } from "../../../../utils/formatters";
-import { getEPCImprovement } from "../../../../utils/epcUtils";
 import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
+import { PRA_PACKAGE_ID } from "../../constants";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
-import type { BuildingAnalysisResult } from "../../context/types";
 import {
   BuildingResultsTable,
   type RowVm,
 } from "../results/BuildingResultsTable";
 import { BuildingDrillDownModal } from "../results/BuildingDrillDownModal";
 import { EnergyChart } from "../results/EnergyChart";
+import { EPCDistribution } from "../results/EPCDistribution";
+import {
+  aggregatePortfolioPackage,
+  type PortfolioPackageAggregate,
+} from "../../services/portfolioAggregation";
 import { ResultsExportMenu } from "../results/ResultsExportMenu";
 
 function ConceptSentence(conceptId: ConceptId) {
@@ -57,104 +64,51 @@ function ConceptSentence(conceptId: ConceptId) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Aggregations
-// ─────────────────────────────────────────────────────────────────────────────
-
-export interface PortfolioStats {
-  totalBuildings: number;
-  successCount: number;
-  errorCount: number;
-  rejectedCount: number;
-  totalCapex: number;
-  avgNPV: number;
-  avgROI: number;
-  avgPBP: number;
-  avgEnergyReduction: number | null;
-  avgEPCImprovement: number | null;
-  totalEnergyBefore: number;
-  totalEnergyAfter: number;
-}
-
-function computeStats(
-  results: Record<string, BuildingAnalysisResult>,
-  totalBuildings: number,
-): PortfolioStats {
-  const entries = Object.values(results);
-  const successful = entries.filter((r) => r.status === "success");
-  const errors = entries.filter((r) => r.status === "error");
-  const rejected = entries.filter((r) => r.status === "rejected");
-
-  let totalCapex = 0;
-  let totalNPV = 0;
-  let totalROI = 0;
-  let totalPBP = 0;
-  let validFinancialCount = 0;
-  let totalEnergyReduction = 0;
-  let validEnergyCount = 0;
-  let totalEPCImprovement = 0;
-  let validEPCCount = 0;
-  let totalEnergyBefore = 0;
-  let totalEnergyAfter = 0;
-
-  for (const result of successful) {
-    const fr = result.financialResults;
-    if (fr) {
-      totalCapex += fr.capitalExpenditure;
-      totalNPV += fr.netPresentValue;
-      totalROI += fr.returnOnInvestment;
-      totalPBP += fr.paybackTime;
-      validFinancialCount++;
-    }
-
-    const energyBefore = result.estimation?.annualEnergyNeeds;
-    const renovated = result.scenarios?.find((s) => s.id === "renovated");
-    const energyAfter = renovated?.annualEnergyNeeds;
-    if (
-      energyBefore !== undefined &&
-      energyAfter !== undefined &&
-      energyBefore > 0
-    ) {
-      totalEnergyReduction += calculatePercentChange(energyBefore, energyAfter);
-      validEnergyCount++;
-      totalEnergyBefore += energyBefore;
-      totalEnergyAfter += energyAfter;
-    }
-
-    const epcBefore = result.estimation?.estimatedEPC;
-    const epcAfter = renovated?.epcClass;
-    if (epcBefore && epcAfter) {
-      totalEPCImprovement += getEPCImprovement(epcBefore, epcAfter);
-      validEPCCount++;
-    }
-  }
-
-  return {
-    totalBuildings,
-    successCount: successful.length,
-    errorCount: errors.length,
-    rejectedCount: rejected.length,
-    totalCapex,
-    avgNPV: validFinancialCount > 0 ? totalNPV / validFinancialCount : 0,
-    avgROI: validFinancialCount > 0 ? totalROI / validFinancialCount : 0,
-    avgPBP: validFinancialCount > 0 ? totalPBP / validFinancialCount : 0,
-    avgEnergyReduction:
-      validEnergyCount > 0 ? totalEnergyReduction / validEnergyCount : null,
-    avgEPCImprovement:
-      validEPCCount > 0 ? totalEPCImprovement / validEPCCount : null,
-    totalEnergyBefore,
-    totalEnergyAfter,
-  };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Portfolio summary tab content
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PortfolioSummary = memo(function PortfolioSummary({
-  stats,
+/** Percent change between two portfolio totals, or undefined when there is no base. */
+function totalsReduction(before: number, after: number): number | undefined {
+  return before > 0 ? calculatePercentChange(before, after) : undefined;
+}
+
+function BeforeAfterTonnes({
+  before,
+  after,
 }: {
-  stats: PortfolioStats;
+  before: number;
+  after: number;
 }) {
+  return (
+    <Group gap={6} wrap="nowrap">
+      <Text span size="lg" fw={600}>
+        {formatTonnageCo2(before, { decimal: true })}
+      </Text>
+      <IconArrowRight size={14} color="var(--mantine-color-gray-5)" />
+      <Text span size="lg" fw={600}>
+        {formatTonnageCo2(after, { decimal: true })}
+      </Text>
+    </Group>
+  );
+}
+
+const PortfolioSummary = memo(function PortfolioSummary({
+  aggregate,
+}: {
+  aggregate: PortfolioPackageAggregate;
+}) {
+  const { coverage } = aggregate;
+  const thermalReduction = totalsReduction(
+    aggregate.totalThermalNeedsBeforeKwh,
+    aggregate.totalThermalNeedsAfterKwh,
+  );
+  const {
+    totalDeliveredBeforeKwh: deliveredBefore,
+    totalDeliveredAfterKwh: deliveredAfter,
+    totalAnnualEmissionsBeforeTon: emissionsBefore,
+    totalAnnualEmissionsAfterTon: emissionsAfter,
+  } = aggregate;
+
   return (
     <Stack gap="lg">
       <Card withBorder radius="md" p="lg">
@@ -163,22 +117,27 @@ const PortfolioSummary = memo(function PortfolioSummary({
         </Title>
 
         <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md" mb="md">
-          <MetricCard label="Total Buildings" value={stats.totalBuildings} />
+          <MetricCard label="Total Buildings" value={coverage.totalBuildings} />
           <MetricCard
-            label="Successfully Analyzed"
+            label="In These Totals"
             value={
               <Group gap={4}>
                 <Text size="lg" fw={600} c="green">
-                  {stats.successCount}
+                  {coverage.contributing}
                 </Text>
-                {stats.errorCount > 0 && (
+                {coverage.errored > 0 && (
                   <Badge color="red" size="sm" variant="light">
-                    {stats.errorCount} errors
+                    {coverage.errored} errors
                   </Badge>
                 )}
-                {stats.rejectedCount > 0 && (
+                {coverage.rejected > 0 && (
                   <Badge color="orange" size="sm" variant="light">
-                    {stats.rejectedCount} rejected
+                    {coverage.rejected} rejected
+                  </Badge>
+                )}
+                {coverage.withoutPackage > 0 && (
+                  <Badge color="gray" size="sm" variant="light">
+                    {coverage.withoutPackage} not costed
                   </Badge>
                 )}
               </Group>
@@ -187,67 +146,153 @@ const PortfolioSummary = memo(function PortfolioSummary({
           <ConceptMetricCard
             conceptId="investment"
             prefix="Total"
-            value={formatCurrency(stats.totalCapex)}
+            value={formatCurrency(aggregate.totalCapexEur)}
             variant="highlight"
           />
           <ConceptMetricCard
             conceptId="npv"
-            prefix="Avg."
-            value={formatCurrency(stats.avgNPV)}
+            prefix="Total"
+            value={
+              aggregate.totalNpvEur !== undefined
+                ? formatCurrency(aggregate.totalNpvEur)
+                : "—"
+            }
             variant="highlight"
           />
         </SimpleGrid>
 
-        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
+        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md" mb="md">
           <ConceptMetricCard
             conceptId="roi"
-            prefix="Avg."
-            value={`${formatDecimal(stats.avgROI * 100)}%`}
-          />
-          <ConceptMetricCard
-            conceptId="payback-period"
-            prefix="Avg."
-            value={`${formatDecimal(stats.avgPBP)} years`}
-          />
-          <ConceptMetricCard
-            conceptId="annual-building-thermal-needs"
-            prefix="Avg. reduction in"
+            prefix="Portfolio"
             value={
-              stats.avgEnergyReduction !== null
-                ? `${formatDecimal(stats.avgEnergyReduction)}%`
-                : "-"
+              aggregate.portfolioRoi !== undefined
+                ? `${formatDecimal(aggregate.portfolioRoi * 100)}%`
+                : "—"
             }
           />
           <ConceptMetricCard
-            conceptId="estimated-epc"
-            prefix="Avg. improvement in"
+            conceptId="payback-period"
+            prefix="Portfolio"
             value={
-              stats.avgEPCImprovement !== null
-                ? `${stats.avgEPCImprovement > 0 ? "+" : ""}${formatDecimal(stats.avgEPCImprovement)} classes`
-                : "-"
+              aggregate.portfolioPaybackYears !== undefined
+                ? formatYears(aggregate.portfolioPaybackYears)
+                : "—"
+            }
+          />
+          <ConceptMetricCard
+            conceptId="annual-building-thermal-needs"
+            prefix="Total reduction in"
+            value={
+              thermalReduction !== undefined
+                ? `${formatDecimal(thermalReduction)}%`
+                : "—"
+            }
+          />
+          <ConceptMetricCard
+            conceptId="annual-maintenance-cost"
+            prefix="Total"
+            value={
+              aggregate.totalAnnualMaintenanceEur !== undefined
+                ? formatCurrency(aggregate.totalAnnualMaintenanceEur)
+                : "—"
+            }
+          />
+        </SimpleGrid>
+
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+          <ConceptMetricCard
+            conceptId="operational-co2-emissions"
+            value={
+              emissionsBefore !== undefined && emissionsAfter !== undefined ? (
+                <BeforeAfterTonnes
+                  before={emissionsBefore}
+                  after={emissionsAfter}
+                />
+              ) : (
+                "—"
+              )
+            }
+          />
+          <ConceptMetricCard
+            conceptId="embodied-carbon"
+            prefix="Total"
+            value={
+              aggregate.totalEmbodiedCarbonTon !== undefined
+                ? formatTonnageCo2(aggregate.totalEmbodiedCarbonTon, {
+                    decimal: true,
+                  })
+                : "—"
+            }
+          />
+          <ConceptMetricCard
+            conceptId="whole-life-carbon"
+            prefix="Total"
+            value={
+              aggregate.totalWholeLifeCarbonTon !== undefined
+                ? formatTonnageCo2(aggregate.totalWholeLifeCarbonTon, {
+                    decimal: true,
+                  })
+                : "—"
             }
           />
         </SimpleGrid>
       </Card>
 
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+        <Card withBorder radius="md" p="lg">
+          <Stack gap="xs">
+            <Box>
+              <Title order={5}>Energy use</Title>
+              <Text size="xs" c="dimmed">
+                Total annual building thermal needs.
+              </Text>
+            </Box>
+            {aggregate.totalThermalNeedsBeforeKwh > 0 ? (
+              <EnergyChart
+                before={aggregate.totalThermalNeedsBeforeKwh}
+                after={aggregate.totalThermalNeedsAfterKwh}
+              />
+            ) : (
+              <Text size="sm" c="dimmed">
+                No energy data available.
+              </Text>
+            )}
+          </Stack>
+        </Card>
+
+        <Card withBorder radius="md" p="lg">
+          <Stack gap="xs">
+            <Box>
+              <Title order={5}>System energy consumption</Title>
+              <Text size="xs" c="dimmed">
+                Total annual delivered energy, which drives the financial
+                analysis.
+              </Text>
+            </Box>
+            {deliveredBefore !== undefined && deliveredAfter !== undefined ? (
+              <EnergyChart before={deliveredBefore} after={deliveredAfter} />
+            ) : (
+              <Text size="sm" c="dimmed">
+                Not available for every building in these totals.
+              </Text>
+            )}
+          </Stack>
+        </Card>
+      </SimpleGrid>
+
       <Card withBorder radius="md" p="lg">
         <Stack gap="xs">
           <Box>
-            <Title order={5}>Energy use</Title>
+            <Title order={5}>EPC distribution</Title>
             <Text size="xs" c="dimmed">
-              Total annual building thermal needs.
+              Buildings per class before and after renovation.
             </Text>
           </Box>
-          {stats.totalEnergyBefore > 0 ? (
-            <EnergyChart
-              before={stats.totalEnergyBefore}
-              after={stats.totalEnergyAfter}
-            />
-          ) : (
-            <Text size="sm" c="dimmed">
-              No energy data available.
-            </Text>
-          )}
+          <EPCDistribution
+            before={aggregate.epcCountsBefore}
+            after={aggregate.epcCountsAfter}
+          />
         </Stack>
       </Card>
     </Stack>
@@ -305,6 +350,28 @@ function DataTransparencyContent() {
           ranges use Monte Carlo simulation when available.
         </Text>
       </List.Item>
+      <List.Item>
+        <Text size="xs" c="dimmed">
+          <Text span size="xs" fw={500} c="dimmed">
+            Portfolio totals
+          </Text>{" "}
+          — Money is summed across buildings, portfolio ROI is total profit over
+          total investment, and payback comes from the summed yearly cash flows.
+          These are not averages of per-building figures, which would weight
+          buildings equally regardless of size. A total that some building
+          cannot supply is shown as unavailable rather than as a smaller number.
+        </Text>
+      </List.Item>
+      <List.Item>
+        <Text size="xs" c="dimmed">
+          <Text span size="xs" fw={500} c="dimmed">
+            IRR, discounted payback and risk ranges
+          </Text>{" "}
+          — Reported per building; open a row in the per-building tab. They come
+          from a Monte Carlo simulation whose distributions cannot be pooled
+          across buildings, so no portfolio-wide equivalent is shown.
+        </Text>
+      </List.Item>
     </List>
   );
 }
@@ -320,9 +387,15 @@ export function ResultsStep() {
 
   const hasResults = Object.keys(state.buildingResults).length > 0;
 
-  const stats = useMemo(
-    () => computeStats(state.buildingResults, state.buildings.length),
-    [state.buildingResults, state.buildings.length],
+  const aggregate = useMemo(
+    () =>
+      aggregatePortfolioPackage({
+        packageId: PRA_PACKAGE_ID,
+        results: Object.values(state.buildingResults),
+        totalBuildings: state.buildings.length,
+        projectLifetimeYears: state.projectLifetime,
+      }),
+    [state.buildingResults, state.buildings.length, state.projectLifetime],
   );
 
   const handlePrevious = () => {
@@ -370,7 +443,8 @@ export function ResultsStep() {
         <ResultsExportMenu
           buildings={state.buildings}
           results={state.buildingResults}
-          stats={stats}
+          aggregate={aggregate}
+          projectLifetime={state.projectLifetime}
         />
       </Group>
 
@@ -398,7 +472,7 @@ export function ResultsStep() {
 
         <Tabs.Panel value="portfolio" pt="lg">
           <Stack gap="lg">
-            <PortfolioSummary stats={stats} />
+            <PortfolioSummary aggregate={aggregate} />
             <Accordion
               chevronPosition="right"
               variant="default"

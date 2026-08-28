@@ -13,6 +13,13 @@ export const PRA_OUTPUT_LEVEL: OutputLevel = "professional";
 export const PRA_CONCURRENCY_LIMIT = 2;
 export const PRA_DEFAULT_PROJECT_LIFETIME = 20;
 
+/**
+ * Scenario/package id of the single renovation option PRA evaluates today.
+ * Named so the results aggregation can be parameterised by package ahead of
+ * several named packages (#69).
+ */
+export const PRA_PACKAGE_ID = "renovated";
+
 // CSV column schema
 export const CSV_REQUIRED_COLUMNS = [
   "building_name",
