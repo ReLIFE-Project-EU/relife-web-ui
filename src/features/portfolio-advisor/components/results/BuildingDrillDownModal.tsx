@@ -19,6 +19,11 @@ import { IconArrowRight, IconInfoCircle } from "@tabler/icons-react";
 import { ConceptMetricCard } from "../../../../components/shared/ConceptMetricCard";
 import { EPCBadge } from "../../../../components/shared/EPCBadge";
 import { ErrorAlert } from "../../../../components/shared/ErrorAlert";
+import {
+  resolveSavingsAvailability,
+  savingsAvailabilityExplanation,
+  savingsAvailabilityLabel,
+} from "../../../../services/savingsState";
 import { MetricCard } from "../../../../components/shared/MetricCard";
 import {
   formatCurrency,
@@ -66,6 +71,7 @@ export function BuildingDrillDownModal({
   const epcBefore = result?.estimation?.estimatedEPC;
   const epcAfter = renovated?.epcClass;
   const cashFlowData = fr?.riskAssessment?.cashFlowData;
+  const availability = resolveSavingsAvailability(renovated, fr);
   const horizonYears =
     projectLifetime ??
     fr?.riskAssessment?.metadata.project_lifetime ??
@@ -228,15 +234,14 @@ export function BuildingDrillDownModal({
             </SimpleGrid>
 
             {/* No-savings hint */}
-            {fr?.riskAssessment === null && renovated && (
+            {availability.kind !== "appraised" && (
               <Alert
-                color="yellow"
+                color={availability.kind === "fully-funded" ? "teal" : "yellow"}
                 variant="light"
                 icon={<IconInfoCircle size={16} />}
+                title={savingsAvailabilityLabel[availability.kind]}
               >
-                This building&apos;s current specifications already meet the
-                targets for the selected renovation measures. Financial
-                indicators are not meaningful here.
+                {savingsAvailabilityExplanation[availability.kind]}
               </Alert>
             )}
 

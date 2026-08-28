@@ -18,6 +18,7 @@ import {
 import type { ComponentType } from "react";
 import { EPCBadge } from "../../../../components/shared";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
+import { resolveSavingsAvailability } from "../../../../services/savingsState";
 import type {
   FinancialResults,
   MCDARankingResult,
@@ -365,6 +366,8 @@ function paybackRangeHint(result: FinancialResults | undefined): string {
 type SavingsState =
   | { kind: "ok"; yearlyEur: number; monthlyEur: number }
   | { kind: "unprofitable" }
+  | { kind: "no-savings" }
+  | { kind: "fully-funded" }
   | { kind: "not-priceable" }
   | { kind: "unknown" };
 
@@ -379,10 +382,20 @@ function resolveSavingsState(
   winner: RenovationScenario | undefined,
   result: FinancialResults | undefined,
 ): SavingsState {
-  if (!current || !winner) return { kind: "unknown" };
+  if (!current) return { kind: "unknown" };
 
-  if (!current.carrierBreakdown || !winner.carrierBreakdown) {
-    return { kind: "not-priceable" };
+  const availability = resolveSavingsAvailability(winner, result);
+  switch (availability.kind) {
+    case "not-priceable":
+      return { kind: "not-priceable" };
+    case "no-savings":
+      return { kind: "no-savings" };
+    case "fully-funded":
+      return { kind: "fully-funded" };
+    case "unknown":
+      return { kind: "unknown" };
+    case "appraised":
+      break;
   }
 
   const monthlyEur = result?.riskAssessment?.pointForecasts.MonthlyAvgSavings;
@@ -398,6 +411,10 @@ function savingsTileValue(savings: SavingsState): string {
       return `${formatApproxCurrency(savings.yearlyEur)}/yr`;
     case "unprofitable":
       return "No net saving";
+    case "no-savings":
+      return "No net saving";
+    case "fully-funded":
+      return "Fully funded";
     case "not-priceable":
       return "Not available";
     case "unknown":
@@ -411,6 +428,10 @@ function savingsTileHint(savings: SavingsState): string {
       return "roughly, after running costs";
     case "unprofitable":
       return "costs more to run and repay than it saves";
+    case "no-savings":
+      return "your home already meets what these measures would deliver";
+    case "fully-funded":
+      return "a grant covers the whole cost, so there is nothing to pay back";
     case "not-priceable":
       return "we could not work out this package's running costs";
     case "unknown":
@@ -440,6 +461,27 @@ function SavingsCopy({ current, winner, result, savings }: SavingsCopyProps) {
         {formatThermalNeedsChange(thermalNeedsChangePct)}. We could not work out
         what this package costs to run, so we cannot show savings or payback for
         it.
+      </Text>
+    );
+  }
+
+  // These two never reach the appraisal, so `paybackTime` below is a
+  // placeholder zero and must not be rendered as "pays back in 0 years".
+  if (savings.kind === "no-savings") {
+    return (
+      <Text size="sm" c="dark.6" mt={8} maw={560}>
+        {formatThermalNeedsChange(thermalNeedsChangePct)}. Your home already
+        meets what these measures would deliver, so there is nothing here to
+        save or pay back.
+      </Text>
+    );
+  }
+
+  if (savings.kind === "fully-funded") {
+    return (
+      <Text size="sm" c="dark.6" mt={8} maw={560}>
+        {formatThermalNeedsChange(thermalNeedsChangePct)}, and a grant covers
+        the whole cost, so there is nothing to pay back.
       </Text>
     );
   }

@@ -12,6 +12,7 @@ import { calculatePercentChange } from "../../../utils/formatters";
 import { getCountryCode } from "../../../utils/countries";
 import { getEPCImprovement, EPC_ORDER } from "../../../utils/epcUtils";
 import { computeLifetimeCarbonKgCo2e } from "../../../services/carrierSavingsService";
+import { resolveSavingsAvailability } from "../../../services/savingsState";
 import type { PortfolioPackageAggregate } from "./portfolioAggregation";
 import type { BuildingAnalysisResult, PRABuilding } from "../context/types";
 
@@ -48,14 +49,17 @@ function probabilityByPrefix(
 }
 
 /**
- * Status as exported: "success" splits into "no-savings" when financial
- * indicators are not meaningful, matching the on-screen badge semantics.
+ * Status as exported: a successful row reports why its financial figures are or
+ * are not trustworthy, using the same classification as the on-screen badge so
+ * the export cannot become a second vocabulary.
  */
 function statusLabel({ result }: BuildingExportRow): string {
   if (result.status !== "success") return result.status;
-  const noSavings =
-    result.financialResults?.riskAssessment === null && !!renovatedOf(result);
-  return noSavings ? "no-savings" : "success";
+  const availability = resolveSavingsAvailability(
+    renovatedOf(result),
+    result.financialResults,
+  );
+  return availability.kind === "appraised" ? "success" : availability.kind;
 }
 
 export const buildingExportColumns: CsvColumn<BuildingExportRow>[] = [

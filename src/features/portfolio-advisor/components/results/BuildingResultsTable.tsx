@@ -38,9 +38,12 @@ import {
 import { getEnergyIntensity } from "../../../../utils/epcUtils";
 import type { PRABuilding, BuildingAnalysisResult } from "../../context/types";
 import {
-  PRA_BASELINE_SCENARIO_ID,
-  PRA_PACKAGE_ID,
-} from "../../constants";
+  resolveSavingsAvailability,
+  savingsAvailabilityExplanation,
+  savingsAvailabilityLabel,
+  type SavingsAvailability,
+} from "../../../../services/savingsState";
+import { PRA_BASELINE_SCENARIO_ID, PRA_PACKAGE_ID } from "../../constants";
 
 export type StatusFilter =
   | "all"
@@ -49,7 +52,10 @@ export type StatusFilter =
   | "success"
   | "error"
   | "rejected"
-  | "no-savings";
+  /** Appraised, and the investment does not pay off. */
+  | "unprofitable"
+  /** Analysed, but the financial appraisal never ran. */
+  | "not-appraised";
 
 type SortKey = "name" | "energyReduction" | "npv" | "roi" | "pbp";
 
@@ -62,7 +68,7 @@ interface RowVm {
   building: PRABuilding;
   result: BuildingAnalysisResult;
   isSuccess: boolean;
-  noSavings: boolean;
+  availability: SavingsAvailability;
   energyReduction: number | undefined;
   npv: number | undefined;
   roi: number | undefined;
@@ -88,7 +94,7 @@ function buildRowVms(
       const isSuccess = result.status === "success";
       const renovated = result.scenarios?.find((s) => s.id === PRA_PACKAGE_ID);
       const fr = result.financialResults;
-      const noSavings = isSuccess && fr?.riskAssessment === null && !!renovated;
+      const availability = resolveSavingsAvailability(renovated, fr);
       const energyBefore = result.estimation?.annualEnergyNeeds;
       const energyAfter = renovated?.annualEnergyNeeds;
       const energyReduction = getEnergyReduction(energyBefore, energyAfter);
@@ -96,7 +102,7 @@ function buildRowVms(
         building,
         result,
         isSuccess,
-        noSavings,
+        availability,
         energyReduction,
         npv: isSuccess && fr ? fr.netPresentValue : undefined,
         roi: isSuccess && fr ? fr.returnOnInvestment : undefined,
@@ -113,8 +119,24 @@ function baselineOf(result: BuildingAnalysisResult) {
 
 function applyStatusFilter(rows: RowVm[], filter: StatusFilter): RowVm[] {
   if (filter === "all") return rows;
-  if (filter === "no-savings") {
-    return rows.filter((r) => r.isSuccess && (r.npv ?? 0) <= 0);
+  if (filter === "unprofitable") {
+    // Requires an appraisal: a skipped one leaves a placeholder zero that would
+    // otherwise be read as a genuine non-positive NPV, as would a missing one.
+    return rows.filter(
+      (r) =>
+        r.isSuccess &&
+        r.availability.kind === "appraised" &&
+        r.npv !== undefined &&
+        r.npv <= 0,
+    );
+  }
+  if (filter === "not-appraised") {
+    return rows.filter(
+      (r) =>
+        r.isSuccess &&
+        r.availability.kind !== "appraised" &&
+        r.availability.kind !== "unknown",
+    );
   }
   return rows.filter((r) => r.result.status === filter);
 }
@@ -196,7 +218,11 @@ export function BuildingResultsTable({
           data={[
             { value: "all", label: "All buildings" },
             { value: "success", label: "Successful" },
-            { value: "no-savings", label: "Not financially viable (NPV ≤ 0)" },
+            {
+              value: "unprofitable",
+              label: "Analysed — does not pay off (NPV ≤ 0)",
+            },
+            { value: "not-appraised", label: "Not appraised" },
             { value: "rejected", label: "Rejected" },
             { value: "error", label: "Errored" },
             { value: "pending", label: "Pending" },
@@ -316,7 +342,10 @@ function ResultsRow({
   showDeliveredEnergyColumn: boolean;
   onClick?: (vm: RowVm) => void;
 }) {
-  const { building, result, isSuccess, noSavings, energyReduction } = row;
+  const { building, result, isSuccess, availability, energyReduction } = row;
+  // A skipped appraisal leaves placeholder zeros on the result; showing them
+  // dimmed still shows a number, so render them as unavailable instead.
+  const appraised = availability.kind === "appraised";
   const fr = result.financialResults;
   const renovated = result.scenarios?.find((s) => s.id === PRA_PACKAGE_ID);
   const epcBefore = result.estimation?.estimatedEPC;
@@ -436,20 +465,18 @@ function ResultsRow({
         </Table.Td>
       )}
       <Table.Td ta="right">
-        {isSuccess && fr ? (
+        {isSuccess && fr && appraised ? (
           <Text
             size="sm"
             fw={500}
-            c={
-              noSavings
-                ? "dimmed"
-                : fr.netPresentValue >= 0
-                  ? "green.7"
-                  : "red.7"
-            }
+            c={fr.netPresentValue >= 0 ? "green.7" : "red.7"}
             style={{ fontVariantNumeric: "tabular-nums" }}
           >
             {formatCurrency(fr.netPresentValue)}
+          </Text>
+        ) : isSuccess ? (
+          <Text size="sm" c="dimmed">
+            —
           </Text>
         ) : result.status === "error" ? (
           <Text size="xs" c="red">
@@ -466,53 +493,65 @@ function ResultsRow({
       <Table.Td ta="right">
         <Text
           size="sm"
-          c={noSavings ? "dimmed" : undefined}
+          c={appraised ? undefined : "dimmed"}
           style={{ fontVariantNumeric: "tabular-nums" }}
         >
-          {isSuccess && fr
+          {isSuccess && fr && appraised
             ? `${formatDecimal(fr.returnOnInvestment * 100)}%`
-            : "-"}
+            : "—"}
         </Text>
       </Table.Td>
       <Table.Td ta="right">
         <Text
           size="sm"
-          c={noSavings ? "dimmed" : undefined}
+          c={appraised ? undefined : "dimmed"}
           style={{ fontVariantNumeric: "tabular-nums" }}
         >
-          {isSuccess && fr
+          {isSuccess && fr && appraised
             ? isPaybackBeyondHorizon(
                 fr.paybackTime,
                 fr.riskAssessment?.metadata.project_lifetime,
               )
               ? "No payback"
               : formatDecimal(fr.paybackTime)
-            : "-"}
+            : "—"}
         </Text>
       </Table.Td>
     </Table.Tr>
   );
 }
 
-function RowStatusBadge({ row }: { row: RowVm }) {
-  const { result, noSavings } = row;
+/**
+ * A fully-funded renovation is a good outcome, not a failure, so it is the one
+ * unappraised state that is not flagged in warning colours.
+ */
+const AVAILABILITY_BADGE_COLOR: Record<SavingsAvailability["kind"], string> = {
+  appraised: "gray",
+  "no-savings": "yellow",
+  "fully-funded": "teal",
+  "not-priceable": "gray",
+  unknown: "gray",
+};
 
-  if (noSavings) {
+function RowStatusBadge({ row }: { row: RowVm }) {
+  const { result, isSuccess, availability } = row;
+
+  if (isSuccess && availability.kind !== "appraised") {
     return (
       <Tooltip
-        label="This building's current specifications already meet the targets for the selected renovation measures. No energy savings could be computed, so financial indicators are not meaningful."
+        label={savingsAvailabilityExplanation[availability.kind]}
         multiline
         w={300}
         position="bottom-start"
       >
         <Badge
-          color="yellow"
+          color={AVAILABILITY_BADGE_COLOR[availability.kind]}
           variant="light"
           size="sm"
           leftSection={<IconInfoCircle size={11} />}
           style={{ cursor: "default" }}
         >
-          Already at renovation target
+          {savingsAvailabilityLabel[availability.kind]}
         </Badge>
       </Tooltip>
     );

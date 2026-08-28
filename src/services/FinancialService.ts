@@ -15,6 +15,7 @@ import type {
   ArvUnavailableReason,
   BuildingInfo,
   FinancialResults,
+  RiskSkippedReason,
   ScenarioId,
 } from "../types/renovation";
 import {
@@ -544,6 +545,16 @@ export class FinancialService implements IFinancialService {
       const hasSavings = riskRequest.annual_energy_savings > 0;
       const isFullySubsidized = effectiveCost <= 0;
       const canAssessRisk = hasSavings && !isFullySubsidized;
+      // Reported on the result so the UI does not have to re-infer which of the
+      // three skips happened; the placeholder zeros below are indistinguishable
+      // from real figures without it.
+      const riskSkippedReason: RiskSkippedReason | undefined = canAssessRisk
+        ? undefined
+        : isFullySubsidized
+          ? "fully-subsidized"
+          : canUseCarrierPricing
+            ? "non-positive-savings"
+            : "missing-carrier-breakdown";
 
       auditLog.debug(
         "financial",
@@ -566,11 +577,7 @@ export class FinancialService implements IFinancialService {
           "financial.risk.skipped",
           {
             scenarioId: scenario.id,
-            reason: isFullySubsidized
-              ? "fully-subsidized"
-              : canUseCarrierPricing
-                ? "non-positive-carrier-aware-savings"
-                : "missing-carrier-breakdown",
+            reason: riskSkippedReason,
             annualSavingsEur: carrierSavings.annualSavingsEur,
             electricityEquivalentKwh: carrierSavings.electricityEquivalentKwh,
             renovationCost,
@@ -594,6 +601,7 @@ export class FinancialService implements IFinancialService {
           ? { arvUnavailableReason: arvAttempt.unavailableReason }
           : {}),
         riskAssessment: riskResult,
+        ...(riskSkippedReason ? { riskSkippedReason } : {}),
         capitalExpenditure: riskResult
           ? Math.round(riskResult.metadata.capex)
           : Math.round(effectiveCost),

@@ -413,10 +413,24 @@ export type ArvUnavailableReason =
   | "invalid-request"
   | "api-error";
 
+/**
+ * Why the Financial API's risk assessment was not run. The endpoint requires
+ * positive energy savings and positive capex, so it is skipped rather than
+ * called in these three cases. Present only when `riskAssessment` is null, and
+ * needed because the numeric fields below then carry placeholder zeros.
+ */
+export type RiskSkippedReason =
+  | "fully-subsidized"
+  | "non-positive-savings"
+  | "missing-carrier-breakdown";
+
 export interface FinancialResults {
   // From POST /arv
   arv: ARVResult | null;
   arvUnavailableReason?: ArvUnavailableReason;
+
+  /** Set when `riskAssessment` is null; explains which skip occurred. */
+  riskSkippedReason?: RiskSkippedReason;
 
   // From POST /risk-assessment with output_level: "private"
   riskAssessment: {
