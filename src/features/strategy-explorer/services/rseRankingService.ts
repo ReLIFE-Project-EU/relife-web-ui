@@ -13,12 +13,9 @@ export interface RSERankingOptions {
   projectLifetimeYears: number;
 }
 
-type MetricDirection = "higher" | "lower";
-
 interface RankingMetric {
   key: string;
   weight: number;
-  direction: MetricDirection;
   values: number[];
   valid: boolean[];
 }
@@ -32,7 +29,7 @@ export function rankPackages(
   const componentScores = metrics.map((metric) => ({
     key: metric.key,
     weight: metric.weight,
-    normalized: normalizeMetric(metric.values, metric.direction, metric.valid),
+    normalized: normalizeMetric(metric.values, metric.valid),
   }));
 
   return aggregates
@@ -74,7 +71,6 @@ function buildMetrics(
       {
         key: "energySavedPerEur",
         weight: RSE_RANKING_WEIGHTS.energy.savedPerEur,
-        direction: "higher",
         values: aggregates.map((aggregate) =>
           finiteOrZero(aggregate.energySavedPerEur),
         ),
@@ -83,7 +79,6 @@ function buildMetrics(
       {
         key: "totalAnnualEnergySavingsKwh",
         weight: RSE_RANKING_WEIGHTS.energy.absoluteSavings,
-        direction: "higher",
         values: aggregates.map((aggregate) =>
           finiteOrZero(aggregate.totalAnnualEnergySavingsKwh),
         ),
@@ -97,7 +92,6 @@ function buildMetrics(
       {
         key: "co2ReducedTonPerEur",
         weight: RSE_RANKING_WEIGHTS.emission.reducedTonPerEur,
-        direction: "higher",
         values: aggregates.map((aggregate) =>
           finiteOrZero(aggregate.co2ReducedTonPerEur),
         ),
@@ -106,7 +100,6 @@ function buildMetrics(
       {
         key: "totalAnnualCo2ReductionTon",
         weight: RSE_RANKING_WEIGHTS.emission.absoluteReduction,
-        direction: "higher",
         values: aggregates.map((aggregate) =>
           finiteOrZero(aggregate.totalAnnualCo2ReductionTon),
         ),
@@ -118,7 +111,6 @@ function buildMetrics(
   const paybackValues = aggregates.map(
     (aggregate) => aggregate.financialIndicators.aggregatePaybackYears,
   );
-  const hasAnyValidPayback = paybackValues.some(isFiniteNumber);
   const worstPayback =
     options.projectLifetimeYears + RSE_INVALID_PAYBACK_YEAR_OFFSET;
 
@@ -126,7 +118,6 @@ function buildMetrics(
     {
       key: "renovatableBuildingsWithinBudget",
       weight: RSE_RANKING_WEIGHTS.financial.renovatableBuildingsWithinBudget,
-      direction: "higher",
       values: aggregates.map((aggregate) =>
         finiteOrZero(aggregate.renovatableBuildingsWithinBudget),
       ),
@@ -135,7 +126,6 @@ function buildMetrics(
     {
       key: "aggregateROI",
       weight: RSE_RANKING_WEIGHTS.financial.aggregateRoi,
-      direction: "higher",
       values: aggregates.map((aggregate) =>
         finiteOrZero(aggregate.financialIndicators.aggregateROI),
       ),
@@ -146,7 +136,6 @@ function buildMetrics(
     {
       key: "aggregateNPV",
       weight: RSE_RANKING_WEIGHTS.financial.aggregateNpv,
-      direction: "higher",
       values: aggregates.map((aggregate) =>
         finiteOrZero(aggregate.financialIndicators.aggregateNPV),
       ),
@@ -157,42 +146,26 @@ function buildMetrics(
     {
       key: "aggregatePayback",
       weight: RSE_RANKING_WEIGHTS.financial.aggregatePayback,
-      direction: "lower",
-      values: hasAnyValidPayback
-        ? paybackValues.map((value) =>
-            isFiniteNumber(value) ? value : worstPayback,
-          )
-        : aggregates.map(() => 0),
+      // Years saved vs the no-payback case, so shorter payback scores higher.
+      values: paybackValues.map((value) =>
+        isFiniteNumber(value) ? worstPayback - value : 0,
+      ),
       valid: paybackValues.map(isFiniteNumber),
     },
   ];
 }
 
-function normalizeMetric(
-  values: number[],
-  direction: MetricDirection,
-  valid = values.map(() => true),
-): number[] {
-  if (values.length === 0) {
-    return [];
-  }
-  if (!valid.some(Boolean)) {
+/**
+ * Scale a criterion onto [0, 1] against the best package, anchored at zero so
+ * gap sizes survive. Min/max rescaling collapses to 0/1 whenever only two
+ * packages are compared, making the ranking a function of the weights alone.
+ */
+function normalizeMetric(values: number[], valid: boolean[]): number[] {
+  const best = Math.max(...values.filter((_, i) => valid[i]), 0);
+  if (best <= 0) {
     return values.map(() => 0);
   }
-
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  if (max === min) {
-    return values.map((_, i) => (valid[i] ? 1 : 0));
-  }
-
-  return values.map((value, i) =>
-    valid[i]
-      ? direction === "higher"
-        ? (value - min) / (max - min)
-        : (max - value) / (max - min)
-      : 0,
-  );
+  return values.map((value, i) => (valid[i] ? Math.max(0, value) / best : 0));
 }
 
 function finiteOrZero(value: number | undefined): number {

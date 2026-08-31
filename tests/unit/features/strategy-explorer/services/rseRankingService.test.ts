@@ -44,9 +44,12 @@ describe("rankPackages", () => {
       { projectLifetimeYears: 20 },
     );
 
-    expect(rankings[0].packageId).toBe("envelope");
-    expect(rankings[0].scoreComponents.energySavedPerEur).toBe(0.55);
-    expect(rankings[1].scoreComponents.totalAnnualEnergySavingsKwh).toBe(0.45);
+    // A 4x lead on absolute savings outweighs a 2x lead on savings per euro;
+    // min/max rescaling flattened both to a plain win.
+    expect(rankings[0].packageId).toBe("combined");
+    expect(rankings[0].scoreComponents.totalAnnualEnergySavingsKwh).toBe(0.45);
+    expect(rankings[0].scoreComponents.energySavedPerEur).toBeCloseTo(0.275);
+    expect(rankings[1].scoreComponents.energySavedPerEur).toBe(0.55);
   });
 
   test("ranks emission goals by CO2 reduced per euro and absolute reduction", () => {
@@ -65,9 +68,9 @@ describe("rankPackages", () => {
       { projectLifetimeYears: 20 },
     );
 
-    expect(rankings[0].packageId).toBe("envelope");
-    expect(rankings[0].scoreComponents.co2ReducedTonPerEur).toBe(0.55);
-    expect(rankings[1].scoreComponents.totalAnnualCo2ReductionTon).toBe(0.45);
+    expect(rankings[0].packageId).toBe("combined");
+    expect(rankings[0].scoreComponents.totalAnnualCo2ReductionTon).toBe(0.45);
+    expect(rankings[1].scoreComponents.co2ReducedTonPerEur).toBe(0.55);
   });
 
   test("ranks financial goals by budget fit and aggregate indicators", () => {
@@ -117,7 +120,7 @@ describe("rankPackages", () => {
         makeAggregate("envelope", {
           renovatableBuildingsWithinBudget: 1,
           financialIndicators: {
-            aggregateROI: 0,
+            aggregateROI: 0.2,
             aggregateNPV: 1_000,
             aggregatePaybackYears: 5,
           },
@@ -144,7 +147,7 @@ describe("rankPackages", () => {
     expect(combinedScore.scoreComponents.aggregateROI).toBe(0);
   });
 
-  test("gives invalid entries zero score when valid values are negative", () => {
+  test("scores negative and invalid indicators as zero", () => {
     const rankings = rankPackages(
       [
         makeAggregate("envelope", {
@@ -168,9 +171,11 @@ describe("rankPackages", () => {
       { projectLifetimeYears: 20 },
     );
 
-    // Valid ROI is negative (-0.2), invalid ROI is 0 via finiteOrZero.
-    // 0 is the max, so invalid entry would score 1 if valid array were ignored.
+    // Break-even is the bottom of the scale, so a negative NPV scores 0 rather
+    // than ranking least-bad first. Invalid entries stay at 0 either way.
+    const envelopeScore = rankings.find((r) => r.packageId === "envelope")!;
     const combinedScore = rankings.find((r) => r.packageId === "combined")!;
+    expect(envelopeScore.scoreComponents.aggregateNPV).toBe(0);
     expect(combinedScore.scoreComponents.aggregateROI).toBe(0);
   });
 

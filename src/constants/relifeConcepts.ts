@@ -320,9 +320,9 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     id: "rse-ranking-method",
     label: "How this ranking is calculated",
     description:
-      "Each renovation package is compared with the others for every measure, like payback period, energy saved, or CO2 reduced. For each measure, the top-performing package gets a score of 1, the lowest gets 0, and the others get a score between 0 and 1 based on how they rank in between. For example, if three packages save 2,000, 5,000, and 8,000 kWh per year, they would get scores of 0, 0.5, and 1—the middle one is halfway between the lowest and highest. Then, these scores are weighted according to the chosen goal (financial, energy, or emissions), added up, and the package with the highest total ranks first.",
+      "Each renovation package is compared with the others for every measure, like payback period, energy saved, or CO2 reduced. For each measure, the best package gets a score of 1 and the others score in proportion to it, counting up from zero. For example, if three packages save 2,000, 5,000, and 8,000 kWh per year, they would get scores of 0.25, 0.625, and 1—a package that saves nearly as much as the best keeps nearly the same score. A package that loses money scores 0 on that measure, because breaking even is the bottom of the scale. Then, these scores are weighted according to the chosen goal (financial, energy, or emissions), added up, and the package with the highest total ranks first.",
     caveat:
-      "The weights are planning assumptions chosen to reflect the selected goal. They are not fixed rules and may be refined in future updates. Because scores are rescaled across the packages shown, they indicate relative ranking only — not how good a package is in absolute terms.",
+      "The weights are planning assumptions chosen to reflect the selected goal. They are not fixed rules and may be refined in future updates. Scores are measured against the best package in the current comparison, so adding or removing a package can change them — they show how the options shown compare, not how good a package is in absolute terms.",
   },
   mcda: {
     id: "mcda",
