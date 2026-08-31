@@ -27,7 +27,7 @@ import {
   IconInfoCircle,
   IconShieldCheck,
 } from "@tabler/icons-react";
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo, useState, type ReactNode } from "react";
 import { ConceptMetricCard } from "../../../../components/shared/ConceptMetricCard";
 import { ErrorAlert } from "../../../../components/shared/ErrorAlert";
 import { MetricCard } from "../../../../components/shared/MetricCard";
@@ -36,11 +36,11 @@ import {
   type ConceptId,
 } from "../../../../constants/relifeConcepts";
 import {
-  calculatePercentChange,
   formatCurrency,
-  formatDecimal,
+  formatPercent,
   formatTonnageCo2,
   formatYears,
+  getEnergyReduction,
 } from "../../../../utils/formatters";
 import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
 import { PRA_PACKAGE_ID } from "../../constants";
@@ -67,11 +67,6 @@ function ConceptSentence(conceptId: ConceptId) {
 // Portfolio summary tab content
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Percent change between two portfolio totals, or undefined when there is no base. */
-function totalsReduction(before: number, after: number): number | undefined {
-  return before > 0 ? calculatePercentChange(before, after) : undefined;
-}
-
 function BeforeAfterTonnes({
   before,
   after,
@@ -92,13 +87,18 @@ function BeforeAfterTonnes({
   );
 }
 
+/** Render a value that may be unavailable, so a gap never reads as a zero. */
+function orDash<T>(value: T | undefined, render: (value: T) => ReactNode) {
+  return value !== undefined ? render(value) : "—";
+}
+
 const PortfolioSummary = memo(function PortfolioSummary({
   aggregate,
 }: {
   aggregate: PortfolioPackageAggregate;
 }) {
   const { coverage } = aggregate;
-  const thermalReduction = totalsReduction(
+  const thermalReduction = getEnergyReduction(
     aggregate.totalThermalNeedsBeforeKwh,
     aggregate.totalThermalNeedsAfterKwh,
   );
@@ -152,11 +152,7 @@ const PortfolioSummary = memo(function PortfolioSummary({
           <ConceptMetricCard
             conceptId="npv"
             prefix="Total"
-            value={
-              aggregate.totalNpvEur !== undefined
-                ? formatCurrency(aggregate.totalNpvEur)
-                : "—"
-            }
+            value={orDash(aggregate.totalNpvEur, formatCurrency)}
             variant="highlight"
           />
         </SimpleGrid>
@@ -165,38 +161,24 @@ const PortfolioSummary = memo(function PortfolioSummary({
           <ConceptMetricCard
             conceptId="roi"
             prefix="Portfolio"
-            value={
-              aggregate.portfolioRoi !== undefined
-                ? `${formatDecimal(aggregate.portfolioRoi * 100)}%`
-                : "—"
-            }
+            value={orDash(aggregate.portfolioRoi, (v) =>
+              formatPercent(v * 100),
+            )}
           />
           <ConceptMetricCard
             conceptId="payback-period"
             prefix="Portfolio"
-            value={
-              aggregate.portfolioPaybackYears !== undefined
-                ? formatYears(aggregate.portfolioPaybackYears)
-                : "—"
-            }
+            value={orDash(aggregate.portfolioPaybackYears, formatYears)}
           />
           <ConceptMetricCard
             conceptId="annual-building-thermal-needs"
             prefix="Total reduction in"
-            value={
-              thermalReduction !== undefined
-                ? `${formatDecimal(thermalReduction)}%`
-                : "—"
-            }
+            value={orDash(thermalReduction, formatPercent)}
           />
           <ConceptMetricCard
             conceptId="annual-maintenance-cost"
             prefix="Total"
-            value={
-              aggregate.totalAnnualMaintenanceEur !== undefined
-                ? formatCurrency(aggregate.totalAnnualMaintenanceEur)
-                : "—"
-            }
+            value={orDash(aggregate.totalAnnualMaintenanceEur, formatCurrency)}
           />
         </SimpleGrid>
 
@@ -217,24 +199,16 @@ const PortfolioSummary = memo(function PortfolioSummary({
           <ConceptMetricCard
             conceptId="embodied-carbon"
             prefix="Total"
-            value={
-              aggregate.totalEmbodiedCarbonTon !== undefined
-                ? formatTonnageCo2(aggregate.totalEmbodiedCarbonTon, {
-                    decimal: true,
-                  })
-                : "—"
-            }
+            value={orDash(aggregate.totalEmbodiedCarbonTon, (v) =>
+              formatTonnageCo2(v, { decimal: true }),
+            )}
           />
           <ConceptMetricCard
             conceptId="whole-life-carbon"
             prefix="Total"
-            value={
-              aggregate.totalWholeLifeCarbonTon !== undefined
-                ? formatTonnageCo2(aggregate.totalWholeLifeCarbonTon, {
-                    decimal: true,
-                  })
-                : "—"
-            }
+            value={orDash(aggregate.totalWholeLifeCarbonTon, (v) =>
+              formatTonnageCo2(v, { decimal: true }),
+            )}
           />
         </SimpleGrid>
       </Card>

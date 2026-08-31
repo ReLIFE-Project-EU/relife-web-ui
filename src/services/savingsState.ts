@@ -17,45 +17,42 @@ import type { FinancialResults, RenovationScenario } from "../types/renovation";
 
 export type SavingsAvailability =
   /** The risk assessment ran; the financial figures are real. */
-  | { kind: "appraised" }
+  | "appraised"
   /** Skipped: no measurable energy saving left to appraise. */
-  | { kind: "no-savings" }
+  | "no-savings"
   /** Skipped: a subsidy covers the whole cost, so there is no investment. */
-  | { kind: "fully-funded" }
+  | "fully-funded"
   /** Skipped: no carrier breakdown, so energy could not be priced at all. */
-  | { kind: "not-priceable" }
+  | "not-priceable"
   /** No financial results, or no scenarios to compare. */
-  | { kind: "unknown" };
+  | "unknown";
 
 export function resolveSavingsAvailability(
   renovated: RenovationScenario | undefined,
   financials: FinancialResults | undefined,
 ): SavingsAvailability {
   if (!renovated || !financials) {
-    return { kind: "unknown" };
+    return "unknown";
   }
   if (financials.riskAssessment !== null) {
-    return { kind: "appraised" };
+    return "appraised";
   }
 
   switch (financials.riskSkippedReason) {
     case "fully-subsidized":
-      return { kind: "fully-funded" };
+      return "fully-funded";
     case "missing-carrier-breakdown":
-      return { kind: "not-priceable" };
+      return "not-priceable";
     case "non-positive-savings":
-      return { kind: "no-savings" };
+      return "no-savings";
     default:
       // A result predating the reason field, or one built by a mock.
-      return { kind: "unknown" };
+      return "unknown";
   }
 }
 
 /** Short label for the state, used on badges and in exports. */
-export const savingsAvailabilityLabel: Record<
-  SavingsAvailability["kind"],
-  string
-> = {
+export const savingsAvailabilityLabel: Record<SavingsAvailability, string> = {
   appraised: "Analysed",
   "no-savings": "Already at renovation target",
   "fully-funded": "Fully covered by subsidy",
@@ -65,7 +62,7 @@ export const savingsAvailabilityLabel: Record<
 
 /** One sentence explaining what the state means for the figures shown. */
 export const savingsAvailabilityExplanation: Record<
-  SavingsAvailability["kind"],
+  SavingsAvailability,
   string
 > = {
   appraised: "Financial indicators come from the full risk simulation.",

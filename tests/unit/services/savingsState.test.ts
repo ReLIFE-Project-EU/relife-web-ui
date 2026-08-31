@@ -32,31 +32,25 @@ describe("resolveSavingsAvailability", () => {
       }),
     );
 
-    expect(state.kind).toBe("appraised");
+    expect(state).toBe("appraised");
   });
 
   test("distinguishes each reason the assessment was skipped", () => {
-    const kindFor = (reason: FinancialResults["riskSkippedReason"]) =>
+    const availabilityFor = (reason: FinancialResults["riskSkippedReason"]) =>
       resolveSavingsAvailability(
         scenario,
         financials({ riskSkippedReason: reason }),
-      ).kind;
+      );
 
-    expect(kindFor("fully-subsidized")).toBe("fully-funded");
-    expect(kindFor("missing-carrier-breakdown")).toBe("not-priceable");
-    expect(kindFor("non-positive-savings")).toBe("no-savings");
+    expect(availabilityFor("fully-subsidized")).toBe("fully-funded");
+    expect(availabilityFor("missing-carrier-breakdown")).toBe("not-priceable");
+    expect(availabilityFor("non-positive-savings")).toBe("no-savings");
   });
 
   test("reports unknown without financials or scenarios", () => {
-    expect(resolveSavingsAvailability(scenario, undefined).kind).toBe(
-      "unknown",
-    );
-    expect(resolveSavingsAvailability(undefined, financials()).kind).toBe(
-      "unknown",
-    );
+    expect(resolveSavingsAvailability(scenario, undefined)).toBe("unknown");
+    expect(resolveSavingsAvailability(undefined, financials())).toBe("unknown");
     // A skipped assessment carrying no reason cannot be classified either.
-    expect(resolveSavingsAvailability(scenario, financials()).kind).toBe(
-      "unknown",
-    );
+    expect(resolveSavingsAvailability(scenario, financials())).toBe("unknown");
   });
 });

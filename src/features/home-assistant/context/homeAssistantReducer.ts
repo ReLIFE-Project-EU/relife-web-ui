@@ -178,8 +178,10 @@ export function homeAssistantReducer(
           ...state.building,
           [action.field]: action.value,
         },
-        // Clear estimation when building info changes
+        // Clear estimation when building info changes. The baseline goes with
+        // it: the two come from one run and must never outlive each other.
         estimation: null,
+        baselineSimulation: null,
       };
 
     case "SET_BUILDING":
@@ -190,6 +192,7 @@ export function homeAssistantReducer(
           ...action.building,
         },
         estimation: null,
+        baselineSimulation: null,
       };
 
     case "RESET_BUILDING":
@@ -197,6 +200,7 @@ export function homeAssistantReducer(
         ...state,
         building: initialBuilding,
         estimation: null,
+        baselineSimulation: null,
       };
 
     case "CLEAR_ACCEPTED_ARCHETYPE":

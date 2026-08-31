@@ -18,7 +18,10 @@ import {
 import type { ComponentType } from "react";
 import { EPCBadge } from "../../../../components/shared";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
-import { resolveSavingsAvailability } from "../../../../services/savingsState";
+import {
+  resolveSavingsAvailability,
+  type SavingsAvailability,
+} from "../../../../services/savingsState";
 import type {
   FinancialResults,
   MCDARankingResult,
@@ -366,10 +369,8 @@ function paybackRangeHint(result: FinancialResults | undefined): string {
 type SavingsState =
   | { kind: "ok"; yearlyEur: number; monthlyEur: number }
   | { kind: "unprofitable" }
-  | { kind: "no-savings" }
-  | { kind: "fully-funded" }
-  | { kind: "not-priceable" }
-  | { kind: "unknown" };
+  /** Every reason the shared classifier gives for not appraising at all. */
+  | { kind: Exclude<SavingsAvailability, "appraised"> };
 
 /**
  * A package can only be priced when both the baseline and the renovated
@@ -385,18 +386,7 @@ function resolveSavingsState(
   if (!current) return { kind: "unknown" };
 
   const availability = resolveSavingsAvailability(winner, result);
-  switch (availability.kind) {
-    case "not-priceable":
-      return { kind: "not-priceable" };
-    case "no-savings":
-      return { kind: "no-savings" };
-    case "fully-funded":
-      return { kind: "fully-funded" };
-    case "unknown":
-      return { kind: "unknown" };
-    case "appraised":
-      break;
-  }
+  if (availability !== "appraised") return { kind: availability };
 
   const monthlyEur = result?.riskAssessment?.pointForecasts.MonthlyAvgSavings;
   if (monthlyEur === undefined) return { kind: "unknown" };
@@ -410,7 +400,6 @@ function savingsTileValue(savings: SavingsState): string {
     case "ok":
       return `${formatApproxCurrency(savings.yearlyEur)}/yr`;
     case "unprofitable":
-      return "No net saving";
     case "no-savings":
       return "No net saving";
     case "fully-funded":

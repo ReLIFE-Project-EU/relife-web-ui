@@ -36,6 +36,7 @@ import {
 import { computeLifetimeCarbonKgCo2e } from "../../../../services/carrierSavingsService";
 import { formatArchetypeName } from "../../../../utils/archetypeLabels";
 import { CashFlowChart } from "../../../../components/shared/CashFlowChart";
+import { baselineScenarioOf, renovatedOf } from "../../services/scenarioLookup";
 import type { PRABuilding, BuildingAnalysisResult } from "../../context/types";
 import { FinancialRiskAnalytics } from "./FinancialRiskAnalytics";
 
@@ -55,8 +56,8 @@ export function BuildingDrillDownModal({
   projectLifetime,
 }: BuildingDrillDownModalProps) {
   const archetype = result?.estimation?.archetype;
-  const renovated = result?.scenarios?.find((s) => s.id === "renovated");
-  const baseline = result?.scenarios?.find((s) => s.id === "current");
+  const renovated = result ? renovatedOf(result) : undefined;
+  const baseline = result ? baselineScenarioOf(result) : undefined;
   const fr = result?.financialResults;
 
   const co2Before = baseline?.annualEmissionsTonCo2e;
@@ -73,9 +74,7 @@ export function BuildingDrillDownModal({
   const cashFlowData = fr?.riskAssessment?.cashFlowData;
   const availability = resolveSavingsAvailability(renovated, fr);
   const horizonYears =
-    projectLifetime ??
-    fr?.riskAssessment?.metadata.project_lifetime ??
-    undefined;
+    projectLifetime ?? fr?.riskAssessment?.metadata.project_lifetime;
   const lifetimeCarbonKg = computeLifetimeCarbonKgCo2e({
     embodiedCarbonKgCo2e: embodiedCarbonKg,
     annualOperationalEmissionsTonCo2e: co2After,
@@ -234,14 +233,14 @@ export function BuildingDrillDownModal({
             </SimpleGrid>
 
             {/* No-savings hint */}
-            {availability.kind !== "appraised" && (
+            {availability !== "appraised" && (
               <Alert
-                color={availability.kind === "fully-funded" ? "teal" : "yellow"}
+                color={availability === "fully-funded" ? "teal" : "yellow"}
                 variant="light"
                 icon={<IconInfoCircle size={16} />}
-                title={savingsAvailabilityLabel[availability.kind]}
+                title={savingsAvailabilityLabel[availability]}
               >
-                {savingsAvailabilityExplanation[availability.kind]}
+                {savingsAvailabilityExplanation[availability]}
               </Alert>
             )}
 
@@ -278,7 +277,7 @@ export function BuildingDrillDownModal({
                 projectLifetime={horizonYears}
                 title="Cash flow timeline"
               />
-            ) : fr?.riskAssessment !== null && renovated ? (
+            ) : availability === "appraised" ? (
               <Alert
                 color="gray"
                 variant="light"

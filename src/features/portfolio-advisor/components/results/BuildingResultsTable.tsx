@@ -32,6 +32,7 @@ import {
   formatDecimal,
   formatEnergyPerYear,
   formatFixed,
+  formatPercent,
   getEnergyReduction,
   isPaybackBeyondHorizon,
 } from "../../../../utils/formatters";
@@ -43,9 +44,9 @@ import {
   savingsAvailabilityLabel,
   type SavingsAvailability,
 } from "../../../../services/savingsState";
-import { PRA_BASELINE_SCENARIO_ID, PRA_PACKAGE_ID } from "../../constants";
+import { baselineScenarioOf, renovatedOf } from "../../services/scenarioLookup";
 
-export type StatusFilter =
+type StatusFilter =
   | "all"
   | "pending"
   | "running"
@@ -79,8 +80,6 @@ interface BuildingResultsTableProps {
   buildings: PRABuilding[];
   results: Record<string, BuildingAnalysisResult>;
   onRowClick?: (vm: RowVm) => void;
-  /** Default sort (defaults to NPV desc) */
-  defaultSort?: SortState;
 }
 
 function buildRowVms(
@@ -92,7 +91,7 @@ function buildRowVms(
       const result = results[building.id];
       if (!result) return null;
       const isSuccess = result.status === "success";
-      const renovated = result.scenarios?.find((s) => s.id === PRA_PACKAGE_ID);
+      const renovated = renovatedOf(result);
       const fr = result.financialResults;
       const availability = resolveSavingsAvailability(renovated, fr);
       const energyBefore = result.estimation?.annualEnergyNeeds;
@@ -112,11 +111,6 @@ function buildRowVms(
     .filter((v): v is RowVm => v !== null);
 }
 
-/** Baseline scenario for a result, where the comparable "before" figures live. */
-function baselineOf(result: BuildingAnalysisResult) {
-  return result.scenarios?.find((s) => s.id === PRA_BASELINE_SCENARIO_ID);
-}
-
 function applyStatusFilter(rows: RowVm[], filter: StatusFilter): RowVm[] {
   if (filter === "all") return rows;
   if (filter === "unprofitable") {
@@ -125,7 +119,7 @@ function applyStatusFilter(rows: RowVm[], filter: StatusFilter): RowVm[] {
     return rows.filter(
       (r) =>
         r.isSuccess &&
-        r.availability.kind === "appraised" &&
+        r.availability === "appraised" &&
         r.npv !== undefined &&
         r.npv <= 0,
     );
@@ -134,8 +128,8 @@ function applyStatusFilter(rows: RowVm[], filter: StatusFilter): RowVm[] {
     return rows.filter(
       (r) =>
         r.isSuccess &&
-        r.availability.kind !== "appraised" &&
-        r.availability.kind !== "unknown",
+        r.availability !== "appraised" &&
+        r.availability !== "unknown",
     );
   }
   return rows.filter((r) => r.result.status === filter);
@@ -143,21 +137,21 @@ function applyStatusFilter(rows: RowVm[], filter: StatusFilter): RowVm[] {
 
 function applySort(rows: RowVm[], sort: SortState): RowVm[] {
   const dir = sort.dir === "asc" ? 1 : -1;
+  const get = (r: RowVm): number | string => {
+    switch (sort.key) {
+      case "name":
+        return r.building.name.toLowerCase();
+      case "energyReduction":
+        return r.energyReduction ?? Infinity;
+      case "npv":
+        return r.npv ?? -Infinity;
+      case "roi":
+        return r.roi ?? -Infinity;
+      case "pbp":
+        return r.pbp ?? Infinity;
+    }
+  };
   return [...rows].sort((a, b) => {
-    const get = (r: RowVm): number | string => {
-      switch (sort.key) {
-        case "name":
-          return r.building.name.toLowerCase();
-        case "energyReduction":
-          return r.energyReduction ?? Infinity;
-        case "npv":
-          return r.npv ?? -Infinity;
-        case "roi":
-          return r.roi ?? -Infinity;
-        case "pbp":
-          return r.pbp ?? Infinity;
-      }
-    };
     const va = get(a);
     const vb = get(b);
     if (typeof va === "number" && typeof vb === "number") {
@@ -171,10 +165,9 @@ export function BuildingResultsTable({
   buildings,
   results,
   onRowClick,
-  defaultSort = { key: "npv", dir: "desc" },
 }: BuildingResultsTableProps) {
   const [filter, setFilter] = useState<StatusFilter>("all");
-  const [sort, setSort] = useState<SortState>(defaultSort);
+  const [sort, setSort] = useState<SortState>({ key: "npv", dir: "desc" });
 
   const allRows = useMemo(
     () => buildRowVms(buildings, results),
@@ -192,9 +185,9 @@ export function BuildingResultsTable({
   );
 
   const showDeliveredEnergyColumn = visibleRows.some(({ result }) => {
-    const renovated = result.scenarios?.find((s) => s.id === PRA_PACKAGE_ID);
+    const renovated = renovatedOf(result);
     return (
-      baselineOf(result)?.deliveredTotal !== undefined ||
+      baselineScenarioOf(result)?.deliveredTotal !== undefined ||
       renovated?.deliveredTotal !== undefined
     );
   });
@@ -345,9 +338,9 @@ function ResultsRow({
   const { building, result, isSuccess, availability, energyReduction } = row;
   // A skipped appraisal leaves placeholder zeros on the result; showing them
   // dimmed still shows a number, so render them as unavailable instead.
-  const appraised = availability.kind === "appraised";
+  const appraised = availability === "appraised";
   const fr = result.financialResults;
-  const renovated = result.scenarios?.find((s) => s.id === PRA_PACKAGE_ID);
+  const renovated = renovatedOf(result);
   const epcBefore = result.estimation?.estimatedEPC;
   const epcAfter = renovated?.epcClass;
   const intensityBefore = getEnergyIntensity(
@@ -361,7 +354,7 @@ function ResultsRow({
   // Baseline scenario, not the step-1 estimation: this is the figure the
   // Financial service prices savings against, and what the portfolio summary
   // above this table already sums.
-  const deliveredBefore = baselineOf(result)?.deliveredTotal;
+  const deliveredBefore = baselineScenarioOf(result)?.deliveredTotal;
   const deliveredAfter = renovated?.deliveredTotal;
   const deliveredEnergyReduction = getEnergyReduction(
     deliveredBefore,
@@ -474,15 +467,11 @@ function ResultsRow({
           >
             {formatCurrency(fr.netPresentValue)}
           </Text>
-        ) : isSuccess ? (
-          <Text size="sm" c="dimmed">
-            —
-          </Text>
         ) : result.status === "error" ? (
           <Text size="xs" c="red">
             {(result.error ?? "").substring(0, 40)}
           </Text>
-        ) : result.status === "rejected" ? (
+        ) : isSuccess || result.status === "rejected" ? (
           <Text size="sm" c="dimmed">
             —
           </Text>
@@ -497,7 +486,7 @@ function ResultsRow({
           style={{ fontVariantNumeric: "tabular-nums" }}
         >
           {isSuccess && fr && appraised
-            ? `${formatDecimal(fr.returnOnInvestment * 100)}%`
+            ? formatPercent(fr.returnOnInvestment * 100)
             : "—"}
         </Text>
       </Table.Td>
@@ -525,7 +514,7 @@ function ResultsRow({
  * A fully-funded renovation is a good outcome, not a failure, so it is the one
  * unappraised state that is not flagged in warning colours.
  */
-const AVAILABILITY_BADGE_COLOR: Record<SavingsAvailability["kind"], string> = {
+const AVAILABILITY_BADGE_COLOR: Record<SavingsAvailability, string> = {
   appraised: "gray",
   "no-savings": "yellow",
   "fully-funded": "teal",
@@ -536,22 +525,22 @@ const AVAILABILITY_BADGE_COLOR: Record<SavingsAvailability["kind"], string> = {
 function RowStatusBadge({ row }: { row: RowVm }) {
   const { result, isSuccess, availability } = row;
 
-  if (isSuccess && availability.kind !== "appraised") {
+  if (isSuccess && availability !== "appraised") {
     return (
       <Tooltip
-        label={savingsAvailabilityExplanation[availability.kind]}
+        label={savingsAvailabilityExplanation[availability]}
         multiline
         w={300}
         position="bottom-start"
       >
         <Badge
-          color={AVAILABILITY_BADGE_COLOR[availability.kind]}
+          color={AVAILABILITY_BADGE_COLOR[availability]}
           variant="light"
           size="sm"
           leftSection={<IconInfoCircle size={11} />}
           style={{ cursor: "default" }}
         >
-          {savingsAvailabilityLabel[availability.kind]}
+          {savingsAvailabilityLabel[availability]}
         </Badge>
       </Tooltip>
     );

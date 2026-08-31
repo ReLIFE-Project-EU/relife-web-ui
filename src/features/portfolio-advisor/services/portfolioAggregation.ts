@@ -12,13 +12,13 @@
  */
 
 import type { BuildingAnalysisResult } from "../context/types";
-import { PRA_BASELINE_SCENARIO_ID } from "../constants";
+import { baselineScenarioOf } from "./scenarioLookup";
 import { computeLifetimeCarbonKgCo2e } from "../../../services/carrierSavingsService";
 import { computePooledPaybackYears } from "../../../utils/financialCalculations";
 
 const KG_PER_TONNE = 1000;
 
-export interface PortfolioCoverage {
+interface PortfolioCoverage {
   /** Every building the user entered, whether or not it produced a result. */
   totalBuildings: number;
   /** Buildings inside the totals below. */
@@ -66,10 +66,8 @@ export interface PortfolioPackageAggregate {
  * them, and where the two sources agree. Resolved here so the split can later
  * be unified in one place.
  */
-function baselineOf(result: BuildingAnalysisResult) {
-  const scenario = result.scenarios?.find(
-    (candidate) => candidate.id === PRA_BASELINE_SCENARIO_ID,
-  );
+function baselineFiguresOf(result: BuildingAnalysisResult) {
+  const scenario = baselineScenarioOf(result);
   return {
     thermalKwh: result.estimation?.annualEnergyNeeds,
     deliveredKwh: scenario?.deliveredTotal,
@@ -170,7 +168,7 @@ export function aggregatePortfolioPackage(input: {
     }
 
     coverage.contributing++;
-    const baseline = baselineOf(result);
+    const baseline = baselineFiguresOf(result);
 
     totalCapexEur += financials.capitalExpenditure;
     addOptional(maintenance, financials.annualMaintenanceCost);

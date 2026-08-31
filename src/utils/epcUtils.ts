@@ -39,6 +39,20 @@ export function getEPCColor(epcClass: string): string {
 export const EPC_ORDER = ["G", "F", "E", "D", "C", "B", "A", "A+"];
 
 /**
+ * EPC classes some building occupies before or after renovation, best first.
+ * Shared so a distribution table and its CSV export cannot order or filter
+ * the same tally differently.
+ */
+export function occupiedEpcClasses(
+  before: Record<string, number>,
+  after: Record<string, number>,
+): string[] {
+  return [...EPC_ORDER]
+    .reverse()
+    .filter((epcClass) => (before[epcClass] ?? 0) + (after[epcClass] ?? 0) > 0);
+}
+
+/**
  * Get the numeric index of an EPC class (0 = G, 7 = A+).
  * Returns -1 if not found.
  */

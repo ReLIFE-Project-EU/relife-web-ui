@@ -83,7 +83,7 @@ describe("buildBuildingsCsv", () => {
     b3: rejectedResult,
   };
 
-  const csv = buildBuildingsCsv(buildings, results);
+  const csv = buildBuildingsCsv(buildings, results, 20);
   const lines = csv.split("\r\n");
   const header = lines[0].split(",");
   const dataRows = lines.slice(1).map((line) => line.split(","));

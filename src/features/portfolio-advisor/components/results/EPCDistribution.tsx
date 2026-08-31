@@ -7,7 +7,7 @@
 
 import { Table, Text } from "@mantine/core";
 import { EPCBadge } from "../../../../components/shared";
-import { EPC_ORDER } from "../../../../utils/epcUtils";
+import { occupiedEpcClasses } from "../../../../utils/epcUtils";
 
 interface EPCDistributionProps {
   /** Building counts per EPC class before renovation. */
@@ -25,10 +25,7 @@ function Count({ value }: { value: number }) {
 }
 
 export function EPCDistribution({ before, after }: EPCDistributionProps) {
-  // Best class first, and only classes some building actually occupies.
-  const classes = [...EPC_ORDER]
-    .reverse()
-    .filter((epcClass) => (before[epcClass] ?? 0) + (after[epcClass] ?? 0) > 0);
+  const classes = occupiedEpcClasses(before, after);
 
   if (classes.length === 0) {
     return (

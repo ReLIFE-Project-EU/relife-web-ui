@@ -304,22 +304,14 @@ export class EnergyService implements IEnergyService {
     category: string;
     country: string;
     name: string;
-    weatherSource?: "pvgis" | "epw";
   }): string {
-    return [
-      params.category,
-      params.country,
-      params.name,
-      params.weatherSource ?? "pvgis",
-    ].join(":");
+    return [params.category, params.country, params.name].join(":");
   }
 
   private simulateArchetype(params: {
     category: string;
     country: string;
     name: string;
-    weatherSource?: "pvgis" | "epw";
-    floorArea: number | null;
   }): Promise<ECMScenario> {
     const cacheKey = this.getArchetypeSimulationCacheKey(params);
     const cachedPromise = this.archetypeSimulationCache.get(cacheKey);
@@ -335,7 +327,8 @@ export class EnergyService implements IEnergyService {
         country: params.country,
         name: params.name,
       },
-      floorArea: params.floorArea,
+      // Only read when a PV measure is applied, and a baseline run has none.
+      floorArea: null,
     }).catch((error: unknown) => {
       this.archetypeSimulationCache.delete(cacheKey);
       throw error;
@@ -833,8 +826,6 @@ export class EnergyService implements IEnergyService {
             category: archetype.category,
             country: archetype.country,
             name: archetype.name,
-            weatherSource: "pvgis",
-            floorArea: archetypeDetails.floorArea,
           }),
         ]);
 
@@ -912,8 +903,6 @@ export class EnergyService implements IEnergyService {
         category: archetype.category,
         country: archetype.country,
         name: archetype.name,
-        weatherSource: "pvgis",
-        floorArea: archetypeDetails.floorArea,
       });
 
       const result = this.buildEstimationFromSimulation({
@@ -941,14 +930,6 @@ export class EnergyService implements IEnergyService {
       );
       return { estimation: result, baselineSimulation: simulationResponse };
     } catch (error) {
-      if (error instanceof TypeError && error.message.includes("fetch")) {
-        throw new APIConnectionError();
-      }
-      if (error instanceof APIError) {
-        throw new APIConnectionError(
-          `Energy simulation failed with error ${error.status}: ${error.statusText}`,
-        );
-      }
       this.handleSimulationError(error);
     }
   }

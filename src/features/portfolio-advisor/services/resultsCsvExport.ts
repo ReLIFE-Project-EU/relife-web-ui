@@ -8,29 +8,20 @@
  */
 
 import { serializeCsv, type CsvColumn } from "../../../utils/csvExport";
-import { calculatePercentChange } from "../../../utils/formatters";
+import { getEnergyReduction } from "../../../utils/formatters";
 import { getCountryCode } from "../../../utils/countries";
-import { getEPCImprovement, EPC_ORDER } from "../../../utils/epcUtils";
+import { getEPCImprovement, occupiedEpcClasses } from "../../../utils/epcUtils";
 import { computeLifetimeCarbonKgCo2e } from "../../../services/carrierSavingsService";
 import { resolveSavingsAvailability } from "../../../services/savingsState";
 import type { PortfolioPackageAggregate } from "./portfolioAggregation";
+import { baselineScenarioOf, renovatedOf } from "./scenarioLookup";
 import type { BuildingAnalysisResult, PRABuilding } from "../context/types";
 
 interface BuildingExportRow {
   building: PRABuilding;
   result: BuildingAnalysisResult;
-  /** Configured horizon, falling back to the value the service echoed back. */
-  projectLifetimeYears: number | undefined;
-}
-
-/** Renovated scenario for a result, mirroring the table's lookup. */
-function renovatedOf(result: BuildingAnalysisResult) {
-  return result.scenarios?.find((s) => s.id === "renovated");
-}
-
-/** Baseline scenario for a result, where pre-renovation emissions are held. */
-function baselineOf(result: BuildingAnalysisResult) {
-  return result.scenarios?.find((s) => s.id === "current");
+  /** Configured horizon, always supplied by the caller. */
+  projectLifetimeYears: number;
 }
 
 /**
@@ -59,10 +50,10 @@ function statusLabel({ result }: BuildingExportRow): string {
     renovatedOf(result),
     result.financialResults,
   );
-  return availability.kind === "appraised" ? "success" : availability.kind;
+  return availability === "appraised" ? "success" : availability;
 }
 
-export const buildingExportColumns: CsvColumn<BuildingExportRow>[] = [
+const buildingExportColumns: CsvColumn<BuildingExportRow>[] = [
   { key: "name", header: "Building", value: (r) => r.building.name },
   { key: "status", header: "Status", value: statusLabel },
   { key: "country", header: "Country", value: (r) => r.building.country },
@@ -104,13 +95,11 @@ export const buildingExportColumns: CsvColumn<BuildingExportRow>[] = [
   {
     key: "energyReduction",
     header: "Energy reduction (%)",
-    value: (r) => {
-      const before = r.result.estimation?.annualEnergyNeeds;
-      const after = renovatedOf(r.result)?.annualEnergyNeeds;
-      return before !== undefined && after !== undefined && before > 0
-        ? calculatePercentChange(before, after)
-        : undefined;
-    },
+    value: (r) =>
+      getEnergyReduction(
+        r.result.estimation?.annualEnergyNeeds,
+        renovatedOf(r.result)?.annualEnergyNeeds,
+      ),
   },
   {
     key: "systemBefore",
@@ -118,7 +107,7 @@ export const buildingExportColumns: CsvColumn<BuildingExportRow>[] = [
     // Baseline scenario, not the step-1 estimation: this is the figure the
     // Financial service prices savings against, and the portfolio total in the
     // summary export sums this same basis.
-    value: (r) => baselineOf(r.result)?.deliveredTotal,
+    value: (r) => baselineScenarioOf(r.result)?.deliveredTotal,
   },
   {
     key: "systemAfter",
@@ -193,7 +182,7 @@ export const buildingExportColumns: CsvColumn<BuildingExportRow>[] = [
   {
     key: "co2Before",
     header: "Operational emissions before (t CO2e/year)",
-    value: (r) => baselineOf(r.result)?.annualEmissionsTonCo2e,
+    value: (r) => baselineScenarioOf(r.result)?.annualEmissionsTonCo2e,
   },
   {
     key: "co2After",
@@ -238,19 +227,13 @@ export const buildingExportColumns: CsvColumn<BuildingExportRow>[] = [
 export function buildBuildingsCsv(
   buildings: PRABuilding[],
   results: Record<string, BuildingAnalysisResult>,
-  projectLifetime?: number,
+  projectLifetime: number,
 ): string {
   const rows = buildings
     .map((building) => {
       const result = results[building.id];
       if (!result) return null;
-      return {
-        building,
-        result,
-        projectLifetimeYears:
-          projectLifetime ??
-          result.financialResults?.riskAssessment?.metadata?.project_lifetime,
-      };
+      return { building, result, projectLifetimeYears: projectLifetime };
     })
     .filter((row): row is BuildingExportRow => row !== null);
   return serializeCsv(rows, buildingExportColumns);
@@ -258,7 +241,8 @@ export function buildBuildingsCsv(
 
 interface SummaryRow {
   metric: string;
-  value: string | number | null;
+  /** Nullish writes an empty cell, keeping an unavailable total distinct from a real zero. */
+  value: string | number | null | undefined;
 }
 
 const summaryColumns: CsvColumn<SummaryRow>[] = [
@@ -277,18 +261,18 @@ export function buildSummaryCsv(aggregate: PortfolioPackageAggregate): string {
     { metric: "Rejected", value: coverage.rejected },
     { metric: "Not costed", value: coverage.withoutPackage },
     { metric: "Total CAPEX (EUR)", value: aggregate.totalCapexEur },
-    { metric: "Total NPV (EUR)", value: optional(aggregate.totalNpvEur) },
+    { metric: "Total NPV (EUR)", value: aggregate.totalNpvEur },
     {
       metric: "Total annual maintenance cost (EUR/year)",
-      value: optional(aggregate.totalAnnualMaintenanceEur),
+      value: aggregate.totalAnnualMaintenanceEur,
     },
     {
       metric: "Portfolio ROI (ratio)",
-      value: optional(aggregate.portfolioRoi),
+      value: aggregate.portfolioRoi,
     },
     {
       metric: "Portfolio payback period (years)",
-      value: optional(aggregate.portfolioPaybackYears),
+      value: aggregate.portfolioPaybackYears,
     },
     {
       metric: "Total thermal needs before (kWh/year)",
@@ -300,61 +284,48 @@ export function buildSummaryCsv(aggregate: PortfolioPackageAggregate): string {
     },
     {
       metric: "Total system energy before (kWh/year)",
-      value: optional(aggregate.totalDeliveredBeforeKwh),
+      value: aggregate.totalDeliveredBeforeKwh,
     },
     {
       metric: "Total system energy after (kWh/year)",
-      value: optional(aggregate.totalDeliveredAfterKwh),
+      value: aggregate.totalDeliveredAfterKwh,
     },
     {
       metric: "Total operational emissions before (t CO2e/year)",
-      value: optional(aggregate.totalAnnualEmissionsBeforeTon),
+      value: aggregate.totalAnnualEmissionsBeforeTon,
     },
     {
       metric: "Total operational emissions after (t CO2e/year)",
-      value: optional(aggregate.totalAnnualEmissionsAfterTon),
+      value: aggregate.totalAnnualEmissionsAfterTon,
     },
     {
       metric: "Total material carbon (t CO2e)",
-      value: optional(aggregate.totalEmbodiedCarbonTon),
+      value: aggregate.totalEmbodiedCarbonTon,
     },
     {
       metric: "Total whole-life carbon (t CO2e)",
-      value: optional(aggregate.totalWholeLifeCarbonTon),
+      value: aggregate.totalWholeLifeCarbonTon,
     },
     ...epcDistributionRows(aggregate),
   ];
   return serializeCsv(rows, summaryColumns);
 }
 
-/**
- * `null` writes an empty cell, so an unavailable total stays distinguishable
- * from a real zero when the file is read back.
- */
-function optional(value: number | undefined): number | null {
-  return value ?? null;
-}
-
 /** One row per EPC class the portfolio occupies, before and after. */
 function epcDistributionRows(
   aggregate: PortfolioPackageAggregate,
 ): SummaryRow[] {
-  return [...EPC_ORDER]
-    .reverse()
-    .filter(
-      (epcClass) =>
-        (aggregate.epcCountsBefore[epcClass] ?? 0) +
-          (aggregate.epcCountsAfter[epcClass] ?? 0) >
-        0,
-    )
-    .flatMap((epcClass) => [
-      {
-        metric: `EPC ${epcClass} before (buildings)`,
-        value: aggregate.epcCountsBefore[epcClass] ?? 0,
-      },
-      {
-        metric: `EPC ${epcClass} after (buildings)`,
-        value: aggregate.epcCountsAfter[epcClass] ?? 0,
-      },
-    ]);
+  return occupiedEpcClasses(
+    aggregate.epcCountsBefore,
+    aggregate.epcCountsAfter,
+  ).flatMap((epcClass) => [
+    {
+      metric: `EPC ${epcClass} before (buildings)`,
+      value: aggregate.epcCountsBefore[epcClass] ?? 0,
+    },
+    {
+      metric: `EPC ${epcClass} after (buildings)`,
+      value: aggregate.epcCountsAfter[epcClass] ?? 0,
+    },
+  ]);
 }
