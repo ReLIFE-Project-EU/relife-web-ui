@@ -73,6 +73,7 @@ export function BuildingDrillDownModal({
   const epcAfter = renovated?.epcClass;
   const cashFlowData = fr?.riskAssessment?.cashFlowData;
   const availability = resolveSavingsAvailability(renovated, fr);
+  const appraised = availability === "appraised";
   const horizonYears =
     projectLifetime ?? fr?.riskAssessment?.metadata.project_lifetime;
   const lifetimeCarbonKg = computeLifetimeCarbonKgCo2e({
@@ -214,15 +215,19 @@ export function BuildingDrillDownModal({
                     : "—"
                 }
               />
+              {/* A skipped appraisal leaves placeholder zeros on the result, so
+                  these read as a real €0 and a real payback unless gated. */}
               <MetricCard
                 label="Lifetime NPV"
-                value={fr ? formatCurrency(fr.netPresentValue) : "—"}
+                value={
+                  fr && appraised ? formatCurrency(fr.netPresentValue) : "—"
+                }
                 variant="highlight"
               />
               <MetricCard
                 label="Payback"
                 value={
-                  fr
+                  fr && appraised
                     ? formatPaybackYears(
                         fr.paybackTime,
                         fr.riskAssessment?.metadata.project_lifetime,
@@ -233,7 +238,7 @@ export function BuildingDrillDownModal({
             </SimpleGrid>
 
             {/* No-savings hint */}
-            {availability !== "appraised" && (
+            {!appraised && (
               <Alert
                 color={availability === "fully-funded" ? "teal" : "yellow"}
                 variant="light"
@@ -277,7 +282,7 @@ export function BuildingDrillDownModal({
                 projectLifetime={horizonYears}
                 title="Cash flow timeline"
               />
-            ) : availability === "appraised" ? (
+            ) : appraised ? (
               <Alert
                 color="gray"
                 variant="light"
