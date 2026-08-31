@@ -21,8 +21,8 @@ import {
   formatDecimal,
   formatEnergy,
   formatNumber,
+  formatPaybackYears,
   formatTonnageCo2,
-  formatYears,
 } from "../../../../utils/formatters";
 import { RSE_PACKAGES } from "../../services/rsePackageCatalog";
 import type { RSEPackageAggregate, RSERenovationGoal } from "../../types";
@@ -36,9 +36,14 @@ import classes from "./StrategyResults.module.css";
 interface PackageDeepDiveProps {
   aggregate: RSEPackageAggregate;
   goal: RSERenovationGoal;
+  projectLifetimeYears: number;
 }
 
-export function PackageDeepDive({ aggregate, goal }: PackageDeepDiveProps) {
+export function PackageDeepDive({
+  aggregate,
+  goal,
+  projectLifetimeYears,
+}: PackageDeepDiveProps) {
   const pkg = RSE_PACKAGES[aggregate.packageId];
   const color = PACKAGE_COLORS[aggregate.packageId];
   const { aggregateNPV, aggregateROI, aggregatePaybackYears } =
@@ -170,7 +175,10 @@ export function PackageDeepDive({ aggregate, goal }: PackageDeepDiveProps) {
               conceptId="payback-period"
               value={
                 aggregatePaybackYears !== undefined
-                  ? formatYears(aggregatePaybackYears)
+                  ? formatPaybackYears(
+                      aggregatePaybackYears,
+                      projectLifetimeYears,
+                    )
                   : "—"
               }
             />
@@ -204,12 +212,21 @@ export function PackageDeepDive({ aggregate, goal }: PackageDeepDiveProps) {
         </div>
       </div>
 
-      <PerArchetypeTable aggregate={aggregate} />
+      <PerArchetypeTable
+        aggregate={aggregate}
+        projectLifetimeYears={projectLifetimeYears}
+      />
     </div>
   );
 }
 
-function PerArchetypeTable({ aggregate }: { aggregate: RSEPackageAggregate }) {
+function PerArchetypeTable({
+  aggregate,
+  projectLifetimeYears,
+}: {
+  aggregate: RSEPackageAggregate;
+  projectLifetimeYears: number;
+}) {
   const perArchetype = aggregate.financialIndicators.perArchetypeOnly;
   const archetypeKeys = perArchetype
     ? Array.from(
@@ -258,10 +275,14 @@ function PerArchetypeTable({ aggregate }: { aggregate: RSEPackageAggregate }) {
                   {irr !== undefined ? `${formatDecimal(irr * 100)}%` : "—"}
                 </Table.Td>
                 <Table.Td>
-                  {pbp !== undefined ? formatYears(pbp) : "—"}
+                  {pbp !== undefined
+                    ? formatPaybackYears(pbp, projectLifetimeYears)
+                    : "—"}
                 </Table.Td>
                 <Table.Td>
-                  {dpp !== undefined ? formatYears(dpp) : "—"}
+                  {dpp !== undefined
+                    ? formatPaybackYears(dpp, projectLifetimeYears)
+                    : "—"}
                 </Table.Td>
               </Table.Tr>
             );

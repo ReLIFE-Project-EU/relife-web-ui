@@ -119,6 +119,9 @@ export function ResultsStep() {
               <PackageDeepDive
                 aggregate={activeAggregate}
                 goal={request.goal}
+                projectLifetimeYears={
+                  request.financialAssumptions.projectLifetimeYears
+                }
               />
             ) : null}
           </Box>
