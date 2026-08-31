@@ -204,62 +204,51 @@ describe("PortfolioAnalysisService", () => {
     );
   });
 
-  test("system-only selections produce the PRA renovated scenario and reach finance", async () => {
-    const results = await service.analyzePortfolio({
-      buildings: [createBuilding()],
-      selectedMeasures: ["condensing-boiler"],
-      funding,
-      projectLifetime: 20,
-      onProgress: vi.fn(),
-      globalCapex: 12000,
-      globalMaintenanceCost: 500,
-    });
+  /**
+   * Every selection shape collapses to one "renovated" package; only the
+   * surviving measure ids differ, so they are asserted from one table.
+   */
+  test.each([
+    ["system-only", ["condensing-boiler"], ["condensing-boiler"]],
+    [
+      "mixed envelope and system",
+      ["wall-insulation", "air-water-heat-pump"],
+      ["wall-insulation", "air-water-heat-pump"],
+    ],
+    ["PV", ["pv"], ["pv"]],
+  ])(
+    "%s selections produce the PRA renovated scenario and reach finance",
+    async (_label, selectedMeasures, expectedMeasureIds) => {
+      const results = await service.analyzePortfolio({
+        buildings: [createBuilding()],
+        selectedMeasures: selectedMeasures as RenovationMeasureId[],
+        funding,
+        projectLifetime: 20,
+        onProgress: vi.fn(),
+        globalCapex: 12000,
+        globalMaintenanceCost: 500,
+      });
 
-    expect(mockEvaluateScenarios).toHaveBeenCalledWith(
-      expect.any(Object),
-      estimation,
-      expect.any(Object),
-      [
-        {
-          id: "renovated",
-          label: "After Renovation",
-          measureIds: ["condensing-boiler"],
-        },
-      ],
-      expect.anything(),
-    );
-    expect(mockCalculateForAllScenarios).toHaveBeenCalled();
-    expect(results["building-1"]).toMatchObject({
-      status: "success",
-      financialResults: financialResults.renovated,
-    });
-  });
-
-  test("mixed selections keep both envelope and system measures in the PRA renovated scenario", async () => {
-    await service.analyzePortfolio({
-      buildings: [createBuilding()],
-      selectedMeasures: ["wall-insulation", "air-water-heat-pump"],
-      funding,
-      projectLifetime: 20,
-      onProgress: vi.fn(),
-      globalCapex: 12000,
-      globalMaintenanceCost: 500,
-    });
-
-    expect(mockEvaluateScenarios).toHaveBeenCalledWith(
-      expect.any(Object),
-      estimation,
-      expect.any(Object),
-      [
-        {
-          id: "renovated",
-          label: "After Renovation",
-          measureIds: ["wall-insulation", "air-water-heat-pump"],
-        },
-      ],
-      expect.anything(),
-    );
-  });
+      expect(mockEvaluateScenarios).toHaveBeenCalledWith(
+        expect.any(Object),
+        estimation,
+        expect.any(Object),
+        [
+          {
+            id: "renovated",
+            label: "After Renovation",
+            measureIds: expectedMeasureIds,
+          },
+        ],
+        expect.anything(),
+      );
+      expect(mockCalculateForAllScenarios).toHaveBeenCalled();
+      expect(results["building-1"]).toMatchObject({
+        status: "success",
+        financialResults: financialResults.renovated,
+      });
+    },
+  );
 
   test("passes financial assumptions through to the financial service", async () => {
     await service.analyzePortfolio({
@@ -315,36 +304,6 @@ describe("PortfolioAnalysisService", () => {
     );
 
     warnSpy.mockRestore();
-  });
-
-  test("PV selections produce the PRA renovated scenario", async () => {
-    const results = await service.analyzePortfolio({
-      buildings: [createBuilding()],
-      selectedMeasures: ["pv"],
-      funding,
-      projectLifetime: 20,
-      onProgress: vi.fn(),
-      globalCapex: 12000,
-      globalMaintenanceCost: 500,
-    });
-
-    expect(mockEvaluateScenarios).toHaveBeenCalledWith(
-      expect.any(Object),
-      estimation,
-      expect.any(Object),
-      [
-        {
-          id: "renovated",
-          label: "After Renovation",
-          measureIds: ["pv"],
-        },
-      ],
-      expect.anything(),
-    );
-    expect(mockCalculateForAllScenarios).toHaveBeenCalled();
-    expect(results["building-1"]).toMatchObject({
-      status: "success",
-    });
   });
 
   test("resolves CAPEX/OPEX from the Financial lookup when no override is set", async () => {

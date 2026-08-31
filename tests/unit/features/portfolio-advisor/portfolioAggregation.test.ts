@@ -19,80 +19,52 @@ function successResult(options: {
   /** Omit the risk result the way FinancialService does when it skips the call. */
   unappraised?: boolean;
 }): BuildingAnalysisResult {
-  const scenarioBase = {
-    epcClass: "B",
-    annualEnergyNeeds: 8_000,
-    heatingCoolingNeeds: 8_000,
-    flexibilityIndex: 50,
-    comfortIndex: 50,
-    measureIds: [],
-    measures: [],
-  };
-
   return {
     buildingId: options.id,
     status: "success",
+    // deliveredTotal deliberately disagrees with the "current" scenario below.
     estimation: {
       estimatedEPC: "E",
       annualEnergyNeeds: 12_000,
-      heatingCoolingNeeds: 12_000,
-      heatingDemand: 9_000,
-      coolingDemand: 3_000,
-      flexibilityIndex: 50,
-      comfortIndex: 50,
-      annualEnergyConsumption: 12_000,
       deliveredTotal: 9_999,
-      archetypeFloorArea: 100,
     },
     scenarios: [
       {
-        ...scenarioBase,
         id: "current",
-        label: "Current Status",
         epcClass: "E",
         annualEnergyNeeds: 12_000,
-        heatingCoolingNeeds: 12_000,
         annualEmissionsTonCo2e: 4,
         deliveredTotal: 14_000,
-        packageId: "current",
       },
       {
-        ...scenarioBase,
         id: PACKAGE_ID,
-        label: "After Renovation",
+        epcClass: "B",
+        annualEnergyNeeds: 8_000,
         annualEmissionsTonCo2e: 1.5,
         deliveredTotal: 5_000,
         embodiedCarbonKgCo2e: options.embodiedCarbonKgCo2e,
-        packageId: PACKAGE_ID,
       },
     ],
     financialResults: {
-      arv: null,
       capitalExpenditure: options.capex,
       returnOnInvestment: options.roi,
       paybackTime: 10,
       netPresentValue: options.npv ?? 1_000,
-      afterRenovationValue: null,
       riskAssessment: options.unappraised
         ? null
-        : ({
+        : {
             pointForecasts: {},
             metadata: {},
             ...(options.netByYear
               ? {
                   cashFlowData: {
-                    years: options.netByYear.map((_, index) => index),
-                    annual_inflows: [],
-                    annual_outflows: [],
                     annual_net_cash_flow: options.netByYear,
                   },
                 }
               : {}),
-          } as unknown as NonNullable<
-            BuildingAnalysisResult["financialResults"]
-          >["riskAssessment"]),
+          },
     },
-  };
+  } as unknown as BuildingAnalysisResult;
 }
 
 function aggregate(results: BuildingAnalysisResult[]) {
@@ -104,8 +76,8 @@ function aggregate(results: BuildingAnalysisResult[]) {
   });
 }
 
-describe("portfolio ROI", () => {
-  test("weights by euros invested, not by building count", () => {
+describe("aggregatePortfolioPackage", () => {
+  test("portfolio ROI weights by euros invested, not by building count", () => {
     // A mean of the two ratios would be 0.30. Weighted by CAPEX, the small
     // building's high return barely moves the portfolio.
     const result = aggregate([
@@ -116,16 +88,15 @@ describe("portfolio ROI", () => {
     expect(result.portfolioRoi).toBeCloseTo(0.104, 3);
   });
 
-  test("is unavailable when nothing was invested", () => {
+  test("portfolio ROI is unavailable when nothing was invested", () => {
     const result = aggregate([successResult({ id: "free", capex: 0, roi: 0 })]);
 
     expect(result.portfolioRoi).toBeUndefined();
   });
-});
 
-describe("pooled payback", () => {
-  test("interpolates within the break-even year of the summed series", () => {
-    // Pooled: -200 at year 0, then +50/year. Recovered halfway through year 4.
+  // The pooling rules themselves are covered in financialCalculations.test.ts;
+  // this only pins that each building's series reaches the pooled helper.
+  test("pools every building's cash-flow series into the payback", () => {
     const result = aggregate([
       successResult({
         id: "a",
@@ -144,30 +115,6 @@ describe("pooled payback", () => {
     expect(result.portfolioPaybackYears).toBeCloseTo(4, 5);
   });
 
-  test("is unavailable when the pooled series never breaks even", () => {
-    const result = aggregate([
-      successResult({ id: "a", capex: 100, roi: 0, netByYear: [-100, 1, 1] }),
-    ]);
-
-    expect(result.portfolioPaybackYears).toBeUndefined();
-  });
-
-  test("is unavailable when a building has no cash-flow series", () => {
-    const result = aggregate([
-      successResult({
-        id: "a",
-        capex: 100,
-        roi: 0.1,
-        netByYear: [-100, 60, 60],
-      }),
-      successResult({ id: "b", capex: 100, roi: 0.1 }),
-    ]);
-
-    expect(result.portfolioPaybackYears).toBeUndefined();
-  });
-});
-
-describe("optional totals", () => {
   test("one building without material carbon makes the total unavailable", () => {
     const result = aggregate([
       successResult({
@@ -204,9 +151,7 @@ describe("optional totals", () => {
     // Each building also carries 1.5 t/year operational over 20 years.
     expect(result.totalWholeLifeCarbonTon).toBeCloseTo(8 + 2 * 30, 5);
   });
-});
 
-describe("coverage", () => {
   test("counts failures without letting them into the totals", () => {
     const errored: BuildingAnalysisResult = {
       buildingId: "err",
@@ -239,10 +184,8 @@ describe("coverage", () => {
     expect(result.totalCapexEur).toBe(1_000);
     expect(result.totalNpvEur).toBe(500);
   });
-});
 
-describe("unappraised buildings", () => {
-  test("do not let a skipped risk assessment read as zero return", () => {
+  test("does not let a skipped risk assessment read as zero return", () => {
     // FinancialService substitutes NPV/ROI zeros when it skips the call, so
     // summing them would understate both the total and the ratio.
     const result = aggregate([
@@ -260,10 +203,8 @@ describe("unappraised buildings", () => {
     // CAPEX is known regardless, so it still sums.
     expect(result.totalCapexEur).toBe(200_000);
   });
-});
 
-describe("delivered energy baseline", () => {
-  test("reads the re-simulated baseline, not the step-1 estimation", () => {
+  test("reads delivered energy from the re-simulated baseline, not the estimation", () => {
     // The two disagree by ~15% in practice, and the financial savings are
     // priced against the baseline scenario.
     const result = aggregate([
@@ -273,10 +214,8 @@ describe("delivered energy baseline", () => {
     expect(result.totalDeliveredBeforeKwh).toBe(14_000);
     expect(result.totalDeliveredAfterKwh).toBe(5_000);
   });
-});
 
-describe("no contributing buildings", () => {
-  test("reports optional totals as unavailable rather than zero", () => {
+  test("reports optional totals as unavailable when nothing contributed", () => {
     const result = aggregatePortfolioPackage({
       packageId: PACKAGE_ID,
       results: [{ buildingId: "rej", status: "rejected" }],

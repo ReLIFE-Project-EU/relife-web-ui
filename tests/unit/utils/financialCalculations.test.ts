@@ -1,5 +1,8 @@
 import { describe, expect, test } from "vitest";
-import { applyFundingReduction } from "../../../src/utils/financialCalculations";
+import {
+  applyFundingReduction,
+  computePooledPaybackYears,
+} from "../../../src/utils/financialCalculations";
 import type { FundingOptions } from "../../../src/types/renovation";
 
 function createFundingOptions(
@@ -136,5 +139,57 @@ describe("financialCalculations", () => {
 
     expect(asPercentage.subsidyAmount).toBe(2_000);
     expect(asAmount.subsidyAmount).toBe(2_500);
+  });
+});
+
+describe("computePooledPaybackYears", () => {
+  test("weights each contributor by its count before pooling", () => {
+    // One series of -100 then +25, counted twice: -200 then +50 a year, so the
+    // 200 is recovered exactly at the end of year 4. Averaging the two
+    // contributors' own paybacks would weight buildings instead of euros.
+    expect(
+      computePooledPaybackYears([
+        { netByYear: [-100, 25, 25, 25, 25, 25], count: 2 },
+      ]),
+    ).toBeCloseTo(4, 5);
+  });
+
+  test("interpolates linearly inside the break-even year", () => {
+    // -100 then +40/year: 80 recovered by year 2, the remaining 20 is half of
+    // year 3's inflow.
+    expect(
+      computePooledPaybackYears([{ netByYear: [-100, 40, 40, 40], count: 1 }]),
+    ).toBeCloseTo(2.5, 5);
+  });
+
+  test.each([
+    ["no contributors", []],
+    [
+      "a contributor with no series",
+      [{ netByYear: [-100, 60], count: 1 }, null],
+    ],
+    [
+      "series of differing length",
+      [
+        { netByYear: [-100, 60, 60], count: 1 },
+        { netByYear: [-100, 60], count: 1 },
+      ],
+    ],
+    [
+      "a series that never breaks even",
+      [{ netByYear: [-100, 1, 1], count: 1 }],
+    ],
+  ])("is unavailable given %s", (_label, contributions) => {
+    expect(
+      computePooledPaybackYears(
+        contributions as Parameters<typeof computePooledPaybackYears>[0],
+      ),
+    ).toBeUndefined();
+  });
+
+  test("reports zero when there is no net investment to recover", () => {
+    expect(
+      computePooledPaybackYears([{ netByYear: [0, 50, 50], count: 1 }]),
+    ).toBe(0);
   });
 });

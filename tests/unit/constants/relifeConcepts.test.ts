@@ -18,12 +18,6 @@ describe("relifeConcepts ontology", () => {
     expect([...supportedRenovationMeasureIds].sort()).toEqual(measureIds);
   });
 
-  test("scenario EPC comparison footnote concept is defined", () => {
-    const concept = relifeConcepts["scenario-epc-comparison-note"];
-    expect(concept.label.trim()).not.toBe("");
-    expect(concept.description.trim()).not.toBe("");
-  });
-
   test("every concept has a label and description, and units where applicable", () => {
     const unitRequiredConcepts = [
       "annual-building-thermal-needs",
@@ -43,7 +37,7 @@ describe("relifeConcepts ontology", () => {
     }
 
     for (const conceptId of unitRequiredConcepts) {
-      expect(relifeConcepts[conceptId].unit?.trim()).not.toBe("");
+      expect(relifeConcepts[conceptId].unit?.trim()).toBeTruthy();
     }
   });
 
@@ -51,16 +45,7 @@ describe("relifeConcepts ontology", () => {
     // The financing vocabulary is defined once here so HRA and PRA cannot
     // drift apart (issue #72). The loan and subsidy caveats are rendered as
     // visible copy, so they must be present.
-    for (const conceptId of [
-      "own-funds",
-      "renovation-loan",
-      "upfront-subsidy",
-    ] as const) {
-      const concept = relifeConcepts[conceptId];
-      expect(concept.label.trim()).not.toBe("");
-      expect(concept.description.trim()).not.toBe("");
-    }
-
+    expect(relifeConcepts["own-funds"].label.trim()).toBeTruthy();
     expect(relifeConcepts["renovation-loan"].caveat?.trim()).toBeTruthy();
     expect(relifeConcepts["upfront-subsidy"].caveat?.trim()).toBeTruthy();
   });

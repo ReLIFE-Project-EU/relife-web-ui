@@ -349,34 +349,6 @@ describe("aggregatePackage", () => {
     expect(result.financialIndicators.aggregateROI).toBeUndefined();
   });
 
-  test("returns undefined aggregatePaybackYears when any cash-flow series is missing", () => {
-    const result = aggregatePackage({
-      packageId: "envelope",
-      portfolio: makePortfolio(),
-      simulations: [
-        makeSimulation("A", 1_000, 0.2),
-        makeSimulation("B", 2_000, 0.5),
-      ],
-      financials: [
-        makeFinancial(
-          "A",
-          100,
-          { ROI: 0.5, PBP: 1 },
-          {
-            cashFlow: {
-              years: [0, 1, 2],
-              annualNetCashFlowEur: [-100, 100, 100],
-            },
-          },
-        ),
-        makeFinancial("B", 300, { ROI: 0.1, PBP: 2 }),
-      ],
-      goal: { kind: "energy" },
-      projectLifetimeYears: 20,
-    });
-
-    expect(result.financialIndicators.aggregatePaybackYears).toBeUndefined();
-  });
   test("sums lifetime carbon per building over the project lifetime", () => {
     const result = aggregatePackage({
       packageId: "envelope",

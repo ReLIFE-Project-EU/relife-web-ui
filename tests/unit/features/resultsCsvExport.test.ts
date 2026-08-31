@@ -35,15 +35,27 @@ const successResult = {
     deliveredTotal: 18000,
   },
   scenarios: [
+    // The baseline is a re-simulation of the unrenovated building, and
+    // deliberately disagrees with `estimation.deliveredTotal` above: the
+    // exporter must price "before" against this, not against the estimate.
+    {
+      id: "current",
+      annualEnergyNeeds: 20000,
+      deliveredTotal: 17000,
+      annualEmissionsTonCo2e: 4.2,
+    },
     {
       id: "renovated",
       epcClass: "B",
       annualEnergyNeeds: 12000,
       deliveredTotal: 10000,
+      annualEmissionsTonCo2e: 2.5,
+      embodiedCarbonKgCo2e: 8000,
     },
   ],
   financialResults: {
     capitalExpenditure: 50000,
+    annualMaintenanceCost: 600,
     afterRenovationValue: 250000,
     arv: { priceIncreasePct: 12.5 },
     netPresentValue: 30000,
@@ -113,6 +125,21 @@ describe("buildBuildingsCsv", () => {
     // (these fixtures are Italian), while the relative uplift is kept as-is.
     expect(cell(row, "ARV (EUR - Greek market model)")).toBe("");
     expect(cell(row, "ARV uplift (% - Greek market model)")).toBe("12.5");
+  });
+
+  test("takes system energy before from the baseline run, not the estimate", () => {
+    // estimation.deliveredTotal is 18000; the "current" scenario says 17000.
+    expect(cell(dataRows[0], "System energy before (kWh/year)")).toBe("17000");
+  });
+
+  test("writes the carbon and maintenance columns", () => {
+    const row = dataRows[0];
+    expect(cell(row, "Annual maintenance cost (EUR/year)")).toBe("600");
+    expect(cell(row, "Operational emissions before (t CO2e/year)")).toBe("4.2");
+    expect(cell(row, "Operational emissions after (t CO2e/year)")).toBe("2.5");
+    expect(cell(row, "Material carbon (kg CO2e)")).toBe("8000");
+    // 8000 embodied + 2.5 t/yr x 1000 x 20 yr of operation.
+    expect(cell(row, "Whole-life carbon (kg CO2e)")).toBe("58000");
   });
 
   test("blanks metric cells for non-success rows but keeps status", () => {
