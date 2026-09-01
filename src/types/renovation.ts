@@ -61,9 +61,6 @@ export interface BuildingInfo {
   // Fields for Financial API (/risk-assessment endpoint)
   projectLifetime: number; // Required, 1-30 years, default: 20
 
-  // Fields for Financial API (/arv endpoint)
-  renovatedLast5Years: boolean; // Whether property was renovated in last 5 years, default: true
-
   // Note: EPC (Energy Performance Certificate) is NOT a user input.
   // It is calculated by the Forecasting API and used as input to the Financial API.
 }

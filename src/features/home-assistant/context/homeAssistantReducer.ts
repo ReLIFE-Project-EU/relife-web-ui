@@ -57,7 +57,6 @@ const initialBuilding: BuildingInfo = {
   constructionYear: null,
   floorNumber: null,
   projectLifetime: PROJECT_LIFETIME_DEFAULT,
-  renovatedLast5Years: true,
 };
 
 const initialRenovation: RenovationSelections = {

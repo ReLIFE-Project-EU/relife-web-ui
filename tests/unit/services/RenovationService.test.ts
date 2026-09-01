@@ -101,7 +101,6 @@ const mockBuilding: BuildingInfo = {
   numberOfFloors: 2,
   isModified: false,
   projectLifetime: 20,
-  renovatedLast5Years: true,
   climateZone: "",
   heatingTechnology: "",
   coolingTechnology: "",

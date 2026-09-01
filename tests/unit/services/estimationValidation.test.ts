@@ -26,7 +26,6 @@ function makeBuilding(overrides: Partial<BuildingInfo> = {}): BuildingInfo {
     constructionYear: 1980,
     floorNumber: 4,
     projectLifetime: 20,
-    renovatedLast5Years: false,
     ...overrides,
   };
 }

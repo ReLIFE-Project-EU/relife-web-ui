@@ -487,7 +487,6 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       constructionYear: deriveConstructionYear(b.constructionPeriod),
       floorNumber: b.floorNumber ?? null,
       projectLifetime,
-      renovatedLast5Years: true,
     };
   }
 }

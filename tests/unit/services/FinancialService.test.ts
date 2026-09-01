@@ -100,7 +100,6 @@ const mockBuilding = {
   numberOfFloors: 2,
   isModified: false,
   projectLifetime: 20,
-  renovatedLast5Years: true,
   constructionYear: 1970,
   floorNumber: null,
   numberOfOpenings: null,

@@ -60,6 +60,14 @@ const DEFAULT_COORDINATE = 0;
 const HTTP_BAD_REQUEST_STATUS = 400;
 const HTTP_UNPROCESSABLE_ENTITY_STATUS = 422;
 const ARV_UNKNOWN_TARGET_COUNTRY_PATTERN = /unknown target_country/i;
+/**
+ * The ARV model reads "renovated in the last 5 years" as a general refurbishment
+ * signal. These tools model an energy retrofit only, so the baseline and the
+ * renovated valuation both assume no recent refurbishment, leaving the energy
+ * class as the only difference between them. Set on every request by
+ * buildArvRequestBase so the two cannot diverge.
+ */
+const ARV_RENOVATED_LAST_5_YEARS = false;
 
 type ArvRequestBase = Pick<
   ARVRequest,
@@ -71,6 +79,7 @@ type ArvRequestBase = Pick<
   | "number_of_floors"
   | "property_type"
   | "target_country"
+  | "renovated_last_5_years"
 >;
 
 interface ArvAttemptResult {
@@ -128,6 +137,7 @@ function buildArvRequestBase(
     }),
     property_type: toAPIPropertyType(building.buildingType),
     target_country: building.country,
+    renovated_last_5_years: ARV_RENOVATED_LAST_5_YEARS,
   };
 }
 
@@ -182,7 +192,8 @@ export class FinancialService implements IFinancialService {
       target_country: request.target_country,
       energy_consumption_before: request.energy_consumption_before,
       energy_consumption_after: request.energy_consumption_after,
-      renovated_last_5_years: request.renovated_last_5_years ?? true,
+      renovated_last_5_years:
+        request.renovated_last_5_years ?? ARV_RENOVATED_LAST_5_YEARS,
     });
 
     return {
@@ -402,7 +413,6 @@ export class FinancialService implements IFinancialService {
         const arvRequest: ARVRequest = {
           ...buildArvRequestBase(resolvedBuilding, resolvedFloorArea),
           energy_consumption_after: baselineEnergyIntensity,
-          renovated_last_5_years: false, // Current state, not recently renovated
         };
         auditLog.debug(
           "financial",
@@ -481,7 +491,6 @@ export class FinancialService implements IFinancialService {
           },
           resolvedFloorArea,
         ),
-        renovated_last_5_years: resolvedBuilding.renovatedLast5Years,
       };
 
       // Current Financial API accepts one scalar kWh value and prices it with

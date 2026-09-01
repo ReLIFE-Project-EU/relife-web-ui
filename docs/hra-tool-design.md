@@ -426,13 +426,17 @@ for more information refers to `Guidelines`: <https://eurac-eebgroup.github.io/p
 - `lifetime_incentive_amount` (float, default: 0.0) - Annual OPEX reduction (€/year)
 - `lifetime_incentive_years` (int, default: 0) - Duration of OPEX reduction (years)
 - `floor_number` (int, default: null)
-- `renovated_last_5_years` (bool, default: true)
 
 **Frontend-Defined Inputs (Not User-Facing):**
 
 - `output_level` (string) - Automatically set based on tool being used:
   - **Home Renovation Assistant (HRA)**: `"private"`
   - Other tools: `"professional"`, `"public"`, or `"complete"` as appropriate
+
+- `renovated_last_5_years` (bool) - Always sent as `false`. These tools model an
+  energy retrofit, not a general refurbishment, so the baseline and renovated ARV
+  calls share one value and differ only by energy class. See
+  `ARV_RENOVATED_LAST_5_YEARS` in `src/services/FinancialService.ts`.
 
 **Data from ReLIFE Database:**
 
@@ -494,7 +498,7 @@ for more information refers to `Guidelines`: <https://eurac-eebgroup.github.io/p
   "property_type": "Apartment",
   "floor_number": 2,
   "energy_class": "Β+", // FROM FORECASTING API
-  "renovated_last_5_years": true
+  "renovated_last_5_years": false // FIXED ASSUMPTION
 }
 ```
 

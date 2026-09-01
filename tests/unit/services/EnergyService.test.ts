@@ -184,7 +184,6 @@ const unmodifiedBuilding: BuildingInfo = {
   numberOfFloors: 2,
   isModified: false,
   projectLifetime: 20,
-  renovatedLast5Years: true,
   selectedArchetype: {
     category: "SFH",
     country: "Greece",

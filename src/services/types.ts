@@ -339,7 +339,7 @@ export interface ARVRequest {
   target_country: string; // National EPC scale to apply
   energy_consumption_before?: number | null; // kWh/m²/year before renovation
   energy_consumption_after: number; // kWh/m²/year after renovation/current state
-  renovated_last_5_years?: boolean; // Default: true
+  renovated_last_5_years?: boolean; // Always sent; see ARV_RENOVATED_LAST_5_YEARS
 }
 
 /**
