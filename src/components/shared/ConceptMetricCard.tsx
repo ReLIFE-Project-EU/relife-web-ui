@@ -1,13 +1,21 @@
-import { Box, Group, Stack, Text } from "@mantine/core";
+import { Box, Text } from "@mantine/core";
 import type { ReactNode } from "react";
 import type { ConceptId } from "../../constants/relifeConcepts";
 import { ConceptLabel } from "./ConceptLabel";
+import { METRIC_CARD_MIN_HEIGHT } from "./MetricCard";
+import { MetricEyebrow } from "./MetricEyebrow";
 
 interface ConceptMetricCardProps {
   conceptId: ConceptId;
   value: ReactNode;
   descriptionVisible?: boolean;
   variant?: "default" | "highlight";
+  /**
+   * Qualifier such as "Total" or "Portfolio". Rendered as an eyebrow above the
+   * concept label rather than inline before it: inline it produced "Total
+   * reduction in Annual building thermal needs (kWh thermal/year)" on one
+   * wrapping line.
+   */
   prefix?: string;
 }
 
@@ -26,31 +34,35 @@ export function ConceptMetricCard({
   return (
     <Box
       p="md"
+      mih={METRIC_CARD_MIN_HEIGHT}
       style={{
         backgroundColor,
-        borderRadius: "var(--mantine-radius-sm)",
+        borderRadius: "var(--mantine-radius-md)",
+        display: "flex",
+        flexDirection: "column",
+        gap: "var(--mantine-spacing-xs)",
       }}
     >
-      <Stack gap={4}>
-        <Group gap={4} wrap="nowrap">
-          {prefix && (
-            <Text span size="xs" c="dimmed" fw={500}>
-              {prefix}
-            </Text>
-          )}
-          <ConceptLabel
-            conceptId={conceptId}
-            descriptionVisible={descriptionVisible}
-            size="xs"
-          />
-        </Group>
-        {/* `value` is a ReactNode, so callers pass elements (see the CO₂
-            before/after stack in BuildingDrillDownModal). Text defaults to a
-            <p>, which cannot legally contain them — same as MetricCard. */}
-        <Text component="div" size="lg" fw={600}>
-          {value}
-        </Text>
-      </Stack>
+      <Box>
+        {prefix && <MetricEyebrow>{prefix}</MetricEyebrow>}
+        <ConceptLabel
+          conceptId={conceptId}
+          descriptionVisible={descriptionVisible}
+          size="xs"
+        />
+      </Box>
+      {/* `value` is a ReactNode, so callers pass elements (see the CO₂
+          before/after pair in ResultsStep). Text defaults to a <p>, which
+          cannot legally contain them — same as MetricCard. */}
+      <Text
+        component="div"
+        fz={20}
+        fw={600}
+        mt="auto"
+        style={{ fontVariantNumeric: "tabular-nums" }}
+      >
+        {value}
+      </Text>
     </Box>
   );
 }

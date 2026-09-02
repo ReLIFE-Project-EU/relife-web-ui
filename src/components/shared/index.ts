@@ -10,6 +10,7 @@ export { FinancingTypeCards } from "./FinancingTypeCards";
 export { FundingPills } from "./FundingPills";
 export { SubsidyInput } from "./SubsidyInput";
 export { MetricCard } from "./MetricCard";
+export { MetricEyebrow } from "./MetricEyebrow";
 export { MetricExplainer } from "./MetricExplainer";
 export type { FinancialMetricType } from "./MetricExplainer";
 export { RangeIndicator } from "./RangeIndicator";

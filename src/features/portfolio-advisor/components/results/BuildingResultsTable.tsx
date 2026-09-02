@@ -8,6 +8,7 @@
 
 import {
   Badge,
+  Box,
   Card,
   Group,
   Select,
@@ -24,9 +25,10 @@ import {
   IconInfoCircle,
   IconSelector,
 } from "@tabler/icons-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { DeltaBadge } from "../../../../components/shared/DeltaValue";
 import { EPCBadge } from "../../../../components/shared/EPCBadge";
+import { MetricEyebrow } from "../../../../components/shared/MetricEyebrow";
 import {
   formatCurrency,
   formatDecimal,
@@ -58,12 +60,35 @@ type StatusFilter =
   /** Analysed, but the financial appraisal never ran. */
   | "not-appraised";
 
+/**
+ * Below this the table scrolls sideways rather than compressing. Set from the
+ * width at which the EPC badges stop truncating and the system-energy value
+ * stops wrapping, which is wider than the mockup's 900 because the real screen
+ * keeps the full concept labels.
+ */
+const TABLE_MIN_WIDTH = 1040;
+
+/** Faint rule continuing the header's group divider down through the body. */
+const GROUP_BORDER = "1px solid var(--mantine-color-gray-2)";
+
 type SortKey = "name" | "energyReduction" | "npv" | "roi" | "pbp";
 
 interface SortState {
   key: SortKey;
   dir: "asc" | "desc";
 }
+
+/** Keeps the toolbar hint honest once the user sorts by something else. */
+const SORT_DESCRIPTIONS: Record<SortKey, { asc: string; desc: string }> = {
+  name: { asc: "name, A to Z", desc: "name, Z to A" },
+  energyReduction: {
+    asc: "energy reduction, largest first",
+    desc: "energy reduction, smallest first",
+  },
+  npv: { asc: "NPV, lowest first", desc: "NPV, highest first" },
+  roi: { asc: "ROI, lowest first", desc: "ROI, highest first" },
+  pbp: { asc: "payback, shortest first", desc: "payback, longest first" },
+};
 
 interface RowVm {
   building: PRABuilding;
@@ -203,6 +228,15 @@ export function BuildingResultsTable({
     );
   };
 
+  // The bar in the NPV column is read against the largest magnitude on screen,
+  // so it rescales when the filter changes rather than against a fixed maximum.
+  const maxAbsNpv = visibleRows.reduce(
+    (max, { npv }) => (npv === undefined ? max : Math.max(max, Math.abs(npv))),
+    0,
+  );
+
+  const energyColumnCount = showDeliveredEnergyColumn ? 3 : 2;
+
   return (
     <Card withBorder radius="md" p={0}>
       <Group p="md" gap="sm" wrap="wrap">
@@ -228,7 +262,8 @@ export function BuildingResultsTable({
         />
         {onRowClick && (
           <Text size="xs" c="dimmed">
-            Click a row to see the full breakdown.
+            Click a row to see the full breakdown. Sorted by{" "}
+            {SORT_DESCRIPTIONS[sort.key][sort.dir]}.
           </Text>
         )}
         <Group ml="auto" gap="xs">
@@ -238,53 +273,54 @@ export function BuildingResultsTable({
         </Group>
       </Group>
 
-      <Table.ScrollContainer minWidth={820}>
-        <Table striped highlightOnHover withTableBorder={false}>
+      <Table.ScrollContainer minWidth={TABLE_MIN_WIDTH}>
+        <Table highlightOnHover withTableBorder={false}>
           <Table.Thead>
             <Table.Tr>
+              <GroupTh colSpan={2}>Building</GroupTh>
+              <GroupTh colSpan={energyColumnCount} groupStart>
+                Energy performance
+              </GroupTh>
+              <GroupTh colSpan={3} groupStart>
+                Financial outcome
+              </GroupTh>
+            </Table.Tr>
+            <Table.Tr>
+              <Table.Th w={34} />
               <SortableTh
-                label="Building"
+                label="Name"
                 sortKey="name"
                 sort={sort}
                 onSort={toggleSort}
               />
-              <Table.Th>
-                <Group gap={4} wrap="nowrap">
-                  <Text fz="sm" fw={700}>
-                    Estimated EPC
-                  </Text>
-                  <Text span size="xs" c="dimmed">
-                    before → after
-                  </Text>
-                </Group>
-              </Table.Th>
+              <PlainTh unit="before → after" groupStart>
+                Estimated EPC
+              </PlainTh>
               <SortableTh
                 label="Energy reduction"
+                unit="thermal needs"
                 sortKey="energyReduction"
-                sort={sort}
-                onSort={toggleSort}
-              />
-              {showDeliveredEnergyColumn && (
-                <Table.Th>
-                  <Group gap={4} wrap="nowrap">
-                    <Text fz="sm" fw={700}>
-                      System energy consumption
-                    </Text>
-                    <Text span size="xs" c="dimmed">
-                      (kWh delivered/year)
-                    </Text>
-                  </Group>
-                </Table.Th>
-              )}
-              <SortableTh
-                label="NPV"
-                sortKey="npv"
                 sort={sort}
                 onSort={toggleSort}
                 numeric
               />
+              {showDeliveredEnergyColumn && (
+                <PlainTh unit="kWh delivered/year" numeric>
+                  System energy consumption
+                </PlainTh>
+              )}
+              <SortableTh
+                label="NPV"
+                unit="EUR"
+                sortKey="npv"
+                sort={sort}
+                onSort={toggleSort}
+                numeric
+                groupStart
+              />
               <SortableTh
                 label="ROI"
+                unit="%"
                 sortKey="roi"
                 sort={sort}
                 onSort={toggleSort}
@@ -292,6 +328,7 @@ export function BuildingResultsTable({
               />
               <SortableTh
                 label="Payback"
+                unit="years"
                 sortKey="pbp"
                 sort={sort}
                 onSort={toggleSort}
@@ -300,10 +337,12 @@ export function BuildingResultsTable({
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {visibleRows.map((row) => (
+            {visibleRows.map((row, index) => (
               <ResultsRow
                 key={row.building.id}
                 row={row}
+                rank={index + 1}
+                maxAbsNpv={maxAbsNpv}
                 showDeliveredEnergyColumn={showDeliveredEnergyColumn}
                 onClick={onRowClick}
               />
@@ -328,10 +367,14 @@ export function BuildingResultsTable({
 
 function ResultsRow({
   row,
+  rank,
+  maxAbsNpv,
   showDeliveredEnergyColumn,
   onClick,
 }: {
   row: RowVm;
+  rank: number;
+  maxAbsNpv: number;
   showDeliveredEnergyColumn: boolean;
   onClick?: (vm: RowVm) => void;
 }) {
@@ -366,35 +409,45 @@ function ResultsRow({
       onClick={onClick ? () => onClick(row) : undefined}
       style={onClick ? { cursor: "pointer" } : undefined}
     >
-      <Table.Td>
-        <Stack gap={4}>
+      <Table.Td
+        w={34}
+        style={{ fontVariantNumeric: "tabular-nums", verticalAlign: "middle" }}
+      >
+        <Text fz="xs" c="gray.5">
+          {rank}
+        </Text>
+      </Table.Td>
+      <Table.Td style={{ verticalAlign: "middle" }}>
+        <Group gap="xs" wrap="wrap">
           <Text size="sm" fw={500}>
             {building.name}
           </Text>
-          <Group gap={4} wrap="nowrap">
-            <RowStatusBadge row={row} />
-            {(result.costSource?.capexFromLookup ||
-              result.costSource?.opexFromLookup) && (
-              <Tooltip
-                label="Cost estimated from EU reference data (no override set)"
-                withArrow
+          <RowStatusBadge row={row} />
+          {(result.costSource?.capexFromLookup ||
+            result.costSource?.opexFromLookup) && (
+            <Tooltip
+              label="Cost estimated from EU reference data (no override set)"
+              withArrow
+            >
+              <Badge
+                variant="light"
+                color="blue"
+                size="xs"
+                leftSection={<IconInfoCircle size={11} />}
               >
-                <Badge
-                  variant="light"
-                  color="blue"
-                  size="xs"
-                  leftSection={<IconInfoCircle size={11} />}
-                >
-                  Est. cost
-                </Badge>
-              </Tooltip>
-            )}
-          </Group>
-        </Stack>
+                Est. cost
+              </Badge>
+            </Tooltip>
+          )}
+        </Group>
       </Table.Td>
-      <Table.Td>
+      <Table.Td style={{ borderLeft: GROUP_BORDER, verticalAlign: "middle" }}>
         {epcBefore || epcAfter ? (
-          <Group gap="xs" wrap="nowrap">
+          // Mantine's Badge label is `overflow: hidden`, so its min-content
+          // width is near zero and the column happily squeezes "~G" down to
+          // "~..". Pinning the row to max-content gives the cell a real
+          // minimum for the table to lay out against.
+          <Group gap="xs" wrap="nowrap" style={{ minWidth: "max-content" }}>
             {epcBefore ? (
               <EPCBadge
                 epcClass={epcBefore}
@@ -429,7 +482,7 @@ function ResultsRow({
           "-"
         )}
       </Table.Td>
-      <Table.Td>
+      <Table.Td ta="right" style={{ verticalAlign: "middle" }}>
         {energyReduction !== undefined ? (
           <DeltaBadge delta={energyReduction} higherIsBetter={false} />
         ) : (
@@ -437,10 +490,12 @@ function ResultsRow({
         )}
       </Table.Td>
       {showDeliveredEnergyColumn && (
-        <Table.Td>
+        <Table.Td ta="right" style={{ verticalAlign: "middle" }}>
           {deliveredAfter !== undefined ? (
-            <Stack gap={4}>
-              <Text size="sm">{formatEnergyPerYear(deliveredAfter)}</Text>
+            <Group gap="xs" wrap="nowrap" justify="flex-end">
+              <Text size="sm" style={{ fontVariantNumeric: "tabular-nums" }}>
+                {formatEnergyPerYear(deliveredAfter)}
+              </Text>
               {deliveredEnergyReduction !== undefined ? (
                 <DeltaBadge
                   delta={deliveredEnergyReduction}
@@ -451,22 +506,18 @@ function ResultsRow({
                   Baseline unavailable
                 </Text>
               )}
-            </Stack>
+            </Group>
           ) : (
             "-"
           )}
         </Table.Td>
       )}
-      <Table.Td ta="right">
+      <Table.Td
+        ta="right"
+        style={{ borderLeft: GROUP_BORDER, verticalAlign: "middle" }}
+      >
         {isSuccess && fr && appraised ? (
-          <Text
-            size="sm"
-            fw={500}
-            c={fr.netPresentValue >= 0 ? "green.7" : "red.7"}
-            style={{ fontVariantNumeric: "tabular-nums" }}
-          >
-            {formatCurrency(fr.netPresentValue)}
-          </Text>
+          <NpvCell value={fr.netPresentValue} maxAbs={maxAbsNpv} />
         ) : result.status === "error" ? (
           <Text size="xs" c="red">
             {(result.error ?? "").substring(0, 40)}
@@ -479,7 +530,7 @@ function ResultsRow({
           "-"
         )}
       </Table.Td>
-      <Table.Td ta="right">
+      <Table.Td ta="right" style={{ verticalAlign: "middle" }}>
         <Text
           size="sm"
           c={appraised ? undefined : "dimmed"}
@@ -490,7 +541,7 @@ function ResultsRow({
             : "—"}
         </Text>
       </Table.Td>
-      <Table.Td ta="right">
+      <Table.Td ta="right" style={{ verticalAlign: "middle" }}>
         <Text
           size="sm"
           c={appraised ? undefined : "dimmed"}
@@ -507,6 +558,53 @@ function ResultsRow({
         </Text>
       </Table.Td>
     </Table.Tr>
+  );
+}
+
+/**
+ * NPV with a bar sized against the largest magnitude on screen, so rows can be
+ * compared without reading every number. Magnitude only: the sign is already
+ * carried by the colour and the value itself.
+ */
+function NpvCell({ value, maxAbs }: { value: number; maxAbs: number }) {
+  const negative = value < 0;
+  const ratio = maxAbs > 0 ? Math.abs(value) / maxAbs : 0;
+
+  return (
+    <Group gap={10} wrap="nowrap" justify="flex-end">
+      <Box
+        style={{
+          flex: 1,
+          minWidth: 40,
+          height: 8,
+          borderRadius: "var(--mantine-radius-sm)",
+          backgroundColor: "var(--mantine-color-gray-1)",
+          overflow: "hidden",
+        }}
+      >
+        <Box
+          style={{
+            width: `${ratio * 100}%`,
+            height: "100%",
+            borderRadius: "var(--mantine-radius-sm)",
+            backgroundColor: negative
+              ? "var(--mantine-color-red-6)"
+              : "var(--mantine-color-green-6)",
+          }}
+        />
+      </Box>
+      <Text
+        fz={15}
+        fw={600}
+        c={negative ? "red.7" : "green.7"}
+        style={{
+          whiteSpace: "nowrap",
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {formatCurrency(value)}
+      </Text>
+    </Group>
   );
 }
 
@@ -601,18 +699,95 @@ function RowStatusBadge({ row }: { row: RowVm }) {
   return null;
 }
 
+/** Column-group label spanning the header's first tier. */
+function GroupTh({
+  colSpan,
+  groupStart,
+  children,
+}: {
+  colSpan: number;
+  groupStart?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <Table.Th
+      colSpan={colSpan}
+      style={{
+        backgroundColor: "var(--mantine-color-gray-0)",
+        borderLeft: groupStart ? GROUP_BORDER : undefined,
+      }}
+    >
+      <MetricEyebrow>{children}</MetricEyebrow>
+    </Table.Th>
+  );
+}
+
+/**
+ * Header title over its unit. Moving the unit out of the cells is what lets
+ * every numeric cell stay on one line.
+ */
+function ThLabel({
+  label,
+  unit,
+  active,
+  numeric,
+}: {
+  label: ReactNode;
+  unit?: string;
+  active?: boolean;
+  numeric?: boolean;
+}) {
+  return (
+    <Stack gap={0} align={numeric ? "flex-end" : undefined}>
+      <Text fz={13} fw={700} c={active ? "relife.7" : undefined}>
+        {label}
+      </Text>
+      {unit && (
+        <Text fz={11} fw={400} c="dimmed">
+          {unit}
+        </Text>
+      )}
+    </Stack>
+  );
+}
+
+function PlainTh({
+  unit,
+  numeric,
+  groupStart,
+  children,
+}: {
+  unit?: string;
+  numeric?: boolean;
+  groupStart?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <Table.Th
+      ta={numeric ? "right" : undefined}
+      style={{ borderLeft: groupStart ? GROUP_BORDER : undefined }}
+    >
+      <ThLabel label={children} unit={unit} numeric={numeric} />
+    </Table.Th>
+  );
+}
+
 function SortableTh({
   label,
+  unit,
   sortKey,
   sort,
   onSort,
   numeric,
+  groupStart,
 }: {
   label: string;
+  unit?: string;
   sortKey: SortKey;
   sort: SortState;
   onSort: (key: SortKey) => void;
   numeric?: boolean;
+  groupStart?: boolean;
 }) {
   const active = sort.key === sortKey;
   const Icon = !active
@@ -621,7 +796,7 @@ function SortableTh({
       ? IconChevronUp
       : IconChevronDown;
   return (
-    <Table.Th>
+    <Table.Th style={{ borderLeft: groupStart ? GROUP_BORDER : undefined }}>
       <UnstyledButton
         onClick={() => onSort(sortKey)}
         style={{ width: "100%", display: "block", font: "inherit" }}
@@ -629,11 +804,15 @@ function SortableTh({
         <Group
           gap={4}
           wrap="nowrap"
+          align="flex-start"
           justify={numeric ? "flex-end" : "flex-start"}
         >
-          <Text fz="sm" fw={700} c={active ? "relife.7" : undefined}>
-            {label}
-          </Text>
+          <ThLabel
+            label={label}
+            unit={unit}
+            active={active}
+            numeric={numeric}
+          />
           <Icon
             size={14}
             color={

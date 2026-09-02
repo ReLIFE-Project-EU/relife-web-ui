@@ -11,7 +11,7 @@ interface BeforeAfterBarsProps {
   before: number;
   /** Aggregate value after renovation */
   after: number;
-  /** Chart pixel height (default 160) */
+  /** Chart pixel height (default 150) */
   height?: number;
   /** Per-bar value formatter (default: MWh from kWh) */
   formatValue?: (raw: number) => string;
@@ -22,7 +22,7 @@ const defaultFormat = (raw: number) => `${formatDecimal(raw / 1000)} MWh`;
 export function EnergyChart({
   before,
   after,
-  height = 160,
+  height = 150,
   formatValue = defaultFormat,
 }: BeforeAfterBarsProps) {
   const max = Math.max(before, after, 1);
@@ -88,7 +88,7 @@ function Bar({
         <Text
           size="xs"
           fw={500}
-          c={accentText ? "relife.8" : "dimmed"}
+          c={accentText ? "relife.7" : "dimmed"}
           style={{ fontVariantNumeric: "tabular-nums" }}
         >
           {value}

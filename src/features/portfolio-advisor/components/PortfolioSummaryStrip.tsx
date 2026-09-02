@@ -8,7 +8,7 @@
 
 import { Badge, Card, Group, Loader, Stack, Text } from "@mantine/core";
 import { useMemo } from "react";
-import { FundingPills } from "../../../components/shared";
+import { FundingPills, MetricEyebrow } from "../../../components/shared";
 import { formatCurrency, formatNumber } from "../../../utils/formatters";
 import type { PortfolioAdvisorState } from "../context/types";
 
@@ -157,15 +157,7 @@ function Cell({
         minWidth: 0,
       }}
     >
-      <Text
-        size="10px"
-        fw={700}
-        c="dimmed"
-        tt="uppercase"
-        style={{ letterSpacing: "0.06em" }}
-      >
-        {label}
-      </Text>
+      <MetricEyebrow>{label}</MetricEyebrow>
       <Text
         component="div"
         size="sm"

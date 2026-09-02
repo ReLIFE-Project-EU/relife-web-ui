@@ -1,11 +1,10 @@
 import { useMemo, useState } from "react";
 import {
   Alert,
-  Card,
+  Box,
   Group,
   Progress,
   Select,
-  SimpleGrid,
   Stack,
   Text,
 } from "@mantine/core";
@@ -15,6 +14,7 @@ import { IconChartHistogram, IconInfoCircle } from "@tabler/icons-react";
 import {
   ConceptExplainer,
   ConceptLabel,
+  MetricEyebrow,
   RangeIndicator,
 } from "../../../../components/shared";
 import {
@@ -49,6 +49,14 @@ interface IndicatorConfig {
 }
 
 const RISK_CHART_HEIGHT = 260;
+/** Narrow enough to keep the probability bars beside the histogram, not under it. */
+const PROBABILITY_COLUMN_WIDTH = 300;
+/** Indicator · range bar · P10 · P90. */
+const RISK_ROW_GRID = {
+  display: "grid",
+  gridTemplateColumns: "210px 1fr 96px 96px",
+  gap: "var(--mantine-spacing-sm)",
+} as const;
 const PROBABILITY_PERCENT_FACTOR = 100;
 const PROBABILITY_BAR_MAX = 100;
 const HISTOGRAM_SERIES = [
@@ -145,11 +153,9 @@ export function FinancialRiskAnalytics({
   }
 
   return (
-    <Stack gap="md">
-      <Stack gap={2}>
-        <Text fw={600} size="sm">
-          Professional risk analytics
-        </Text>
+    <Stack gap="lg">
+      <Stack gap="xs">
+        <MetricEyebrow>Professional risk analytics</MetricEyebrow>
         <Text size="xs" c="dimmed">
           Monte Carlo ranges and probability outputs from the financial risk
           assessment.
@@ -157,71 +163,137 @@ export function FinancialRiskAnalytics({
       </Stack>
 
       {availableIndicators.length > 0 ? (
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-          {availableIndicators.map((config) => (
-            <RiskRangeCard
-              key={config.indicator}
-              config={config}
-              percentiles={
-                percentiles?.[config.indicator] ??
-                chartMetadata?.[config.indicator]?.statistics
-              }
-              pointValue={getPointForecastValue(
-                financialResults,
-                config.indicator,
-              )}
-            />
-          ))}
-        </SimpleGrid>
+        <RiskRangeTable
+          configs={availableIndicators}
+          percentiles={percentiles}
+          chartMetadata={chartMetadata}
+          financialResults={financialResults}
+        />
       ) : null}
 
-      {hasProbabilities(probabilities) ? (
-        <Card withBorder radius="md" p="md">
+      <Box
+        style={{
+          display: "grid",
+          gridTemplateColumns: PROBABILITY_COLUMN_WIDTH + "px 1fr",
+          gap: "var(--mantine-spacing-lg)",
+          alignItems: "start",
+        }}
+      >
+        {hasProbabilities(probabilities) ? (
           <Stack gap="sm">
-            <Text fw={600} size="sm">
-              Probability thresholds
-            </Text>
+            <MetricEyebrow>Probability thresholds</MetricEyebrow>
             {Object.entries(probabilities)
               .filter(([, value]) => Number.isFinite(value))
               .map(([label, value]) => (
                 <ProbabilityRow key={label} label={label} value={value} />
               ))}
           </Stack>
-        </Card>
-      ) : null}
+        ) : (
+          <Box />
+        )}
 
-      {activeHistogramIndicator ? (
-        <HistogramCard
-          config={
-            INDICATOR_CONFIGS.find(
-              ({ indicator }) => indicator === activeHistogramIndicator,
-            )!
-          }
-          chartMetadata={chartMetadata?.[activeHistogramIndicator]}
-          histogramIndicators={histogramIndicators}
-          activeHistogramIndicator={activeHistogramIndicator}
-          onSelectIndicator={setSelectedIndicator}
-        />
-      ) : null}
+        {activeHistogramIndicator ? (
+          <HistogramPanel
+            config={
+              INDICATOR_CONFIGS.find(
+                ({ indicator }) => indicator === activeHistogramIndicator,
+              )!
+            }
+            chartMetadata={chartMetadata?.[activeHistogramIndicator]}
+            histogramIndicators={histogramIndicators}
+            activeHistogramIndicator={activeHistogramIndicator}
+            onSelectIndicator={setSelectedIndicator}
+          />
+        ) : null}
+      </Box>
     </Stack>
   );
 }
 
-function RiskRangeCard({
+/**
+ * One row per indicator instead of one card each, so the values and their
+ * P10/P90 bounds line up vertically rather than drifting across ten
+ * independently sized cards.
+ */
+function RiskRangeTable({
+  configs,
+  percentiles,
+  chartMetadata,
+  financialResults,
+}: {
+  configs: IndicatorConfig[];
+  percentiles?: Partial<Record<FinancialRiskIndicator, PercentileData>>;
+  chartMetadata?: Partial<
+    Record<FinancialRiskIndicator, FinancialChartMetadata>
+  >;
+  financialResults?: PRAFinancialResults;
+}) {
+  return (
+    <Box
+      style={{
+        border: "1px solid var(--mantine-color-gray-2)",
+        borderRadius: "var(--mantine-radius-md)",
+        overflow: "hidden",
+      }}
+    >
+      <Box
+        px="md"
+        py="xs"
+        style={{
+          ...RISK_ROW_GRID,
+          backgroundColor: "var(--mantine-color-gray-0)",
+          borderBottom: "1px solid var(--mantine-color-gray-2)",
+        }}
+      >
+        <MetricEyebrow>Indicator</MetricEyebrow>
+        <MetricEyebrow>P10 to P90</MetricEyebrow>
+        <MetricEyebrow ta="right">P10</MetricEyebrow>
+        <MetricEyebrow ta="right">P90</MetricEyebrow>
+      </Box>
+      {configs.map((config, index) => (
+        <RiskRangeRow
+          key={config.indicator}
+          config={config}
+          percentiles={
+            percentiles?.[config.indicator] ??
+            chartMetadata?.[config.indicator]?.statistics
+          }
+          pointValue={getPointForecastValue(financialResults, config.indicator)}
+          last={index === configs.length - 1}
+        />
+      ))}
+    </Box>
+  );
+}
+
+function RiskRangeRow({
   config,
   percentiles,
   pointValue,
+  last,
 }: {
   config: IndicatorConfig;
   percentiles?: PercentileData;
   pointValue?: number;
+  last: boolean;
 }) {
   const concept = relifeConcepts[config.conceptId];
+  const hasRange = hasPercentileData(percentiles);
 
   return (
-    <Card withBorder radius="md" p="md">
-      <Stack gap="xs">
-        <Group justify="space-between" align="flex-start" gap="xs">
+    <Box
+      px="md"
+      py="sm"
+      style={{
+        ...RISK_ROW_GRID,
+        alignItems: "center",
+        borderBottom: last
+          ? undefined
+          : "1px solid var(--mantine-color-gray-1)",
+      }}
+    >
+      <Stack gap={1} style={{ minWidth: 0 }}>
+        <Group gap={4} wrap="nowrap">
           <ConceptLabel
             conceptId={config.conceptId}
             size="xs"
@@ -229,12 +301,19 @@ function RiskRangeCard({
           />
           <ConceptExplainer conceptId={config.conceptId} professional />
         </Group>
-        <Text size="lg" fw={700} c={`${config.color}.7`}>
+        <Text
+          fz={17}
+          fw={700}
+          c={`${config.color}.7`}
+          style={{ fontVariantNumeric: "tabular-nums" }}
+        >
           {pointValue !== undefined
             ? config.formatter(pointValue)
             : config.formatter(percentiles?.P50 ?? 0)}
         </Text>
-        {hasPercentileData(percentiles) ? (
+      </Stack>
+      {hasRange ? (
+        <>
           <RangeIndicator
             min={percentiles.P10}
             median={percentiles.P50}
@@ -243,14 +322,30 @@ function RiskRangeCard({
             color={config.color}
             lowerIsBetter={config.lowerIsBetter}
             size="sm"
+            showLabels={false}
           />
-        ) : (
-          <Text size="xs" c="dimmed">
-            {concept.label} range was not returned.
-          </Text>
-        )}
-      </Stack>
-    </Card>
+          <BoundCell value={config.formatter(percentiles.P10)} />
+          <BoundCell value={config.formatter(percentiles.P90)} />
+        </>
+      ) : (
+        <Text size="xs" c="dimmed" style={{ gridColumn: "2 / -1" }}>
+          {concept.label} range was not returned.
+        </Text>
+      )}
+    </Box>
+  );
+}
+
+function BoundCell({ value }: { value: string }) {
+  return (
+    <Text
+      size="xs"
+      c="dimmed"
+      ta="right"
+      style={{ fontVariantNumeric: "tabular-nums" }}
+    >
+      {value}
+    </Text>
   );
 }
 
@@ -275,7 +370,7 @@ function ProbabilityRow({ label, value }: { label: string; value: number }) {
   );
 }
 
-function HistogramCard({
+function HistogramPanel({
   config,
   chartMetadata,
   histogramIndicators,
@@ -300,45 +395,41 @@ function HistogramCard({
     chartMetadata.chart_config?.title ?? relifeConcepts[config.conceptId].label;
 
   return (
-    <Card withBorder radius="md" p="md">
-      <Stack gap="sm">
-        <Group justify="space-between" align="center" gap="xs" wrap="nowrap">
-          <Group gap="xs">
-            <IconChartHistogram size={16} />
-            <Text fw={600} size="sm">
-              {chartTitle}
-            </Text>
-          </Group>
-          {histogramIndicators.length > 1 ? (
-            <Select
-              aria-label="Select risk distribution"
-              size="xs"
-              w={180}
-              value={activeHistogramIndicator}
-              data={histogramIndicators.map(({ indicator, conceptId }) => ({
-                value: indicator,
-                label: relifeConcepts[conceptId].label,
-              }))}
-              onChange={(value) =>
-                onSelectIndicator(value as FinancialRiskIndicator | null)
-              }
-            />
-          ) : null}
+    <Stack gap="sm">
+      <Group justify="space-between" align="center" gap="xs" wrap="nowrap">
+        <Group gap="xs">
+          <IconChartHistogram size={16} />
+          <MetricEyebrow>{chartTitle}</MetricEyebrow>
         </Group>
-        <BarChart
-          h={RISK_CHART_HEIGHT}
-          data={chartData}
-          dataKey="bin"
-          series={HISTOGRAM_SERIES}
-          tickLine="none"
-          gridAxis="y"
-          withLegend={false}
-          xAxisLabel={chartMetadata.chart_config?.xlabel}
-          yAxisLabel={chartMetadata.chart_config?.ylabel ?? "Frequency"}
-          valueFormatter={(value) => formatDecimal(value)}
-        />
-      </Stack>
-    </Card>
+        {histogramIndicators.length > 1 ? (
+          <Select
+            aria-label="Select risk distribution"
+            size="xs"
+            w={180}
+            value={activeHistogramIndicator}
+            data={histogramIndicators.map(({ indicator, conceptId }) => ({
+              value: indicator,
+              label: relifeConcepts[conceptId].label,
+            }))}
+            onChange={(value) =>
+              onSelectIndicator(value as FinancialRiskIndicator | null)
+            }
+          />
+        ) : null}
+      </Group>
+      <BarChart
+        h={RISK_CHART_HEIGHT}
+        data={chartData}
+        dataKey="bin"
+        series={HISTOGRAM_SERIES}
+        tickLine="none"
+        gridAxis="y"
+        withLegend={false}
+        xAxisLabel={chartMetadata.chart_config?.xlabel}
+        yAxisLabel={chartMetadata.chart_config?.ylabel ?? "Frequency"}
+        valueFormatter={(value) => formatDecimal(value)}
+      />
+    </Stack>
   );
 }
 

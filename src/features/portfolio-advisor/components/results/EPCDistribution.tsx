@@ -3,11 +3,18 @@
  *
  * Shown instead of an average class improvement: averaging class letters treats
  * them as an interval scale they are not, and hides how the stock is spread.
+ *
+ * One band per state rather than one row per class, so the shift of the whole
+ * stock reads at a glance. Segment widths are proportional to the counts.
  */
 
-import { Table, Text } from "@mantine/core";
-import { EPCBadge } from "../../../../components/shared";
-import { occupiedEpcClasses } from "../../../../utils/epcUtils";
+import { Box, Group, Stack, Text } from "@mantine/core";
+import {
+  getEPCColorVar,
+  getEPCInk,
+  getEPCTint,
+  occupiedEpcClasses,
+} from "../../../../utils/epcUtils";
 
 interface EPCDistributionProps {
   /** Building counts per EPC class before renovation. */
@@ -16,11 +23,128 @@ interface EPCDistributionProps {
   after: Record<string, number>;
 }
 
-function Count({ value }: { value: number }) {
+interface Segment {
+  epcClass: string;
+  count: number;
+}
+
+const BAND_HEIGHT = 34;
+const LABEL_COLUMN_WIDTH = 52;
+
+function segmentsOf(
+  classes: string[],
+  counts: Record<string, number>,
+): Segment[] {
+  return classes
+    .map((epcClass) => ({ epcClass, count: counts[epcClass] ?? 0 }))
+    .filter(({ count }) => count > 0);
+}
+
+function Band({ label, segments }: { label: string; segments: Segment[] }) {
   return (
-    <Text size="sm" c={value === 0 ? "dimmed" : undefined}>
-      {value}
-    </Text>
+    <Box
+      style={{
+        display: "grid",
+        gridTemplateColumns: `${LABEL_COLUMN_WIDTH}px 1fr`,
+        gap: "var(--mantine-spacing-sm)",
+        alignItems: "center",
+      }}
+    >
+      <Text size="xs" c="dimmed">
+        {label}
+      </Text>
+      {segments.length > 0 ? (
+        <Group gap={4} wrap="nowrap" style={{ height: BAND_HEIGHT }}>
+          {segments.map(({ epcClass, count }) => (
+            <Box
+              key={epcClass}
+              style={{
+                // Raw flex-grow factor, so a class holding twice the buildings
+                // takes twice the width.
+                flex: count,
+                minWidth: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "var(--mantine-spacing-xs)",
+                backgroundColor: getEPCTint(epcClass),
+                border: `1px solid ${getEPCColorVar(epcClass)}`,
+                borderRadius: "var(--mantine-radius-sm)",
+                color: getEPCInk(epcClass),
+              }}
+            >
+              <Text span fz={11} fw={700} c="inherit">
+                ~{epcClass}
+              </Text>
+              <Text
+                span
+                fz={13}
+                fw={600}
+                c="inherit"
+                style={{ fontVariantNumeric: "tabular-nums" }}
+              >
+                {count}
+              </Text>
+            </Box>
+          ))}
+        </Group>
+      ) : (
+        <Text size="xs" c="dimmed">
+          None
+        </Text>
+      )}
+    </Box>
+  );
+}
+
+/**
+ * Counts repeated as text, because a segment holding one building out of many
+ * is too narrow to show its own label.
+ */
+function Legend({
+  classes,
+  before,
+  after,
+}: {
+  classes: string[];
+  before: Record<string, number>;
+  after: Record<string, number>;
+}) {
+  const entries = classes.flatMap((epcClass) =>
+    (
+      [
+        ["before", before[epcClass] ?? 0],
+        ["after", after[epcClass] ?? 0],
+      ] as const
+    )
+      .filter(([, count]) => count > 0)
+      .map(([state, count]) => ({ epcClass, state, count })),
+  );
+
+  return (
+    <Group
+      gap="md"
+      wrap="wrap"
+      pt={4}
+      style={{ borderTop: "1px solid var(--mantine-color-gray-1)" }}
+    >
+      {entries.map(({ epcClass, state, count }) => (
+        <Group key={`${epcClass}-${state}`} gap={6} wrap="nowrap">
+          <Box
+            w={10}
+            h={10}
+            style={{
+              borderRadius: 2,
+              backgroundColor: getEPCTint(epcClass),
+              border: `1px solid ${getEPCColorVar(epcClass)}`,
+            }}
+          />
+          <Text fz={11} c="dimmed">
+            ~{epcClass} · {count} {state}
+          </Text>
+        </Group>
+      ))}
+    </Group>
   );
 }
 
@@ -36,29 +160,10 @@ export function EPCDistribution({ before, after }: EPCDistributionProps) {
   }
 
   return (
-    <Table verticalSpacing="xs" horizontalSpacing="md">
-      <Table.Thead>
-        <Table.Tr>
-          <Table.Th>Class</Table.Th>
-          <Table.Th>Before</Table.Th>
-          <Table.Th>After</Table.Th>
-        </Table.Tr>
-      </Table.Thead>
-      <Table.Tbody>
-        {classes.map((epcClass) => (
-          <Table.Tr key={epcClass}>
-            <Table.Td>
-              <EPCBadge epcClass={epcClass} size="sm" estimated />
-            </Table.Td>
-            <Table.Td>
-              <Count value={before[epcClass] ?? 0} />
-            </Table.Td>
-            <Table.Td>
-              <Count value={after[epcClass] ?? 0} />
-            </Table.Td>
-          </Table.Tr>
-        ))}
-      </Table.Tbody>
-    </Table>
+    <Stack gap="sm">
+      <Band label="Before" segments={segmentsOf(classes, before)} />
+      <Band label="After" segments={segmentsOf(classes, after)} />
+      <Legend classes={classes} before={before} after={after} />
+    </Stack>
   );
 }

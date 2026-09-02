@@ -30,13 +30,14 @@ import {
 import { memo, useMemo, useState, type ReactNode } from "react";
 import { ConceptMetricCard } from "../../../../components/shared/ConceptMetricCard";
 import { ErrorAlert } from "../../../../components/shared/ErrorAlert";
-import { MetricCard } from "../../../../components/shared/MetricCard";
+import { MetricEyebrow } from "../../../../components/shared/MetricEyebrow";
 import {
   relifeConcepts,
   type ConceptId,
 } from "../../../../constants/relifeConcepts";
 import {
   formatCurrency,
+  formatDecimal,
   formatPercent,
   formatTonnageCo2,
   formatYears,
@@ -67,6 +68,10 @@ function ConceptSentence(conceptId: ConceptId) {
 // Portfolio summary tab content
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * The after figure is the one being reported, so it carries the weight; the
+ * before figure is context. The unit is written once, at the end of the pair.
+ */
 function BeforeAfterTonnes({
   before,
   after,
@@ -75,12 +80,12 @@ function BeforeAfterTonnes({
   after: number;
 }) {
   return (
-    <Group gap={6} wrap="nowrap">
-      <Text span size="lg" fw={600}>
-        {formatTonnageCo2(before, { decimal: true })}
+    <Group gap="xs" wrap="nowrap">
+      <Text span fz="md" fw={500} c="dimmed">
+        {formatDecimal(before)}
       </Text>
       <IconArrowRight size={14} color="var(--mantine-color-gray-5)" />
-      <Text span size="lg" fw={600}>
+      <Text span fz={20} fw={600}>
         {formatTonnageCo2(after, { decimal: true })}
       </Text>
     </Group>
@@ -90,6 +95,54 @@ function BeforeAfterTonnes({
 /** Render a value that may be unavailable, so a gap never reads as a zero. */
 function orDash<T>(value: T | undefined, render: (value: T) => ReactNode) {
   return value !== undefined ? render(value) : "—";
+}
+
+/** A coverage figure shown inline in the summary card header, not as a card. */
+function HeaderStat({
+  label,
+  children,
+  color,
+}: {
+  label: string;
+  children: ReactNode;
+  color?: string;
+}) {
+  return (
+    <Group gap={6} wrap="nowrap" align="baseline">
+      <Text fz="xs" c="dimmed">
+        {label}
+      </Text>
+      <Text
+        component="div"
+        fz="sm"
+        fw={700}
+        c={color}
+        style={{ fontVariantNumeric: "tabular-nums" }}
+      >
+        {children}
+      </Text>
+    </Group>
+  );
+}
+
+/** An eyebrow-labelled band of metric cards. */
+function MetricGroup({
+  label,
+  cols,
+  children,
+}: {
+  label: string;
+  cols: Record<string, number>;
+  children: ReactNode;
+}) {
+  return (
+    <Stack gap="xs">
+      <MetricEyebrow>{label}</MetricEyebrow>
+      <SimpleGrid cols={cols} spacing="sm">
+        {children}
+      </SimpleGrid>
+    </Stack>
+  );
 }
 
 const PortfolioSummary = memo(function PortfolioSummary({
@@ -112,19 +165,22 @@ const PortfolioSummary = memo(function PortfolioSummary({
   return (
     <Stack gap="lg">
       <Card withBorder radius="md" p="lg">
-        <Title order={4} mb="md">
-          Portfolio summary
-        </Title>
-
-        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md" mb="md">
-          <MetricCard label="Total Buildings" value={coverage.totalBuildings} />
-          <MetricCard
-            label="In These Totals"
-            value={
-              <Group gap={4}>
-                <Text size="lg" fw={600} c="green">
-                  {coverage.contributing}
-                </Text>
+        <Group
+          justify="space-between"
+          align="baseline"
+          gap="lg"
+          wrap="wrap"
+          pb="md"
+          style={{ borderBottom: "1px solid var(--mantine-color-gray-1)" }}
+        >
+          <Title order={4}>Portfolio summary</Title>
+          <Group gap="lg" wrap="wrap" align="baseline">
+            <HeaderStat label="Total buildings">
+              {coverage.totalBuildings}
+            </HeaderStat>
+            <HeaderStat label="In these totals" color="green">
+              <Group gap={6} wrap="nowrap" align="baseline">
+                {coverage.contributing}
                 {coverage.errored > 0 && (
                   <Badge color="red" size="sm" variant="light">
                     {coverage.errored} errors
@@ -141,81 +197,91 @@ const PortfolioSummary = memo(function PortfolioSummary({
                   </Badge>
                 )}
               </Group>
-            }
-          />
-          <ConceptMetricCard
-            conceptId="investment"
-            prefix="Total"
-            value={formatCurrency(aggregate.totalCapexEur)}
-            variant="highlight"
-          />
-          <ConceptMetricCard
-            conceptId="npv"
-            prefix="Total"
-            value={orDash(aggregate.totalNpvEur, formatCurrency)}
-            variant="highlight"
-          />
-        </SimpleGrid>
+            </HeaderStat>
+          </Group>
+        </Group>
 
-        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md" mb="md">
-          <ConceptMetricCard
-            conceptId="roi"
-            prefix="Portfolio"
-            value={orDash(aggregate.portfolioRoi, (v) =>
-              formatPercent(v * 100),
-            )}
-          />
-          <ConceptMetricCard
-            conceptId="payback-period"
-            prefix="Portfolio"
-            value={orDash(aggregate.portfolioPaybackYears, formatYears)}
-          />
-          <ConceptMetricCard
-            conceptId="annual-building-thermal-needs"
-            prefix="Total reduction in"
-            value={orDash(thermalReduction, formatPercent)}
-          />
-          <ConceptMetricCard
-            conceptId="annual-maintenance-cost"
-            prefix="Total"
-            value={orDash(aggregate.totalAnnualMaintenanceEur, formatCurrency)}
-          />
-        </SimpleGrid>
+        <Stack gap="lg" pt="md">
+          <MetricGroup
+            label="Financial outcome"
+            cols={{ base: 2, sm: 3, md: 5 }}
+          >
+            <ConceptMetricCard
+              conceptId="investment"
+              prefix="Total"
+              value={formatCurrency(aggregate.totalCapexEur)}
+              variant="highlight"
+            />
+            <ConceptMetricCard
+              conceptId="npv"
+              prefix="Total"
+              value={orDash(aggregate.totalNpvEur, formatCurrency)}
+              variant="highlight"
+            />
+            <ConceptMetricCard
+              conceptId="roi"
+              prefix="Portfolio"
+              value={orDash(aggregate.portfolioRoi, (v) =>
+                formatPercent(v * 100),
+              )}
+            />
+            <ConceptMetricCard
+              conceptId="payback-period"
+              prefix="Portfolio"
+              value={orDash(aggregate.portfolioPaybackYears, formatYears)}
+            />
+            <ConceptMetricCard
+              conceptId="annual-maintenance-cost"
+              prefix="Total"
+              value={orDash(
+                aggregate.totalAnnualMaintenanceEur,
+                formatCurrency,
+              )}
+            />
+          </MetricGroup>
 
-        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
-          <ConceptMetricCard
-            conceptId="operational-co2-emissions"
-            value={
-              emissionsBefore !== undefined && emissionsAfter !== undefined ? (
-                <BeforeAfterTonnes
-                  before={emissionsBefore}
-                  after={emissionsAfter}
-                />
-              ) : (
-                "—"
-              )
-            }
-          />
-          <ConceptMetricCard
-            conceptId="embodied-carbon"
-            prefix="Total"
-            value={orDash(aggregate.totalEmbodiedCarbonTon, (v) =>
-              formatTonnageCo2(v, { decimal: true }),
-            )}
-          />
-          <ConceptMetricCard
-            conceptId="whole-life-carbon"
-            prefix="Total"
-            value={orDash(aggregate.totalWholeLifeCarbonTon, (v) =>
-              formatTonnageCo2(v, { decimal: true }),
-            )}
-          />
-        </SimpleGrid>
+          <MetricGroup label="Energy & carbon" cols={{ base: 2, md: 4 }}>
+            <ConceptMetricCard
+              conceptId="annual-building-thermal-needs"
+              prefix="Total reduction in"
+              value={orDash(thermalReduction, formatPercent)}
+            />
+            <ConceptMetricCard
+              conceptId="operational-co2-emissions"
+              prefix="Annual"
+              value={
+                emissionsBefore !== undefined &&
+                emissionsAfter !== undefined ? (
+                  <BeforeAfterTonnes
+                    before={emissionsBefore}
+                    after={emissionsAfter}
+                  />
+                ) : (
+                  "—"
+                )
+              }
+            />
+            <ConceptMetricCard
+              conceptId="embodied-carbon"
+              prefix="Total"
+              value={orDash(aggregate.totalEmbodiedCarbonTon, (v) =>
+                formatTonnageCo2(v, { decimal: true }),
+              )}
+            />
+            <ConceptMetricCard
+              conceptId="whole-life-carbon"
+              prefix="Total"
+              value={orDash(aggregate.totalWholeLifeCarbonTon, (v) =>
+                formatTonnageCo2(v, { decimal: true }),
+              )}
+            />
+          </MetricGroup>
+        </Stack>
       </Card>
 
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
         <Card withBorder radius="md" p="lg">
-          <Stack gap="xs">
+          <Stack gap="xs" h="100%">
             <Box>
               <Title order={5}>Energy use</Title>
               <Text size="xs" c="dimmed">
@@ -223,10 +289,12 @@ const PortfolioSummary = memo(function PortfolioSummary({
               </Text>
             </Box>
             {aggregate.totalThermalNeedsBeforeKwh > 0 ? (
-              <EnergyChart
-                before={aggregate.totalThermalNeedsBeforeKwh}
-                after={aggregate.totalThermalNeedsAfterKwh}
-              />
+              <Box mt="auto">
+                <EnergyChart
+                  before={aggregate.totalThermalNeedsBeforeKwh}
+                  after={aggregate.totalThermalNeedsAfterKwh}
+                />
+              </Box>
             ) : (
               <Text size="sm" c="dimmed">
                 No energy data available.
@@ -236,7 +304,7 @@ const PortfolioSummary = memo(function PortfolioSummary({
         </Card>
 
         <Card withBorder radius="md" p="lg">
-          <Stack gap="xs">
+          <Stack gap="xs" h="100%">
             <Box>
               <Title order={5}>System energy consumption</Title>
               <Text size="xs" c="dimmed">
@@ -245,7 +313,9 @@ const PortfolioSummary = memo(function PortfolioSummary({
               </Text>
             </Box>
             {deliveredBefore !== undefined && deliveredAfter !== undefined ? (
-              <EnergyChart before={deliveredBefore} after={deliveredAfter} />
+              <Box mt="auto">
+                <EnergyChart before={deliveredBefore} after={deliveredAfter} />
+              </Box>
             ) : (
               <Text size="sm" c="dimmed">
                 Not available for every building in these totals.
@@ -256,7 +326,7 @@ const PortfolioSummary = memo(function PortfolioSummary({
       </SimpleGrid>
 
       <Card withBorder radius="md" p="lg">
-        <Stack gap="xs">
+        <Stack gap="sm">
           <Box>
             <Title order={5}>EPC distribution</Title>
             <Text size="xs" c="dimmed">
