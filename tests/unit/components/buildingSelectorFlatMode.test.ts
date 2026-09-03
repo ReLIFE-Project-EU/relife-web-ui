@@ -96,6 +96,42 @@ describe("building selector flat-unit mode", () => {
     expect(selection.floorNumber).toBe(2);
   });
 
+  test("keeps a block floor-count edit out of the simulation but not out of valuation", () => {
+    const details = createDetails();
+    const draft = {
+      ...buildDraftFromDetails(details, undefined, undefined, {
+        flatUnit: true,
+      }),
+      numberOfFloors: 12,
+      apartmentLocation: "top" as const,
+    };
+
+    // Whole-building mode still customizes the envelope; a flat must not, since
+    // the block's net_floor_area would not grow with it.
+    expect(buildModifications(details, draft, "limited")).toMatchObject({
+      numberOfFloors: 12,
+    });
+    expect(
+      buildModifications(details, draft, "limited", { flatUnit: true }),
+    ).toBeUndefined();
+
+    const selection = buildSelection({
+      mode: "browse",
+      details,
+      draft,
+      scope: "limited",
+      country: "Ireland",
+      constructionPeriod: "1980-1989",
+      coords: details.location,
+      flatUnit: true,
+    });
+
+    // The real count and derived floor number still reach ARV.
+    expect(selection.modifications).toBeUndefined();
+    expect(selection.numberOfFloors).toBe(12);
+    expect(selection.floorNumber).toBe(11);
+  });
+
   test("maps apartment levels from whole rounded floor counts", () => {
     expect(mapApartmentLocationToFloorNumber("bottom", 5.4)).toBe(0);
     expect(mapApartmentLocationToFloorNumber("middle", 5.4)).toBe(2);

@@ -125,14 +125,16 @@ export function buildModifications(
 ): BuildingModifications | undefined {
   const modifications: BuildingModifications = {};
 
-  // In flat-unit mode the draft floor area describes the user's apartment,
-  // not a change to the reference building: it must flow through
-  // BuildingInfo.floorArea (linear share-of-building scaling) without
-  // triggering the modified custom-BUI simulation path.
-  const floorArea = isFlatUnitSelection(options?.flatUnit, details)
+  // In flat-unit mode the draft floor area describes the user's apartment and
+  // the floor count only feeds valuation, so neither may trigger the modified
+  // custom-BUI path: scaling the block's envelope without its net_floor_area
+  // would inflate the flat's share of the simulation (see #63).
+  const flatUnit = isFlatUnitSelection(options?.flatUnit, details);
+  const floorArea = flatUnit
     ? null
     : changedNumber(draft.floorArea, details.floorArea);
   const numberOfFloors =
+    !flatUnit &&
     typeof draft.numberOfFloors === "number" &&
     draft.numberOfFloors !== details.numberOfFloors
       ? draft.numberOfFloors

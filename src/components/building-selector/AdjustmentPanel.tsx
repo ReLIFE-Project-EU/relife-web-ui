@@ -101,7 +101,7 @@ export function AdjustmentPanel({
       : FULL_FIELD_GROUPS;
 
   const footerText = flatUnit
-    ? "We estimate your apartment's share of the building's simulated energy use, based on its floor area. Apartment level sets the floor number used in property valuation; it does not change the energy estimate."
+    ? "We estimate your apartment's share of the building's simulated energy use, based on its floor area. Floors in the building and apartment level are used for property valuation only; neither changes the energy estimate."
     : scope === "limited"
       ? "Geometry changes affect the simulation."
       : isApartmentSelection(details)
