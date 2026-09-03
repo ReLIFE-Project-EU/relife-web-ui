@@ -49,9 +49,6 @@ export const LIMITED_FIELDS: AdjustmentField[] = [
   },
 ];
 
-/** Prefill for the apartment floor-area input in flat-unit mode. */
-export const DEFAULT_FLAT_FLOOR_AREA = 80;
-
 /** Geometry fields relabeled for flat-unit mode: the floor area describes
  *  the user's apartment while floors/height still describe the building. */
 export const FLAT_LIMITED_FIELDS: AdjustmentField[] = LIMITED_FIELDS.map(

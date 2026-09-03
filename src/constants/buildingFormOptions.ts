@@ -21,3 +21,10 @@ export const APARTMENT_LOCATION_OPTIONS: { value: string; label: string }[] = [
 export function isApartmentLikeCategory(category: string | null): boolean {
   return category ? (findCategoryDef(category)?.apartmentLike ?? false) : false;
 }
+
+/**
+ * Prefill for a dwelling floor-area input when an apartment-like archetype is
+ * modeled as a single dwelling rather than the whole reference building.
+ * Callers cap it at the archetype's own floor area.
+ */
+export const DEFAULT_FLAT_FLOOR_AREA = 80;

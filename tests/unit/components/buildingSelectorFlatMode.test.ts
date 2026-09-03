@@ -6,7 +6,7 @@ import {
   buildSelection,
   mapApartmentLocationToFloorNumber,
 } from "../../../src/components/building-selector/buildingSelectorUtils";
-import { DEFAULT_FLAT_FLOOR_AREA } from "../../../src/components/building-selector/selectorConfig";
+import { DEFAULT_FLAT_FLOOR_AREA } from "../../../src/constants/buildingFormOptions";
 import type { ArchetypeDetails } from "../../../src/types/archetype";
 
 function createDetails(

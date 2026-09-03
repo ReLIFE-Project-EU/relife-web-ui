@@ -4,8 +4,10 @@ import type {
 } from "../../types/archetype";
 import type { ArchetypeInfo } from "../../types/forecasting";
 import type { ArchetypeMatchResult } from "../../services/types";
-import { isApartmentLikeCategory } from "../../constants/buildingFormOptions";
-import { DEFAULT_FLAT_FLOOR_AREA } from "./selectorConfig";
+import {
+  DEFAULT_FLAT_FLOOR_AREA,
+  isApartmentLikeCategory,
+} from "../../constants/buildingFormOptions";
 import { extractArchetypePeriod } from "../../utils/archetypePeriod";
 import {
   clampFloorNumberForFloorCount,

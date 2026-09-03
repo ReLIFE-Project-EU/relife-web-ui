@@ -31,13 +31,17 @@ export const ENERGY_TARIFF_DEFAULTS = {
  */
 export const FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH = 0.246;
 
-export function extractCarrierSourceBreakdown(sourceBreakdownKwh: {
-  naturalGas: number;
-  gridElectricity: number;
-}): DeliveredEnergyCarrierBreakdown {
+export function extractCarrierSourceBreakdown(
+  sourceBreakdownKwh: {
+    naturalGas: number;
+    gridElectricity: number;
+  },
+  /** Share of the reference building the caller models (1 = the whole thing). */
+  scaleFactor = 1,
+): DeliveredEnergyCarrierBreakdown {
   return {
-    naturalGasKwh: sourceBreakdownKwh.naturalGas,
-    gridElectricityKwh: sourceBreakdownKwh.gridElectricity,
+    naturalGasKwh: sourceBreakdownKwh.naturalGas * scaleFactor,
+    gridElectricityKwh: sourceBreakdownKwh.gridElectricity * scaleFactor,
   };
 }
 

@@ -36,7 +36,7 @@ export interface EstimationDiagnostic {
 
 const MAX_OK_SCALE_FACTOR = 5.0;
 const MAX_LOW_CONFIDENCE_SCALE_FACTOR = 10.0;
-const MIN_APARTMENT_FLOOR_AREA = 10;
+export const MIN_APARTMENT_FLOOR_AREA = 10;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Per-strategy rules

@@ -23,7 +23,7 @@ import type {
   IFinancialService,
 } from "./types";
 import type { RenovationMeasureId } from "../types/renovation";
-import type { BuildingPayload } from "../types/archetype";
+import type { ArchetypeDetails, BuildingPayload } from "../types/archetype";
 import type { ArchetypeInfo } from "../types/forecasting";
 
 export interface PackageCostLookupParams {
@@ -144,6 +144,32 @@ export interface ResolvedArchetypeGeometry {
 }
 
 /**
+ * Apply the optional floor-area scaling to already-fetched archetype geometry.
+ * Callers that hold `ArchetypeDetails` (RSE expands its portfolio up front) use
+ * this directly; `resolveArchetypeGeometry` is the fetching variant.
+ */
+export function scaleArchetypeGeometry(
+  details: Pick<ArchetypeDetails, "bui" | "floorArea">,
+  params: { floorArea: number | null; scaleEnvelopeToFloorArea?: boolean },
+): ResolvedArchetypeGeometry {
+  const scaledFloorArea =
+    params.scaleEnvelopeToFloorArea &&
+    typeof params.floorArea === "number" &&
+    params.floorArea > 0 &&
+    params.floorArea !== details.floorArea
+      ? params.floorArea
+      : null;
+
+  return {
+    bui:
+      scaledFloorArea !== null
+        ? applyFloorAreaModification(details.bui, scaledFloorArea)
+        : details.bui,
+    floorArea: params.floorArea ?? details.floorArea,
+  };
+}
+
+/**
  * Fetch an archetype's geometry and apply the optional floor-area scaling.
  * Shared with the embodied-carbon calculation so both derive their quantities
  * from identical geometry; `getArchetypeDetails` is instance-cached, so the
@@ -163,19 +189,8 @@ export async function resolveArchetypeGeometry(
     name: params.archetype.name,
   });
 
-  const scaledFloorArea =
-    params.scaleEnvelopeToFloorArea &&
-    typeof params.floorArea === "number" &&
-    params.floorArea > 0 &&
-    params.floorArea !== details.floorArea
-      ? params.floorArea
-      : null;
-
-  return {
-    bui:
-      scaledFloorArea !== null
-        ? applyFloorAreaModification(details.bui, scaledFloorArea)
-        : details.bui,
-    floorArea: params.floorArea ?? details.floorArea,
-  };
+  return scaleArchetypeGeometry(details, {
+    floorArea: params.floorArea,
+    scaleEnvelopeToFloorArea: params.scaleEnvelopeToFloorArea,
+  });
 }
