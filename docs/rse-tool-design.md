@@ -2,7 +2,7 @@
 
 **Renovation Strategy Explorer (RSE)**
 
-**Purpose:** The Renovation Strategy Explorer (RSE) is an Energy Renovation Action Support Tool designed for local and regional authorities, policymakers, and urban planners. It enables large-scale analysis of building stock renovation scenarios by working at the **archetype level**: users define one or more building archetypes, specify the number of buildings belonging to each archetype, and the tool computes energy and financial results per archetype — then scales them up by multiplying by the number of buildings. This delivers aggregated district- or city-level insights into energy savings potential, CO₂ reduction, and investment requirements across entire building portfolios.
+**Purpose:** The Renovation Strategy Explorer (RSE) is an Energy Renovation Action Support Tool designed for local and regional authorities, policymakers, and urban planners. It enables large-scale analysis of building stock renovation scenarios by working at the **archetype level**: users define one or more building archetypes, specify the number of dwellings belonging to each archetype, and the tool computes energy and financial results per archetype — then scales them up by multiplying by the number of dwellings. This delivers aggregated district- or city-level insights into energy savings potential, CO₂ reduction, and investment requirements across entire building portfolios.
 
 This document shows the sequence of API calls needed to implement the RSE tool.
 
@@ -17,7 +17,7 @@ This document shows the sequence of API calls needed to implement the RSE tool.
 > The overall workflow per archetype is identical to that of the PRA tool. The critical difference is in aggregation:
 >
 > - Energy simulations and financial calculations are performed **once per archetype**.
-> - Final aggregated results (total energy savings, total CO₂ reduction, total CAPEX, aggregate NPV, etc.) are obtained by **multiplying the per-archetype result by the number of buildings assigned to that archetype**.
+> - Final aggregated results (total energy savings, total CO₂ reduction, total CAPEX, aggregate NPV, etc.) are obtained by **multiplying the per-archetype result by the number of dwellings assigned to that archetype**.
 > - Results are then **summed across all archetypes** to give district- or city-wide totals.
 
 ---
@@ -32,7 +32,7 @@ This document shows the sequence of API calls needed to implement the RSE tool.
 | **Percentiles**     | P10-P90 for all indicators        | P10-P90 for all indicators                          | P10-P90 for all indicators (per archetype)                       |
 | **Success Metrics** | MonthlyAvgSavings, SuccessRate    | 3 Probabilities (NPV>0, PBP<lifetime, DPP<lifetime) | 3 Probabilities (per archetype, then aggregated)                 |
 | **Visualization**   | cash_flow_data (1 timeline chart) | chart_metadata (5 distribution histograms)          | chart_metadata (5 distribution histograms per archetype)         |
-| **Aggregation**     | N/A (single building)             | N/A (single building or portfolio of buildings)     | Per-archetype results × building count, summed across archetypes |
+| **Aggregation**     | N/A (single building)             | N/A (single building or portfolio of buildings)     | Per-archetype results × dwelling count, summed across archetypes |
 
 For detailed comparison of `"private"` vs `"professional"` output, see [PRIVATE_VS_PROFESSIONAL_OUTPUT.md](../PRIVATE_VS_PROFESSIONAL_OUTPUT.md).
 
@@ -57,7 +57,7 @@ sequenceDiagram
     participant Financial as Financial API
     participant Technical as Technical API
 
-    User->>Frontend: Define archetypes + number of buildings per archetype
+    User->>Frontend: Define archetypes + number of dwellings per archetype
     Frontend->>DB: Retrieve archetype data
     DB-->>Frontend: CAPEX, archetype definitions, emission factors, etc.
 
@@ -97,11 +97,49 @@ Each API team should specify which inputs they need from the user.
 Before any API call, the user defines their building stock portfolio. For each entry the user must provide:
 
 - **Archetype definition** — either by selecting a standard archetype from the ReLIFE Database (filtered by construction period, country, building type, etc.) or by providing a full custom building definition.
-- **Number of buildings** — how many buildings of that archetype exist in the district or city being analysed.
+- **Number of dwellings** — how many dwellings of that archetype exist in the district or city being analysed.
+- **Dwelling floor area** — apartment-like archetypes only; see [Apartment archetypes are dwellings](#apartment-archetypes-are-dwellings).
 
 Any number of archetypes can be added to build up the full portfolio.
 
 ---
+
+### Apartment archetypes are dwellings
+
+A portfolio row counts **dwellings**, not reference buildings. For `Single Family House`
+the two coincide. For the apartment-like categories (`Multi family House`,
+`Apartment buildings`) a row stands for **one dwelling inside** the reference building,
+matching how the HRA treats the same archetypes.
+
+The published cache always holds whole-building figures, so the frontend takes the
+dwelling's share at run time — no re-seed is involved:
+
+```
+s = modeledFloorArea / archetypeFloorArea
+modeledFloorArea = min(dwellingFloorArea ?? 80 m², archetypeFloorArea)   # apartment-like
+                 = archetypeFloorArea                                    # single-family (s = 1)
+```
+
+- `rseForecastingCacheService.normalizeEntry` multiplies the absolute cached figures
+  (primary energy, delivered energy per carrier, t CO₂e) by `s`. Percentages and the
+  display EPC are intensities and are invariant, since numerator and denominator scale
+  together.
+- `rseFinancialService.computeFinancials` prices from a BUI pre-scaled to
+  `modeledFloorArea` (`scaleArchetypeGeometry`), so envelope areas take the same share
+  and HVAC/PV capacity is sized from the dwelling. CAPEX, maintenance and material
+  carbon therefore match the scaled savings.
+
+Caveats, both inherited from the HRA's share-of-the-bill model:
+
+- A dwelling is charged its area share of the roof and ground slab, so the EPC class of a
+  dwelling equals that of its building (±10–25% by floor level). Per-flat geometry is
+  tracked in issue #63; the floor-level input is not offered here because RSE computes no
+  property valuation.
+- HVAC and PV capacity sizing clamps at 3 kW / 3 kWp. Below roughly 60 m² a dwelling's
+  system costs stop shrinking while its savings keep shrinking. The 80 m² default sits
+  above that floor.
+- A fixed-amount subsidy applies **per dwelling**, so a figure entered for a whole block
+  will now cover a dwelling outright.
 
 ### Forecasting API
 
@@ -290,7 +328,7 @@ For more information, refer to `Guidelines`: <https://eurac-eebgroup.github.io/p
 
 ### Financial API
 
-> **Note**: Financial API inputs and outputs are **identical to the PRA tool**. API calls are made once per archetype. Final aggregated results are obtained by multiplying per-archetype financial outputs by the number of buildings assigned to that archetype, then summing across all archetypes.
+> **Note**: Financial API inputs and outputs are **identical to the PRA tool**. API calls are made once per archetype. Final aggregated results are obtained by multiplying per-archetype financial outputs by the number of dwellings assigned to that archetype, then summing across all archetypes.
 
 **Required Inputs from User (per archetype):**
 
@@ -576,9 +614,9 @@ flowchart TD
 | -------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | **Target user**            | Homeowner                                                   | Financial institutions, ESCOs, professional consultants                    | Local / regional authority                                                                 |
 | **Building scope**         | Single building                                             | Single building or portfolio of buildings                                  | Multiple archetypes × n_buildings (district / city scale)                                  |
-| **Input method**           | Single building, 3 pathways (archetype / custom / modified) | Per building, 3 pathways; multiple buildings can be added to the portfolio | N archetypes (selected from ReLIFE DB or fully custom) + number of buildings per archetype |
+| **Input method**           | Single building, 3 pathways (archetype / custom / modified) | Per building, 3 pathways; multiple buildings can be added to the portfolio | N archetypes (selected from ReLIFE DB or fully custom) + number of dwellings per archetype |
 | **Financial output level** | `"private"`                                                 | `"professional"`                                                           | `"professional"`                                                                           |
-| **Aggregation**            | None                                                        | Optional: per-building results can be summed across the portfolio          | Mandatory: per-archetype results × n_buildings, summed across all archetypes               |
+| **Aggregation**            | None                                                        | Optional: per-building results can be summed across the portfolio          | Mandatory: per-archetype results × n_dwellings, summed across all archetypes               |
 | **Primary output**         | Personalized renovation plan for the homeowner              | Risk-adjusted investment analysis per building or portfolio                | District / city-level energy & financial impact of renovation scenarios                    |
 | **MCDA / ranking**         | Yes (persona-based)                                         | Yes (professional, per building)                                           | Yes (per archetype, aggregated to portfolio view)                                          |
 

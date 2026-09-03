@@ -61,7 +61,7 @@ export function PackageDeepDive({
           <div className={classes.miniGrid}>
             <MiniMetric
               icon={<IconBuildingCommunity size={14} />}
-              label="Buildings"
+              label="Dwellings"
               value={formatNumber(aggregate.totalBuildings)}
             />
             {goal.kind === "financial" &&

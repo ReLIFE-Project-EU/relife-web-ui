@@ -13,11 +13,13 @@ function makePortfolio(): RSEExpandedPortfolioSelection[] {
       archetype: { country: "IT", category: "Residential", name: "A" },
       buildingCount: 1,
       details: { floorArea: 100 } as RSEExpandedPortfolioSelection["details"],
+      modeledFloorArea: 100,
     },
     {
       archetype: { country: "IT", category: "Residential", name: "B" },
       buildingCount: 3,
       details: { floorArea: 200 } as RSEExpandedPortfolioSelection["details"],
+      modeledFloorArea: 200,
     },
   ];
 }

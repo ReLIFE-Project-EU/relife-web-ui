@@ -55,7 +55,7 @@ const IMPACT_CHART_CONFIG: Record<
     formatter: formatTonnageCo2,
   },
   financial: {
-    title: "Buildings within budget",
+    title: "Dwellings within budget",
     conceptId: "rse-renovatable-buildings",
     getValue: (agg) => agg.renovatableBuildingsWithinBudget,
     formatter: formatNumber,

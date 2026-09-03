@@ -241,6 +241,7 @@ sequenceDiagram
     FCAST-->>RSE: Archetype catalog and BUI or system payloads
     UI->>RSE: Run strategy comparison
     RSE->>RSE: expandPortfolio refetches archetype details as needed
+    RSE->>RSE: Apartment archetypes take one dwelling share of the cached whole-building results
     RSE->>RSE: Supabase reads rse_cache_versions and rse_forecasting_cache_entries not live ECM
     RSE->>RSE: Package energy and CO2 from published cache matrix only
     loop Each archetype and package with positive savings

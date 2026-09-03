@@ -2,7 +2,9 @@ import { useEffect, useState, type ReactNode } from "react";
 import {
   Box,
   Card,
+  Divider,
   Group,
+  NumberInput,
   SimpleGrid,
   Skeleton,
   Stack,
@@ -15,8 +17,11 @@ import {
   IconTemperature,
   IconWindow,
 } from "@tabler/icons-react";
+import { isApartmentLikeCategory } from "../../../../constants/buildingFormOptions";
+import { MIN_APARTMENT_FLOOR_AREA } from "../../../../services/estimationValidation";
 import type { ArchetypeDetails } from "../../../../types/archetype";
 import {
+  browserNumberSeparators,
   formatArea,
   formatDecimal,
   formatNumber,
@@ -26,13 +31,19 @@ import type { RSEArchetypeRef } from "../../types";
 
 /**
  * Lazily loads and displays the physical characteristics of a selected
- * archetype. The lookup is advisory: if it fails, the archetype remains
- * usable for analysis and a short note replaces the metrics.
+ * archetype, and for apartment-like categories captures the floor area of the
+ * single dwelling the row models. The lookup is advisory: if it fails, the
+ * archetype remains usable for analysis and a short note replaces the metrics
+ * (the dwelling area then falls back to its default, capped on expansion).
  */
 export function ArchetypeDetailsPanel({
   archetype,
+  unitFloorArea,
+  onUnitFloorAreaChange,
 }: {
   archetype: RSEArchetypeRef;
+  unitFloorArea?: number | "";
+  onUnitFloorAreaChange: (value: number | "") => void;
 }) {
   const [details, setDetails] = useState<ArchetypeDetails | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -58,9 +69,32 @@ export function ArchetypeDetailsPanel({
     };
   }, [archetype]);
 
+  const isDwelling = isApartmentLikeCategory(archetype.category);
+
   return (
     <Card withBorder bg="gray.0" radius="md" p="md">
       <Stack gap="sm">
+        {isDwelling ? (
+          <>
+            <NumberInput
+              label="Dwelling floor area (m²)"
+              description={
+                details
+                  ? `Area of the single dwelling this row represents, inside a reference building of ${formatArea(details.floorArea)}.`
+                  : "Area of the single dwelling this row represents."
+              }
+              value={unitFloorArea ?? ""}
+              onChange={(value) =>
+                onUnitFloorAreaChange(typeof value === "number" ? value : "")
+              }
+              min={MIN_APARTMENT_FLOOR_AREA}
+              max={details?.floorArea}
+              {...browserNumberSeparators}
+            />
+            <Divider />
+          </>
+        ) : null}
+
         <Text
           size="10px"
           c="dimmed"

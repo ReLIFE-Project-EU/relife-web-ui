@@ -188,6 +188,11 @@ async function runWorkflowWithDependencies(
       {
         cacheVersion: cacheResolution.cacheVersion,
         combinationCount: normalized.simulations.length,
+        modeledFloorAreas: portfolio.map((selection) => ({
+          archetype: rseArchetypeKey(selection.archetype),
+          archetypeFloorArea: selection.details.floorArea,
+          modeledFloorArea: selection.modeledFloorArea,
+        })),
       },
       auditCtx,
     );
@@ -358,16 +363,16 @@ function normalizeCacheEntries(
   simulations: RSESimulationResult[];
   unavailable: RSEUnavailableCombination[];
 } {
-  const detailsByArchetype = buildDetailsByArchetype(portfolio);
+  const selectionByArchetype = buildSelectionByArchetype(portfolio);
 
   const simulations: RSESimulationResult[] = [];
   const unavailable: RSEUnavailableCombination[] = [];
 
   for (const entry of entries) {
-    const details = detailsByArchetype.get(
+    const selection = selectionByArchetype.get(
       rseArchetypeKey(entry.key.archetype),
     );
-    if (!details) {
+    if (!selection) {
       unavailable.push({
         archetype: entry.key.archetype,
         packageId: entry.key.packageId,
@@ -377,7 +382,7 @@ function normalizeCacheEntries(
     }
 
     try {
-      simulations.push(cacheService.normalizeEntry(entry, details));
+      simulations.push(cacheService.normalizeEntry(entry, selection));
     } catch (error) {
       if (error instanceof RSEForecastingCacheServiceError) {
         unavailable.push({
@@ -399,13 +404,13 @@ function buildFinancialInputs(
   portfolio: RSEExpandedPortfolioSelection[],
   financialAssumptions: RSEWorkflowRequest["financialAssumptions"],
 ): RSEFinancialServiceInput[] {
-  const detailsByArchetype = buildDetailsByArchetype(portfolio);
+  const selectionByArchetype = buildSelectionByArchetype(portfolio);
 
   return simulations.map((simulation) => {
-    const details = detailsByArchetype.get(
+    const selection = selectionByArchetype.get(
       rseArchetypeKey(simulation.archetype),
     );
-    if (!details) {
+    if (!selection) {
       throw new RSEWorkflowError(
         `Missing archetype details for ${rseArchetypeKey(simulation.archetype)}.`,
       );
@@ -414,7 +419,8 @@ function buildFinancialInputs(
     return {
       archetype: simulation.archetype,
       packageId: simulation.packageId,
-      details,
+      details: selection.details,
+      modeledFloorArea: selection.modeledFloorArea,
       annualPrimaryEnergySavingsKwh: simulation.annualEnergySavingsKwh,
       carrierSourceBreakdown: simulation.carrierSourceBreakdown,
       financialAssumptions,
@@ -438,10 +444,10 @@ async function computeFinancialSafely(
   }
 }
 
-function buildDetailsByArchetype(
+function buildSelectionByArchetype(
   portfolio: RSEExpandedPortfolioSelection[],
-): Map<string, RSEExpandedPortfolioSelection["details"]> {
-  const map = new Map<string, RSEExpandedPortfolioSelection["details"]>();
+): Map<string, RSEExpandedPortfolioSelection> {
+  const map = new Map<string, RSEExpandedPortfolioSelection>();
 
   for (const selection of portfolio) {
     const key = rseArchetypeKey(selection.archetype);
@@ -450,7 +456,7 @@ function buildDetailsByArchetype(
         `Duplicate archetype detected in portfolio: ${key}`,
       );
     }
-    map.set(key, selection.details);
+    map.set(key, selection);
   }
 
   return map;

@@ -178,7 +178,7 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     caveat:
       "This is a total, not a saving, so every option shows a positive number and the lower one is better. The period is the project lifetime behind the financial results, 20 years unless you change it, not the life of the building. It inherits the limits of both halves: only the manufacture of the materials is counted, with nothing for transport, installation, maintenance, replacements or disposal, and only heating and cooling on the running side, leaving out hot water, lighting and appliances. Electricity and gas are assumed to stay as carbon-intensive as they are today, so a grid that cleans up over time would bring the real figure down.",
     professionalDetail:
-      "Material carbon (kgCO₂e) plus annual operational emissions × 1000 × project lifetime, held per building in kgCO₂e and aggregated in tonnes across the stock for RSE. The horizon is the Financial service's project_lifetime (RSE: financialAssumptions.projectLifetimeYears), an appraisal period rather than a service life. Module coverage is partial and asymmetric: product stage only on the material side, from the ReLIFE technical sheets, plus operational energy on the other, restricted to HVAC end uses because the carrier split derives from delivered heating and cooling energy. Transport, installation, maintenance, replacement and end-of-life are absent, as is any discounting of future emissions or grid-decarbonization trajectory. Undefined whenever the material figure, the annual emissions or the horizon is missing, so a gap never reads as a smaller total.",
+      "Material carbon (kgCO₂e) plus annual operational emissions × 1000 × project lifetime, held per dwelling in kgCO₂e and aggregated in tonnes across the stock for RSE. The horizon is the Financial service's project_lifetime (RSE: financialAssumptions.projectLifetimeYears), an appraisal period rather than a service life. Module coverage is partial and asymmetric: product stage only on the material side, from the ReLIFE technical sheets, plus operational energy on the other, restricted to HVAC end uses because the carrier split derives from delivered heating and cooling energy. Transport, installation, maintenance, replacement and end-of-life are absent, as is any discounting of future emissions or grid-decarbonization trajectory. Undefined whenever the material figure, the annual emissions or the horizon is missing, so a gap never reads as a smaller total.",
   },
   investment: {
     id: "investment",
@@ -345,10 +345,10 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     id: "rse-total-energy-savings",
     label: "Total annual primary energy savings",
     description:
-      "Aggregate primary energy savings (UNI EP_total) across the entire building stock for one renovation package.",
+      "Aggregate primary energy savings (UNI EP_total) across the entire dwelling stock for one renovation package.",
     unit: "kWh/year",
     caveat:
-      "Modeled estimate: a representative archetype simulation scaled by the number of buildings, not a measured stock total.",
+      "Modeled estimate: a representative archetype simulation scaled by the number of dwellings, not a measured stock total. Apartment archetypes are scaled down to one dwelling by floor area first.",
   },
   "rse-co2-reduced-per-eur": {
     id: "rse-co2-reduced-per-eur",
@@ -361,17 +361,17 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     id: "rse-total-co2-reduction",
     label: "Total annual CO₂ reduction",
     description:
-      "Aggregate CO₂ emissions reduction across the entire building stock for one renovation package.",
+      "Aggregate CO₂ emissions reduction across the entire dwelling stock for one renovation package.",
     unit: "t CO₂e/year",
     caveat:
-      "Modeled estimate: a representative archetype simulation scaled by the number of buildings, not a measured stock total.",
+      "Modeled estimate: a representative archetype simulation scaled by the number of dwellings, not a measured stock total. Apartment archetypes are scaled down to one dwelling by floor area first.",
   },
   "rse-renovatable-buildings": {
     id: "rse-renovatable-buildings",
-    label: "Renovatable buildings",
+    label: "Renovatable dwellings",
     description:
-      "Number of buildings that can be renovated within the specified budget when using a given package.",
-    unit: "buildings",
+      "Number of dwellings that can be renovated within the specified budget when using a given package. Apartment archetypes count individual dwellings, single-family ones whole houses.",
+    unit: "dwellings",
     caveat:
       "Computed with proportional stock scaling, not by selecting cheapest archetypes first. The budget is treated as covering the owner's share only: any subsidy is assumed to be funded from outside it, so a subsidy makes the budget reach further. If the subsidy would instead come out of this same budget, the figure is optimistic.",
   },

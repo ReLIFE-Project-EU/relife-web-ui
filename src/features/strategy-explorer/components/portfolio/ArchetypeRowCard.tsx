@@ -25,6 +25,8 @@ export interface PortfolioRow {
   category: string;
   name: string;
   buildingCount: number | "";
+  /** Dwelling floor area (m²); apartment-like categories only. */
+  unitFloorArea?: number | "";
 }
 
 interface SelectOption {
@@ -50,7 +52,7 @@ interface ArchetypeRowCardProps {
 
 /**
  * One entry of the building stock: an archetype selection (country →
- * category → archetype) paired with the number of buildings it represents.
+ * category → archetype) paired with the number of dwellings it represents.
  * Purely presentational; selection state and validation live in PortfolioStep.
  */
 export function ArchetypeRowCard({
@@ -95,7 +97,7 @@ export function ArchetypeRowCard({
               <Text size="xs" c="dimmed" truncate>
                 {isComplete
                   ? `ID: ${selectedArchetype.name}`
-                  : "Pick a reference building and how many buildings it represents"}
+                  : "Pick a reference building and how many dwellings it represents"}
               </Text>
             </Box>
           </Group>
@@ -155,7 +157,7 @@ export function ArchetypeRowCard({
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 4, md: 2 }}>
             <NumberInput
-              label="Buildings"
+              label="Dwellings"
               placeholder="Count"
               value={row.buildingCount}
               onChange={(val) =>

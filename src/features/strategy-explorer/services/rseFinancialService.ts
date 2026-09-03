@@ -1,7 +1,11 @@
 import { financial } from "../../../api/financial";
 import { FinancialService } from "../../../services/FinancialService";
 import { estimatePackageEmbodiedCarbonFromBui } from "../../../services/embodiedCarbon";
-import { lookupPackageCostsFromDetails } from "../../../services/packageCostLookup";
+import {
+  lookupPackageCostsFromDetails,
+  scaleArchetypeGeometry,
+  type ResolvedArchetypeGeometry,
+} from "../../../services/packageCostLookup";
 import {
   buildSchemes,
   mapWireRiskResponse,
@@ -46,6 +50,12 @@ export interface RSEFinancialServiceInput {
   archetype: RSEArchetypeRef;
   packageId: RSEPackageId;
   details: ArchetypeDetails;
+  /**
+   * Floor area the row models: the dwelling for apartment-like categories, the
+   * whole archetype otherwise. Envelope surfaces and HVAC/PV capacity are sized
+   * from it so costs and material carbon match the scaled energy savings.
+   */
+  modeledFloorArea: number;
   /** Primary energy savings (display/aggregation); not sent to the Financial API. */
   annualPrimaryEnergySavingsKwh: number;
   carrierSourceBreakdown: {
@@ -70,6 +80,11 @@ export async function computeFinancials(
   input: RSEFinancialServiceInput,
 ): Promise<RSEFinancialResult> {
   const assumptions = resolveFinancialAssumptions(input.financialAssumptions);
+  // A no-op for single-family rows, whose modeled area is the archetype's own.
+  const geometry = scaleArchetypeGeometry(input.details, {
+    floorArea: input.modeledFloorArea,
+    scaleEnvelopeToFloorArea: true,
+  });
 
   // Resolve gross CAPEX and annual maintenance from EU reference data via the
   // shared Financial lookup. Data-shaped failures (unsupported country, no
@@ -81,8 +96,8 @@ export async function computeFinancials(
     costs = await lookupPackageCostsFromDetails(
       {
         country: input.archetype.country,
-        bui: input.details.bui,
-        floorArea: input.details.floorArea,
+        bui: geometry.bui,
+        floorArea: geometry.floorArea,
         measureIds: RSE_PACKAGES[input.packageId].measureIds,
         projectLifetime: assumptions.projectLifetimeYears,
       },
@@ -184,6 +199,7 @@ export async function computeFinancials(
 
   return normalizeRiskResponse(
     input,
+    geometry,
     capexEur,
     effectiveCapexEur,
     annualMaintenanceEur,
@@ -219,6 +235,7 @@ export async function computeFinancialsBatch(
 
 function normalizeRiskResponse(
   input: RSEFinancialServiceInput,
+  geometry: ResolvedArchetypeGeometry,
   capexEur: number,
   effectiveCapexEur: number,
   annualMaintenanceEur: number,
@@ -232,8 +249,8 @@ function normalizeRiskResponse(
     projectLifetime,
   });
   const embodiedCarbonKgCo2e = estimatePackageEmbodiedCarbonFromBui({
-    bui: input.details.bui,
-    floorArea: input.details.floorArea,
+    bui: geometry.bui,
+    floorArea: geometry.floorArea,
     measureIds: RSE_PACKAGES[input.packageId].measureIds,
   });
   const pf = mapped.pointForecasts;

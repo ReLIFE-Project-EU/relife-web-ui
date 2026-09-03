@@ -83,8 +83,8 @@ export function ResultsStep() {
           Strategy Comparison Results
         </Title>
         <Text c="dimmed" size="sm">
-          How each renovation package performs across your building stock of{" "}
-          {formatNumber(totalPortfolioBuildings)} buildings.
+          How each renovation package performs across your stock of{" "}
+          {formatNumber(totalPortfolioBuildings)} dwellings.
         </Text>
       </Box>
 

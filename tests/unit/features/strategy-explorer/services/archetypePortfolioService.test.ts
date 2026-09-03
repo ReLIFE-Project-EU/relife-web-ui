@@ -76,7 +76,44 @@ describe("archetypePortfolioService", () => {
         archetype,
         buildingCount: 12,
         details: makeDetails(),
+        modeledFloorArea: 100,
       },
+    ]);
+  });
+
+  test("models apartment archetypes as one dwelling, capped by the reference building", async () => {
+    const big = {
+      ...archetype,
+      category: "Apartment buildings",
+      name: "AB big",
+    };
+    const small = { ...big, name: "AB small" };
+    const areaByName: Record<string, number> = {
+      [big.name]: 1000,
+      [small.name]: 50,
+      [archetype.name]: 100,
+    };
+    const service = {
+      ...makeService(),
+      getArchetypeDetails: vi.fn(async (ref: ArchetypeInfo) => ({
+        ...makeDetails(ref),
+        floorArea: areaByName[ref.name],
+      })),
+    };
+    const portfolioService = createArchetypePortfolioService(service);
+
+    const expanded = await portfolioService.expandPortfolio({
+      selections: [
+        { archetype: big, buildingCount: 40 },
+        { archetype: small, buildingCount: 5 },
+        { archetype, buildingCount: 3 },
+      ],
+    });
+
+    expect(expanded.map((s) => s.modeledFloorArea)).toEqual([
+      // Default dwelling area, the cap when the building is smaller, and the
+      // whole archetype for the single-family row (scaling factor 1).
+      80, 50, 100,
     ]);
   });
 
@@ -123,6 +160,11 @@ describe("archetypePortfolioService", () => {
       "NaN count",
       { selections: [{ archetype, buildingCount: Number.NaN }] },
       "invalid-building-count",
+    ],
+    [
+      "non-positive dwelling area",
+      { selections: [{ archetype, buildingCount: 1, unitFloorArea: 0 }] },
+      "invalid-floor-area",
     ],
   ] satisfies Array<[string, RSEPortfolioDefinition, string]>)(
     "rejects %s",

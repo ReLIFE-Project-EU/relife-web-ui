@@ -88,7 +88,7 @@ function SummaryStrip() {
       }}
     >
       <Group gap={0} grow wrap="nowrap" align="stretch">
-        <Cell label="Buildings">
+        <Cell label="Dwellings">
           {totalBuildings > 0 ? (
             formatNumber(totalBuildings)
           ) : (

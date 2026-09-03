@@ -36,7 +36,7 @@ import {
 import classes from "./StrategyResults.module.css";
 
 const ALWAYS_ON_COLUMNS: RankingColumn[] = [
-  { key: "totalBuildings", label: "Buildings", formatter: formatNumber },
+  { key: "totalBuildings", label: "Dwellings", formatter: formatNumber },
   {
     key: "totalCapexEur",
     label: "Investment",

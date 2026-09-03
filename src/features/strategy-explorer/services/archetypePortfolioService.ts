@@ -1,5 +1,10 @@
+import {
+  DEFAULT_FLAT_FLOOR_AREA,
+  isApartmentLikeCategory,
+} from "../../../constants/buildingFormOptions";
 import { buildingService } from "../../../services/BuildingService";
 import type { IBuildingService } from "../../../services/types";
+import type { ArchetypeDetails } from "../../../types/archetype";
 import type { ArchetypeInfo } from "../../../types/forecasting";
 import {
   RSE_UNAVAILABLE_REASONS,
@@ -7,6 +12,7 @@ import {
 } from "../constants";
 import type {
   RSEArchetypeRef,
+  RSEArchetypeSelection,
   RSEExpandedPortfolioSelection,
   RSEPortfolioDefinition,
 } from "../types";
@@ -53,16 +59,43 @@ export function createArchetypePortfolioService(
       const portfolio = validatePortfolio(definition);
 
       return Promise.all(
-        portfolio.selections.map(async (selection) => ({
-          ...selection,
-          details: await service.getArchetypeDetails(selection.archetype),
-        })),
+        portfolio.selections.map(async (selection) => {
+          const details = await service.getArchetypeDetails(
+            selection.archetype,
+          );
+
+          return {
+            ...selection,
+            details,
+            modeledFloorArea: resolveModeledFloorArea(selection, details),
+          };
+        }),
       );
     },
   };
 }
 
 export const archetypePortfolioService = createArchetypePortfolioService();
+
+/**
+ * Floor area a row models. Apartment-like categories (multi-family houses and
+ * apartment buildings) stand for one dwelling inside the reference building,
+ * capped by the building itself; single-family rows keep the whole archetype,
+ * which makes their scaling factor exactly 1.
+ */
+function resolveModeledFloorArea(
+  selection: RSEArchetypeSelection,
+  details: Pick<ArchetypeDetails, "floorArea">,
+): number {
+  if (!isApartmentLikeCategory(selection.archetype.category)) {
+    return details.floorArea;
+  }
+
+  return Math.min(
+    selection.unitFloorArea ?? DEFAULT_FLAT_FLOOR_AREA,
+    details.floorArea,
+  );
+}
 
 function validatePortfolio(
   definition: RSEPortfolioDefinition,
@@ -107,9 +140,23 @@ function validatePortfolio(
         );
       }
 
+      if (
+        selection.unitFloorArea !== undefined &&
+        (!Number.isFinite(selection.unitFloorArea) ||
+          selection.unitFloorArea <= 0)
+      ) {
+        throw new RSEPortfolioValidationError(
+          "RSE dwelling floor areas must be positive numbers.",
+          RSE_UNAVAILABLE_REASONS.invalidFloorArea,
+        );
+      }
+
       return {
         archetype,
         buildingCount: selection.buildingCount,
+        ...(selection.unitFloorArea !== undefined
+          ? { unitFloorArea: selection.unitFloorArea }
+          : {}),
       };
     }),
   };

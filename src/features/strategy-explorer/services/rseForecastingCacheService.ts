@@ -10,7 +10,6 @@ import {
   RSE_UNAVAILABLE_REASONS,
   type RSEUnavailableReason,
 } from "../constants";
-import type { ArchetypeDetails } from "../../../types/archetype";
 import { extractUniTotals, getEPCClass } from "../../../services/energyUtils";
 import {
   MEASURE_TO_ELEMENT,
@@ -20,9 +19,16 @@ import { extractCarrierSourceBreakdown } from "../../../services/carrierSavingsS
 import type { UNI11300Results } from "../../../types/forecasting";
 import type {
   RSEArchetypeRef,
+  RSEExpandedPortfolioSelection,
   RSEForecastingCacheEntry,
   RSESimulationResult,
 } from "../types";
+
+/** What `normalizeEntry` needs from a portfolio row to scale the entry. */
+export type RSENormalizationTarget = Pick<
+  RSEExpandedPortfolioSelection,
+  "details" | "modeledFloorArea"
+>;
 
 type RSECacheApiClient = {
   getPublishedVersion(): Promise<RSEPublishedCacheVersion>;
@@ -83,19 +89,30 @@ export function createRSEForecastingCacheService(
 
     normalizeEntry(
       entry: RSEForecastingCacheEntry,
-      details: ArchetypeDetails,
+      target: RSENormalizationTarget,
     ): RSESimulationResult {
-      return normalizeEntry(entry, details);
+      return normalizeEntry(entry, target);
     },
   };
 }
 
 export const rseForecastingCacheService = createRSEForecastingCacheService();
 
+/**
+ * Turn a cached whole-building entry into a per-row simulation result.
+ *
+ * Cache payloads always describe the whole reference building, so rows that
+ * model a single dwelling (apartment-like categories) take their share of every
+ * absolute figure by floor area — the same share-of-the-bill scaling HRA
+ * applies. Percentages and the display EPC are intensities, so they are
+ * unchanged by construction and stay on the cached whole-building basis.
+ */
 export function normalizeEntry(
   entry: RSEForecastingCacheEntry,
-  details: ArchetypeDetails,
+  target: RSENormalizationTarget,
 ): RSESimulationResult {
+  const { details } = target;
+
   assertPositiveFinite(
     details.floorArea,
     "Archetype floor area must be available to derive the display EPC label.",
@@ -124,6 +141,7 @@ export function normalizeEntry(
   const renovatedSystemEnergyKwh = extractSystemEnergyKwh(
     entry.renovated.primaryEnergyUni11300Summary,
   );
+  const areaScaleFactor = target.modeledFloorArea / details.floorArea;
   const systemEnergySavingsKwh =
     baselineSystemEnergyKwh !== undefined &&
     renovatedSystemEnergyKwh !== undefined
@@ -151,9 +169,9 @@ export function normalizeEntry(
     archetype: entry.key.archetype,
     packageId: entry.key.packageId,
     cacheVersion: entry.key.cacheVersion,
-    baselineAnnualEnergyKwh: entry.baseline.annualEnergyKwh,
-    renovatedAnnualEnergyKwh: entry.renovated.annualEnergyKwh,
-    annualEnergySavingsKwh: annualPrimaryEnergySavingsKwh,
+    baselineAnnualEnergyKwh: entry.baseline.annualEnergyKwh * areaScaleFactor,
+    renovatedAnnualEnergyKwh: entry.renovated.annualEnergyKwh * areaScaleFactor,
+    annualEnergySavingsKwh: annualPrimaryEnergySavingsKwh * areaScaleFactor,
     annualEnergySavingsPercentage: percentageSavings(
       entry.baseline.annualEnergyKwh,
       annualPrimaryEnergySavingsKwh,
@@ -161,15 +179,18 @@ export function normalizeEntry(
     carrierSourceBreakdown: {
       baseline: extractCarrierSourceBreakdown(
         entry.baseline.co2.sourceBreakdownKwh,
+        areaScaleFactor,
       ),
       renovated: extractCarrierSourceBreakdown(
         entry.renovated.co2.sourceBreakdownKwh,
+        areaScaleFactor,
       ),
     },
-    baselineAnnualEmissionsTonCo2eq: entry.baseline.co2.annualEmissionsTonCo2eq,
+    baselineAnnualEmissionsTonCo2eq:
+      entry.baseline.co2.annualEmissionsTonCo2eq * areaScaleFactor,
     renovatedAnnualEmissionsTonCo2eq:
-      entry.renovated.co2.annualEmissionsTonCo2eq,
-    annualCo2ReductionTon,
+      entry.renovated.co2.annualEmissionsTonCo2eq * areaScaleFactor,
+    annualCo2ReductionTon: annualCo2ReductionTon * areaScaleFactor,
     annualCo2ReductionPercentage: percentageSavings(
       entry.baseline.co2.annualEmissionsTonCo2eq,
       annualCo2ReductionTon,

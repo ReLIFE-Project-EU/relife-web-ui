@@ -26,7 +26,7 @@ const features = [
     icon: IconListDetails,
     title: "Archetype Portfolio Builder",
     description:
-      "Select available country/category/archetype combinations and assign building counts to define a representative stock.",
+      "Select available country/category/archetype combinations and assign dwelling counts to define a representative stock.",
   },
   {
     icon: IconTarget,
@@ -43,7 +43,7 @@ const features = [
   {
     icon: IconChartBar,
     title: "Ranked Results",
-    description: `View goal-specific package rankings with total investment, annual ${relifeConcepts["rse-total-energy-savings"].label.toLowerCase()}, ${relifeConcepts["rse-total-co2-reduction"].label.toLowerCase()}, and buildings within budget where applicable.`,
+    description: `View goal-specific package rankings with total investment, annual ${relifeConcepts["rse-total-energy-savings"].label.toLowerCase()}, ${relifeConcepts["rse-total-co2-reduction"].label.toLowerCase()}, and dwellings within budget where applicable.`,
   },
 ];
 

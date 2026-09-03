@@ -26,7 +26,7 @@ const GOAL_OPTIONS: Array<{
   {
     kind: "financial",
     label: "Financial",
-    description: "Maximize buildings renovated within a budget.",
+    description: "Maximize dwellings renovated within a budget.",
     icon: IconCash,
   },
   {
@@ -140,7 +140,7 @@ export function GoalStep() {
                   {option.kind === "financial" && isSelected && (
                     <NumberInput
                       label="Maximum budget"
-                      description="Total investment ceiling across the whole building stock."
+                      description="Total investment ceiling across the whole dwelling stock."
                       placeholder="e.g. 1,000,000"
                       prefix="€ "
                       value={budget}

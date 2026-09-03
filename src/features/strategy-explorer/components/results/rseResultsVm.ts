@@ -71,7 +71,7 @@ export const RANKING_COLUMNS: Record<
   financial: [
     {
       key: "renovatableBuildingsWithinBudget",
-      label: "Buildings within budget",
+      label: "Dwellings within budget",
       formatter: formatNumber,
       conceptId: "rse-renovatable-buildings",
     },
@@ -184,7 +184,7 @@ export const SCORE_COMPONENT_META: Record<
     conceptId: "rse-total-co2-reduction",
   },
   renovatableBuildingsWithinBudget: {
-    label: "Buildings within budget",
+    label: "Dwellings within budget",
     conceptId: "rse-renovatable-buildings",
   },
   aggregateROI: { label: "Aggregate ROI", conceptId: "roi" },
@@ -294,7 +294,7 @@ export function heroMetricsFor(
   const roi = agg.financialIndicators.aggregateROI;
   return [
     {
-      label: "Buildings within budget",
+      label: "Dwellings within budget",
       value:
         agg.renovatableBuildingsWithinBudget !== undefined
           ? formatNumber(agg.renovatableBuildingsWithinBudget)

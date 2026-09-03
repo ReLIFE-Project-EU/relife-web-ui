@@ -77,7 +77,7 @@ export function FinancingPanel() {
         <SubsidyInput
           incentives={draft.incentives}
           onChange={(incentives) => setDraft({ ...draft, incentives })}
-          amountHelperText="Applied per building, to every archetype in the portfolio."
+          amountHelperText="Applied per dwelling, to every archetype in the portfolio."
         />
 
         <Group justify="flex-end">

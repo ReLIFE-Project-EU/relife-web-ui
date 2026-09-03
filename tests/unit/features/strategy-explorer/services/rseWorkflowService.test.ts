@@ -50,11 +50,13 @@ function makePortfolio(): RSEExpandedPortfolioSelection[] {
       archetype: archetypeA,
       buildingCount: 1,
       details: { floorArea: 100 } as RSEExpandedPortfolioSelection["details"],
+      modeledFloorArea: 100,
     },
     {
       archetype: archetypeB,
       buildingCount: 2,
       details: { floorArea: 120 } as RSEExpandedPortfolioSelection["details"],
+      modeledFloorArea: 120,
     },
   ];
 }

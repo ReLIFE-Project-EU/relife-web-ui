@@ -29,13 +29,32 @@ import { APIError } from "../../../../../src/types/common";
  */
 const FIXTURE_BUI = {
   building_surface: [
-    { name: "wall_south", type: "opaque", area: 80, sky_view_factor: 0.5 },
-    { name: "roof", type: "opaque", area: 60, sky_view_factor: 1 },
-    { name: "slab_on_ground", type: "opaque", area: 50, sky_view_factor: 0 },
+    {
+      name: "wall_south",
+      type: "opaque",
+      area: 80,
+      u_value: 0.8,
+      sky_view_factor: 0.5,
+    },
+    {
+      name: "roof",
+      type: "opaque",
+      area: 60,
+      u_value: 0.6,
+      sky_view_factor: 1,
+    },
+    {
+      name: "slab_on_ground",
+      type: "opaque",
+      area: 50,
+      u_value: 0.9,
+      sky_view_factor: 0,
+    },
     {
       name: "window_south",
       type: "transparent",
       area: 20,
+      u_value: 2.8,
       sky_view_factor: 0.5,
     },
   ],
@@ -102,6 +121,7 @@ function makeCarrierInput(overrides?: {
     },
     packageId: "envelope" as const,
     details: makeArchetypeDetails(100),
+    modeledFloorArea: 100,
     annualPrimaryEnergySavingsKwh: gasBaseline - gasRenovated,
     carrierSourceBreakdown: {
       baseline: {
@@ -203,6 +223,55 @@ describe("computeFinancials", () => {
     // The fixture metadata carries a resolved CAPEX, so the same response
     // serves both the lookup pre-pass and the risk-assessment call.
     mockAssessRisk.mockResolvedValue(makeFixtureResponse());
+  });
+
+  test("prices a dwelling row from its share of the reference building", async () => {
+    // A 100 m² dwelling inside a 400 m² reference building: envelope surfaces
+    // take a quarter share, HVAC/PV are sized from the dwelling itself.
+    const details = {
+      ...makeArchetypeDetails(400),
+      bui: {
+        ...FIXTURE_BUI,
+        building: { net_floor_area: 400, exposed_perimeter: 80 },
+      } as unknown as ArchetypeDetails["bui"],
+    };
+    const base = {
+      ...makeCarrierInput(),
+      packageId: "combined" as const,
+      details,
+    };
+
+    await computeFinancials({ ...base, modeledFloorArea: 100 });
+
+    const [dwellingLookup] = mockAssessRisk.mock.calls[0];
+    expect(dwellingLookup.renovation_actions).toEqual([
+      { action: "Wall insulation", area_m2: 20 },
+      { action: "Roof insulation - Accessible", area_m2: 15 },
+      { action: "Floor insulation", area_m2: 12.5 },
+      { action: "Windows", area_m2: 5 },
+      { action: "Air-water Heat Pump", capacity_kw: 5 },
+      { action: "PV", capacity_kw: 4.5 },
+    ]);
+
+    // Material carbon follows the same geometry. Checked on the envelope
+    // package, where the share is exactly proportional: system measures read
+    // per-unit carbon off a capacity-interpolated sheet, so their carbon is
+    // not linear in the dwelling's area share.
+    const envelope = { ...base, packageId: "envelope" as const };
+    const dwellingCarbon = await computeFinancials({
+      ...envelope,
+      modeledFloorArea: 100,
+    });
+    const wholeCarbon = await computeFinancials({
+      ...envelope,
+      modeledFloorArea: 400,
+    });
+
+    expect(wholeCarbon.embodiedCarbonKgCo2e).toBeGreaterThan(0);
+    expect(dwellingCarbon.embodiedCarbonKgCo2e).toBeCloseTo(
+      wholeCarbon.embodiedCarbonKgCo2e! * 0.25,
+      3,
+    );
   });
 
   test("resolves package costs via the reference-data lookup pre-pass", async () => {

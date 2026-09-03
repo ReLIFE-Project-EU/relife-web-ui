@@ -4,6 +4,10 @@ import { IconPlus } from "@tabler/icons-react";
 import { ErrorAlert } from "../../../components/shared/ErrorAlert";
 import { StepNavigation } from "../../../components/shared/StepNavigation";
 import {
+  DEFAULT_FLAT_FLOOR_AREA,
+  isApartmentLikeCategory,
+} from "../../../constants/buildingFormOptions";
+import {
   buildArchetypeSelectionLabels,
   formatArchetypeCategoryLabel,
   getArchetypeSelectionLabel,
@@ -131,6 +135,11 @@ export function PortfolioStep() {
         if ("category" in partial) {
           updated.name = "";
         }
+        if ("country" in partial || "category" in partial) {
+          updated.unitFloorArea = isApartmentLikeCategory(updated.category)
+            ? DEFAULT_FLAT_FLOOR_AREA
+            : undefined;
+        }
         return updated;
       }),
     );
@@ -176,7 +185,15 @@ export function PortfolioStep() {
         row.buildingCount <= 0 ||
         !Number.isInteger(row.buildingCount)
       ) {
-        setValidationError("Building counts must be positive whole numbers.");
+        setValidationError("Dwelling counts must be positive whole numbers.");
+        return null;
+      }
+      const isDwellingRow = isApartmentLikeCategory(row.category);
+      if (
+        isDwellingRow &&
+        (typeof row.unitFloorArea !== "number" || row.unitFloorArea <= 0)
+      ) {
+        setValidationError("Dwelling floor areas must be positive numbers.");
         return null;
       }
 
@@ -194,6 +211,9 @@ export function PortfolioStep() {
           name: row.name,
         },
         buildingCount: row.buildingCount,
+        ...(isDwellingRow && typeof row.unitFloorArea === "number"
+          ? { unitFloorArea: row.unitFloorArea }
+          : {}),
       });
     }
 
@@ -226,7 +246,8 @@ export function PortfolioStep() {
           </Title>
           <Text c="dimmed" size="sm">
             Describe your building stock as reference archetypes, each with the
-            number of buildings it represents.
+            number of dwellings it represents. Apartment archetypes stand for a
+            single dwelling, single-family ones for a whole house.
           </Text>
         </Box>
         {completedSelections > 0 ? (
@@ -234,7 +255,7 @@ export function PortfolioStep() {
             {completedSelections}{" "}
             {completedSelections === 1 ? "archetype" : "archetypes"} ·{" "}
             {formatNumber(totalBuildings)}{" "}
-            {totalBuildings === 1 ? "building" : "buildings"}
+            {totalBuildings === 1 ? "dwelling" : "dwellings"}
           </Badge>
         ) : null}
       </Group>
@@ -270,6 +291,10 @@ export function PortfolioStep() {
                 <ArchetypeDetailsPanel
                   key={archetypeKey(selectedArchetype)}
                   archetype={selectedArchetype}
+                  unitFloorArea={row.unitFloorArea}
+                  onUnitFloorAreaChange={(value) =>
+                    updateRow(row.id, { unitFloorArea: value })
+                  }
                 />
               ) : null}
             </ArchetypeRowCard>

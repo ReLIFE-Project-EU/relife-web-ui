@@ -40,6 +40,11 @@ function makeDetails(floorArea = 100): ArchetypeDetails {
   };
 }
 
+/** A portfolio row modeling the whole reference building unless told otherwise. */
+function makeTarget(floorArea = 100, modeledFloorArea = floorArea) {
+  return { details: makeDetails(floorArea), modeledFloorArea };
+}
+
 function makeEntry(
   overrides?: Partial<{
     packageId: RSEForecastingCacheEntry["key"]["packageId"];
@@ -204,7 +209,7 @@ describe("rseForecastingCacheService", () => {
   });
 
   test("normalizes cached numeric values and recomputes display-only EPC labels", () => {
-    const result = normalizeEntry(makeEntry(), makeDetails(100));
+    const result = normalizeEntry(makeEntry(), makeTarget(100));
 
     expect(result).toEqual(
       expect.objectContaining({
@@ -247,7 +252,7 @@ describe("rseForecastingCacheService", () => {
           heat_pump_cop: 3.2,
         },
       }),
-      makeDetails(100),
+      makeTarget(100),
     );
 
     expect(result.annualEnergySavingsKwh).toBe(4_000);
@@ -255,6 +260,37 @@ describe("rseForecastingCacheService", () => {
       (4_000 / 12_000) * 100,
     );
     expect(result.carrierSourceBreakdown.baseline.naturalGasKwh).toBe(12_000);
+  });
+
+  test("scales a dwelling row down from the whole-building cache", () => {
+    const whole = normalizeEntry(makeEntry(), makeTarget(400));
+    const dwelling = normalizeEntry(makeEntry(), makeTarget(400, 80));
+    const share = 80 / 400;
+
+    expect(dwelling.baselineAnnualEnergyKwh).toBeCloseTo(
+      whole.baselineAnnualEnergyKwh * share,
+    );
+    expect(dwelling.annualEnergySavingsKwh).toBeCloseTo(
+      whole.annualEnergySavingsKwh * share,
+    );
+    expect(dwelling.annualCo2ReductionTon).toBeCloseTo(
+      whole.annualCo2ReductionTon * share,
+    );
+    expect(dwelling.carrierSourceBreakdown.baseline.naturalGasKwh).toBeCloseTo(
+      whole.carrierSourceBreakdown.baseline.naturalGasKwh * share,
+    );
+
+    // Intensities are invariant: the ratio scales in both numerator and
+    // denominator, so percentages and the display EPC must not move.
+    expect(dwelling.annualEnergySavingsPercentage).toBeCloseTo(
+      whole.annualEnergySavingsPercentage,
+    );
+    expect(dwelling.baselineDisplayEpcClass).toBe(
+      whole.baselineDisplayEpcClass,
+    );
+    expect(dwelling.renovatedDisplayEpcClass).toBe(
+      whole.renovatedDisplayEpcClass,
+    );
   });
 
   test("rejects system-only cache entries with no before-after system delta", () => {
@@ -275,7 +311,7 @@ describe("rseForecastingCacheService", () => {
             EP_total_kWh: 10_000,
           },
         }),
-        makeDetails(100),
+        makeTarget(100),
       ),
     ).toThrow(RSEForecastingCacheServiceError);
   });
@@ -286,19 +322,19 @@ describe("rseForecastingCacheService", () => {
     expect(entry.baseline.displayEpcClass).toBe("G");
     expect(entry.renovated.displayEpcClass).toBe("G");
 
-    const result = normalizeEntry(entry, makeDetails(100));
+    const result = normalizeEntry(entry, makeTarget(100));
 
     expect(result.baselineDisplayEpcClass).toBe("C");
     expect(result.renovatedDisplayEpcClass).toBe("B");
   });
 
   test("rejects invalid floor area needed for frontend EPC display", () => {
-    expect(() => normalizeEntry(makeEntry(), makeDetails(0))).toThrow(
+    expect(() => normalizeEntry(makeEntry(), makeTarget(0))).toThrow(
       RSEForecastingCacheServiceError,
     );
 
     try {
-      normalizeEntry(makeEntry(), makeDetails(0));
+      normalizeEntry(makeEntry(), makeTarget(0));
       expect.fail("Expected normalization to throw");
     } catch (error) {
       expect((error as RSEForecastingCacheServiceError).reason).toBe(
@@ -311,7 +347,7 @@ describe("rseForecastingCacheService", () => {
     expect(() =>
       normalizeEntry(
         makeEntry({ baselineAnnualEnergyKwh: Number.POSITIVE_INFINITY }),
-        makeDetails(),
+        makeTarget(),
       ),
     ).toThrow(RSEForecastingCacheServiceError);
   });

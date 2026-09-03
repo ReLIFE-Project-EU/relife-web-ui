@@ -201,6 +201,6 @@ function explainRanking(goal: RSERenovationGoal): string {
     case "emission":
       return "Ranks packages by annual CO2 reduction per euro and total annual CO2 reduction.";
     case "financial":
-      return "Ranks packages by buildings renovated within budget, aggregate ROI, aggregate NPV, and aggregate payback when available.";
+      return "Ranks packages by dwellings renovated within budget, aggregate ROI, aggregate NPV, and aggregate payback when available.";
   }
 }
