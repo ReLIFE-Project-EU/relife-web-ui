@@ -9,10 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import type {
-  ArchetypeDetails,
-  BuildingModifications,
-} from "../../types/archetype";
+import type { ArchetypeDetails } from "../../types/archetype";
 import type { ArchetypeInfo } from "../../types/forecasting";
 import type { ArchetypeMatchResult } from "../../services/types";
 import { constructionPeriodsEqual } from "../../utils/apiMappings";
@@ -46,25 +43,18 @@ import type {
 
 const BROWSE_RESULT_LIMIT = 10;
 
-function modificationsEqual(
-  left: BuildingModifications | undefined,
-  right: BuildingModifications | undefined,
+/** Compares drafts, not derived modifications: the flat's area, the block floor
+ *  count and the apartment level never become BuildingModifications. */
+function draftsEqual(
+  left: BuildingSelectorDraft | null,
+  right: BuildingSelectorDraft | null,
 ): boolean {
   if (left === right) return true;
   if (!left || !right) return false;
 
-  const leftKeys = Object.keys(left).sort();
-  const rightKeys = Object.keys(right).sort();
-  if (leftKeys.length !== rightKeys.length) return false;
-
-  return leftKeys.every((key) => {
-    const leftValue = left[key as keyof BuildingModifications];
-    const rightValue = right[key as keyof BuildingModifications];
-    if (typeof leftValue === "object" && typeof rightValue === "object") {
-      return JSON.stringify(leftValue) === JSON.stringify(rightValue);
-    }
-    return leftValue === rightValue;
-  });
+  return (Object.keys(left) as (keyof BuildingSelectorDraft)[]).every(
+    (key) => left[key] === right[key],
+  );
 }
 
 function getErrorMessage(error: unknown, fallback: string): string {
@@ -169,9 +159,8 @@ export function BuildingSelector({
   );
   const [isMatching, setIsMatching] = useState(false);
   const [matchError, setMatchError] = useState<string | null>(null);
-  const [appliedModifications, setAppliedModifications] = useState<
-    BuildingModifications | undefined
-  >(undefined);
+  const [appliedDraft, setAppliedDraft] =
+    useState<BuildingSelectorDraft | null>(null);
   const [
     adjustmentsOpen,
     { toggle: toggleAdjustments, open: openAdjustments },
@@ -200,7 +189,7 @@ export function BuildingSelector({
       setDraft(null);
       setMatchResult(null);
       setMatchError(null);
-      setAppliedModifications(undefined);
+      setAppliedDraft(null);
       if (notify) onSelectionChange(null);
     },
     [onSelectionChange],
@@ -236,11 +225,7 @@ export function BuildingSelector({
       constructionPeriod: string;
       nextMatchResult?: ArchetypeMatchResult;
     }) => {
-      const modifications =
-        buildModifications(params.details, params.nextDraft, adjustmentScope, {
-          flatUnit: flatUnitMode,
-        }) ?? undefined;
-      setAppliedModifications(modifications);
+      setAppliedDraft(params.nextDraft);
       onSelectionChange(
         buildSelection({
           mode: params.mode,
@@ -312,7 +297,7 @@ export function BuildingSelector({
         setSelectedDetails(details);
         setSelectedKey(key);
         setDraft(nextDraft);
-        setAppliedModifications(initialValue.modifications ?? undefined);
+        setAppliedDraft(nextDraft);
         setBrowseCategory(initialValue.category ?? details.category);
         setBrowsePeriod(period);
         setBrowseCountry(
@@ -617,10 +602,7 @@ export function BuildingSelector({
           flatUnit: flatUnitMode,
         })
       : undefined;
-  const hasUnsavedChanges = !modificationsEqual(
-    activeModifications,
-    appliedModifications,
-  );
+  const hasUnsavedChanges = !draftsEqual(draft, appliedDraft);
   const modificationValidation = selectedDetails
     ? validateModifications(activeModifications ?? {}, selectedDetails)
     : { isValid: true, errors: [] };

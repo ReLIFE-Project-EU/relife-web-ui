@@ -76,6 +76,12 @@ const germanyArchetype: ArchetypeInfo = {
   name: "DE_SFH_1990_1999",
 };
 
+const irelandApartmentArchetype: ArchetypeInfo = {
+  category: "Apartment buildings",
+  country: "Ireland",
+  name: "IE_AB_1980_1989",
+};
+
 function createDetails(
   archetype: ArchetypeInfo,
   overrides: Partial<ArchetypeDetails> = {},
@@ -159,10 +165,12 @@ function createService(
 function renderSelector({
   service = createService(),
   initialValue,
+  flatUnitMode = false,
   onSelectionChange = vi.fn(),
 }: {
   service?: BuildingSelectorService;
   initialValue?: BuildingSelectorInitialValue;
+  flatUnitMode?: boolean;
   onSelectionChange?: Parameters<
     typeof BuildingSelector
   >[0]["onSelectionChange"];
@@ -174,6 +182,7 @@ function renderSelector({
           service={service}
           host="hra"
           adjustmentScope="limited"
+          flatUnitMode={flatUnitMode}
           initialValue={initialValue}
           onSelectionChange={onSelectionChange}
         />
@@ -283,5 +292,55 @@ describe("BuildingSelector", () => {
     expect(screen.getAllByRole("button", { name: "Choose this" }).length).toBe(
       1,
     );
+  });
+
+  test("applies flat-mode geometry edits without customizing the simulation", async () => {
+    const onSelectionChange = vi.fn();
+    renderSelector({
+      service: createService({
+        getArchetypes: vi.fn(async () => [irelandApartmentArchetype]),
+        getArchetypeDetails: vi.fn(async () =>
+          createDetails(irelandApartmentArchetype, { floorArea: 2248.94 }),
+        ),
+        getAvailableCategories: vi.fn(async () => ["Apartment buildings"]),
+      }),
+      flatUnitMode: true,
+      onSelectionChange,
+    });
+
+    const [choose] = await screen.findAllByRole("button", {
+      name: "Choose this",
+    });
+    fireEvent.click(choose);
+
+    const apply = (await screen.findByRole("button", {
+      name: "Apply adjustments",
+    })) as HTMLButtonElement;
+    expect(apply.disabled).toBe(true);
+
+    // Neither field becomes a BuildingModification, so the Apply gate has to
+    // notice the draft itself.
+    fireEvent.change(
+      screen.getByLabelText("Your apartment's floor area (m2)"),
+      {
+        target: { value: "120" },
+      },
+    );
+    await waitFor(() => expect(apply.disabled).toBe(false));
+
+    fireEvent.change(screen.getByLabelText("Floors in the building"), {
+      target: { value: "12" },
+    });
+    onSelectionChange.mockClear();
+    fireEvent.click(apply);
+
+    await waitFor(() => expect(onSelectionChange).toHaveBeenCalled());
+    const published = onSelectionChange.mock.calls.at(-1)?.[0];
+    expect(published).toMatchObject({
+      floorArea: 120,
+      numberOfFloors: 12,
+      floorNumber: 6,
+    });
+    expect(published?.modifications).toBeUndefined();
   });
 });
