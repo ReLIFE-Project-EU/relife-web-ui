@@ -12,7 +12,7 @@ Use this as a lightweight brand and UI sanity check, not as a parallel design sy
 For production code, the repository wins:
 
 1. Follow `AGENTS.md` and the current application architecture.
-2. Follow existing `relife-web-ui` patterns in `src/theme.ts`, `src/index.css`, and nearby Mantine components.
+2. Follow existing `relife-web-ui` patterns in `src/theme.ts` and nearby Mantine components.
 3. Use this skill only to keep new UI visually consistent with ReLIFE.
 
 ## Practical Rules

@@ -13,7 +13,6 @@ import type {
 } from "../types/archetype";
 
 // Re-export for convenience
-export { MODIFICATION_CONSTRAINTS } from "../types/archetype";
 
 function clonePayload<T>(payload: T): T {
   return structuredClone(payload);

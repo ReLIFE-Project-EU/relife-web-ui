@@ -23,16 +23,6 @@ export function useCurrentStep() {
   return state.currentStep;
 }
 
-export function useRSEPortfolio() {
-  const { state } = useStrategyExplorer();
-  return state.portfolio;
-}
-
-export function useRSEGoal() {
-  const { state } = useStrategyExplorer();
-  return state.goal;
-}
-
 export function useRSEPackages() {
   const { state } = useStrategyExplorer();
   return state.packageIds;
@@ -41,19 +31,4 @@ export function useRSEPackages() {
 export function useRSEAvailableArchetypes() {
   const { state } = useStrategyExplorer();
   return state.availableArchetypes;
-}
-
-export function useRSEWorkflowResult() {
-  const { state } = useStrategyExplorer();
-  return state.workflowResult;
-}
-
-export function useRSEIsRunningWorkflow() {
-  const { state } = useStrategyExplorer();
-  return state.isRunningWorkflow;
-}
-
-export function useRSEError() {
-  const { state } = useStrategyExplorer();
-  return state.error;
 }

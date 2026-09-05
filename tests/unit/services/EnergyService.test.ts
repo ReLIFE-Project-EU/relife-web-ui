@@ -33,13 +33,10 @@ import {
 
 const mockBuildingService = {
   getArchetypeDetails: vi.fn(),
-  getOptions: vi.fn(),
   getArchetypes: vi.fn(),
   findMatchingArchetype: vi.fn(),
   getAvailableCategories: vi.fn(),
   getAvailablePeriods: vi.fn(),
-  countMatchingArchetypes: vi.fn(),
-  getDefaultsForCountry: vi.fn(),
   detectCountryFromCoords: vi.fn(),
 } as unknown as IBuildingService;
 

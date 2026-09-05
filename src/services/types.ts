@@ -32,15 +32,6 @@ import type { RenovationAction } from "../types/financial";
 import type { APIPropertyType, OutputLevel } from "../utils/apiMappings";
 import type { AuditCtx } from "../utils/auditLogger";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Building Service Types
-// ─────────────────────────────────────────────────────────────────────────────
-
-export interface SelectOption {
-  value: string;
-  label: string;
-}
-
 export type PeriodAvailabilityScope = "local" | "fallback";
 
 export type PeriodAvailabilityReason =
@@ -56,18 +47,6 @@ export interface PeriodAvailabilityResult {
   sourceCountry: string | null;
   scope: PeriodAvailabilityScope;
   reason: PeriodAvailabilityReason;
-}
-
-export interface BuildingOptions {
-  countries: SelectOption[];
-  buildingTypes: SelectOption[];
-  constructionPeriods: SelectOption[];
-  // Deprecated fields (kept for backward compatibility, return empty arrays)
-  climateZones: SelectOption[];
-  heatingTechnologies: SelectOption[];
-  coolingTechnologies: SelectOption[];
-  hotWaterTechnologies: SelectOption[];
-  glazingTechnologies: SelectOption[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -105,12 +84,6 @@ export interface ArchetypeMatchResult {
 
 export interface IBuildingService {
   /**
-   * Get all dropdown options for building inputs
-   * Now async since options are derived from API archetypes
-   */
-  getOptions(): Promise<BuildingOptions>;
-
-  /**
    * Get available archetypes (optionally filtered)
    */
   getArchetypes(
@@ -145,26 +118,11 @@ export interface IBuildingService {
   ): Promise<PeriodAvailabilityResult>;
 
   /**
-   * Count matching archetypes for given criteria
-   */
-  countMatchingArchetypes(
-    category?: string,
-    period?: string,
-    country?: string,
-  ): Promise<number>;
-
-  /**
    * Get full archetype details including BUI and System payloads
    */
   getArchetypeDetails(
     archetype: import("../types/forecasting").ArchetypeInfo,
   ): Promise<import("../types/archetype").ArchetypeDetails>;
-
-  /**
-   * Legacy helper for country defaults used by older forms.
-   * Accepts an ISO country code or display name.
-   */
-  getDefaultsForCountry(country: string): Partial<BuildingInfo>;
 
   /**
    * Detect country from coordinates using bundled offline EU polygons.
@@ -461,20 +419,6 @@ export interface MCDAPersona {
     userComfort: number;
     financial: number;
   };
-}
-
-/**
- * @deprecated Kept only for backward-compatible type exports.
- */
-export interface TechnicalPillarRequest {
-  profile: string; // Persona ID
-}
-
-/**
- * @deprecated Kept only for backward-compatible type exports.
- */
-export interface TechnicalPillarResponse {
-  kpiWeight: number;
 }
 
 export interface IMCDAService {

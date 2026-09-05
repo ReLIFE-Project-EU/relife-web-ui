@@ -24,22 +24,15 @@ import {
   detectCountry,
   getReferenceLocationForCountry,
 } from "../constants/archetypeLocations";
-import type { BuildingInfo } from "../types/renovation";
-import { COUNTRY_DEFAULTS } from "./mock/data/buildingOptions";
 import type {
   ArchetypeMatchAlternative,
   ArchetypeMatchResult,
   ArchetypeScoreBreakdown,
-  BuildingOptions,
   IBuildingService,
   MatchQuality,
   PeriodAvailabilityResult,
 } from "./types";
-import {
-  countryNamesEqual,
-  getCountryCode,
-  normalizeCountryName,
-} from "../utils/countries";
+import { countryNamesEqual, normalizeCountryName } from "../utils/countries";
 
 // Scoring weights for archetype matching
 const W_COUNTRY = 100;
@@ -117,67 +110,6 @@ export class BuildingService implements IBuildingService {
         `${normalizeCountryName(right.country) ?? right.country}:${right.name}`,
       ),
     )[0];
-  }
-
-  /**
-   * Get building dropdown options derived from available archetypes
-   */
-  async getOptions(): Promise<BuildingOptions> {
-    const archetypes = await this.getArchetypes();
-
-    // Extract unique countries
-    const countries = Array.from(
-      new Set(
-        archetypes.map(
-          (archetype) =>
-            normalizeCountryName(archetype.country) ?? archetype.country,
-        ),
-      ),
-    )
-      .sort()
-      .map((country) => ({
-        value: country,
-        label: country,
-      }));
-
-    // Extract unique building categories
-    const buildingTypes = Array.from(new Set(archetypes.map((a) => a.category)))
-      .sort()
-      .map((category) => ({
-        value: category,
-        label: category,
-      }));
-
-    // Extract unique construction periods
-    const periodSet = new Set<string>();
-    archetypes.forEach((a) => {
-      const period = extractArchetypePeriod(a.name);
-      if (period) periodSet.add(period);
-    });
-    const constructionPeriods = Array.from(periodSet)
-      .sort(compareConstructionPeriods)
-      .map((period) => ({
-        value: period,
-        label: period,
-      }));
-
-    // Note: These fields are removed as they're not user inputs
-    // - climateZones: Not user input, derived from coordinates
-    // - heatingTechnologies: Fixed in archetype
-    // - coolingTechnologies: Fixed in archetype
-    // - hotWaterTechnologies: Fixed in archetype
-    // - glazingTechnologies: Fixed in archetype
-
-    return {
-      countries,
-      buildingTypes,
-      constructionPeriods,
-      climateZones: [], // Deprecated
-      heatingTechnologies: [], // Deprecated
-      coolingTechnologies: [], // Deprecated
-      hotWaterTechnologies: [], // Deprecated
-      glazingTechnologies: [], // Deprecated
-    };
   }
 
   /**
@@ -559,46 +491,6 @@ export class BuildingService implements IBuildingService {
       scope: normalizedCountry ? "fallback" : "local",
       reason: normalizedCountry ? "no-local-archetypes" : null,
     };
-  }
-
-  /**
-   * Count available archetypes matching criteria
-   */
-  async countMatchingArchetypes(
-    category?: string,
-    period?: string,
-    country?: string,
-  ): Promise<number> {
-    let archetypes = await this.getArchetypes();
-    const normalizedPeriod = normalizeConstructionPeriod(period);
-
-    if (category) {
-      archetypes = archetypes.filter((a) => a.category === category);
-    }
-
-    if (normalizedPeriod) {
-      archetypes = archetypes.filter((a) => {
-        const archetypePeriod = extractArchetypePeriod(a.name);
-        return constructionPeriodsEqual(archetypePeriod, normalizedPeriod);
-      });
-    }
-
-    if (country) {
-      archetypes = archetypes.filter((archetype) =>
-        countryNamesEqual(archetype.country, country),
-      );
-    }
-
-    return archetypes.length;
-  }
-
-  /**
-   * Get default building values for a country (deprecated).
-   * Kept for older UI flows that still request legacy defaults.
-   */
-  getDefaultsForCountry(country: string): Partial<BuildingInfo> {
-    const countryCode = getCountryCode(country);
-    return countryCode ? (COUNTRY_DEFAULTS[countryCode] ?? {}) : {};
   }
 
   /**
