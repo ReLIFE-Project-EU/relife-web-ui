@@ -38,6 +38,7 @@ import {
   isPaybackBeyondHorizon,
 } from "../../utils/formatters";
 import classes from "./ResultsLayout.module.css";
+import shared from "../../../../components/shared/ResultsLayout.module.css";
 import { ScenDot, ScoreBar } from "./resultsAtoms";
 
 const PERSONA_ICON: Record<string, ComponentType<{ size?: number }>> = {
@@ -80,20 +81,20 @@ export function RecommendationHero({
   const savings = resolveSavingsState(currentScenario, winner, winnerResult);
 
   return (
-    <div className={classes.hero}>
-      <section className={classes.recoCard} aria-label="Recommended package">
-        <div className={classes.recoBand}>
-          <span className={classes.recoRank}>#1</span>
-          <span className={classes.recoBandTitle}>
+    <div className={shared.hero}>
+      <section className={shared.recoCard} aria-label="Recommended package">
+        <div className={shared.recoBand}>
+          <span className={shared.recoRank}>#1</span>
+          <span className={shared.recoBandTitle}>
             Recommended for {personaLabel} <ConceptExplainer conceptId="mcda" />
           </span>
-          <span className={classes.recoBandScore}>
+          <span className={shared.recoBandScore}>
             <IconAward size={16} />
             {isRanking ? "Ranking…" : "Best overall fit"}
           </span>
         </div>
 
-        <div className={classes.recoBody}>
+        <div className={shared.recoBody}>
           {winner && currentScenario ? (
             <>
               <div className={classes.recoHead}>
@@ -188,9 +189,9 @@ export function RecommendationHero({
         </div>
       </section>
 
-      <aside className={classes.side}>
-        <div className={classes.sideCard}>
-          <div className={classes.sideTitle}>
+      <aside className={shared.side}>
+        <div className={shared.sideCard}>
+          <div className={shared.sideTitle}>
             <h3>Your priorities</h3>
             <IconHelpCircle
               size={14}
@@ -224,8 +225,8 @@ export function RecommendationHero({
           </div>
         </div>
 
-        <div className={classes.sideCard}>
-          <div className={classes.sideTitle}>
+        <div className={shared.sideCard}>
+          <div className={shared.sideTitle}>
             <h3>Full ranking</h3>
             <Text size="xs" c="dimmed" component="span">
               {isRanking ? (
@@ -245,7 +246,7 @@ export function RecommendationHero({
             </Text>
           </div>
           {ranking && ranking.length > 0 ? (
-            <ul className={classes.rankList}>
+            <ul className={shared.rankList}>
               {ranking.map((entry, idx) => {
                 const scenario = renovationScenarios.find(
                   (s) => s.id === entry.scenarioId,
@@ -257,19 +258,19 @@ export function RecommendationHero({
                     <button
                       type="button"
                       onClick={() => onSelectScenario(scenario.id)}
-                      className={`${classes.rankItem} ${isSel ? classes.sel : ""}`}
+                      className={`${shared.rankItem} ${isSel ? shared.sel : ""}`}
                       aria-pressed={isSel}
                     >
-                      <span className={classes.rankNum}>
+                      <span className={shared.rankNum}>
                         {idx === 0 ? (
-                          <IconCrown size={16} className={classes.rankCrown} />
+                          <IconCrown size={16} className={shared.rankCrown} />
                         ) : (
                           idx + 1
                         )}
                       </span>
                       <ScenDot scenarioId={scenario.id} />
-                      <span className={classes.rankName}>{scenario.label}</span>
-                      <span className={classes.rankScore}>
+                      <span className={shared.rankName}>{scenario.label}</span>
+                      <span className={shared.rankScore}>
                         <ScoreBar
                           pct={entry.score * 100}
                           scenarioId={scenario.id}
@@ -288,12 +289,12 @@ export function RecommendationHero({
                       <button
                         type="button"
                         onClick={() => onSelectScenario(scenario.id)}
-                        className={`${classes.rankItem} ${isSel ? classes.sel : ""}`}
+                        className={`${shared.rankItem} ${isSel ? shared.sel : ""}`}
                         aria-pressed={isSel}
                       >
-                        <span className={classes.rankNum}>—</span>
+                        <span className={shared.rankNum}>—</span>
                         <ScenDot scenarioId={scenario.id} />
-                        <span className={classes.rankName}>
+                        <span className={shared.rankName}>
                           {scenario.label}
                         </span>
                         <Text size="xs" c="dimmed" component="span">
@@ -326,13 +327,13 @@ interface MetricProps {
 
 function Metric({ icon, label, value, hint }: MetricProps) {
   return (
-    <div className={classes.recoMetric}>
-      <div className={classes.metricLabel}>
+    <div className={shared.recoMetric}>
+      <div className={shared.metricLabel}>
         {icon}
         {label}
       </div>
-      <div className={classes.metricValue}>{value}</div>
-      {hint ? <div className={classes.metricHint}>{hint}</div> : null}
+      <div className={shared.metricValue}>{value}</div>
+      {hint ? <div className={shared.metricHint}>{hint}</div> : null}
     </div>
   );
 }

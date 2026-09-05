@@ -19,6 +19,7 @@ import {
 import { FinancialMetricCard } from "./FinancialMetricCard";
 import { RiskGauge } from "./RiskGauge";
 import classes from "./ResultsLayout.module.css";
+import shared from "../../../../components/shared/ResultsLayout.module.css";
 
 interface FinancialDeepDiveProps {
   selected: RenovationScenario;
@@ -33,8 +34,8 @@ export function FinancialDeepDive({
 }: FinancialDeepDiveProps) {
   return (
     <div>
-      <div className={classes.deepEyebrow}>Financials</div>
-      <h3 className={classes.deepHeading}>Money in, money out</h3>
+      <div className={shared.deepEyebrow}>Financials</div>
+      <h3 className={shared.deepHeading}>Money in, money out</h3>
 
       <FundingPills funding={funding} />
 

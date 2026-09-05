@@ -17,6 +17,8 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { IconArrowBackUp } from "@tabler/icons-react";
+import { getMeasureSelectionState } from "../../../services/measureNormalization";
+import { HEATING_SYSTEM_CONFLICT_MESSAGE } from "../../../constants/relifeConcepts";
 import type { RenovationMeasureId } from "../../../types/renovation";
 import type { PRABuilding } from "../context/types";
 import { usePortfolioAdvisorServices } from "../hooks/usePortfolioAdvisorServices";
@@ -46,8 +48,6 @@ function ModalContent({
   const initialMeasures = building?.selectedMeasures ?? [...globalMeasures];
   const [localMeasures, setLocalMeasures] =
     useState<RenovationMeasureId[]>(initialMeasures);
-  const hasHeatPump = localMeasures.includes("air-water-heat-pump");
-  const hasBoiler = localMeasures.includes("condensing-boiler");
   const analysisEligibleMeasures = renovation
     .getAnalysisEligibleMeasures()
     .map((measure) => measure.id);
@@ -122,19 +122,21 @@ function ModalContent({
             </Title>
             <Stack gap="xs">
               {measures.map((measure) => {
-                const isSelected = localMeasures.includes(measure.id);
-                const isAnalysisEligible = analysisEligibleMeasures.includes(
+                const {
+                  isSelected,
+                  isAnalysisEligible,
+                  mutuallyExclusiveDisabled,
+                  disabled,
+                } = getMeasureSelectionState(
                   measure.id,
+                  localMeasures,
+                  analysisEligibleMeasures,
                 );
-                const mutuallyExclusiveDisabled =
-                  !isSelected &&
-                  ((measure.id === "condensing-boiler" && hasHeatPump) ||
-                    (measure.id === "air-water-heat-pump" && hasBoiler));
 
                 return (
                   <Tooltip
                     key={measure.id}
-                    label="Mutually exclusive with the selected heating system"
+                    label={HEATING_SYSTEM_CONFLICT_MESSAGE}
                     disabled={!mutuallyExclusiveDisabled}
                     multiline
                   >
@@ -143,9 +145,7 @@ function ModalContent({
                         label={measure.name}
                         checked={isSelected}
                         onChange={() => handleToggle(measure.id)}
-                        disabled={
-                          !isAnalysisEligible || mutuallyExclusiveDisabled
-                        }
+                        disabled={disabled}
                         description={
                           isAnalysisEligible ? undefined : "Coming soon"
                         }
@@ -198,7 +198,9 @@ export function BuildingMeasuresModal({
       opened={opened}
       onClose={onClose}
       title={
-        <Title order={4}>Measures for {building?.name ?? "Building"}</Title>
+        <Text component="span" size="lg" fw={700}>
+          Measures for {building?.name ?? "Building"}
+        </Text>
       }
       size="md"
     >

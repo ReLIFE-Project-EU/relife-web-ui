@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { normalizeSystemSelection } from "../../../src/services/measureNormalization";
+import {
+  normalizeSystemSelection,
+  getMeasureSelectionState,
+} from "../../../src/services/measureNormalization";
 
 describe("normalizeSystemSelection", () => {
   afterEach(() => {
@@ -36,5 +39,54 @@ describe("normalizeSystemSelection", () => {
       "wall-insulation",
       "pv",
     ]);
+  });
+});
+
+describe("measure selection state", () => {
+  const eligible = [
+    "condensing-boiler",
+    "air-water-heat-pump",
+    "wall-insulation",
+  ] as const;
+
+  test("blocks each alternative heating system", () => {
+    expect(
+      getMeasureSelectionState(
+        "condensing-boiler",
+        ["air-water-heat-pump"],
+        eligible,
+      ).disabled,
+    ).toBe(true);
+    expect(
+      getMeasureSelectionState(
+        "air-water-heat-pump",
+        ["condensing-boiler"],
+        eligible,
+      ).disabled,
+    ).toBe(true);
+    expect(
+      getMeasureSelectionState(
+        "wall-insulation",
+        ["condensing-boiler"],
+        eligible,
+      ).disabled,
+    ).toBe(false);
+  });
+
+  test("allows deselection when an imported selection contains both heating systems", () => {
+    const selected = ["condensing-boiler", "air-water-heat-pump"] as const;
+    for (const id of selected)
+      expect(getMeasureSelectionState(id, selected, eligible)).toMatchObject({
+        isSelected: true,
+        disabled: false,
+      });
+  });
+
+  test("keeps unsupported measures disabled even when selected", () => {
+    expect(getMeasureSelectionState("pv", ["pv"], eligible)).toMatchObject({
+      isSelected: true,
+      isAnalysisEligible: false,
+      disabled: true,
+    });
   });
 });

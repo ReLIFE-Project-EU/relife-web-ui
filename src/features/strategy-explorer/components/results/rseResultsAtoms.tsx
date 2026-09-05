@@ -7,6 +7,7 @@
 import type { RSEPackageId } from "../../types";
 import { PACKAGE_COLORS } from "./rseResultsVm";
 import classes from "./StrategyResults.module.css";
+import shared from "../../../../components/shared/ResultsLayout.module.css";
 
 interface PackageDotProps {
   packageId: RSEPackageId;
@@ -36,9 +37,9 @@ interface PackageScoreBarProps {
 export function PackageScoreBar({ pct, packageId }: PackageScoreBarProps) {
   const color = PACKAGE_COLORS[packageId];
   return (
-    <span className={classes.scoreBar} aria-hidden>
+    <span className={shared.scoreBar} aria-hidden>
       <span
-        className={classes.scoreBarFill}
+        className={shared.scoreBarFill}
         style={{
           width: `${Math.max(0, Math.min(100, pct))}%`,
           background: `var(--mantine-color-${color}-6)`,

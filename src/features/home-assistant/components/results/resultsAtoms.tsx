@@ -4,6 +4,7 @@
 
 import { getScenarioColor } from "../../utils/colorUtils";
 import classes from "./ResultsLayout.module.css";
+import shared from "../../../../components/shared/ResultsLayout.module.css";
 
 interface ScenDotProps {
   scenarioId: string;
@@ -33,9 +34,9 @@ interface ScoreBarProps {
 export function ScoreBar({ pct, scenarioId }: ScoreBarProps) {
   const color = getScenarioColor(scenarioId);
   return (
-    <span className={classes.scoreBar} aria-hidden>
+    <span className={shared.scoreBar} aria-hidden>
       <span
-        className={classes.scoreBarFill}
+        className={shared.scoreBarFill}
         style={{
           width: `${Math.max(0, Math.min(100, pct))}%`,
           background: `var(--mantine-color-${color}-6)`,

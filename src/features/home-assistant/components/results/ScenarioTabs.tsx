@@ -9,7 +9,7 @@ import type {
   RenovationScenario,
   ScenarioId,
 } from "../../context/types";
-import classes from "./ResultsLayout.module.css";
+import shared from "../../../../components/shared/ResultsLayout.module.css";
 import { ScenDot } from "./resultsAtoms";
 
 interface ScenarioTabsProps {
@@ -28,7 +28,7 @@ export function ScenarioTabs({
   const winnerId = ranking?.[0]?.scenarioId ?? null;
 
   return (
-    <div className={classes.tabsRow} role="tablist">
+    <div className={shared.tabsRow} role="tablist">
       {renovationScenarios.map((scenario) => {
         const isSel = scenario.id === selectedScenarioId;
         return (
@@ -37,13 +37,13 @@ export function ScenarioTabs({
             type="button"
             role="tab"
             aria-selected={isSel}
-            className={classes.tab}
+            className={shared.tab}
             onClick={() => onSelectScenario(scenario.id)}
           >
             <ScenDot scenarioId={scenario.id} />
             <span>{scenario.label}</span>
             {scenario.id === winnerId ? (
-              <IconCrown size={14} className={classes.tabCrown} />
+              <IconCrown size={14} className={shared.tabCrown} />
             ) : null}
           </button>
         );

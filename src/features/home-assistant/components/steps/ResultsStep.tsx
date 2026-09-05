@@ -30,7 +30,7 @@ import { RecommendationHero } from "../results/RecommendationHero";
 import { ScenarioTabs } from "../results/ScenarioTabs";
 import { getEffectiveDetailScenarioId } from "../results/financialSelection";
 import { ErrorAlert, StepNavigation } from "../shared";
-import classes from "../results/ResultsLayout.module.css";
+import shared from "../../../../components/shared/ResultsLayout.module.css";
 import type { ScenarioId } from "../../context/types";
 import { validateEstimation } from "../../../../services/estimationValidation";
 import { formatFixed } from "../../utils/formatters";
@@ -297,9 +297,9 @@ export function ResultsStep() {
                     onSelectScenario={handleSelectScenario}
                   />
 
-                  <section className={classes.deep}>
+                  <section className={shared.deep}>
                     {selectedScenario && currentScenario ? (
-                      <div className={classes.deepCols}>
+                      <div className={shared.deepCols}>
                         <EnergyDeepDive
                           current={currentScenario}
                           selected={selectedScenario}

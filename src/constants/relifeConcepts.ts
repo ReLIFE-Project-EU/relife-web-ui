@@ -1,5 +1,8 @@
 import type { RenovationMeasureId } from "../types/renovation";
 
+export const HEATING_SYSTEM_CONFLICT_MESSAGE =
+  "Mutually exclusive with the selected heating system";
+
 export type ConceptId =
   | "annual-building-thermal-needs"
   | "system-energy-consumption"

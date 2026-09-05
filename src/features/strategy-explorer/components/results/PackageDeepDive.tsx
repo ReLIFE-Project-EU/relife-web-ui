@@ -32,6 +32,7 @@ import {
   RSE_MEASURE_LABELS,
 } from "./rseResultsVm";
 import classes from "./StrategyResults.module.css";
+import shared from "../../../../components/shared/ResultsLayout.module.css";
 
 interface PackageDeepDiveProps {
   aggregate: RSEPackageAggregate;
@@ -52,13 +53,13 @@ export function PackageDeepDive({
     aggregate.totalEffectiveCapexEur !== aggregate.totalCapexEur;
 
   return (
-    <div className={classes.deep}>
-      <div className={classes.deepCols}>
+    <div className={shared.deep}>
+      <div className={shared.deepCols}>
         <div>
           <Text component="h2" size="md" mb="0.6em">
             Stock impact
           </Text>
-          <div className={classes.miniGrid}>
+          <div className={shared.miniGrid}>
             <MiniMetric
               icon={<IconBuildingCommunity size={14} />}
               label="Dwellings"
@@ -128,7 +129,7 @@ export function PackageDeepDive({
           <Text component="h2" size="md" mb="0.6em">
             Financials
           </Text>
-          <div className={classes.miniGrid}>
+          <div className={shared.miniGrid}>
             <MiniMetric
               icon={<IconCash size={14} />}
               label="Investment"
@@ -187,7 +188,7 @@ export function PackageDeepDive({
       </div>
 
       <div style={{ marginTop: 18 }}>
-        <div className={classes.deepEyebrow} style={{ marginBottom: 6 }}>
+        <div className={shared.deepEyebrow} style={{ marginBottom: 6 }}>
           Measures included
         </div>
         <div
@@ -198,13 +199,13 @@ export function PackageDeepDive({
             } as React.CSSProperties
           }
         >
-          <div className={classes.measuresHead}>
+          <div className={shared.measuresHead}>
             <Text size="sm" fw={600}>
               {pkg.measureIds.length}{" "}
               {pkg.measureIds.length === 1 ? "measure" : "measures"}
             </Text>
           </div>
-          <ul className={classes.measuresList}>
+          <ul className={shared.measuresList}>
             {pkg.measureIds.map((measureId) => (
               <li key={measureId}>{RSE_MEASURE_LABELS[measureId]}</li>
             ))}
@@ -244,7 +245,7 @@ function PerArchetypeTable({
 
   return (
     <div style={{ marginTop: 18 }}>
-      <div className={classes.deepEyebrow} style={{ marginBottom: 6 }}>
+      <div className={shared.deepEyebrow} style={{ marginBottom: 6 }}>
         Per-archetype indicators
       </div>
       <Table>
@@ -312,13 +313,13 @@ function MiniMetric({
   valueColor,
 }: MiniMetricProps) {
   return (
-    <div className={classes.miniCard}>
-      <div className={classes.miniLabel}>
+    <div className={shared.miniCard}>
+      <div className={shared.miniLabel}>
         {icon}
         {label}
         {conceptId ? <ConceptExplainer conceptId={conceptId} /> : null}
       </div>
-      <div className={classes.miniValue} style={{ color: valueColor }}>
+      <div className={shared.miniValue} style={{ color: valueColor }}>
         {value}
       </div>
       {hint ? <div className={classes.miniHint}>{hint}</div> : null}

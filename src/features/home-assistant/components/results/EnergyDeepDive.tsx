@@ -31,6 +31,7 @@ import {
 } from "../../utils/formatters";
 import { getEnergyIntensity } from "../../../../utils/epcUtils";
 import classes from "./ResultsLayout.module.css";
+import shared from "../../../../components/shared/ResultsLayout.module.css";
 
 interface EnergyDeepDiveProps {
   current: RenovationScenario;
@@ -49,12 +50,12 @@ export function EnergyDeepDive({
 
   return (
     <div>
-      <div className={classes.deepEyebrow}>Energy &amp; comfort</div>
-      <h3 className={classes.deepHeading}>vs. your home today</h3>
+      <div className={shared.deepEyebrow}>Energy &amp; comfort</div>
+      <h3 className={shared.deepHeading}>vs. your home today</h3>
 
-      <div className={classes.miniGrid}>
-        <div className={classes.miniCard}>
-          <div className={classes.miniLabel}>
+      <div className={shared.miniGrid}>
+        <div className={shared.miniCard}>
+          <div className={shared.miniLabel}>
             <IconCertificate size={14} />
             EPC class
             <ConceptExplainer conceptId="estimated-epc" />
@@ -157,10 +158,10 @@ export function EnergyDeepDive({
 
       {selected.pvGeneration !== undefined ? (
         <div style={{ marginTop: 18 }}>
-          <div className={classes.deepEyebrow} style={{ marginBottom: 6 }}>
+          <div className={shared.deepEyebrow} style={{ marginBottom: 6 }}>
             Solar PV
           </div>
-          <div className={classes.miniGrid}>
+          <div className={shared.miniGrid}>
             <MiniMetric
               icon={<IconSolarPanel size={14} />}
               conceptId="pv-generation"
@@ -193,7 +194,7 @@ export function EnergyDeepDive({
       ) : null}
 
       <div style={{ marginTop: 18 }}>
-        <div className={classes.deepEyebrow} style={{ marginBottom: 6 }}>
+        <div className={shared.deepEyebrow} style={{ marginBottom: 6 }}>
           Measures included
         </div>
         <div
@@ -204,14 +205,14 @@ export function EnergyDeepDive({
             } as React.CSSProperties
           }
         >
-          <div className={classes.measuresHead}>
+          <div className={shared.measuresHead}>
             <Text size="sm" fw={600}>
               {selected.measures.length}{" "}
               {selected.measures.length === 1 ? "action" : "actions"}
             </Text>
           </div>
           {selected.measures.length > 0 ? (
-            <ul className={classes.measuresList}>
+            <ul className={shared.measuresList}>
               {selected.measures.map((measure, idx) => (
                 <li key={idx}>{measure}</li>
               ))}
@@ -252,16 +253,16 @@ function MiniMetric({
   const resolvedUnit = unit ?? concept.unit;
   const resolvedLabel = label ?? concept.label;
   return (
-    <div className={classes.miniCard}>
-      <div className={classes.miniLabel}>
+    <div className={shared.miniCard}>
+      <div className={shared.miniLabel}>
         {icon}
         {resolvedLabel}
         <ConceptExplainer conceptId={conceptId} />
       </div>
-      <div className={classes.miniValue}>
+      <div className={shared.miniValue}>
         {value}
         {resolvedUnit ? (
-          <span className={classes.miniUnit}>{resolvedUnit}</span>
+          <span className={shared.miniUnit}>{resolvedUnit}</span>
         ) : null}
       </div>
       {delta ? <div className={classes.miniDelta}>{delta}</div> : null}

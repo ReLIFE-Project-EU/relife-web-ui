@@ -14,16 +14,14 @@ import {
   Grid,
   Group,
   NumberInput,
-  SimpleGrid,
   Slider,
   Stack,
   Text,
-  Tooltip,
   Title,
 } from "@mantine/core";
 import { IconAlertTriangle, IconInfoCircle } from "@tabler/icons-react";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
-import { RenovationMeasureCard } from "../../../../components/shared/RenovationMeasureCard";
+import { RenovationMeasureGrid } from "../../../../components/shared/RenovationMeasureGrid";
 import { checkCapexPerSqm } from "../../../../utils/inputSanityChecks";
 import type { RenovationMeasureId } from "../../../../types/renovation";
 import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
@@ -57,8 +55,6 @@ export function EnergyRenovationStep() {
   const { renovation } = usePortfolioAdvisorServices();
 
   const selectedMeasures = state.renovation.selectedMeasures;
-  const hasHeatPump = selectedMeasures.includes("air-water-heat-pump");
-  const hasBoiler = selectedMeasures.includes("condensing-boiler");
   const hasPv = selectedMeasures.includes("pv");
   const analysisEligibleMeasures = renovation
     .getAnalysisEligibleMeasures()
@@ -91,11 +87,6 @@ export function EnergyRenovationStep() {
       (b.selectedMeasures !== undefined && b.selectedMeasures.length > 0) ||
       (b.modifications && Object.keys(b.modifications).length > 0),
   ).length;
-
-  const categorizedMeasures = renovation.getCategories().map((cat) => ({
-    cat,
-    measures: renovation.getMeasuresByCategory(cat.id),
-  }));
 
   const handleToggle = (measureId: RenovationMeasureId) => {
     dispatch({ type: "TOGGLE_MEASURE", measureId });
@@ -164,56 +155,14 @@ export function EnergyRenovationStep() {
           </Group>
         </Group>
 
-        {categorizedMeasures.map(({ cat, measures }) => (
-          <Box key={cat.id} mb="lg">
-            <Title order={5} tt="uppercase" c="dimmed" size="sm" mb={2}>
-              {cat.label}
-            </Title>
-            <Text size="xs" c="dimmed" mb="sm">
-              {cat.description}
-            </Text>
-            <SimpleGrid cols={{ base: 1, xs: 2, md: 4 }} spacing="sm">
-              {measures.map((measure) => {
-                const isAnalysisEligible = isAnalysisEligibleMeasure(
-                  measure.id,
-                );
-                const isSelected = selectedMeasures.includes(measure.id);
-                const mutuallyExclusiveDisabled =
-                  !isSelected &&
-                  ((measure.id === "condensing-boiler" && hasHeatPump) ||
-                    (measure.id === "air-water-heat-pump" && hasBoiler));
-                const displayMeasure = isAnalysisEligible
-                  ? { ...measure, isSupported: true }
-                  : measure;
-
-                return (
-                  <Tooltip
-                    key={measure.id}
-                    label="Mutually exclusive with the selected heating system"
-                    disabled={!mutuallyExclusiveDisabled}
-                    multiline
-                  >
-                    <Box>
-                      <RenovationMeasureCard
-                        measure={displayMeasure}
-                        isSelected={isSelected}
-                        onToggle={handleToggle}
-                        disabled={
-                          !isAnalysisEligible || mutuallyExclusiveDisabled
-                        }
-                        tooltipLabel={
-                          displayMeasure.technicalDescription ??
-                          displayMeasure.description
-                        }
-                        tooltipWidth={320}
-                      />
-                    </Box>
-                  </Tooltip>
-                );
-              })}
-            </SimpleGrid>
-          </Box>
-        ))}
+        <RenovationMeasureGrid
+          categories={renovation.getCategories()}
+          measures={renovation.getMeasures()}
+          selectedIds={selectedMeasures}
+          eligibleIds={analysisEligibleMeasures}
+          onToggle={handleToggle}
+          professional
+        />
       </Card>
 
       {hasPv && (

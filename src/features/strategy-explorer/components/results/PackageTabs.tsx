@@ -7,7 +7,7 @@ import { IconCrown } from "@tabler/icons-react";
 import { RSE_PACKAGES } from "../../services/rsePackageCatalog";
 import type { RSEPackageId, RSERankingResult } from "../../types";
 import { PackageDot } from "./rseResultsAtoms";
-import classes from "./StrategyResults.module.css";
+import shared from "../../../../components/shared/ResultsLayout.module.css";
 
 interface PackageTabsProps {
   rankings: RSERankingResult[];
@@ -21,7 +21,7 @@ export function PackageTabs({
   onSelectPackage,
 }: PackageTabsProps) {
   return (
-    <div className={classes.tabsRow} role="tablist">
+    <div className={shared.tabsRow} role="tablist">
       {rankings.map((entry) => {
         const isSel = entry.packageId === selectedPackageId;
         return (
@@ -30,13 +30,13 @@ export function PackageTabs({
             type="button"
             role="tab"
             aria-selected={isSel}
-            className={classes.tab}
+            className={shared.tab}
             onClick={() => onSelectPackage(entry.packageId)}
           >
             <PackageDot packageId={entry.packageId} />
             <span>{RSE_PACKAGES[entry.packageId].label}</span>
             {entry.rank === 1 ? (
-              <IconCrown size={14} className={classes.tabCrown} />
+              <IconCrown size={14} className={shared.tabCrown} />
             ) : null}
           </button>
         );

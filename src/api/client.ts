@@ -91,6 +91,31 @@ async function fetchWithAuth(
   return attempt(true);
 }
 
+async function throwApiResponseError(
+  response: Response,
+  method: string,
+  path: string,
+): Promise<never> {
+  let validationErrors: APIError["validationErrors"];
+  try {
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      validationErrors = await response.json();
+    }
+  } catch {
+    // No JSON body or parsing failed
+  }
+
+  auditLog.error("api", "api.error", {
+    method,
+    path,
+    status: response.status,
+    statusText: response.statusText,
+    validationErrors,
+  });
+  throw new APIError(response.status, response.statusText, validationErrors);
+}
+
 export async function request<T>(
   path: string,
   options?: RequestOptions,
@@ -113,28 +138,7 @@ export async function request<T>(
     );
 
     if (!response.ok) {
-      let validationErrors;
-      try {
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          validationErrors = await response.json();
-        }
-      } catch {
-        // No JSON body or parsing failed
-      }
-
-      auditLog.error("api", "api.error", {
-        method,
-        path,
-        status: response.status,
-        statusText: response.statusText,
-        validationErrors,
-      });
-      throw new APIError(
-        response.status,
-        response.statusText,
-        validationErrors,
-      );
+      await throwApiResponseError(response, method, path);
     }
 
     return response.json();
@@ -158,28 +162,7 @@ export async function uploadRequest<T>(
     );
 
     if (!response.ok) {
-      let validationErrors;
-      try {
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          validationErrors = await response.json();
-        }
-      } catch {
-        // No JSON body or parsing failed
-      }
-
-      auditLog.error("api", "api.error", {
-        method,
-        path,
-        status: response.status,
-        statusText: response.statusText,
-        validationErrors,
-      });
-      throw new APIError(
-        response.status,
-        response.statusText,
-        validationErrors,
-      );
+      await throwApiResponseError(response, method, path);
     }
 
     return response.json();

@@ -3,31 +3,20 @@
  * Displays renovation measures grouped by category with multi-select capability.
  */
 
-import {
-  Alert,
-  Box,
-  SimpleGrid,
-  Stack,
-  Text,
-  Title,
-  Tooltip,
-} from "@mantine/core";
+import { Alert, Box, Text, Title } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { pvKwpFromFloorArea } from "../../../../services/pvConfig";
 import type { RenovationMeasureId } from "../../context/types";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 import { formatDecimal } from "../../utils/formatters";
-import { MeasureCard } from "./MeasureCard";
+import { RenovationMeasureGrid } from "../../../../components/shared/RenovationMeasureGrid";
 
 export function MeasureSelector() {
   const { state, dispatch } = useHomeAssistant();
   const { renovation } = useHomeAssistantServices();
 
-  const categories = renovation.getCategories();
   const selectedMeasures = state.renovation.selectedMeasures;
-  const hasHeatPump = selectedMeasures.includes("air-water-heat-pump");
-  const hasBoiler = selectedMeasures.includes("condensing-boiler");
   const hasPv = selectedMeasures.includes("pv");
   const pvKwp = pvKwpFromFloorArea(state.building.floorArea);
 
@@ -44,57 +33,15 @@ export function MeasureSelector() {
         Select the renovation actions to include in your assessment
       </Text>
 
-      <Stack gap="xl">
-        {categories.map((category) => {
-          const measures = renovation.getMeasuresByCategory(category.id);
-
-          return (
-            <Box key={category.id}>
-              <Title order={5} tt="uppercase" c="dimmed" size="sm" mb="xs">
-                {category.label}
-              </Title>
-              <Text size="xs" c="dimmed" mb="sm">
-                {category.description}
-              </Text>
-
-              <SimpleGrid cols={{ base: 1, xs: 2, md: 4 }} spacing="sm">
-                {measures.map((measure) => {
-                  const isAnalysisEligible =
-                    renovation.isAnalysisEligibleMeasure(measure.id);
-                  const isSelected = selectedMeasures.includes(measure.id);
-                  const mutuallyExclusiveDisabled =
-                    !isSelected &&
-                    ((measure.id === "condensing-boiler" && hasHeatPump) ||
-                      (measure.id === "air-water-heat-pump" && hasBoiler));
-                  const displayMeasure = isAnalysisEligible
-                    ? { ...measure, isSupported: true }
-                    : measure;
-
-                  return (
-                    <Tooltip
-                      key={measure.id}
-                      label="Mutually exclusive with the selected heating system"
-                      disabled={!mutuallyExclusiveDisabled}
-                      multiline
-                    >
-                      <Box>
-                        <MeasureCard
-                          measure={displayMeasure}
-                          isSelected={isSelected}
-                          onToggle={handleToggleMeasure}
-                          disabled={
-                            !isAnalysisEligible || mutuallyExclusiveDisabled
-                          }
-                        />
-                      </Box>
-                    </Tooltip>
-                  );
-                })}
-              </SimpleGrid>
-            </Box>
-          );
-        })}
-      </Stack>
+      <RenovationMeasureGrid
+        categories={renovation.getCategories()}
+        measures={renovation.getMeasures()}
+        selectedIds={selectedMeasures}
+        eligibleIds={renovation
+          .getAnalysisEligibleMeasures()
+          .map((measure) => measure.id)}
+        onToggle={handleToggleMeasure}
+      />
 
       {hasPv && (
         <Alert

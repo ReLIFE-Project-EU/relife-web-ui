@@ -23,6 +23,7 @@ import {
   formatTonnageCo2,
 } from "../../utils/formatters";
 import classes from "./ResultsLayout.module.css";
+import shared from "../../../../components/shared/ResultsLayout.module.css";
 import { ScenDot, ScoreBar } from "./resultsAtoms";
 
 interface CompareAllTableProps {
@@ -58,8 +59,8 @@ export function CompareAllTable({
   );
 
   return (
-    <div className={classes.tableScroll}>
-      <table className={classes.table}>
+    <div className={shared.tableScroll}>
+      <table className={shared.table}>
         <thead>
           <tr>
             <th>Package</th>
@@ -83,9 +84,9 @@ export function CompareAllTable({
         </thead>
         <tbody>
           {current ? (
-            <tr className={classes.baseline}>
+            <tr className={shared.baseline}>
               <td>
-                <div className={classes.rowName}>
+                <div className={shared.rowName}>
                   <ScenDot scenarioId={current.id} />
                   <div>
                     <span className={classes.baselineTag}>Baseline</span>
@@ -146,11 +147,11 @@ export function CompareAllTable({
             return (
               <tr
                 key={scenario.id}
-                className={`${classes.scen} ${isSel ? classes.sel : ""}`}
+                className={`${shared.scen} ${isSel ? shared.sel : ""}`}
                 onClick={() => onSelectScenario(scenario.id)}
               >
                 <td>
-                  <div className={classes.rowName}>
+                  <div className={shared.rowName}>
                     <ScenDot scenarioId={scenario.id} />
                     <span>{scenario.label}</span>
                     {scenario.id === winnerId ? (

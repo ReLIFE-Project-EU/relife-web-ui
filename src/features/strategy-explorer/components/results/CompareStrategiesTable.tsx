@@ -34,6 +34,7 @@ import {
   type RankingColumn,
 } from "./rseResultsVm";
 import classes from "./StrategyResults.module.css";
+import shared from "../../../../components/shared/ResultsLayout.module.css";
 
 const ALWAYS_ON_COLUMNS: RankingColumn[] = [
   { key: "totalBuildings", label: "Dwellings", formatter: formatNumber },
@@ -138,8 +139,8 @@ export function CompareStrategiesTable({
           Click a row to inspect it above
         </Text>
       </div>
-      <div className={classes.tableScroll}>
-        <table className={classes.table} data-testid="rse-ranking-table">
+      <div className={shared.tableScroll}>
+        <table className={shared.table} data-testid="rse-ranking-table">
           <thead>
             <tr>
               <SortableTh
@@ -173,7 +174,7 @@ export function CompareStrategiesTable({
               return (
                 <tr
                   key={ranking.packageId}
-                  className={`${classes.row} ${isSel ? classes.sel : ""}`}
+                  className={`${shared.scen} ${isSel ? shared.sel : ""}`}
                   onClick={() => onSelectPackage(ranking.packageId)}
                 >
                   <td>
@@ -182,7 +183,7 @@ export function CompareStrategiesTable({
                     </Text>
                   </td>
                   <td>
-                    <div className={classes.rowName}>
+                    <div className={shared.rowName}>
                       <PackageDot packageId={ranking.packageId} />
                       <span>{RSE_PACKAGES[ranking.packageId].label}</span>
                       {ranking.rank === 1 ? (

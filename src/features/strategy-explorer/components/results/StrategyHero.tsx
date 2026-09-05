@@ -25,6 +25,7 @@ import type { RSEPackageId, RSEWorkflowResult } from "../../types";
 import { PackageDot, PackageScoreBar } from "./rseResultsAtoms";
 import { GOAL_DISPLAY, heroMetricsFor, type HeroMetric } from "./rseResultsVm";
 import classes from "./StrategyResults.module.css";
+import shared from "../../../../components/shared/ResultsLayout.module.css";
 
 interface StrategyHeroProps {
   result: RSEWorkflowResult;
@@ -54,21 +55,21 @@ export function StrategyHero({
   );
 
   return (
-    <div className={classes.hero}>
-      <section className={classes.recoCard} aria-label="Top-ranked strategy">
-        <div className={classes.recoBand}>
-          <span className={classes.recoRank}>#1</span>
-          <span className={classes.recoBandTitle}>
+    <div className={shared.hero}>
+      <section className={shared.recoCard} aria-label="Top-ranked strategy">
+        <div className={shared.recoBand}>
+          <span className={shared.recoRank}>#1</span>
+          <span className={shared.recoBandTitle}>
             Top strategy for {goalDisplay.label.toLowerCase()}
           </span>
-          <span className={classes.recoBandScore}>
+          <span className={shared.recoBandScore}>
             <IconAward size={16} />
             Score {formatNumber(winner.score * 100)}
             <ConceptExplainer conceptId="ranking-score" />
           </span>
         </div>
 
-        <div className={classes.recoBody}>
+        <div className={shared.recoBody}>
           <div>
             <div
               style={{
@@ -130,9 +131,9 @@ export function StrategyHero({
         </div>
       </section>
 
-      <aside className={classes.side}>
-        <div className={classes.sideCard}>
-          <div className={classes.sideTitle}>
+      <aside className={shared.side}>
+        <div className={shared.sideCard}>
+          <div className={shared.sideTitle}>
             <h3>Analysis goal</h3>
             <GoalIcon size={16} />
           </div>
@@ -156,14 +157,14 @@ export function StrategyHero({
           </Text>
         </div>
 
-        <div className={classes.sideCard}>
-          <div className={classes.sideTitle}>
+        <div className={shared.sideCard}>
+          <div className={shared.sideTitle}>
             <h3>Strategy ranking</h3>
             <Text size="xs" c="dimmed" component="span">
               {rankings.length} packages
             </Text>
           </div>
-          <ul className={classes.rankList}>
+          <ul className={shared.rankList}>
             {rankings.map((entry) => {
               const isSel = entry.packageId === selectedPackageId;
               return (
@@ -171,21 +172,21 @@ export function StrategyHero({
                   <button
                     type="button"
                     onClick={() => onSelectPackage(entry.packageId)}
-                    className={`${classes.rankItem} ${isSel ? classes.sel : ""}`}
+                    className={`${shared.rankItem} ${isSel ? shared.sel : ""}`}
                     aria-pressed={isSel}
                   >
-                    <span className={classes.rankNum}>
+                    <span className={shared.rankNum}>
                       {entry.rank === 1 ? (
-                        <IconCrown size={16} className={classes.rankCrown} />
+                        <IconCrown size={16} className={shared.rankCrown} />
                       ) : (
                         entry.rank
                       )}
                     </span>
                     <PackageDot packageId={entry.packageId} />
-                    <span className={classes.rankName}>
+                    <span className={shared.rankName}>
                       {RSE_PACKAGES[entry.packageId].label}
                     </span>
-                    <span className={classes.rankScore}>
+                    <span className={shared.rankScore}>
                       <PackageScoreBar
                         pct={entry.score * 100}
                         packageId={entry.packageId}
@@ -206,17 +207,17 @@ export function StrategyHero({
 function HeroMetricTile({ metric }: { metric: HeroMetric }) {
   const Icon = metric.icon;
   return (
-    <div className={classes.recoMetric}>
-      <div className={classes.metricLabel}>
+    <div className={shared.recoMetric}>
+      <div className={shared.metricLabel}>
         <Icon size={14} />
         {metric.label}
         {metric.conceptId ? (
           <ConceptExplainer conceptId={metric.conceptId} />
         ) : null}
       </div>
-      <div className={classes.metricValue}>{metric.value}</div>
+      <div className={shared.metricValue}>{metric.value}</div>
       {metric.hint ? (
-        <div className={classes.metricHint}>{metric.hint}</div>
+        <div className={shared.metricHint}>{metric.hint}</div>
       ) : null}
     </div>
   );

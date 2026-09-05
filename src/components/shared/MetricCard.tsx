@@ -11,7 +11,7 @@ import type { ReactNode } from "react";
 import { MetricEyebrow } from "./MetricEyebrow";
 
 /** Keeps values aligned across a row when labels wrap to different heights. */
-export const METRIC_CARD_MIN_HEIGHT = 96;
+const METRIC_CARD_MIN_HEIGHT = 96;
 
 interface MetricCardProps {
   /** Label describing the metric (string or React node for inline icons) */
@@ -49,9 +49,13 @@ export function MetricCard({
     >
       <Box>
         {prefix && <MetricEyebrow>{prefix}</MetricEyebrow>}
-        <Text size="xs" fw={500}>
-          {label}
-        </Text>
+        {typeof label === "string" || typeof label === "number" ? (
+          <Text size="xs" fw={500}>
+            {label}
+          </Text>
+        ) : (
+          label
+        )}
       </Box>
       <Text
         component="div"
