@@ -147,36 +147,56 @@ describe("rankPackages", () => {
     expect(combinedScore.scoreComponents.aggregateROI).toBe(0);
   });
 
-  test("scores negative and invalid indicators as zero", () => {
+  test("keeps losers at zero while any package clears break-even", () => {
     const rankings = rankPackages(
       [
         makeAggregate("envelope", {
           renovatableBuildingsWithinBudget: 1,
-          financialIndicators: {
-            aggregateROI: -0.2,
-            aggregateNPV: -1_000,
-            aggregatePaybackYears: 10,
-          },
+          financialIndicators: { aggregateROI: 0.2, aggregateNPV: 1_000 },
+        }),
+        makeAggregate("systems-heat-pump", {
+          renovatableBuildingsWithinBudget: 1,
+          financialIndicators: { aggregateROI: -0.1, aggregateNPV: -1_000 },
         }),
         makeAggregate("combined", {
           renovatableBuildingsWithinBudget: 1,
-          financialIndicators: {
-            aggregateROI: undefined,
-            aggregateNPV: -1_000,
-            aggregatePaybackYears: 10,
-          },
+          financialIndicators: { aggregateROI: -0.9, aggregateNPV: -9_000 },
         }),
       ],
       { kind: "financial", maxBudgetEur: 100_000 },
       { projectLifetimeYears: 20 },
     );
 
-    // Break-even is the bottom of the scale, so a negative NPV scores 0 rather
-    // than ranking least-bad first. Invalid entries stay at 0 either way.
-    const envelopeScore = rankings.find((r) => r.packageId === "envelope")!;
-    const combinedScore = rankings.find((r) => r.packageId === "combined")!;
-    expect(envelopeScore.scoreComponents.aggregateNPV).toBe(0);
-    expect(combinedScore.scoreComponents.aggregateROI).toBe(0);
+    // Break-even stays the bottom of the scale when a winner exists, so the
+    // two losers tie at zero however differently they lose.
+    const byId = new Map(rankings.map((r) => [r.packageId, r]));
+    expect(byId.get("envelope")!.scoreComponents.aggregateROI).toBe(0.2);
+    expect(byId.get("systems-heat-pump")!.scoreComponents.aggregateROI).toBe(0);
+    expect(byId.get("combined")!.scoreComponents.aggregateROI).toBe(0);
+    expect(rankings[0].packageId).toBe("envelope");
+  });
+
+  test("ranks least-bad first when no package clears break-even", () => {
+    const rankings = rankPackages(
+      [
+        makeAggregate("envelope", {
+          renovatableBuildingsWithinBudget: 1,
+          financialIndicators: { aggregateROI: -0.9, aggregateNPV: -9_000 },
+        }),
+        makeAggregate("combined", {
+          renovatableBuildingsWithinBudget: 1,
+          financialIndicators: { aggregateROI: -0.1, aggregateNPV: -1_000 },
+        }),
+      ],
+      { kind: "financial", maxBudgetEur: 100_000 },
+      { projectLifetimeYears: 20 },
+    );
+
+    expect(rankings.map((r) => r.packageId)).toEqual(["combined", "envelope"]);
+    const byId = new Map(rankings.map((r) => [r.packageId, r]));
+    expect(byId.get("combined")!.scoreComponents.aggregateROI).toBe(0.2);
+    expect(byId.get("combined")!.scoreComponents.aggregateNPV).toBe(0.2);
+    expect(byId.get("envelope")!.scoreComponents.aggregateROI).toBe(0);
   });
 
   test("all-invalid financial metric components contribute zero without NaN", () => {

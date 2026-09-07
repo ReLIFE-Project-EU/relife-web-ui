@@ -13,11 +13,21 @@ export interface RSERankingOptions {
   projectLifetimeYears: number;
 }
 
+/** How a criterion's values become a 0-1 score. */
+type RankingScale =
+  /** Best scores 1, others their share of it, from zero. Needs a real zero. */
+  | "share-of-best"
+  /** Best scores 1, worst 0. Exaggerates small gaps, so fallback only. */
+  | "best-to-worst";
+
 interface RankingMetric {
   key: string;
   weight: number;
   values: number[];
   valid: boolean[];
+  scale: RankingScale;
+  /** Used when `scale` gives no ordering. */
+  fallbackScale?: RankingScale;
 }
 
 export function rankPackages(
@@ -29,7 +39,7 @@ export function rankPackages(
   const componentScores = metrics.map((metric) => ({
     key: metric.key,
     weight: metric.weight,
-    normalized: normalizeMetric(metric.values, metric.valid),
+    normalized: normalizeMetric(metric),
   }));
 
   return aggregates
@@ -75,6 +85,8 @@ function buildMetrics(
           finiteOrZero(aggregate.energySavedPerEur),
         ),
         valid: aggregates.map(() => true),
+        scale: "share-of-best",
+        fallbackScale: "best-to-worst",
       },
       {
         key: "totalAnnualEnergySavingsKwh",
@@ -83,6 +95,8 @@ function buildMetrics(
           finiteOrZero(aggregate.totalAnnualEnergySavingsKwh),
         ),
         valid: aggregates.map(() => true),
+        scale: "share-of-best",
+        fallbackScale: "best-to-worst",
       },
     ];
   }
@@ -96,6 +110,8 @@ function buildMetrics(
           finiteOrZero(aggregate.co2ReducedTonPerEur),
         ),
         valid: aggregates.map(() => true),
+        scale: "share-of-best",
+        fallbackScale: "best-to-worst",
       },
       {
         key: "totalAnnualCo2ReductionTon",
@@ -104,6 +120,8 @@ function buildMetrics(
           finiteOrZero(aggregate.totalAnnualCo2ReductionTon),
         ),
         valid: aggregates.map(() => true),
+        scale: "share-of-best",
+        fallbackScale: "best-to-worst",
       },
     ];
   }
@@ -122,6 +140,8 @@ function buildMetrics(
         finiteOrZero(aggregate.renovatableBuildingsWithinBudget),
       ),
       valid: aggregates.map(() => true),
+      // No fallback needed since a dwelling count can't go negative; all-zero means a true tie.
+      scale: "share-of-best",
     },
     {
       key: "aggregateROI",
@@ -132,6 +152,8 @@ function buildMetrics(
       valid: aggregates.map((aggregate) =>
         isFiniteNumber(aggregate.financialIndicators.aggregateROI),
       ),
+      scale: "share-of-best",
+      fallbackScale: "best-to-worst",
     },
     {
       key: "aggregateNPV",
@@ -142,30 +164,76 @@ function buildMetrics(
       valid: aggregates.map((aggregate) =>
         isFiniteNumber(aggregate.financialIndicators.aggregateNPV),
       ),
+      scale: "share-of-best",
+      fallbackScale: "best-to-worst",
     },
     {
       key: "aggregatePayback",
       weight: RSE_RANKING_WEIGHTS.financial.aggregatePayback,
-      // Years saved vs the no-payback case, so shorter payback scores higher.
+      // Higher scores for shorter payback periods.
       values: paybackValues.map((value) =>
         isFiniteNumber(value) ? worstPayback - value : 0,
       ),
       valid: paybackValues.map(isFiniteNumber),
+      scale: "share-of-best",
+      fallbackScale: "best-to-worst",
     },
   ];
 }
 
+/** Scale a criterion onto [0, 1], falling back when it yields no ordering. */
+function normalizeMetric(metric: RankingMetric): number[] {
+  const { values, valid, scale, fallbackScale } = metric;
+  return (
+    applyScale(scale, values, valid) ??
+    (fallbackScale ? applyScale(fallbackScale, values, valid) : null) ??
+    values.map(() => 0)
+  );
+}
+
+/** Returns null when the scale cannot order these values. */
+function applyScale(
+  scale: RankingScale,
+  values: number[],
+  valid: boolean[],
+): number[] | null {
+  switch (scale) {
+    case "share-of-best":
+      return shareOfBest(values, valid);
+    case "best-to-worst":
+      return bestToWorst(values, valid);
+  }
+}
+
 /**
- * Scale a criterion onto [0, 1] against the best package, anchored at zero so
- * gap sizes survive. Min/max rescaling collapses to 0/1 whenever only two
- * packages are compared, making the ranking a function of the weights alone.
+ * Anchored at zero so gap sizes survive: a package scoring nearly as well as
+ * the best keeps nearly the same score.
  */
-function normalizeMetric(values: number[], valid: boolean[]): number[] {
+function shareOfBest(values: number[], valid: boolean[]): number[] | null {
   const best = Math.max(...values.filter((_, i) => valid[i]), 0);
   if (best <= 0) {
-    return values.map(() => 0);
+    return null;
   }
   return values.map((value, i) => (valid[i] ? Math.max(0, value) / best : 0));
+}
+
+/**
+ * Spreads across the observed range, so it orders values that never clear zero.
+ * Collapses to 0/1 with only two packages, hence fallback use only.
+ */
+function bestToWorst(values: number[], valid: boolean[]): number[] | null {
+  const usable = values.filter((_, i) => valid[i]);
+  if (usable.length === 0) {
+    return null;
+  }
+  const worst = Math.min(...usable);
+  const best = Math.max(...usable);
+  if (best === worst) {
+    return null;
+  }
+  return values.map((value, i) =>
+    valid[i] ? (value - worst) / (best - worst) : 0,
+  );
 }
 
 function finiteOrZero(value: number | undefined): number {
