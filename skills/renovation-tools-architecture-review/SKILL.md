@@ -63,29 +63,10 @@ Each sequence diagram must:
 - Show responsibilities (who calls whom, and why at a high level).
 - Explicitly labels mocked, stubbed, or partially implemented components.
 
-2. Three separate Mermaid flow diagrams (GitHub-compatible), one for each tool:
-
-- Home Renovation Assistant flow diagram
-- Portfolio Renovation Advisor flow diagram
-- Renovation Strategy Explorer flow diagram
-
-Each flow diagram must:
-
-- Match the style, tone, and scope of the design flow diagrams in `docs/pra-tool-design.md` and `docs/hra-tool-design.md`.
-- Use rectangular boxes with multi-line labels showing component names and key details.
-- Include ALL THREE service APIs (Forecasting, Financial, Technical) even if they are mocked or stubbed.
-- Visually distinguish implemented vs mocked/stubbed/partial components using styling (e.g., different fill colors, borders, or annotations).
-- Show data flow from user inputs → database → services → UI results.
-- Include inline annotations within boxes showing key inputs/outputs for each component.
-
-3. An updated root `README.md` section containing:
+2. An updated root `README.md` section containing:
 
 - A higher-level subsection (e.g., "## Renovation tools architecture") that introduces all diagrams.
-- Three separate subsections, one for each tool, each containing:
-  - The tool's sequence diagram in a fenced ` ```mermaid ` block.
-  - The tool's flow diagram in a fenced ` ```mermaid ` block.
-  - A `#### Summary` with 1–2 plain-language sentences per tool (no file paths or code symbols in README).
-  - A link to the tool's design flow document for comparison.
+- Three separate subsections, one for each tool, each containing only that tool's sequence diagram in a fenced ` ```mermaid ` block, placed directly under the tool heading.
 
 ## Workflow (do this in order)
 
@@ -175,63 +156,10 @@ Diagram scope guidance:
 - Keep each diagram readable; do not exceed ~60–90 lines if possible.
 - Focus each diagram on the unique flow for that specific tool.
 
-### 4.5) Produce three separate Mermaid flow diagrams (GitHub-compatible)
-
-**Important**: Create a separate flow diagram for each tool that matches the design documentation style.
-
-Reference the flow diagrams at the bottom of:
-
-- `docs/pra-tool-design.md` (Professional input → Services → Professional UI)
-- `docs/hra-tool-design.md` (User input → Services → Results display)
-
-Rules for each flow diagram:
-
-- Use `flowchart LR` (left-to-right layout).
-- Include ALL components present in the design diagrams:
-  - User/Professional Input box (with inline details about input fields)
-  - ReLIFE Database cylinder shape
-  - Forecasting Service box (with endpoint and key outputs)
-  - Financial Service box (with endpoint and key outputs)
-  - Technical Service box (with endpoint and key outputs)
-  - Results/UI Output box (with what is displayed)
-- Use multi-line labels with `<br/>` and `---` dividers to show structure:
-  - Component name (bold, ALL CAPS for main sections)
-  - Separator line `---`
-  - Key details (inputs, outputs, endpoints, etc.)
-- Wrap flowchart labels in quotes for parser safety, e.g. `Node["LINE1<br/>LINE2"]`.
-- For database shape, use quoted cylinder labels, e.g. `DB[("ReLIFE Database<br/>...")]`.
-- Use styling to distinguish implementation status:
-  - `style ComponentName fill:#COLOR` at the end of the diagram
-  - Suggested colors:
-    - Input: `#f0f0f0` (light gray)
-    - Database: `#d4edda` (light green)
-    - Forecasting: `#cfe2ff` (light blue)
-    - Financial: `#fff3cd` (light yellow)
-    - Technical: `#f8d7da` (light red)
-    - UI/Output: `#d1ecf1` (light cyan) or `#e2e3e5` (light gray)
-- Add visual indicators for mocked/stubbed components:
-- Prefer `MOCK` / `STUB` / `PARTIAL` without parentheses in labels
-  - Use a distinct border color or fill shade (e.g., lighter or with dashed border)
-  - In the inline details, explicitly note what's missing or simplified
-- Show directional arrows for data flow:
-  - Input → Service
-  - Database → Service
-  - Service → Service (when one depends on another)
-  - Service → Output
-- Keep the diagram visually similar to the design docs so deviations are obvious:
-  - If a service is present in design but mocked in implementation, it should still appear in the same position
-  - If input fields differ from design, the differences should be visible in the box content
-  - If outputs differ, they should be visible in the output box
-
 ### Mermaid Compatibility Profile (GitHub-safe)
 
 Use this strict profile when writing Mermaid for README:
 
-- **Flowcharts**
-  - Use `flowchart LR`.
-  - Always quote node labels: `A["..."]`.
-  - Use quoted cylinder labels for DB nodes: `DB[("...")]`.
-  - Avoid parentheses-heavy status tokens inside labels; prefer `STUB - NOT CALLED`.
 - **Sequence diagrams**
   - Keep participant names simple (letters, numbers, spaces).
   - Avoid relying on `Note over` / `Note right of`; encode status via explicit self-messages instead.
@@ -240,48 +168,6 @@ Use this strict profile when writing Mermaid for README:
 - **General**
   - Avoid punctuation patterns that may confuse older Mermaid parsers.
   - If a diagram fails to render, simplify labels first (remove parentheses, then remove extra punctuation), then retry.
-
-Example structure (adapt to actual implementation):
-
-```mermaid
-flowchart LR
-    Input["USER INPUT<br/>---<br/>Required:<br/>- Field1<br/>- Field2<br/>---<br/>Optional:<br/>- Field3"]
-
-    DB[("Database<br/>---<br/>Data1<br/>Data2")]
-
-    Forecasting["FORECASTING SERVICE MOCK<br/>---<br/>POST /endpoint<br/>---<br/>Returns:<br/>- output1<br/>- output2<br/>NOTE: Mock fixture data"]
-
-    Financial["FINANCIAL SERVICE<br/>---<br/>POST /arv<br/>POST /risk_assessment<br/>---<br/>Outputs:<br/>- indicator1<br/>- indicator2"]
-
-    Technical["TECHNICAL SERVICE STUB - NOT IMPLEMENTED<br/>---<br/>POST /endpoint<br/>---<br/>Returns placeholder"]
-
-    Output["RESULTS DISPLAY<br/>---<br/>Shows:<br/>- result1<br/>- result2"]
-
-    Input --> Forecasting
-    DB --> Forecasting
-    Input --> Financial
-    DB --> Financial
-    Forecasting --> Financial
-    Forecasting --> Technical
-    Financial --> Technical
-    Forecasting --> Output
-    Financial --> Output
-    Technical --> Output
-
-    style Input fill:#f0f0f0
-    style DB fill:#d4edda
-    style Forecasting fill:#cfe2ff,stroke:#666,stroke-dasharray: 5 5
-    style Financial fill:#fff3cd
-    style Technical fill:#f8d7da,stroke:#666,stroke-dasharray: 5 5
-    style Output fill:#d1ecf1
-```
-
-Comparison strategy:
-
-- Place the generated flow diagram next to the design diagram (both should be in README)
-- Visual alignment makes it obvious where implementation differs from design
-- Annotations in boxes call out specific deviations (e.g., "Design specified X, but implemented Y")
-- Color and styling differences highlight mock/stub status
 
 ### 5) Update root README.md
 
@@ -296,32 +182,16 @@ Comparison strategy:
   - `### Renovation Strategy Explorer`
 
 - For each tool subsection:
-  - Insert that tool's sequence diagram in a fenced Mermaid block with a heading like `#### Sequence Diagram`
-  - Insert that tool's flow diagram in a fenced Mermaid block with a heading like `#### Flow Diagram`
-  - Add a `#### Summary` section directly after the diagrams with 1–2 plain-language sentences plus a link to the design flow document (e.g., `docs/hra-tool-design.md#sequential-flow`).
-
-**Summary writing rules (README only):**
-
-- Write for a contributor who has not read the codebase.
-- Name the three services in plain terms (Forecasting, Financial, Technical), not wrapper classes or file paths.
-- State only what affects users or expectations (live vs cached vs not used).
-- Keep file paths and code evidence in the agent's working notes only — do not publish them in README.
-- Keep `MOCK` / `PARTIAL` / `STUB` labels in diagrams; prose should not re-list every endpoint or duplicate diagram labels verbatim.
+  - Insert that tool's sequence diagram in a fenced Mermaid block directly under the tool heading, with no intermediate subsection heading.
 
 ### 6) Validate documentation correctness
 
-- Ensure both the sequence diagram and flow diagram reflect current code behavior:
+- Ensure each sequence diagram reflects current code behavior:
   - Names match real modules/services.
   - Calls shown are real (or explicitly called out as stubs/mocks).
-  - Flow diagram components and data flows match actual implementation.
 - Ensure Mermaid renders on GitHub:
   - Valid syntax, correct code fence, no unsupported extensions.
-  - Test both `sequenceDiagram` and `flowchart LR` syntax.
-- Compare flow diagrams with design documentation:
-  - Visually review side-by-side to identify deviations.
-  - Ensure styling differences make mock/stub status obvious.
-  - Verify that annotations accurately describe what differs from design.
-- Ensure each `#### Summary` is plain language: 1–2 sentences, no file paths or code symbols, and does not duplicate diagram labels verbatim (diagrams carry technical detail).
+  - No `;` inside message text (see the compatibility profile).
 - If uncertain about any interaction or component status, record it in working notes with code evidence; mark "Unverified" in diagram annotations if it must appear in README.
 
 ## Mermaid skeleton (replace with real flows)
@@ -394,103 +264,4 @@ sequenceDiagram
   %% UI->>RSE: ...
   %% RSE->>FCAST: ...
   %% etc.
-```
-
----
-
-### Flow Diagrams
-
-These should match the style from `docs/pra-tool-design.md` and `docs/hra-tool-design.md`.
-
-#### Home Renovation Assistant
-
-```mermaid
-flowchart LR
-    UserInput["USER INPUT<br/>---<br/>Required:<br/>- Building details<br/>- Location lat, lng<br/>- Project lifetime<br/>---<br/>Optional:<br/>- CAPEX<br/>- Maintenance cost<br/>- Loan amount/term"]
-
-    DB[("ReLIFE Database<br/>---<br/>CAPEX<br/>Maintenance costs<br/>Building Archetypes<br/>Historical data")]
-
-    Forecasting["FORECASTING SERVICE<br/>---<br/>POST /endpoint<br/>---<br/>Outputs:<br/>- energy_savings<br/>- energy_class<br/>- CO2 emissions"]
-
-    Financial["FINANCIAL SERVICE<br/>---<br/>POST /arv<br/>POST /risk_assessment<br/>---<br/>Outputs:<br/>- Property value<br/>- Percentiles P10-P90<br/>- NPV, IRR, ROI, PBP, DPP"]
-
-    Technical["TECHNICAL SERVICE<br/>---<br/>POST /endpoint<br/>---<br/>Outputs:<br/>- Optimal package<br/>- Technology rankings"]
-
-    Output["RESULTS DISPLAY<br/>---<br/>Technical Output:<br/>- Energy savings<br/>- CO2 emissions<br/>---<br/>Financial Output:<br/>- Charts, indicators<br/>- Property value<br/>---<br/>Ranking Output:<br/>- Optimal packages"]
-
-    UserInput --> Forecasting
-    DB --> Forecasting
-
-    UserInput --> Financial
-    DB --> Financial
-    Forecasting --> Financial
-
-    Forecasting --> Technical
-    Financial --> Technical
-
-    Forecasting --> Output
-    Financial --> Output
-    Technical --> Output
-
-    style UserInput fill:#f0f0f0
-    style DB fill:#d4edda
-    style Forecasting fill:#cfe2ff
-    style Financial fill:#fff3cd
-    style Technical fill:#f8d7da
-    style Output fill:#d1ecf1
-```
-
-**Notes for flow diagram generation:**
-
-- Replace component details with actual implementation specifics
-- Add `MOCK`, `STUB`, or `PARTIAL` labels (without parentheses) where applicable
-- Use dashed borders (`stroke-dasharray: 5 5`) for mocked/stubbed components
-- Include inline annotations about what differs from design (e.g., "Design specified X fields, implemented Y")
-- Ensure data flow arrows accurately reflect actual API call sequences
-
-#### Portfolio Renovation Advisor
-
-```mermaid
-flowchart LR
-    ProfInput["PROFESSIONAL INPUT<br/>---<br/>Technical Inputs:<br/>- Building geometry<br/>- Envelope properties<br/>- HVAC systems<br/>---<br/>Financial Inputs:<br/>- Project lifetime<br/>- CAPEX<br/>- Loan details"]
-
-    DB[("ReLIFE Database<br/>---<br/>CAPEX<br/>Maintenance costs<br/>Building Archetypes")]
-
-    Forecasting["FORECASTING SERVICE<br/>---<br/>Outputs:<br/>- energy_savings<br/>- energy_class_after<br/>- CO2 emissions"]
-
-    Financial["FINANCIAL SERVICE<br/>---<br/>POST /arv<br/>POST /risk_assessment<br/>---<br/>ARV output:<br/>- Property value<br/>---<br/>Risk output:<br/>- Percentiles P10-P90<br/>- 3 Probabilities<br/>- 5 Chart metadata"]
-
-    Technical["TECHNICAL SERVICE<br/>---<br/>POST /mcda<br/>---<br/>Multi-Criteria Analysis:<br/>- Scenario comparison<br/>- Optimal packages"]
-
-    ProfOutput["PROFESSIONAL UI<br/>---<br/>Technical Output:<br/>- Energy savings<br/>- Energy class improvements<br/>---<br/>Financial Output:<br/>- 5 Distribution charts<br/>- Risk probabilities<br/>- Property value<br/>---<br/>Ranking Output:<br/>- Scenario rankings<br/>- Optimal packages"]
-
-    ProfInput --> Forecasting
-    DB --> Forecasting
-
-    ProfInput --> Financial
-    DB --> Financial
-    Forecasting --> Financial
-
-    Forecasting --> Technical
-    Financial --> Technical
-
-    Forecasting --> ProfOutput
-    Financial --> ProfOutput
-    Technical --> ProfOutput
-
-    style ProfInput fill:#f0f0f0
-    style DB fill:#d4edda
-    style Forecasting fill:#cfe2ff
-    style Financial fill:#fff3cd
-    style Technical fill:#f8d7da
-    style ProfOutput fill:#d1ecf1
-```
-
-#### Renovation Strategy Explorer
-
-```mermaid
-flowchart LR
-    %% To be filled based on actual implementation
-    %% Follow same pattern as HRA and PRA
-    %% Include all service boxes even if mocked/stubbed
 ```

@@ -65,8 +65,6 @@ remain unchanged.
 
 ### Home Renovation Assistant
 
-#### Sequence Diagram
-
 ```mermaid
 sequenceDiagram
     participant UI as Web UI
@@ -111,57 +109,7 @@ sequenceDiagram
     HRA->>HRA: ECM supports envelope, condensing boiler, heat pump, and PV paths
 ```
 
-#### Flow Diagram
-
-```mermaid
-flowchart LR
-    UserInput["USER INPUT<br/>---<br/>Required:<br/>- Country and location lat/lng<br/>- Building type and period<br/>- Floor area, project lifetime<br/>---<br/>Optional:<br/>- Archetype modifications<br/>- CAPEX and maintenance<br/>- Loan amount and term"]
-
-    DB[("ReLIFE Database<br/>---<br/>Forecasting archetypes<br/>Financial CAPEX/OPEX defaults<br/>Risk model parameters")]
-
-    Forecasting["FORECASTING API PARTIAL<br/>---<br/>GET /forecasting/building/available<br/>POST /forecasting/building archetype=true<br/>POST /forecasting/simulate<br/>POST /forecasting/ecm_application<br/>---<br/>Returns baseline and renovated energy outputs<br/>NOTE: ECM supports envelope, generation-change, and PV parameters"]
-
-    Financial["FINANCIAL API REAL<br/>---<br/>POST /financial/arv<br/>POST /financial/risk-assessment<br/>---<br/>Private output level<br/>Returns ARV + risk metrics<br/>NPV, IRR, ROI, PBP, DPP<br/>Cash flow visualization data"]
-
-    Technical["TECHNICAL API PARTIAL<br/>---<br/>POST /technical/mcda/topsis<br/>---<br/>Ranks evaluated packages by persona profile<br/>NOTE: TOPSIS is live; the sustainability pillar sends material carbon from the embedded technical sheets plus lifetime carbon on a shared scale, while a few other KPIs remain neutralized"]
-
-    Output["HOME ASSISTANT RESULTS UI<br/>---<br/>Shows EPC and scenario comparisons<br/>Shows ARV and risk charts/metrics<br/>Shows ranking returned by TechnicalMCDAService"]
-
-    UserInput --> Forecasting
-    DB --> Forecasting
-    UserInput --> Financial
-    DB --> Financial
-    UserInput --> Technical
-    Forecasting --> Financial
-    Forecasting --> Output
-    Financial --> Output
-    Forecasting --> Technical
-    Financial --> Technical
-    Technical --> Output
-
-    style UserInput fill:#f0f0f0
-    style DB fill:#d4edda
-    style Forecasting fill:#cfe2ff,stroke:#4c6ef5
-    style Financial fill:#fff3cd,stroke:#a37f00
-    style Technical fill:#f8d7da,stroke:#b02a37
-    style Output fill:#d1ecf1
-```
-
-#### Summary
-
-Energy and financial results come from the live Forecasting and Financial services. Package ranking uses the Technical service, but not all ranking criteria are fully populated yet. Compare with the [design flow](docs/hra-tool-design.md#sequential-flow).
-
-#### Current HRA Energy-Savings Semantic
-
-- `annual_energy_savings = max(0, baseline delivered system energy - renovated delivered system energy)`
-- The values come from Forecasting/UNI outputs and are scaled to the user's floor area.
-- This is system-energy savings, not thermal-needs savings and not the frontend flat-tariff estimate.
-- Boiler and heat-pump upgrades can therefore improve financial results even when thermal needs change little.
-- The Financial API converts saved kWh to EUR using its own assumptions, so HRA should present EUR outputs as indicative comparison values.
-
 ### Portfolio Renovation Advisor
-
-#### Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -192,48 +140,7 @@ sequenceDiagram
     PRA-->>UI: Portfolio summary in results step
 ```
 
-#### Flow Diagram
-
-```mermaid
-flowchart LR
-    ProfessionalInput["PROFESSIONAL INPUT<br/>---<br/>Portfolio buildings via CSV or manual entry<br/>Archetype and modification fields<br/>Selected renovation measures per building<br/>Project lifetime and financing settings"]
-
-    DB[("ReLIFE Database<br/>---<br/>Forecasting archetypes<br/>Financial CAPEX/OPEX defaults<br/>Risk model parameters")]
-
-    Forecasting["FORECASTING API PARTIAL<br/>---<br/>simulateDirect and simulateCustomBuilding<br/>simulateECM for selected measures<br/>---<br/>Used per building in batched analysis<br/>NOTE: ECM supports envelope, generation-change, and PV parameters"]
-
-    Financial["FINANCIAL API REAL<br/>---<br/>POST /financial/arv<br/>POST /financial/risk-assessment<br/>---<br/>Professional output level<br/>Provides metrics and probability metadata"]
-
-    Technical["TECHNICAL API STUB - NOT CALLED<br/>---<br/>No invocation in PortfolioAnalysisService<br/>MCDA/technical pillar scoring not wired"]
-
-    ProfessionalUI["PORTFOLIO ADVISOR RESULTS UI<br/>---<br/>Shows per-building baseline/renovated outputs<br/>Shows ARV and risk indicators<br/>Shows portfolio progress and aggregated results"]
-
-    ProfessionalInput --> Forecasting
-    DB --> Forecasting
-    ProfessionalInput --> Financial
-    DB --> Financial
-    Forecasting --> Financial
-    Forecasting --> ProfessionalUI
-    Financial --> ProfessionalUI
-    Forecasting -. planned-only .-> Technical
-    Financial -. planned-only .-> Technical
-    Technical -. not-executed .-> ProfessionalUI
-
-    style ProfessionalInput fill:#f0f0f0
-    style DB fill:#d4edda
-    style Forecasting fill:#cfe2ff,stroke:#4c6ef5
-    style Financial fill:#fff3cd,stroke:#a37f00
-    style Technical fill:#f8d7da,stroke:#666,stroke-dasharray: 5 5
-    style ProfessionalUI fill:#d1ecf1
-```
-
-#### Summary
-
-Each building is analyzed against the live Forecasting and Financial services. Technical ranking is not used, and advanced financing schemes shown in the UI are not yet applied in analysis. Compare with the [design flow](docs/pra-tool-design.md#sequential-flow).
-
 ### Renovation Strategy Explorer
-
-#### Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -259,44 +166,3 @@ sequenceDiagram
     RSE->>TECH: Technical API not called in RSE workflow
     RSE-->>UI: Aggregates rankings and scenario tables
 ```
-
-#### Flow Diagram
-
-```mermaid
-flowchart LR
-    PolicyInput["POLICYMAKER INPUT<br/>---<br/>Renovation goal and budget or energy focus<br/>Archetype portfolio with counts per archetype<br/>Renovation packages to compare"]
-    LandingPage["LANDING PAGE<br/>---<br/>Static info page at /strategy-explorer<br/>CTA links to /strategy-explorer/tool"]
-
-    DB[("ReLIFE Database<br/>---<br/>Supabase tables rse_cache_versions<br/>rse_forecasting_cache_entries<br/>---<br/>Precomputed baseline and renovated energy and CO2 per archetype and package")]
-
-    Forecasting["FORECASTING API PARTIAL<br/>---<br/>GET forecasting building available<br/>POST forecasting building archetype true<br/>---<br/>Archetype catalog and detail payloads for the wizard<br/>NOTE: Live ECM simulate is not called at run time for RSE packages"]
-
-    Financial["FINANCIAL API REAL<br/>---<br/>POST financial risk-assessment only<br/>---<br/>Professional output level<br/>Skips ARV used by HRA and PRA paths"]
-
-    Technical["TECHNICAL API STUB - NOT CALLED<br/>---<br/>Package order from rseRankingService.ts<br/>---<br/>Weighted client-side score not POST mcda"]
-
-    PolicyUI["STRATEGY EXPLORER RESULTS UI<br/>---<br/>Per-package and portfolio aggregates<br/>Rankings and financial indicator tables"]
-
-    LandingPage --> PolicyInput
-    PolicyInput --> Forecasting
-    PolicyInput --> DB
-    PolicyInput --> Financial
-    DB --> Financial
-    Forecasting -. not-executed .-> Technical
-    Financial -. not-executed .-> Technical
-    Forecasting --> PolicyUI
-    Financial --> PolicyUI
-    Technical -. not-executed .-> PolicyUI
-
-    style LandingPage fill:#e2e3e5
-    style PolicyInput fill:#f0f0f0
-    style DB fill:#d4edda
-    style Forecasting fill:#cfe2ff,stroke:#4c6ef5
-    style Financial fill:#fff3cd,stroke:#a37f00
-    style Technical fill:#f8d7da,stroke:#666,stroke-dasharray: 5 5
-    style PolicyUI fill:#d1ecf1
-```
-
-#### Summary
-
-Energy and CO₂ figures come from a pre-built cache, not live simulations when you run a comparison. Financial results are live; package order is calculated in the browser rather than by the Technical service. Compare with the [design flow](docs/rse-tool-design.md#sequential-flow).
