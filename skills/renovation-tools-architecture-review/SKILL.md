@@ -236,6 +236,7 @@ Use this strict profile when writing Mermaid for README:
   - Keep participant names simple (letters, numbers, spaces).
   - Avoid relying on `Note over` / `Note right of`; encode status via explicit self-messages instead.
   - Keep one interaction per line with standard arrows (`->>`, `-->>`).
+  - Never put `;` in message text: Mermaid treats it as a statement separator, so the rest of the line parses as a new statement and the diagram fails. Use a comma or a hyphen instead.
 - **General**
   - Avoid punctuation patterns that may confuse older Mermaid parsers.
   - If a diagram fails to render, simplify labels first (remove parentheses, then remove extra punctuation), then retry.
