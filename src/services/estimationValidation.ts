@@ -128,7 +128,7 @@ export function validateEstimation(
     });
   }
 
-  // For apartment-like buildings a stated area SMALLER than the reference
+  // For Apartments a stated area SMALLER than the reference
   // building means "my flat's share of the building" — the intended linear
   // scaling mechanism, not an archetype mismatch. Scaling UP (a building
   // larger than the reference) keeps the regular confidence penalties.

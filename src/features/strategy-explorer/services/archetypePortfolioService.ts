@@ -78,10 +78,9 @@ export function createArchetypePortfolioService(
 export const archetypePortfolioService = createArchetypePortfolioService();
 
 /**
- * Floor area a row models. Apartment-like categories (multi-family houses and
- * apartment buildings) stand for one dwelling inside the reference building,
- * capped by the building itself; single-family rows keep the whole archetype,
- * which makes their scaling factor exactly 1.
+ * Floor area a row models. Apartments stand for one flat inside the reference
+ * building, capped by the building itself. Single- and multi-family houses
+ * keep the whole archetype, which makes their scaling factor exactly 1.
  */
 function resolveModeledFloorArea(
   selection: RSEArchetypeSelection,

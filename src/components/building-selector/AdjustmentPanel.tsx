@@ -24,6 +24,8 @@ import type {
   BuildingModifications,
 } from "../../types/archetype";
 import { APARTMENT_LOCATION_OPTIONS } from "../../constants/buildingFormOptions";
+import { relifeConcepts } from "../../constants/relifeConcepts";
+import { ConceptExplainer } from "../shared/ConceptExplainer";
 import {
   FLAT_LIMITED_FIELDS,
   FULL_FIELD_GROUPS,
@@ -98,10 +100,14 @@ export function AdjustmentPanel({
             fields: flatUnit ? FLAT_LIMITED_FIELDS : LIMITED_FIELDS,
           },
         ]
-      : FULL_FIELD_GROUPS;
+      : FULL_FIELD_GROUPS.map((group) =>
+          group.fields === LIMITED_FIELDS && flatUnit
+            ? { ...group, fields: FLAT_LIMITED_FIELDS }
+            : group,
+        );
 
   const footerText = flatUnit
-    ? "We estimate your apartment's share of the building's simulated energy use, based on its floor area. Floors in the building and apartment level are used for property valuation only; neither changes the energy estimate."
+    ? `${relifeConcepts["apartment-floor-area"].caveat} Floors in the building and apartment level are used for property valuation only; neither changes the energy estimate.`
     : scope === "limited"
       ? "Geometry changes affect the simulation."
       : isApartmentSelection(details)
@@ -155,7 +161,22 @@ export function AdjustmentPanel({
                   {group.fields.map((field) => (
                     <NumberInput
                       key={field.key}
-                      label={field.label}
+                      label={
+                        field.key === "floorArea" ? (
+                          <>
+                            {field.label}{" "}
+                            <ConceptExplainer
+                              conceptId={
+                                flatUnit
+                                  ? "apartment-floor-area"
+                                  : "modeled-property"
+                              }
+                            />
+                          </>
+                        ) : (
+                          field.label
+                        )
+                      }
                       value={draft[field.key]}
                       onChange={(value) =>
                         onDraftChange({ [field.key]: value ?? "" })

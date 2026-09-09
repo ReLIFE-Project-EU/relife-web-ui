@@ -94,7 +94,9 @@ export function buildDraftFromDetails(
     floorArea,
     numberOfFloors: modifications?.numberOfFloors ?? details.numberOfFloors,
     floorHeight: modifications?.floorHeight ?? details.floorHeight,
-    apartmentLocation: apartmentLocation ?? (flatUnit ? "middle" : null),
+    apartmentLocation: isApartmentLikeCategory(details.category)
+      ? (apartmentLocation ?? (flatUnit ? "middle" : null))
+      : null,
     wallUValue:
       modifications?.wallUValue ?? details.thermalProperties.wallUValue,
     roofUValue:

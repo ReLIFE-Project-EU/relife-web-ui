@@ -102,7 +102,7 @@ export const rseForecastingCacheService = createRSEForecastingCacheService();
  * Turn a cached whole-building entry into a per-row simulation result.
  *
  * Cache payloads always describe the whole reference building, so rows that
- * model a single dwelling (apartment-like categories) take their share of every
+ * model a single dwelling (Apartments) take their share of every
  * absolute figure by floor area — the same share-of-the-bill scaling HRA
  * applies. Percentages and the display EPC are intensities, so they are
  * unchanged by construction and stay on the cached whole-building basis.

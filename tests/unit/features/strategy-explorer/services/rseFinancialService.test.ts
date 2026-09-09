@@ -225,7 +225,7 @@ describe("computeFinancials", () => {
     mockAssessRisk.mockResolvedValue(makeFixtureResponse());
   });
 
-  test("prices a dwelling row from its share of the reference building", async () => {
+  test("prices an Apartment share and whole-building envelope quantities consistently", async () => {
     // A 100 m² dwelling inside a 400 m² reference building: envelope surfaces
     // take a quarter share, HVAC/PV are sized from the dwelling itself.
     const details = {
@@ -267,6 +267,13 @@ describe("computeFinancials", () => {
       modeledFloorArea: 400,
     });
 
+    const wholeLookup = mockAssessRisk.mock.calls.at(-2)![0];
+    expect(wholeLookup.renovation_actions).toEqual([
+      { action: "Wall insulation", area_m2: 80 },
+      { action: "Roof insulation - Accessible", area_m2: 60 },
+      { action: "Floor insulation", area_m2: 50 },
+      { action: "Windows", area_m2: 20 },
+    ]);
     expect(wholeCarbon.embodiedCarbonKgCo2e).toBeGreaterThan(0);
     expect(dwellingCarbon.embodiedCarbonKgCo2e).toBeCloseTo(
       wholeCarbon.embodiedCarbonKgCo2e! * 0.25,

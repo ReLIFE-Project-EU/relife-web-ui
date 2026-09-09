@@ -121,12 +121,14 @@ describe("validateEstimation", () => {
   });
 
   test("non-apartment downscale keeps the regular scale penalty", () => {
-    const diagnostic = validateEstimation(
-      makeEstimation(ArchetypeMatchStrategy.EXACT_FULL, 2249),
-      makeBuilding({ buildingType: "Single Family House", floorArea: 80 }),
-    );
-    expect(diagnostic.level).toBe("unusable");
-    expect(diagnostic.reasons[0].code).toBe("scale");
+    for (const buildingType of ["Single Family House", "Multi family House"]) {
+      const diagnostic = validateEstimation(
+        makeEstimation(ArchetypeMatchStrategy.EXACT_FULL, 2249),
+        makeBuilding({ buildingType, floorArea: 80 }),
+      );
+      expect(diagnostic.level).toBe("unusable");
+      expect(diagnostic.reasons[0].code).toBe("scale");
+    }
   });
 
   test("scale factor 6× alone is low-confidence", () => {

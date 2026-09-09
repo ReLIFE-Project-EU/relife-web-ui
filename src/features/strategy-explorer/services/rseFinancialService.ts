@@ -51,7 +51,7 @@ export interface RSEFinancialServiceInput {
   packageId: RSEPackageId;
   details: ArchetypeDetails;
   /**
-   * Floor area the row models: the dwelling for apartment-like categories, the
+   * Floor area the row models: the dwelling for Apartments, the
    * whole archetype otherwise. Envelope surfaces and HVAC/PV capacity are sized
    * from it so costs and material carbon match the scaled energy savings.
    */

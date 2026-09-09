@@ -85,7 +85,7 @@ interface BuildingSelectorProps {
   service: BuildingSelectorService;
   host: BuildingSelectorHost;
   adjustmentScope: BuildingSelectorAdjustmentScope;
-  /** Model apartment-like selections as a single flat inside the reference
+  /** Model Apartment selections as a single flat inside the reference
    *  building: the floor-area input describes the user's apartment and the
    *  results are its share of the whole-building simulation. */
   flatUnitMode?: boolean;

@@ -8,7 +8,10 @@ import { BarChart } from "@mantine/charts";
 import { SimpleGrid, Text } from "@mantine/core";
 import { IconCash, IconChartBar } from "@tabler/icons-react";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
-import type { ConceptId } from "../../../../constants/relifeConcepts";
+import {
+  relifeConcepts,
+  type ConceptId,
+} from "../../../../constants/relifeConcepts";
 import {
   formatCurrency,
   formatEnergy,
@@ -55,7 +58,7 @@ const IMPACT_CHART_CONFIG: Record<
     formatter: formatTonnageCo2,
   },
   financial: {
-    title: "Dwellings within budget",
+    title: relifeConcepts["rse-renovatable-buildings"].label,
     conceptId: "rse-renovatable-buildings",
     getValue: (agg) => agg.renovatableBuildingsWithinBudget,
     formatter: formatNumber,

@@ -49,7 +49,13 @@ const estimation: EstimationResult = {
 const archetypeDetails = {
   bui: {
     building_surface: [
-      { name: "wall_s", type: "opaque", area: 80, sky_view_factor: 0.5 },
+      {
+        name: "wall_s",
+        type: "opaque",
+        area: 80,
+        sky_view_factor: 0.5,
+        u_value: 1.2,
+      },
     ],
   },
   floorArea: 100,
@@ -307,35 +313,81 @@ describe("PortfolioAnalysisService", () => {
   });
 
   test("resolves CAPEX/OPEX from the Financial lookup when no override is set", async () => {
-    const results = await service.analyzePortfolio({
-      buildings: [createBuilding()],
-      selectedMeasures: ["wall-insulation"],
-      funding,
-      projectLifetime: 20,
-      onProgress: vi.fn(),
-      // No globalCapex / globalMaintenanceCost → lookup path.
-    });
-
-    expect(mockGetArchetypeDetails).toHaveBeenCalledWith({
-      category: "Multi family House",
-      country: "Greece",
-      name: "MFH-1961-1980",
-    });
-    expect(mockEstimatePackageCosts).toHaveBeenCalledWith(
-      expect.objectContaining({ country: "Greece", projectLifetime: 20 }),
-    );
-    // Looked-up costs feed the financial calculation.
-    expect(mockCalculateForAllScenarios).toHaveBeenCalledWith(
-      expect.objectContaining({
-        packageFinancialInputs: {
-          renovated: { capex: 8000, annualMaintenanceCost: 150 },
+    let wholeBuildingCarbon = 0;
+    for (const category of [
+      "Single Family House",
+      "Multi family House",
+      "Apartment buildings",
+    ]) {
+      const flat = category === "Apartment buildings";
+      const floorArea = flat ? 80 : 1000;
+      const share = floorArea / 1000;
+      const ref = { ...estimation.archetype!, category };
+      mockEstimateEPC.mockResolvedValue({
+        estimation: { ...estimation, archetype: ref, archetypeFloorArea: 1000 },
+        baselineSimulation: { scenario_id: "baseline" },
+      });
+      mockGetArchetypeDetails.mockResolvedValue({
+        ...archetypeDetails,
+        floorArea: 1000,
+        bui: {
+          ...archetypeDetails.bui,
+          building: { net_floor_area: 1000, exposed_perimeter: 100 },
         },
-      }),
-    );
-    expect(results["building-1"]).toMatchObject({
-      status: "success",
-      costSource: { capexFromLookup: true, opexFromLookup: true },
-    });
+      });
+      const runScenarios = scenarios.map((scenario) => ({ ...scenario }));
+      mockEvaluateScenarios.mockResolvedValue(runScenarios);
+      const results = await service.analyzePortfolio({
+        buildings: [
+          createBuilding({
+            category,
+            propertyType: category,
+            floorArea,
+            floorNumber: 1,
+          }),
+        ],
+        selectedMeasures: ["wall-insulation"],
+        funding,
+        projectLifetime: 20,
+        onProgress: vi.fn(),
+        // No globalCapex / globalMaintenanceCost → lookup path.
+      });
+
+      expect(mockEstimateEPC).toHaveBeenLastCalledWith(
+        expect.objectContaining({ floorArea, floorNumber: flat ? 1 : null }),
+        expect.anything(),
+      );
+      expect(mockGetArchetypeDetails).toHaveBeenLastCalledWith({
+        category,
+        country: "Greece",
+        name: ref.name,
+      });
+      expect(mockEstimatePackageCosts).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          country: "Greece",
+          projectLifetime: 20,
+          renovationActions: [
+            { action: "Wall insulation", area_m2: 80 * share },
+          ],
+        }),
+      );
+      const carbon = runScenarios[1].embodiedCarbonKgCo2e;
+      expect(carbon).toBeGreaterThan(0);
+      if (category === "Single Family House") wholeBuildingCarbon = carbon!;
+      expect(carbon).toBeCloseTo(wholeBuildingCarbon * share);
+      // Looked-up costs feed the financial calculation.
+      expect(mockCalculateForAllScenarios).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          packageFinancialInputs: {
+            renovated: { capex: 8000, annualMaintenanceCost: 150 },
+          },
+        }),
+      );
+      expect(results["building-1"]).toMatchObject({
+        status: "success",
+        costSource: { capexFromLookup: true, opexFromLookup: true },
+      });
+    }
   });
 
   test("per-building and global values take precedence over the lookup", async () => {

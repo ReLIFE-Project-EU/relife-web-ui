@@ -15,6 +15,7 @@ import { normalizeSystemSelection } from "../../../services/measureNormalization
 import { packageUsesHeatingStopgap } from "../../../services/renovationActions";
 import { estimatePackageEmbodiedCarbon } from "../../../services/embodiedCarbon";
 import { lookupPackageCosts } from "../../../services/packageCostLookup";
+import { isApartmentLikeCategory } from "../../../constants/buildingFormOptions";
 import type {
   BuildingInfo,
   EstimationResult,
@@ -272,6 +273,9 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
           {
             archetype: estimation.archetype,
             floorArea: building.floorArea,
+            scaleEnvelopeToFloorArea: isApartmentLikeCategory(
+              building.propertyType,
+            ),
             measureIds: scenario.measureIds,
           },
           { building: this.building },
@@ -427,6 +431,9 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
         archetype: estimation.archetype,
         measureIds,
         floorArea: building.floorArea,
+        scaleEnvelopeToFloorArea: isApartmentLikeCategory(
+          building.propertyType,
+        ),
         projectLifetime,
       },
       { building: this.building, financial: this.financial },
@@ -485,7 +492,9 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       numberOfOpenings: null,
       glazingTechnology: "",
       constructionYear: deriveConstructionYear(b.constructionPeriod),
-      floorNumber: b.floorNumber ?? null,
+      floorNumber: isApartmentLikeCategory(b.propertyType)
+        ? (b.floorNumber ?? null)
+        : null,
       projectLifetime,
     };
   }

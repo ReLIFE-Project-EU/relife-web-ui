@@ -4,7 +4,8 @@ import {
   IconHome,
 } from "@tabler/icons-react";
 import type { BuildingSelectorDraft, BuildingSelectorHost } from "./types";
-import { isApartmentLikeCategory } from "../../constants/buildingFormOptions";
+import { findCategoryDef } from "../../constants/archetypeCategories";
+import { relifeConcepts } from "../../constants/relifeConcepts";
 
 type NumericDraftField = Exclude<
   keyof BuildingSelectorDraft,
@@ -54,7 +55,7 @@ export const LIMITED_FIELDS: AdjustmentField[] = [
 export const FLAT_LIMITED_FIELDS: AdjustmentField[] = LIMITED_FIELDS.map(
   (field) => {
     if (field.key === "floorArea") {
-      return { ...field, label: "Your apartment's floor area (m2)" };
+      return { ...field, label: relifeConcepts["apartment-floor-area"].label };
     }
     if (field.key === "numberOfFloors") {
       return { ...field, label: "Floors in the building" };
@@ -169,7 +170,8 @@ export function formatCoords(lat: number, lng: number): string {
 }
 
 export function getBuildingIcon(category: string) {
-  if (isApartmentLikeCategory(category)) return IconBuildingCommunity;
+  const code = findCategoryDef(category)?.code;
+  if (code === "MFH" || code === "AB") return IconBuildingCommunity;
   if (category.toLowerCase().includes("family")) return IconHome;
   return IconBuilding;
 }

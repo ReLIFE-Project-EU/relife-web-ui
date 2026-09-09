@@ -35,7 +35,7 @@ function createDetails(
 }
 
 describe("building selector flat-unit mode", () => {
-  test("prefills the flat default area and a middle level for apartment-like details", () => {
+  test("prefills the flat default area and a middle level for Apartment details", () => {
     const draft = buildDraftFromDetails(createDetails(), undefined, undefined, {
       flatUnit: true,
     });
@@ -45,16 +45,38 @@ describe("building selector flat-unit mode", () => {
   });
 
   test("keeps the whole-building prefill for non-apartment details even with the flag on", () => {
-    const details = createDetails({
-      category: "Single Family House",
-      floorArea: 150,
-    });
-    const draft = buildDraftFromDetails(details, undefined, undefined, {
-      flatUnit: true,
-    });
+    for (const category of ["Single Family House", "Multi family House"]) {
+      const details = createDetails({ category, floorArea: 500 });
+      // An apartment level left over from an earlier selection must be discarded.
+      const draft = buildDraftFromDetails(details, undefined, "top", {
+        flatUnit: true,
+      });
 
-    expect(draft.floorArea).toBe(150);
-    expect(draft.apartmentLocation).toBeNull();
+      expect(draft.floorArea).toBe(500);
+      expect(draft.apartmentLocation).toBeNull();
+      const selection = buildSelection({
+        mode: "browse",
+        details,
+        draft: {
+          ...draft,
+          floorArea: 600,
+          numberOfFloors: 6,
+          apartmentLocation: "top",
+        },
+        scope: "full",
+        country: "Ireland",
+        constructionPeriod: "1980-1989",
+        coords: details.location,
+        flatUnit: true,
+      });
+      expect(selection.floorArea).toBe(600);
+      expect(selection.modifications).toMatchObject({
+        floorArea: 600,
+        numberOfFloors: 6,
+      });
+      expect(selection.apartmentLocation).toBeUndefined();
+      expect(selection.floorNumber).toBeUndefined();
+    }
   });
 
   test("never emits a floorArea modification in flat mode, keeping flats off the custom-BUI path", () => {

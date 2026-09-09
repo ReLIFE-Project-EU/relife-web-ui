@@ -97,6 +97,7 @@ export function ManualAddPanel({
           service={buildingService}
           host="pra"
           adjustmentScope="full"
+          flatUnitMode
           compact={!withCard}
           onSelectionChange={setSelection}
         />

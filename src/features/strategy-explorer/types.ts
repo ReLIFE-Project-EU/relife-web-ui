@@ -36,11 +36,11 @@ export interface RSEArchetypeRef {
 export interface RSEArchetypeSelection {
   archetype: RSEArchetypeRef;
   /**
-   * How many properties this row stands for: dwellings for apartment-like
-   * categories, whole buildings for single-family ones.
+   * How many properties this row stands for: individual flats for Apartments,
+   * whole buildings for Single-Family and Multi-Family Houses.
    */
   buildingCount: number;
-  /** Modeled dwelling floor area (m²). Apartment-like categories only. */
+  /** Modeled dwelling floor area (m²). Apartments only. */
   unitFloorArea?: number;
 }
 
@@ -51,7 +51,7 @@ export interface RSEPortfolioDefinition {
 export interface RSEExpandedPortfolioSelection extends RSEArchetypeSelection {
   details: ArchetypeDetails;
   /**
-   * Floor area actually modeled: the dwelling for apartment-like categories,
+   * Floor area actually modeled: the dwelling for Apartments,
    * the whole archetype otherwise. Cached whole-building results are scaled by
    * `modeledFloorArea / details.floorArea`.
    */

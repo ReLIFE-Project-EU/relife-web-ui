@@ -14,6 +14,7 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { IconBuildingCommunity, IconTrash } from "@tabler/icons-react";
+import { relifeConcepts } from "../../../../constants/relifeConcepts";
 import { formatArchetypeCategoryLabel } from "../../../../utils/archetypeLabels";
 import { browserNumberSeparators } from "../../../../utils/formatters";
 import type { RSEArchetypeRef } from "../../types";
@@ -25,7 +26,7 @@ export interface PortfolioRow {
   category: string;
   name: string;
   buildingCount: number | "";
-  /** Dwelling floor area (m²); apartment-like categories only. */
+  /** Dwelling floor area (m²); Apartments only. */
   unitFloorArea?: number | "";
 }
 
@@ -52,7 +53,7 @@ interface ArchetypeRowCardProps {
 
 /**
  * One entry of the building stock: an archetype selection (country →
- * category → archetype) paired with the number of dwellings it represents.
+ * category → archetype) paired with the number of properties it represents.
  * Purely presentational; selection state and validation live in PortfolioStep.
  */
 export function ArchetypeRowCard({
@@ -97,7 +98,7 @@ export function ArchetypeRowCard({
               <Text size="xs" c="dimmed" truncate>
                 {isComplete
                   ? `ID: ${selectedArchetype.name}`
-                  : "Pick a reference building and how many dwellings it represents"}
+                  : `Pick a reference building and how many ${relifeConcepts["modeled-property"].unit} it represents`}
               </Text>
             </Box>
           </Group>
@@ -157,7 +158,7 @@ export function ArchetypeRowCard({
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 4, md: 2 }}>
             <NumberInput
-              label="Dwellings"
+              label={relifeConcepts["modeled-property"].label}
               placeholder="Count"
               value={row.buildingCount}
               onChange={(val) =>

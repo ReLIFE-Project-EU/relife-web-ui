@@ -24,6 +24,7 @@ import {
   IconInfoCircle,
 } from "@tabler/icons-react";
 import { CONSTRUCTION_PERIODS } from "../../../../utils/apiMappings";
+import { relifeConcepts } from "../../../../constants/relifeConcepts";
 import {
   CSV_OPTIONAL_COLUMNS,
   CSV_REQUIRED_COLUMNS,
@@ -60,7 +61,7 @@ const CSV_COLUMN_DETAILS: Record<
     example: "Italy",
   },
   floor_area: {
-    description: "Gross floor area in square meters.",
+    description: `Floor area of the modeled property in square meters. ${relifeConcepts["modeled-property"].description}`,
     example: "9800",
   },
   construction_period: {
@@ -82,7 +83,7 @@ const CSV_COLUMN_DETAILS: Record<
   },
   floor_number: {
     description:
-      "Optional integer floor number, mainly for apartments. Use 0 for ground floor if needed.",
+      "Optional integer floor number for Apartments only. Use 0 for ground floor if needed. Ignored for whole houses and buildings.",
     example: "4",
   },
   capex: {

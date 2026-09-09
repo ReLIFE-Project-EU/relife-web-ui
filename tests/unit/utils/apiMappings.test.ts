@@ -18,7 +18,7 @@ describe("apiMappings", () => {
     test.each([
       ["Single Family House", "Detached House"],
       ["Multi family House", "Apartment Complex"],
-      ["Apartment buildings", "Apartment Complex"],
+      ["Apartment buildings", "Apartment"],
       ["Apartment", "Apartment"],
     ] as const)("maps archetype category %s → API %s", (ui, expected) => {
       expect(toAPIPropertyType(ui)).toBe(expected);

@@ -19,6 +19,7 @@ import {
   IconRefresh,
 } from "@tabler/icons-react";
 import { useRef } from "react";
+import { relifeConcepts } from "../../constants/relifeConcepts";
 import { useSyncGlobalLoading } from "../../contexts/global-loading";
 import { useWizardStepScroll } from "../../hooks/useWizardStepScroll";
 import { formatCurrency, formatNumber } from "../../utils/formatters";
@@ -88,7 +89,7 @@ function SummaryStrip() {
       }}
     >
       <Group gap={0} grow wrap="nowrap" align="stretch">
-        <Cell label="Dwellings">
+        <Cell label={relifeConcepts["modeled-property"].label}>
           {totalBuildings > 0 ? (
             formatNumber(totalBuildings)
           ) : (

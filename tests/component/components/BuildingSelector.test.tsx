@@ -166,11 +166,13 @@ function renderSelector({
   service = createService(),
   initialValue,
   flatUnitMode = false,
+  host = "hra",
   onSelectionChange = vi.fn(),
 }: {
   service?: BuildingSelectorService;
   initialValue?: BuildingSelectorInitialValue;
   flatUnitMode?: boolean;
+  host?: "hra" | "pra";
   onSelectionChange?: Parameters<
     typeof BuildingSelector
   >[0]["onSelectionChange"];
@@ -180,8 +182,8 @@ function renderSelector({
       <MantineProvider theme={theme}>
         <BuildingSelector
           service={service}
-          host="hra"
-          adjustmentScope="limited"
+          host={host}
+          adjustmentScope={host === "hra" ? "limited" : "full"}
           flatUnitMode={flatUnitMode}
           initialValue={initialValue}
           onSelectionChange={onSelectionChange}
@@ -195,31 +197,41 @@ function renderSelector({
 
 describe("BuildingSelector", () => {
   test("reinitializes when initialValue changes while mounted", async () => {
-    const service = createService();
+    const multiFamily = { ...germanyArchetype, category: "Multi family House" };
+    const service = createService({
+      getArchetypes: vi.fn(async () => [
+        irelandApartmentArchetype,
+        multiFamily,
+      ]),
+      getArchetypeDetails: vi.fn(async (ref) =>
+        createDetails(ref, { floorArea: 500 }),
+      ),
+    });
     const initialValue: BuildingSelectorInitialValue = {
-      archetype: franceArchetype,
-      category: franceArchetype.category,
-      constructionPeriod: "1980-1989",
-      country: "France",
+      archetype: irelandApartmentArchetype,
+      apartmentLocation: "top",
     };
     const nextInitialValue: BuildingSelectorInitialValue = {
-      archetype: germanyArchetype,
-      category: germanyArchetype.category,
-      constructionPeriod: "1990-1999",
-      country: "Germany",
+      archetype: multiFamily,
+      apartmentLocation: "top",
     };
 
-    const { rerender } = renderSelector({ service, initialValue });
+    const { rerender } = renderSelector({
+      service,
+      initialValue,
+      flatUnitMode: true,
+    });
+    await screen.findAllByText(/Ireland/);
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(await screen.findByLabelText(/Apartment floor area/)).toBeTruthy();
 
-    await waitFor(() =>
-      expect(screen.queryAllByText("France").length).toBeGreaterThan(0),
-    );
     rerender(
       <MantineProvider theme={theme}>
         <BuildingSelector
           service={service}
           host="hra"
           adjustmentScope="limited"
+          flatUnitMode
           initialValue={nextInitialValue}
           onSelectionChange={vi.fn()}
         />
@@ -229,7 +241,12 @@ describe("BuildingSelector", () => {
     await waitFor(() =>
       expect(screen.queryAllByText("Germany").length).toBeGreaterThan(0),
     );
-    expect(service.getArchetypeDetails).toHaveBeenCalledWith(germanyArchetype);
+    expect(service.getArchetypeDetails).toHaveBeenCalledWith(multiFamily);
+    expect(screen.queryByLabelText(/Apartment floor area/)).toBeNull();
+    expect(screen.queryByLabelText("Apartment level")).toBeNull();
+    expect(
+      (screen.getByLabelText(/Floor area \(m2\)/) as HTMLInputElement).value,
+    ).toBe("500");
   });
 
   test("does not notify null while map inputs are being edited", async () => {
@@ -295,52 +312,53 @@ describe("BuildingSelector", () => {
   });
 
   test("applies flat-mode geometry edits without customizing the simulation", async () => {
-    const onSelectionChange = vi.fn();
-    renderSelector({
-      service: createService({
-        getArchetypes: vi.fn(async () => [irelandApartmentArchetype]),
-        getArchetypeDetails: vi.fn(async () =>
-          createDetails(irelandApartmentArchetype, { floorArea: 2248.94 }),
-        ),
-        getAvailableCategories: vi.fn(async () => ["Apartment buildings"]),
-      }),
-      flatUnitMode: true,
-      onSelectionChange,
-    });
+    for (const host of ["hra", "pra"] as const) {
+      const onSelectionChange = vi.fn();
+      renderSelector({
+        host,
+        service: createService({
+          getArchetypes: vi.fn(async () => [irelandApartmentArchetype]),
+          getArchetypeDetails: vi.fn(async () =>
+            createDetails(irelandApartmentArchetype, { floorArea: 2248.94 }),
+          ),
+          getAvailableCategories: vi.fn(async () => ["Apartment buildings"]),
+        }),
+        flatUnitMode: true,
+        onSelectionChange,
+      });
 
-    const [choose] = await screen.findAllByRole("button", {
-      name: "Choose this",
-    });
-    fireEvent.click(choose);
+      const [choose] = await screen.findAllByRole("button", {
+        name: host === "hra" ? "Choose this" : "Select",
+      });
+      fireEvent.click(choose);
 
-    const apply = (await screen.findByRole("button", {
-      name: "Apply adjustments",
-    })) as HTMLButtonElement;
-    expect(apply.disabled).toBe(true);
+      const apply = (await screen.findByRole("button", {
+        name: "Apply adjustments",
+      })) as HTMLButtonElement;
+      expect(apply.disabled).toBe(true);
 
-    // Neither field becomes a BuildingModification, so the Apply gate has to
-    // notice the draft itself.
-    fireEvent.change(
-      screen.getByLabelText("Your apartment's floor area (m2)"),
-      {
+      // Neither field becomes a BuildingModification, so the Apply gate has to
+      // notice the draft itself.
+      fireEvent.change(screen.getByLabelText(/Apartment floor area/), {
         target: { value: "120" },
-      },
-    );
-    await waitFor(() => expect(apply.disabled).toBe(false));
+      });
+      await waitFor(() => expect(apply.disabled).toBe(false));
 
-    fireEvent.change(screen.getByLabelText("Floors in the building"), {
-      target: { value: "12" },
-    });
-    onSelectionChange.mockClear();
-    fireEvent.click(apply);
+      fireEvent.change(screen.getByLabelText("Floors in the building"), {
+        target: { value: "12" },
+      });
+      onSelectionChange.mockClear();
+      fireEvent.click(apply);
 
-    await waitFor(() => expect(onSelectionChange).toHaveBeenCalled());
-    const published = onSelectionChange.mock.calls.at(-1)?.[0];
-    expect(published).toMatchObject({
-      floorArea: 120,
-      numberOfFloors: 12,
-      floorNumber: 6,
-    });
-    expect(published?.modifications).toBeUndefined();
+      await waitFor(() => expect(onSelectionChange).toHaveBeenCalled());
+      const published = onSelectionChange.mock.calls.at(-1)?.[0];
+      expect(published).toMatchObject({
+        floorArea: 120,
+        numberOfFloors: 12,
+        floorNumber: 6,
+      });
+      expect(published?.modifications).toBeUndefined();
+      cleanup();
+    }
   });
 });

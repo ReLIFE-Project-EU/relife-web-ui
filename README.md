@@ -56,6 +56,13 @@ The `package.json` `version` is the single source of truth for the version surfa
 
 The ReLIFE Web UI implements three renovation tools with different implementation maturity levels. The diagrams below document current runtime behavior (not target design), including where services are real, mocked, partial, or not wired yet.
 
+All three tools model Single-Family and Multi-Family Houses as whole buildings,
+with the MFH owner renovating all family units together. An Apartment represents
+one flat: its energy, envelope costs, and material carbon use its floor-area
+share of the reference block. RSE counts these modeled units as **properties**;
+CSV floor areas describe the same unit. Backend archetype category identifiers
+remain unchanged.
+
 ### Home Renovation Assistant
 
 #### Sequence Diagram
@@ -241,7 +248,7 @@ sequenceDiagram
     FCAST-->>RSE: Archetype catalog and BUI or system payloads
     UI->>RSE: Run strategy comparison
     RSE->>RSE: expandPortfolio refetches archetype details as needed
-    RSE->>RSE: Apartment archetypes take one dwelling share of the cached whole-building results
+    RSE->>RSE: Apartments take one flat share; SFH and MFH retain whole-building results
     RSE->>RSE: Supabase reads rse_cache_versions and rse_forecasting_cache_entries not live ECM
     RSE->>RSE: Package energy and CO2 from published cache matrix only
     loop Each archetype and package with positive savings

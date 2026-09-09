@@ -7,6 +7,7 @@ import {
 } from "../../../../../src/features/strategy-explorer/services/rseForecastingCacheService";
 import type { RSEForecastingCacheEntry } from "../../../../../src/features/strategy-explorer/types";
 import type { ArchetypeDetails } from "../../../../../src/types/archetype";
+import { createArchetypePortfolioService } from "../../../../../src/features/strategy-explorer/services/archetypePortfolioService";
 
 const archetype = {
   country: "IT",
@@ -262,11 +263,32 @@ describe("rseForecastingCacheService", () => {
     expect(result.carrierSourceBreakdown.baseline.naturalGasKwh).toBe(12_000);
   });
 
-  test("scales a dwelling row down from the whole-building cache", () => {
-    const whole = normalizeEntry(makeEntry(), makeTarget(400));
-    const dwelling = normalizeEntry(makeEntry(), makeTarget(400, 80));
+  test("scales Apartments down from the cache and retains the whole MFH", async () => {
+    const portfolioService = createArchetypePortfolioService({
+      getArchetypes: vi.fn(),
+      getArchetypeDetails: vi.fn(async (ref) => ({
+        ...makeDetails(400),
+        ...ref,
+      })),
+    });
+    const [wholeTarget, flatTarget] = await portfolioService.expandPortfolio({
+      selections: ["Multi family House", "Apartment buildings"].map(
+        (category) => ({
+          archetype: { ...archetype, category },
+          buildingCount: 1,
+          unitFloorArea: 80,
+        }),
+      ),
+    });
+    const entry = makeEntry();
+    const whole = normalizeEntry(entry, wholeTarget);
+    const dwelling = normalizeEntry(entry, flatTarget);
     const share = 80 / 400;
 
+    expect(whole.baselineAnnualEnergyKwh).toBe(entry.baseline.annualEnergyKwh);
+    expect(whole.baselineAnnualEmissionsTonCo2eq).toBe(
+      entry.baseline.co2.annualEmissionsTonCo2eq,
+    );
     expect(dwelling.baselineAnnualEnergyKwh).toBeCloseTo(
       whole.baselineAnnualEnergyKwh * share,
     );

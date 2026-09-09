@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Alert, Box, Button, Group, Stack, Text, Title } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
+import { relifeConcepts } from "../../../constants/relifeConcepts";
 import { ErrorAlert } from "../../../components/shared/ErrorAlert";
 import { formatNumber } from "../../../utils/formatters";
 import { packageUsesHeatingStopgap } from "../../../services/renovationActions";
@@ -84,7 +85,8 @@ export function ResultsStep() {
         </Title>
         <Text c="dimmed" size="sm">
           How each renovation package performs across your stock of{" "}
-          {formatNumber(totalPortfolioBuildings)} dwellings.
+          {formatNumber(totalPortfolioBuildings)}{" "}
+          {relifeConcepts["modeled-property"].unit}.
         </Text>
       </Box>
 

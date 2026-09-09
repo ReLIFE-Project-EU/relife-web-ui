@@ -140,7 +140,7 @@ function buildMetrics(
         finiteOrZero(aggregate.renovatableBuildingsWithinBudget),
       ),
       valid: aggregates.map(() => true),
-      // No fallback needed since a dwelling count can't go negative; all-zero means a true tie.
+      // No fallback needed since a property count can't go negative; all-zero means a true tie.
       scale: "share-of-best",
     },
     {
@@ -269,6 +269,6 @@ function explainRanking(goal: RSERenovationGoal): string {
     case "emission":
       return "Ranks packages by annual CO2 reduction per euro and total annual CO2 reduction.";
     case "financial":
-      return "Ranks packages by dwellings renovated within budget, aggregate ROI, aggregate NPV, and aggregate payback when available.";
+      return "Ranks packages by properties renovated within budget, aggregate ROI, aggregate NPV, and aggregate payback when available.";
   }
 }

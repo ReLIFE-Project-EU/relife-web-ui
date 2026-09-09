@@ -10,7 +10,7 @@ import type { ArchetypeInfo } from "../../../../../src/types/forecasting";
 
 const archetype = {
   country: "IT",
-  category: "Residential",
+  category: "Single Family House",
   name: "Detached 1980",
 };
 
@@ -81,16 +81,22 @@ describe("archetypePortfolioService", () => {
     ]);
   });
 
-  test("models apartment archetypes as one dwelling, capped by the reference building", async () => {
+  test("models Apartments as one flat and houses as whole buildings", async () => {
     const big = {
       ...archetype,
       category: "Apartment buildings",
       name: "AB big",
     };
     const small = { ...big, name: "AB small" };
+    const multiFamily = {
+      ...archetype,
+      category: "Multi family House",
+      name: "MFH",
+    };
     const areaByName: Record<string, number> = {
       [big.name]: 1000,
       [small.name]: 50,
+      [multiFamily.name]: 1000,
       [archetype.name]: 100,
     };
     const service = {
@@ -107,13 +113,14 @@ describe("archetypePortfolioService", () => {
         { archetype: big, buildingCount: 40 },
         { archetype: small, buildingCount: 5 },
         { archetype, buildingCount: 3 },
+        { archetype: multiFamily, buildingCount: 2, unitFloorArea: 80 },
       ],
     });
 
     expect(expanded.map((s) => s.modeledFloorArea)).toEqual([
       // Default dwelling area, the cap when the building is smaller, and the
-      // whole archetype for the single-family row (scaling factor 1).
-      80, 50, 100,
+      // whole archetypes for SFH and MFH, even with an old MFH unit area.
+      80, 50, 100, 1000,
     ]);
   });
 

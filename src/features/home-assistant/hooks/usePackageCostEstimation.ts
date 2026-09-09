@@ -41,7 +41,7 @@ export function usePackageCostEstimation(): PackageCostEstimation {
   const buildingCountry = state.building.country;
   const buildingFloorArea = state.building.floorArea;
   const buildingProjectLifetime = state.building.projectLifetime;
-  // Apartment-like homes are modeled as a share of the reference building,
+  // Apartments are modeled as a share of the reference building,
   // so envelope measure costs must be scaled to the flat as well.
   const isFlatShare = isApartmentLikeCategory(state.building.buildingType);
   const archetype = state.estimation?.archetype;

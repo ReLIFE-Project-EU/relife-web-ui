@@ -14,7 +14,10 @@ import {
   IconTrendingUp,
 } from "@tabler/icons-react";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
-import type { ConceptId } from "../../../../constants/relifeConcepts";
+import {
+  relifeConcepts,
+  type ConceptId,
+} from "../../../../constants/relifeConcepts";
 import { getArchetypeSelectionLabel } from "../../../../utils/archetypeLabels";
 import {
   formatCurrency,
@@ -62,7 +65,7 @@ export function PackageDeepDive({
           <div className={shared.miniGrid}>
             <MiniMetric
               icon={<IconBuildingCommunity size={14} />}
-              label="Dwellings"
+              label={relifeConcepts["modeled-property"].label}
               value={formatNumber(aggregate.totalBuildings)}
             />
             {goal.kind === "financial" &&

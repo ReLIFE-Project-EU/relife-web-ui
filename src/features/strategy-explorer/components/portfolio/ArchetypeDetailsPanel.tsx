@@ -18,6 +18,7 @@ import {
   IconWindow,
 } from "@tabler/icons-react";
 import { isApartmentLikeCategory } from "../../../../constants/buildingFormOptions";
+import { relifeConcepts } from "../../../../constants/relifeConcepts";
 import { MIN_APARTMENT_FLOOR_AREA } from "../../../../services/estimationValidation";
 import type { ArchetypeDetails } from "../../../../types/archetype";
 import {
@@ -31,7 +32,7 @@ import type { RSEArchetypeRef } from "../../types";
 
 /**
  * Lazily loads and displays the physical characteristics of a selected
- * archetype, and for apartment-like categories captures the floor area of the
+ * archetype, and for Apartments captures the floor area of the
  * single dwelling the row models. The lookup is advisory: if it fails, the
  * archetype remains usable for analysis and a short note replaces the metrics
  * (the dwelling area then falls back to its default, capped on expansion).
@@ -77,11 +78,11 @@ export function ArchetypeDetailsPanel({
         {isDwelling ? (
           <>
             <NumberInput
-              label="Dwelling floor area (m²)"
+              label={relifeConcepts["apartment-floor-area"].label}
               description={
                 details
-                  ? `Area of the single dwelling this row represents, inside a reference building of ${formatArea(details.floorArea)}.`
-                  : "Area of the single dwelling this row represents."
+                  ? `${relifeConcepts["apartment-floor-area"].description} Reference building: ${formatArea(details.floorArea)}.`
+                  : relifeConcepts["apartment-floor-area"].description
               }
               value={unitFloorArea ?? ""}
               onChange={(value) =>

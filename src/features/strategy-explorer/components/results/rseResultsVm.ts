@@ -14,7 +14,10 @@ import {
   IconLeaf,
   IconTrendingUp,
 } from "@tabler/icons-react";
-import type { ConceptId } from "../../../../constants/relifeConcepts";
+import {
+  relifeConcepts,
+  type ConceptId,
+} from "../../../../constants/relifeConcepts";
 import type { RenovationMeasureId } from "../../../../types/renovation";
 import {
   formatCurrency,
@@ -71,7 +74,7 @@ export const RANKING_COLUMNS: Record<
   financial: [
     {
       key: "renovatableBuildingsWithinBudget",
-      label: "Dwellings within budget",
+      label: relifeConcepts["rse-renovatable-buildings"].label,
       formatter: formatNumber,
       conceptId: "rse-renovatable-buildings",
     },
@@ -184,7 +187,7 @@ export const SCORE_COMPONENT_META: Record<
     conceptId: "rse-total-co2-reduction",
   },
   renovatableBuildingsWithinBudget: {
-    label: "Dwellings within budget",
+    label: relifeConcepts["rse-renovatable-buildings"].label,
     conceptId: "rse-renovatable-buildings",
   },
   aggregateROI: { label: "Aggregate ROI", conceptId: "roi" },
@@ -294,7 +297,7 @@ export function heroMetricsFor(
   const roi = agg.financialIndicators.aggregateROI;
   return [
     {
-      label: "Dwellings within budget",
+      label: relifeConcepts["rse-renovatable-buildings"].label,
       value:
         agg.renovatableBuildingsWithinBudget !== undefined
           ? formatNumber(agg.renovatableBuildingsWithinBudget)

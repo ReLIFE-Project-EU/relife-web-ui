@@ -16,7 +16,7 @@ interface ArchetypeCategoryShape {
   backendLabel: string;
   /** Human-readable label for UI display. */
   displayLabel: string;
-  /** Whether the category needs a floor-position input. */
+  /** Models one flat within the reference building, with a floor-position input. */
   apartmentLike: boolean;
   /** Financial API PropertyType for buildings of this category. */
   financialPropertyType: APIPropertyType;
@@ -34,15 +34,15 @@ export const ARCHETYPE_CATEGORIES = [
     code: "MFH",
     backendLabel: "Multi family House",
     displayLabel: "Multi-Family House",
-    apartmentLike: true,
+    apartmentLike: false,
     financialPropertyType: "Apartment Complex",
   },
   {
     code: "AB",
     backendLabel: "Apartment buildings",
-    displayLabel: "Apartment Building",
+    displayLabel: "Apartment",
     apartmentLike: true,
-    financialPropertyType: "Apartment Complex",
+    financialPropertyType: "Apartment",
   },
 ] as const satisfies readonly ArchetypeCategoryShape[];
 

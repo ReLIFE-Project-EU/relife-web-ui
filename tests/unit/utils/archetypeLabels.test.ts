@@ -12,7 +12,7 @@ describe("archetypeLabels", () => {
     test("expands known archetype category codes", () => {
       expect(formatArchetypeCategoryLabel("SFH")).toBe("Single-Family House");
       expect(formatArchetypeCategoryLabel("MFH")).toBe("Multi-Family House");
-      expect(formatArchetypeCategoryLabel("AB")).toBe("Apartment Building");
+      expect(formatArchetypeCategoryLabel("AB")).toBe("Apartment");
     });
 
     test("expands verbatim backend category labels", () => {
@@ -20,7 +20,7 @@ describe("archetypeLabels", () => {
         "Multi-Family House",
       );
       expect(formatArchetypeCategoryLabel("Apartment buildings")).toBe(
-        "Apartment Building",
+        "Apartment",
       );
     });
 
@@ -56,7 +56,7 @@ describe("archetypeLabels", () => {
         "Austria · Multi-Family House · 1980–1989",
       );
       expect(formatArchetypeSelectionLabel("Austria", "AT_AB_2011-now")).toBe(
-        "Austria · Apartment Building · 2011–Present",
+        "Austria · Apartment · 2011–Present",
       );
     });
   });

@@ -51,12 +51,11 @@ vi.mock(
     archetypePortfolioService: {
       loadArchetypes: vi.fn().mockResolvedValue([
         { country: "IT", category: "SFH", name: "ref-a" },
-        { country: "IT", category: "SFH", name: "ref-b" },
+        { country: "IT", category: "MFH", name: "ref-b" },
+        { country: "IT", category: "AB", name: "ref-c" },
       ]),
-      getArchetypeDetails: vi.fn().mockResolvedValue({
-        country: "IT",
-        category: "SFH",
-        name: "ref-a",
+      getArchetypeDetails: vi.fn(async (ref) => ({
+        ...ref,
         floorArea: 100,
         numberOfFloors: 2,
         floorHeight: 3,
@@ -72,7 +71,7 @@ vi.mock(
           coolingSetpoint: 26,
           coolingSetback: 30,
         },
-      }),
+      })),
       validatePortfolio: vi.fn((def) => def),
       expandPortfolio: vi.fn().mockResolvedValue([
         {
@@ -91,7 +90,8 @@ vi.mock(
     rseForecastingCacheService: {
       listCachedArchetypes: vi.fn().mockResolvedValue([
         { country: "IT", category: "SFH", name: "ref-a" },
-        { country: "IT", category: "SFH", name: "ref-b" },
+        { country: "IT", category: "MFH", name: "ref-b" },
+        { country: "IT", category: "AB", name: "ref-c" },
       ]),
     },
   }),
@@ -211,11 +211,33 @@ describe("StrategyExplorer integration", () => {
     await user.click(countryCombo);
     await user.click(screen.getByText("Italy"));
 
+    expect(screen.getByLabelText("Properties")).toBeTruthy();
+    await user.click(categoryCombo);
+    await user.click(screen.getByText("Apartment", { exact: true }));
+    await user.click(archetypeCombo);
+    await user.click(screen.getByText("Italy · ref-c"));
+    expect(
+      (await screen.findByLabelText(
+        "Apartment floor area (m²)",
+      )) as HTMLInputElement,
+    ).toHaveProperty("value", "80");
+
+    await user.click(categoryCombo);
+    await user.click(screen.getByText("Multi-Family House"));
+    await user.click(archetypeCombo);
+    await user.clear(archetypeCombo);
+    await user.type(archetypeCombo, "ref-b");
+    await user.click(await screen.findByText("Italy · ref-b"));
+    expect(await screen.findByText("100 m²")).toBeTruthy();
+    expect(screen.queryByLabelText("Apartment floor area (m²)")).toBeNull();
+
     await user.click(categoryCombo);
     await user.click(screen.getByText("Single-Family House"));
 
     await user.click(archetypeCombo);
-    await user.click(screen.getByText("Italy · ref-a"));
+    await user.clear(archetypeCombo);
+    await user.type(archetypeCombo, "ref-a");
+    await user.click(await screen.findByText("Italy · ref-a"));
 
     expect(await screen.findByText("Floor area")).toBeTruthy();
     expect(screen.getByText("100 m²")).toBeTruthy();

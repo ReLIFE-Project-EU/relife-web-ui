@@ -12,6 +12,7 @@ import {
   IconCrown,
   IconInfoCircle,
 } from "@tabler/icons-react";
+import { relifeConcepts } from "../../../../constants/relifeConcepts";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
 import { FundingPills } from "../../../../components/shared/FundingPills";
 import {
@@ -96,7 +97,7 @@ export function StrategyHero({
             {winnerAggregate ? (
               <Text size="sm" c="dark.6" mt={8} maw={560}>
                 Applied to <b>{formatNumber(winnerAggregate.totalBuildings)}</b>{" "}
-                dwellings, it saves{" "}
+                {relifeConcepts["modeled-property"].unit}, it saves{" "}
                 <b>
                   {formatEnergy(winnerAggregate.totalAnnualEnergySavingsKwh)}
                 </b>{" "}
@@ -152,7 +153,8 @@ export function StrategyHero({
             style={{ display: "flex", alignItems: "center", gap: 4 }}
           >
             <IconBuildingCommunity size={14} />
-            {formatNumber(totalPortfolioBuildings)} dwellings ·{" "}
+            {formatNumber(totalPortfolioBuildings)}{" "}
+            {relifeConcepts["modeled-property"].unit} ·{" "}
             {request.portfolio.selections.length} archetypes
           </Text>
         </div>

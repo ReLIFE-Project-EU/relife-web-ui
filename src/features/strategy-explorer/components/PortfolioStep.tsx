@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Badge, Box, Button, Group, Stack, Text, Title } from "@mantine/core";
 import { IconPlus } from "@tabler/icons-react";
+import { relifeConcepts } from "../../../constants/relifeConcepts";
 import { ErrorAlert } from "../../../components/shared/ErrorAlert";
 import { StepNavigation } from "../../../components/shared/StepNavigation";
 import {
@@ -246,8 +247,8 @@ export function PortfolioStep() {
           </Title>
           <Text c="dimmed" size="sm">
             Describe your building stock as reference archetypes, each with the
-            number of dwellings it represents. Apartment archetypes stand for a
-            single dwelling, single-family ones for a whole house.
+            number of {relifeConcepts["modeled-property"].unit} it represents.{" "}
+            {relifeConcepts["modeled-property"].description}
           </Text>
         </Box>
         {completedSelections > 0 ? (
@@ -255,7 +256,9 @@ export function PortfolioStep() {
             {completedSelections}{" "}
             {completedSelections === 1 ? "archetype" : "archetypes"} ·{" "}
             {formatNumber(totalBuildings)}{" "}
-            {totalBuildings === 1 ? "dwelling" : "dwellings"}
+            {totalBuildings === 1
+              ? "property"
+              : relifeConcepts["modeled-property"].unit}
           </Badge>
         ) : null}
       </Group>

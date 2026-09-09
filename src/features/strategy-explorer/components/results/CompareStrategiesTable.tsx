@@ -13,6 +13,7 @@ import {
   IconCrown,
   IconSelector,
 } from "@tabler/icons-react";
+import { relifeConcepts } from "../../../../constants/relifeConcepts";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
 import {
   formatCurrency,
@@ -37,7 +38,11 @@ import classes from "./StrategyResults.module.css";
 import shared from "../../../../components/shared/ResultsLayout.module.css";
 
 const ALWAYS_ON_COLUMNS: RankingColumn[] = [
-  { key: "totalBuildings", label: "Dwellings", formatter: formatNumber },
+  {
+    key: "totalBuildings",
+    label: relifeConcepts["modeled-property"].label,
+    formatter: formatNumber,
+  },
   {
     key: "totalCapexEur",
     label: "Investment",
