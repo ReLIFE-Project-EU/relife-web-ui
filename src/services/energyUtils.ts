@@ -231,6 +231,55 @@ export function transformColumnarToRowFormat(
   return records;
 }
 
+const DEFAULT_DALY_ASSESSMENT_DAYS = 365;
+const HOURS_PER_DAY = 24;
+
+/**
+ * Convert the final assessment year of hourly operative temperatures to daily
+ * means for the Forecasting DALY calculator. ISO 52016 may prepend warm-up
+ * hours, so only the final assessment period is used.
+ */
+export function computeDailyMeanOperativeTemperatures(
+  columnarData: HourlyBuildingColumnar,
+  assessmentDays = DEFAULT_DALY_ASSESSMENT_DAYS,
+): number[] {
+  const hourlyTemperatures = columnarData.T_op;
+  const requiredHours = assessmentDays * HOURS_PER_DAY;
+
+  if (!Number.isInteger(assessmentDays) || assessmentDays <= 0) {
+    throw new Error("DALY assessment days must be a positive integer");
+  }
+
+  if (!Array.isArray(hourlyTemperatures)) {
+    throw new Error("ECM simulation did not return operative temperatures");
+  }
+
+  if (hourlyTemperatures.length < requiredHours) {
+    throw new Error(
+      `DALY calculation requires ${requiredHours} hourly temperatures; received ${hourlyTemperatures.length}`,
+    );
+  }
+
+  const assessmentTemperatures = hourlyTemperatures.slice(-requiredHours);
+  const dailyMeans: number[] = [];
+
+  for (let offset = 0; offset < requiredHours; offset += HOURS_PER_DAY) {
+    let dailyTotal = 0;
+    for (let hour = offset; hour < offset + HOURS_PER_DAY; hour += 1) {
+      const temperature = assessmentTemperatures[hour];
+      if (!Number.isFinite(temperature)) {
+        throw new Error(
+          "ECM simulation returned an invalid operative temperature",
+        );
+      }
+      dailyTotal += temperature;
+    }
+    dailyMeans.push(dailyTotal / HOURS_PER_DAY);
+  }
+
+  return dailyMeans;
+}
+
 /**
  * Sum annual HVAC energy from hourly building data.
  *

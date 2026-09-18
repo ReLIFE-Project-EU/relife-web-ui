@@ -19,7 +19,7 @@ import { auditLog, type AuditCtx } from "../utils/auditLogger";
 
 const PERSONA_TO_PROFILE: Record<string, McdaProfile> = {
   "environmentally-conscious": "Environment-Oriented",
-  "comfort-driven": "Comfort-Oriented",
+  "health-oriented": "Health-Oriented",
   "cost-optimization": "Financially-Oriented",
 };
 
@@ -33,8 +33,7 @@ const KPI_KEYS: McdaKpiKey[] = [
   "net_energy_export_kpi",
   "embodied_carbon_kpi",
   "gwp_kpi",
-  "thermal_comfort_air_temp_kpi",
-  "thermal_comfort_humidity_kpi",
+  "daly_kpi",
   "ii_kpi",
   "aoc_kpi",
   "irr_kpi",
@@ -57,7 +56,6 @@ const KPI_KEYS: McdaKpiKey[] = [
 const BASE_NEUTRALIZED_KPI_KEYS: McdaKpiKey[] = [
   "window_kpi",
   "st_coverage_kpi",
-  "thermal_comfort_humidity_kpi",
 ];
 
 /**
@@ -96,6 +94,21 @@ export class TechnicalMCDAService implements IMCDAService {
     personaId: string,
     auditCtx?: AuditCtx,
   ): Promise<MCDARankingResult[]> {
+    const renovationScenarios = scenarios.filter(
+      (scenario) => scenario.id !== "current",
+    );
+    if (!hasCompleteHealthImpactData(renovationScenarios)) {
+      auditLog.warn(
+        "mcda",
+        "mcda.rank.unavailable",
+        { reason: "missing-health-impact" },
+        auditCtx,
+      );
+      throw new Error(
+        "MCDA ranking requires health impact data for every renovation scenario",
+      );
+    }
+
     const request = buildMcdaTopsisRequest(
       scenarios,
       financialResults,
@@ -153,26 +166,43 @@ export class TechnicalMCDAService implements IMCDAService {
       return [];
     }
 
-    const response = await technical.runTopsis(request);
+    try {
+      const response = await technical.runTopsis(request);
+      const ranking = response.ranking.map((item, index) => ({
+        scenarioId: item.name,
+        rank: index + 1,
+        score: item.closeness,
+      }));
 
-    const ranking = response.ranking.map((item, index) => ({
-      scenarioId: item.name,
-      rank: index + 1,
-      score: item.closeness,
-    }));
+      auditLog.info(
+        "mcda",
+        "mcda.rank.end",
+        {
+          engine: "technical-topsis-backend",
+          ranking,
+        },
+        auditCtx,
+      );
 
-    auditLog.info(
-      "mcda",
-      "mcda.rank.end",
-      {
-        engine: "technical-topsis-backend",
-        ranking,
-      },
-      auditCtx,
-    );
-
-    return ranking;
+      return ranking;
+    } catch (error) {
+      auditLog.error(
+        "mcda",
+        "mcda.rank.failed",
+        { error: error instanceof Error ? error.message : String(error) },
+        auditCtx,
+      );
+      throw error;
+    }
   }
+}
+
+export function hasCompleteHealthImpactData(
+  scenarios: RenovationScenario[],
+): boolean {
+  return scenarios.every((scenario) =>
+    isFiniteNumber(scenario.avoidedThermalDalyPerPerson),
+  );
 }
 
 export function buildMcdaTopsisRequest(
@@ -248,8 +278,7 @@ export function deriveTechnologyKpis(
     net_energy_export_kpi: scenario.pvGridExport ?? 0,
     embodied_carbon_kpi: scenario.embodiedCarbonKgCo2e ?? 0,
     gwp_kpi: getLifetimeCarbonKgCo2e(scenario, financial) ?? 0,
-    thermal_comfort_air_temp_kpi: scenario.comfortIndex,
-    thermal_comfort_humidity_kpi: 0,
+    daly_kpi: scenario.avoidedThermalDalyPerPerson ?? 0,
     ii_kpi: financial?.capitalExpenditure ?? 0,
     aoc_kpi: annualMaintenanceCost ?? 0,
     irr_kpi: financial?.riskAssessment?.pointForecasts.IRR ?? 0,
@@ -404,6 +433,10 @@ function getRankingExclusionReason(
   // criterion that carries the most weight for the environmental persona.
   if (!isFiniteNumber(scenario.embodiedCarbonKgCo2e)) {
     return "Material carbon data is missing";
+  }
+
+  if (!isFiniteNumber(scenario.avoidedThermalDalyPerPerson)) {
+    return "Health impact data is missing";
   }
 
   if (scenario.measureIds.includes("pv")) {

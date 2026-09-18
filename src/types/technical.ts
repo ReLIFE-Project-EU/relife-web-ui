@@ -3,7 +3,7 @@
 
 export type McdaProfile =
   | "Environment-Oriented"
-  | "Comfort-Oriented"
+  | "Health-Oriented"
   | "Financially-Oriented";
 
 export interface McdaTechnology {
@@ -17,8 +17,8 @@ export interface McdaTechnology {
   net_energy_export_kpi: number;
   embodied_carbon_kpi: number;
   gwp_kpi: number;
-  thermal_comfort_air_temp_kpi: number;
-  thermal_comfort_humidity_kpi: number;
+  /** Annual per-person thermal DALYs avoided versus baseline. Higher is better. */
+  daly_kpi: number;
   ii_kpi: number;
   aoc_kpi: number;
   irr_kpi: number;
@@ -46,5 +46,6 @@ export interface McdaTopsisRankingItem {
 
 export interface McdaTopsisResponse {
   profile: McdaProfile;
+  count: number;
   ranking: McdaTopsisRankingItem[];
 }

@@ -244,6 +244,33 @@ export interface ECMApplicationResponse {
   scenarios: ECMScenario[];
 }
 
+// ============================================================================
+// Thermal health impact (POST /linear-tool/heat-cold-daly)
+// ============================================================================
+
+export type DalyThresholdPair =
+  | "ITALY_MMT_24_4"
+  | "COMFORT_PAIR_26_20"
+  | "CVD_PAIR_30_21";
+
+export interface HeatColdDalyRequest {
+  /** Daily mean indoor operative temperatures in °C. */
+  temperatures_c: number[];
+  selected_threshold_pair: DalyThresholdPair;
+  population_persons: number;
+  exposure_days_for_period: number;
+}
+
+export interface HeatColdDalyResponse {
+  selected_threshold_pair: DalyThresholdPair;
+  population_persons: number;
+  exposure_days_for_period: number;
+  valid_daily_temperature_rows: number;
+  annual_period_heat_harm_for_population: number | null;
+  annual_period_cold_harm_for_population: number | null;
+  annual_period_total_harm_for_population: number | null;
+}
+
 /**
  * Common ECM simulation parameters shared by both archetype and custom-building modes.
  */

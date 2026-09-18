@@ -150,6 +150,34 @@ describe("forecasting.getEmissionFactors", () => {
   });
 });
 
+describe("forecasting.calculateHeatColdDaly", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRequest.mockResolvedValue({
+      annual_period_total_harm_for_population: 0.001,
+    });
+  });
+
+  test("POSTs the daily temperature profile to the Forecasting DALY endpoint", async () => {
+    const input = {
+      temperatures_c: [19, 22, 27],
+      selected_threshold_pair: "COMFORT_PAIR_26_20" as const,
+      population_persons: 1,
+      exposure_days_for_period: 365,
+    };
+
+    await forecasting.calculateHeatColdDaly(input);
+
+    expect(mockRequest).toHaveBeenCalledWith(
+      "/forecasting/linear-tool/heat-cold-daly",
+      {
+        method: "POST",
+        body: JSON.stringify(input),
+      },
+    );
+  });
+});
+
 describe("forecasting.calculateEmissions", () => {
   beforeEach(() => {
     vi.clearAllMocks();

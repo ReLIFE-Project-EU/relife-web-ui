@@ -20,7 +20,10 @@ import {
 import { IconLayoutGrid, IconTable } from "@tabler/icons-react";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
-import { getRankingScenarioStatuses } from "../../../../services/TechnicalMCDAService";
+import {
+  getRankingScenarioStatuses,
+  hasCompleteHealthImpactData,
+} from "../../../../services/TechnicalMCDAService";
 import { CashFlowChart } from "../results/CashFlowChart";
 import { CompareAllTable } from "../results/CompareAllTable";
 import { EnergyCostChart } from "../results/EnergyCostChart";
@@ -34,6 +37,9 @@ import shared from "../../../../components/shared/ResultsLayout.module.css";
 import type { ScenarioId } from "../../context/types";
 import { validateEstimation } from "../../../../services/estimationValidation";
 import { formatFixed } from "../../utils/formatters";
+
+const RECOMMENDATION_ERROR =
+  "We couldn’t complete the recommendation. Please try again.";
 
 export function ResultsStep() {
   const { state, dispatch } = useHomeAssistant();
@@ -66,7 +72,13 @@ export function ResultsStep() {
   const eligibleScenarios = rankingStatuses
     .filter((status) => status.eligible)
     .map((status) => status.scenario);
-  const canRank = eligibleScenarios.length >= 2 && !!currentScenario;
+  const healthImpactAvailable =
+    hasCompleteHealthImpactData(renovationScenarios);
+  const canRank =
+    healthImpactAvailable && eligibleScenarios.length >= 2 && !!currentScenario;
+  const recommendationError = healthImpactAvailable
+    ? state.error
+    : RECOMMENDATION_ERROR;
 
   // Auto-rank: trigger an MCDA call whenever the active persona or the
   // ranking inputs change (and on first reach of step 3 once enough data is
@@ -83,14 +95,11 @@ export function ResultsStep() {
           selectedPersona,
         );
         if (!cancelled) dispatch({ type: "SET_RANKING", ranking });
-      } catch (error) {
+      } catch {
         if (cancelled) return;
         dispatch({
           type: "RANKING_ERROR",
-          error:
-            error instanceof Error
-              ? error.message
-              : "Failed to calculate ranking",
+          error: RECOMMENDATION_ERROR,
         });
       }
     };
@@ -260,6 +269,7 @@ export function ResultsStep() {
         ranking={mcdaRanking}
         isRanking={isRanking}
         canRank={canRank}
+        error={recommendationError}
         personas={personas}
         selectedPersona={selectedPersona}
         selectedScenarioId={fallbackSelectedId}
@@ -356,8 +366,6 @@ export function ResultsStep() {
           </Accordion.Panel>
         </Accordion.Item>
       </Accordion>
-
-      <ErrorAlert error={state.error} />
 
       <StepNavigation
         currentStep={2}

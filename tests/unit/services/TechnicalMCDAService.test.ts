@@ -1,4 +1,12 @@
-import { describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+const { mockRunTopsis } = vi.hoisted(() => ({
+  mockRunTopsis: vi.fn(),
+}));
+
+vi.mock("../../../src/api", () => ({
+  technical: { runTopsis: mockRunTopsis },
+}));
 import type {
   FinancialResults,
   RenovationScenario,
@@ -8,8 +16,10 @@ import {
   createMcdaMinsMaxes,
   deriveTechnologyKpis,
   getRankingScenarioStatuses,
+  hasCompleteHealthImpactData,
   mapPersonaToProfile,
   resolveNeutralizedKpiKeys,
+  TechnicalMCDAService,
 } from "../../../src/services/TechnicalMCDAService";
 
 const baselineScenario: RenovationScenario = {
@@ -36,6 +46,7 @@ const wallScenario: RenovationScenario = {
   coolingPrimaryEnergy: 1500,
   flexibilityIndex: 50,
   comfortIndex: 72,
+  avoidedThermalDalyPerPerson: 0.001,
   embodiedCarbonKgCo2e: 1200,
   measureIds: ["wall-insulation"],
   measures: ["Wall Insulation"],
@@ -52,6 +63,7 @@ const windowScenario: RenovationScenario = {
   coolingPrimaryEnergy: 1300,
   flexibilityIndex: 50,
   comfortIndex: 74,
+  avoidedThermalDalyPerPerson: 0.002,
   embodiedCarbonKgCo2e: 1700,
   measureIds: ["windows"],
   measures: ["Window Replacement"],
@@ -106,11 +118,15 @@ const windowFinancial: FinancialResults = {
 };
 
 describe("TechnicalMCDAService helpers", () => {
+  beforeEach(() => {
+    mockRunTopsis.mockReset();
+  });
+
   test("mapPersonaToProfile returns the Technical API profile string", () => {
     expect(mapPersonaToProfile("cost-optimization")).toBe(
       "Financially-Oriented",
     );
-    expect(mapPersonaToProfile("comfort-driven")).toBe("Comfort-Oriented");
+    expect(mapPersonaToProfile("health-oriented")).toBe("Health-Oriented");
   });
 
   test("deriveTechnologyKpis uses normalized frontend scenario data", () => {
@@ -124,8 +140,7 @@ describe("TechnicalMCDAService helpers", () => {
       cooling_system_kpi: 1300,
       embodied_carbon_kpi: 1700,
       gwp_kpi: 0,
-      thermal_comfort_air_temp_kpi: 74,
-      thermal_comfort_humidity_kpi: 0,
+      daly_kpi: 0.002,
       ii_kpi: 9000,
       aoc_kpi: 250,
       irr_kpi: 0.1,
@@ -151,13 +166,12 @@ describe("TechnicalMCDAService helpers", () => {
     );
 
     expect(minsMaxes.window_kpi).toEqual([-1, 1]);
-    expect(minsMaxes.thermal_comfort_humidity_kpi).toEqual([-1, 1]);
     expect(minsMaxes.gwp_kpi).toEqual([-1, 1]);
     expect(minsMaxes.embodied_carbon_kpi).toEqual([1200, 1700]);
     expect(minsMaxes.heating_system_kpi).toEqual([9200, 10000]);
   });
 
-  test("createMcdaMinsMaxes uses real min/max for thermal_comfort_air_temp_kpi when comfort values differ", () => {
+  test("createMcdaMinsMaxes uses real min/max for daly_kpi", () => {
     const minsMaxes = createMcdaMinsMaxes(
       [
         deriveTechnologyKpis(wallScenario, wallFinancial),
@@ -166,7 +180,7 @@ describe("TechnicalMCDAService helpers", () => {
       [],
     );
 
-    expect(minsMaxes.thermal_comfort_air_temp_kpi).toEqual([72, 74]);
+    expect(minsMaxes.daly_kpi).toEqual([0.001, 0.002]);
   });
 
   test("buildMcdaTopsisRequest assembles technologies from normalized scenarios", () => {
@@ -320,6 +334,80 @@ describe("TechnicalMCDAService helpers", () => {
     expect(technology.onsite_res_kpi).toBe(35);
     expect(technology.net_energy_export_kpi).toBe(1400);
   });
+
+  test("getRankingScenarioStatuses excludes scenarios without DALY data", () => {
+    const withoutDaly = { ...wallScenario };
+    delete withoutDaly.avoidedThermalDalyPerPerson;
+
+    expect(
+      getRankingScenarioStatuses([withoutDaly], {
+        [withoutDaly.id]: wallFinancial,
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        eligible: false,
+        reason: "Health impact data is missing",
+      }),
+    ]);
+  });
+
+  test("rejects the whole ranking when any package lacks DALY data", async () => {
+    const withoutDaly = { ...wallScenario };
+    delete withoutDaly.avoidedThermalDalyPerPerson;
+
+    expect(hasCompleteHealthImpactData([withoutDaly, windowScenario])).toBe(
+      false,
+    );
+
+    await expect(
+      new TechnicalMCDAService().rank(
+        [baselineScenario, withoutDaly, windowScenario],
+        {
+          [withoutDaly.id]: wallFinancial,
+          [windowScenario.id]: windowFinancial,
+        },
+        "health-oriented",
+      ),
+    ).rejects.toThrow("requires health impact data");
+    expect(mockRunTopsis).not.toHaveBeenCalled();
+  });
+
+  test("ranks normally when every package has DALY data", async () => {
+    mockRunTopsis.mockResolvedValue({
+      profile: "Health-Oriented",
+      count: 2,
+      ranking: [
+        {
+          name: windowScenario.id,
+          closeness: 0.75,
+          S_plus: 0.25,
+          S_minus: 0.75,
+        },
+        {
+          name: wallScenario.id,
+          closeness: 0.25,
+          S_plus: 0.75,
+          S_minus: 0.25,
+        },
+      ],
+    });
+
+    const ranking = await new TechnicalMCDAService().rank(
+      [baselineScenario, wallScenario, windowScenario],
+      {
+        [wallScenario.id]: wallFinancial,
+        [windowScenario.id]: windowFinancial,
+      },
+      "health-oriented",
+    );
+
+    expect(mockRunTopsis).toHaveBeenCalledOnce();
+    expect(ranking.map((item) => item.scenarioId)).toEqual([
+      windowScenario.id,
+      wallScenario.id,
+    ]);
+  });
+
   // The audited HRA run (Italy SFH 1946-1969, 125 m², 20-year lifetime) whose
   // ranking the shared carbon scale was verified against.
   const auditedPackages = [

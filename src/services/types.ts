@@ -416,7 +416,7 @@ export interface MCDAPersona {
     energyEfficiency: number;
     resIntegration: number;
     sustainability: number;
-    userComfort: number;
+    health: number;
     financial: number;
   };
 }

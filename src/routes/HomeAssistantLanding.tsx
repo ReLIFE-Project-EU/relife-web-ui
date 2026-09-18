@@ -42,7 +42,7 @@ const features = [
   {
     icon: IconBulb,
     title: "Priority-Based Ranking",
-    description: `Rank comparable packages using the selected ${relifeConcepts["priority-profile"].label.toLowerCase()}: Environmentally Conscious, Comfort-Driven, or Cost-Optimization Oriented.`,
+    description: `Rank comparable packages using the selected ${relifeConcepts["priority-profile"].label.toLowerCase()}: Environmentally Conscious, Health-Oriented, or Cost-Optimization Oriented.`,
   },
 ];
 

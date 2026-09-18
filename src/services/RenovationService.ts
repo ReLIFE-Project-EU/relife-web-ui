@@ -20,6 +20,7 @@ import {
   DEFAULT_FLOOR_AREA,
   calculateAnnualTotals,
   computeComfortBandIndex,
+  computeDailyMeanOperativeTemperatures,
   extractUniTotals,
   getEPCClass,
   resolveEpcRatingIntensity,
@@ -66,6 +67,9 @@ const ANALYSIS_ELIGIBLE_MEASURES: RenovationMeasureId[] = [
 ];
 const MAX_SUGGESTED_PACKAGES = 14;
 const FORECASTING_SCENARIO_CONCURRENCY_LIMIT = 2;
+const DALY_THRESHOLD_PAIR = "COMFORT_PAIR_26_20" as const;
+const DALY_POPULATION_PERSONS = 1;
+const DALY_EXPOSURE_DAYS = 365;
 
 /**
  * Area-scaled energy figures extracted from a single ECM scenario result.
@@ -248,12 +252,22 @@ export class RenovationService implements IRenovationService {
       baselineSimulation,
       auditCtx,
     );
+    const baselineDaly = await this.tryCalculateAnnualThermalDaly(
+      baselineSimulation,
+      auditCtx?.child({ scenarioId: "current" }),
+    );
 
     const packageScenarios = await mapWithConcurrencyLimit(
       packages,
       FORECASTING_SCENARIO_CONCURRENCY_LIMIT,
       (pkg) =>
-        this.evaluatePackageScenario(building, estimation, pkg, auditCtx),
+        this.evaluatePackageScenario(
+          building,
+          estimation,
+          pkg,
+          baselineDaly,
+          auditCtx,
+        ),
     );
 
     const scenarios = [baseline, ...packageScenarios];
@@ -411,6 +425,7 @@ export class RenovationService implements IRenovationService {
     building: BuildingInfo,
     estimation: EstimationResult,
     renovationPackage: RenovationPackage,
+    baselineDaly: number | undefined,
     parentCtx?: AuditCtx,
   ): Promise<RenovationScenario> {
     const auditCtx = parentCtx?.child({ scenarioId: renovationPackage.id });
@@ -474,6 +489,16 @@ export class RenovationService implements IRenovationService {
       energy,
     );
 
+    if (baselineDaly !== undefined) {
+      const renovatedDaly = await this.tryCalculateAnnualThermalDaly(
+        renovatedScenario,
+        auditCtx,
+      );
+      if (renovatedDaly !== undefined) {
+        scenario.avoidedThermalDalyPerPerson = baselineDaly - renovatedDaly;
+      }
+    }
+
     auditLog.info(
       "renovation",
       "renovation.scenario.end",
@@ -490,11 +515,116 @@ export class RenovationService implements IRenovationService {
         pvSelfConsumption: scenario.pvSelfConsumption,
         pvSelfConsumptionRate: scenario.pvSelfConsumptionRate,
         pvSelfSufficiencyRate: scenario.pvSelfSufficiencyRate,
+        avoidedThermalDalyPerPerson: scenario.avoidedThermalDalyPerPerson,
       },
       auditCtx,
     );
 
     return scenario;
+  }
+
+  private async tryCalculateAnnualThermalDaly(
+    ecmScenario: ECMScenario,
+    auditCtx?: AuditCtx,
+  ): Promise<number | undefined> {
+    auditLog.info(
+      "renovation",
+      "renovation.daly.start",
+      {
+        thresholdPair: DALY_THRESHOLD_PAIR,
+        populationPersons: DALY_POPULATION_PERSONS,
+        exposureDays: DALY_EXPOSURE_DAYS,
+      },
+      auditCtx,
+    );
+
+    let temperatures: number[];
+    try {
+      temperatures = computeDailyMeanOperativeTemperatures(
+        ecmScenario.results.hourly_building,
+        DALY_EXPOSURE_DAYS,
+      );
+    } catch (error) {
+      auditLog.warn(
+        "renovation",
+        "renovation.daly.unavailable",
+        {
+          reason: "invalid-temperature-profile",
+          error: error instanceof Error ? error.message : String(error),
+        },
+        auditCtx,
+      );
+      auditLog.info(
+        "renovation",
+        "renovation.daly.end",
+        { available: false, reason: "invalid-temperature-profile" },
+        auditCtx,
+      );
+      return undefined;
+    }
+
+    const request = {
+      temperatures_c: temperatures,
+      selected_threshold_pair: DALY_THRESHOLD_PAIR,
+      population_persons: DALY_POPULATION_PERSONS,
+      exposure_days_for_period: DALY_EXPOSURE_DAYS,
+    };
+
+    auditLog.debug(
+      "renovation",
+      "renovation.daly.request",
+      { request },
+      auditCtx,
+    );
+
+    try {
+      const response = await forecasting.calculateHeatColdDaly(request);
+      auditLog.debug(
+        "renovation",
+        "renovation.daly.response",
+        { response },
+        auditCtx,
+      );
+
+      const annualDaly = response.annual_period_total_harm_for_population;
+      if (typeof annualDaly !== "number" || !Number.isFinite(annualDaly)) {
+        auditLog.warn(
+          "renovation",
+          "renovation.daly.unavailable",
+          { reason: "invalid-api-response", annualDaly },
+          auditCtx,
+        );
+        auditLog.info(
+          "renovation",
+          "renovation.daly.end",
+          { available: false, reason: "invalid-api-response" },
+          auditCtx,
+        );
+        return undefined;
+      }
+
+      auditLog.info(
+        "renovation",
+        "renovation.daly.end",
+        { available: true, annualDalyPerPerson: annualDaly },
+        auditCtx,
+      );
+      return annualDaly;
+    } catch (error) {
+      auditLog.error(
+        "renovation",
+        "renovation.daly.failed",
+        { error: error instanceof Error ? error.message : String(error) },
+        auditCtx,
+      );
+      auditLog.info(
+        "renovation",
+        "renovation.daly.end",
+        { available: false, reason: "api-failure" },
+        auditCtx,
+      );
+      return undefined;
+    }
   }
 
   /**

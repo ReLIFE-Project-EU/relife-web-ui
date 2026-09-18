@@ -6,14 +6,15 @@
 
 import { Alert, Loader, Skeleton, Text } from "@mantine/core";
 import {
+  IconAlertCircle,
   IconAward,
   IconClockHour3,
   IconCoin,
   IconCrown,
+  IconHeartbeat,
   IconHelpCircle,
   IconInfoCircle,
   IconLeaf,
-  IconTemperature,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 import { EPCBadge } from "../../../../components/shared";
@@ -43,7 +44,7 @@ import { ScenDot, ScoreBar } from "./resultsAtoms";
 
 const PERSONA_ICON: Record<string, ComponentType<{ size?: number }>> = {
   "environmentally-conscious": IconLeaf,
-  "comfort-driven": IconTemperature,
+  "health-oriented": IconHeartbeat,
   "cost-optimization": IconCoin,
 };
 
@@ -54,6 +55,7 @@ interface RecommendationHeroProps {
   ranking: MCDARankingResult[] | null;
   isRanking: boolean;
   canRank: boolean;
+  error: string | null;
   personas: MCDAPersona[];
   selectedPersona: string;
   selectedScenarioId: ScenarioId | null;
@@ -68,6 +70,7 @@ export function RecommendationHero({
   ranking,
   isRanking,
   canRank,
+  error,
   personas,
   selectedPersona,
   selectedScenarioId,
@@ -86,16 +89,29 @@ export function RecommendationHero({
         <div className={shared.recoBand}>
           <span className={shared.recoRank}>#1</span>
           <span className={shared.recoBandTitle}>
-            Recommended for {personaLabel} <ConceptExplainer conceptId="mcda" />
+            {error ? (
+              "Recommendation unavailable"
+            ) : (
+              <>
+                Recommended for {personaLabel}{" "}
+                <ConceptExplainer conceptId="mcda" />
+              </>
+            )}
           </span>
-          <span className={shared.recoBandScore}>
-            <IconAward size={16} />
-            {isRanking ? "Ranking…" : "Best overall fit"}
-          </span>
+          {!error ? (
+            <span className={shared.recoBandScore}>
+              <IconAward size={16} />
+              {isRanking ? "Ranking…" : "Best overall fit"}
+            </span>
+          ) : null}
         </div>
 
         <div className={shared.recoBody}>
-          {winner && currentScenario ? (
+          {error ? (
+            <Alert color="red" icon={<IconAlertCircle size={16} />}>
+              {error}
+            </Alert>
+          ) : winner && currentScenario ? (
             <>
               <div className={classes.recoHead}>
                 <div>
@@ -245,7 +261,9 @@ export function RecommendationHero({
               )}
             </Text>
           </div>
-          {ranking && ranking.length > 0 ? (
+          {error ? (
+            <div className={classes.rankNotice}>Ranking unavailable.</div>
+          ) : ranking && ranking.length > 0 ? (
             <ul className={shared.rankList}>
               {ranking.map((entry, idx) => {
                 const scenario = renovationScenarios.find(

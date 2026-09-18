@@ -324,7 +324,7 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     id: "priority-profile",
     label: "Priority profile",
     description:
-      "Your preference profile for balancing cost, comfort, and environmental outcomes.",
+      "Your preference profile for balancing cost, health, energy, renewable integration, and environmental outcomes.",
     professionalDetail:
       "Maps to the MCDA persona weights used by the Technical Service.",
   },
@@ -355,7 +355,7 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     caveat:
       "The environmental criterion counts both sides of the carbon picture: the one-off carbon of the renovation materials, and the emissions your home still produces over the period analysed. Material carbon separates options that perform similarly rather than counting against the deeper ones. Read it alongside the energy and CO₂ figures.",
     professionalDetail:
-      "Multi-Criteria Decision Analysis combines energy, renewable-integration, sustainability, comfort and financial criteria using persona weights. The sustainability pillar sends both of its KPIs: embodied carbon from the ReLIFE technical sheets, and GWP as lifetime carbon (material carbon plus operational emissions across the project lifetime). Both share one normalization scale, from zero to the largest lifetime figure among the alternatives, because material carbon is a component of that total and independent min/max normalization would give a term worth a few percent of it equal weight. When operational emissions are unavailable the GWP KPI is neutralized for that run: it then contributes an identical constant to every alternative and drops out of the TOPSIS distances.",
+      "Multi-Criteria Decision Analysis (MCDA) combines energy, renewables, sustainability, health, and financial factors using weighted preferences. Health is measured as annual thermal DALYs avoided. Sustainability includes both embodied carbon and total lifetime emissions, normalized on the same scale. If operational emissions data are missing, that factor is skipped in the MCDA scoring.",
   },
   "rse-energy-saved-per-eur": {
     id: "rse-energy-saved-per-eur",

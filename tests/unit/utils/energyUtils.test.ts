@@ -1,6 +1,7 @@
 import { describe, test, expect } from "vitest";
 
 import {
+  computeDailyMeanOperativeTemperatures,
   getEPCClass,
   resolveEpcRatingIntensity,
   transformColumnarToRowFormat,
@@ -194,6 +195,26 @@ describe("transformColumnarToRowFormat", () => {
     expect(rows[0]).toMatchObject({ Q_HC: 5 });
     expect(rows[1]).toMatchObject({ Q_HC: 6 });
     expect(rows[2]).toMatchObject({ Q_HC: 7 });
+  });
+});
+
+describe("computeDailyMeanOperativeTemperatures", () => {
+  test("uses daily means from the final assessment period and drops warm-up hours", () => {
+    const temperatures = [
+      ...Array(24).fill(99),
+      ...Array(24).fill(18),
+      ...Array(24).fill(22),
+    ];
+
+    expect(
+      computeDailyMeanOperativeTemperatures({ T_op: temperatures }, 2),
+    ).toEqual([18, 22]);
+  });
+
+  test("rejects profiles shorter than the requested assessment period", () => {
+    expect(() =>
+      computeDailyMeanOperativeTemperatures({ T_op: Array(24).fill(20) }, 2),
+    ).toThrow("requires 48 hourly temperatures");
   });
 });
 

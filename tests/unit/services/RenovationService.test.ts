@@ -1,14 +1,17 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-const { mockSimulateECM, mockGetEmissionFactors } = vi.hoisted(() => ({
-  mockSimulateECM: vi.fn(),
-  mockGetEmissionFactors: vi.fn(),
-}));
+const { mockSimulateECM, mockGetEmissionFactors, mockCalculateHeatColdDaly } =
+  vi.hoisted(() => ({
+    mockSimulateECM: vi.fn(),
+    mockGetEmissionFactors: vi.fn(),
+    mockCalculateHeatColdDaly: vi.fn(),
+  }));
 
 vi.mock("../../../src/api", () => ({
   forecasting: {
     simulateECM: mockSimulateECM,
     getEmissionFactors: mockGetEmissionFactors,
+    calculateHeatColdDaly: mockCalculateHeatColdDaly,
   },
 }));
 
@@ -191,6 +194,9 @@ describe("RenovationService", () => {
         solar_pv: 0.04,
       },
       sources: ["natural_gas", "grid_electricity", "solar_pv"],
+    });
+    mockCalculateHeatColdDaly.mockResolvedValue({
+      annual_period_total_harm_for_population: 0,
     });
     service = new RenovationService();
   });
@@ -431,6 +437,118 @@ describe("RenovationService", () => {
       "Wall Insulation",
       "Roof Insulation",
     ]);
+  });
+
+  test("evaluateScenarios calculates avoided per-person DALYs from baseline and package temperatures", async () => {
+    const baselineTemperatures = Array(8760).fill(18);
+    const renovatedTemperatures = Array(8760).fill(22);
+    const baseline = {
+      ...mockBaseline,
+      results: {
+        ...mockBaseline.results,
+        hourly_building: {
+          ...mockBaseline.results.hourly_building,
+          T_op: baselineTemperatures,
+        },
+      },
+    };
+    mockSimulateECM.mockResolvedValue({
+      scenarios: [
+        stubECMResponse.scenarios[0],
+        {
+          ...stubECMResponse.scenarios[1],
+          results: {
+            ...stubECMResponse.scenarios[1].results,
+            hourly_building: {
+              ...stubECMResponse.scenarios[1].results.hourly_building,
+              T_op: renovatedTemperatures,
+            },
+          },
+        },
+      ],
+    });
+    mockCalculateHeatColdDaly
+      .mockResolvedValueOnce({
+        annual_period_total_harm_for_population: 0.01,
+      })
+      .mockResolvedValueOnce({
+        annual_period_total_harm_for_population: 0.004,
+      });
+
+    const scenarios = await service.evaluateScenarios(
+      mockBuilding,
+      mockEstimation,
+      baseline,
+      [
+        {
+          id: "package-wall-insulation",
+          label: "Wall Insulation",
+          measureIds: ["wall-insulation"],
+        },
+      ],
+    );
+
+    expect(mockCalculateHeatColdDaly).toHaveBeenCalledTimes(2);
+    expect(mockCalculateHeatColdDaly).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        temperatures_c: Array(365).fill(18),
+        selected_threshold_pair: "COMFORT_PAIR_26_20",
+        population_persons: 1,
+        exposure_days_for_period: 365,
+      }),
+    );
+    expect(scenarios[1]?.avoidedThermalDalyPerPerson).toBeCloseTo(0.006);
+  });
+
+  test("evaluateScenarios keeps package results when a DALY request fails", async () => {
+    const temperatures = Array(8760).fill(20);
+    const baseline = {
+      ...mockBaseline,
+      results: {
+        ...mockBaseline.results,
+        hourly_building: {
+          ...mockBaseline.results.hourly_building,
+          T_op: temperatures,
+        },
+      },
+    };
+    mockSimulateECM.mockResolvedValue({
+      scenarios: [
+        stubECMResponse.scenarios[0],
+        {
+          ...stubECMResponse.scenarios[1],
+          results: {
+            ...stubECMResponse.scenarios[1].results,
+            hourly_building: {
+              ...stubECMResponse.scenarios[1].results.hourly_building,
+              T_op: temperatures,
+            },
+          },
+        },
+      ],
+    });
+    mockCalculateHeatColdDaly
+      .mockResolvedValueOnce({
+        annual_period_total_harm_for_population: 0.01,
+      })
+      .mockRejectedValueOnce(new Error("Forecasting unavailable"));
+
+    const scenarios = await service.evaluateScenarios(
+      mockBuilding,
+      mockEstimation,
+      baseline,
+      [
+        {
+          id: "package-wall-insulation",
+          label: "Wall Insulation",
+          measureIds: ["wall-insulation"],
+        },
+      ],
+    );
+
+    expect(scenarios).toHaveLength(2);
+    expect(scenarios[1]?.avoidedThermalDalyPerPerson).toBeUndefined();
   });
 
   test("evaluateScenarios calls forecasting once per package, never for the baseline", async () => {

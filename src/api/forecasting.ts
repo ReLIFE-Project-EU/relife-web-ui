@@ -14,6 +14,8 @@ import type {
   ECMApplicationResponse,
   EmissionFactorResponse,
   EPCResponse,
+  HeatColdDalyRequest,
+  HeatColdDalyResponse,
   PlantPayload,
   PlantTemplateResponse,
   PlantUploadResponse,
@@ -201,6 +203,12 @@ export const forecasting = {
       formData,
     );
   },
+
+  calculateHeatColdDaly: (data: HeatColdDalyRequest) =>
+    request<HeatColdDalyResponse>("/forecasting/linear-tool/heat-cold-daly", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
   // ============================================================================
   // Project-based Workflow (Legacy)
