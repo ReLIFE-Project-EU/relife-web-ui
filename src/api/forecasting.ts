@@ -30,6 +30,22 @@ import {
 } from "./client";
 import { resolveEmissionFactorCountry } from "../utils/emissionFactorCountry";
 
+type SearchParamValue = string | number | boolean | undefined;
+
+function buildSearchParams(
+  values: Record<string, SearchParamValue>,
+): URLSearchParams {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(values).forEach(([key, value]) => {
+    if (value !== undefined) {
+      searchParams.set(key, String(value));
+    }
+  });
+
+  return searchParams;
+}
+
 export const forecasting = {
   ...createServiceApi(ServiceType.FORECASTING),
 
@@ -112,82 +128,48 @@ export const forecasting = {
   ): Promise<ECMApplicationResponse> => {
     const isCustom = "bui" in params;
 
-    const searchParams = new URLSearchParams({
-      archetype: isCustom ? "false" : "true",
+    const archetypeParams = isCustom
+      ? {}
+      : {
+          category: (params as ECMArchetypeParams).category,
+          country: (params as ECMArchetypeParams).country,
+          name: (params as ECMArchetypeParams).name,
+        };
+
+    const heatPumpParams = params.use_heat_pump
+      ? { heat_pump_cop: params.heat_pump_cop }
+      : {};
+
+    const pvParams = params.use_pv
+      ? {
+          use_pv: true,
+          pv_kwp: params.pv_kwp,
+          pv_tilt_deg: params.pv_tilt_deg,
+          pv_azimuth_deg: params.pv_azimuth_deg,
+          pv_use_pvgis: params.pv_use_pvgis,
+          pv_pvgis_loss_percent: params.pv_pvgis_loss_percent,
+          pv_pvgis_year: params.pv_pvgis_year,
+          annual_pv_yield_kwh_per_kwp: params.annual_pv_yield_kwh_per_kwp,
+        }
+      : {};
+
+    const searchParams = buildSearchParams({
+      archetype: !isCustom,
       weather_source: params.weatherSource || "pvgis",
+      ...archetypeParams,
+      scenario_elements: params.scenario_elements || undefined,
+      u_wall: params.u_wall,
+      u_roof: params.u_roof,
+      u_window: params.u_window,
+      u_slab: params.u_slab,
+      use_heat_pump: params.use_heat_pump,
+      ...heatPumpParams,
+      uni_generation_mode: params.uni_generation_mode,
+      uni_eta_generation: params.uni_eta_generation,
+      ...pvParams,
+      include_baseline: params.include_baseline,
+      baseline_only: params.baseline_only,
     });
-
-    if (!isCustom) {
-      const ap = params as ECMArchetypeParams;
-      searchParams.set("category", ap.category);
-      searchParams.set("country", ap.country);
-      searchParams.set("name", ap.name);
-    }
-
-    if (params.scenario_elements) {
-      searchParams.set("scenario_elements", params.scenario_elements);
-    }
-
-    if (params.u_wall !== undefined) {
-      searchParams.set("u_wall", String(params.u_wall));
-    }
-    if (params.u_roof !== undefined) {
-      searchParams.set("u_roof", String(params.u_roof));
-    }
-    if (params.u_window !== undefined) {
-      searchParams.set("u_window", String(params.u_window));
-    }
-    if (params.u_slab !== undefined) {
-      searchParams.set("u_slab", String(params.u_slab));
-    }
-    if (params.use_heat_pump !== undefined) {
-      searchParams.set("use_heat_pump", String(params.use_heat_pump));
-    }
-    if (params.use_heat_pump && params.heat_pump_cop !== undefined) {
-      searchParams.set("heat_pump_cop", String(params.heat_pump_cop));
-    }
-    if (params.uni_generation_mode !== undefined) {
-      searchParams.set("uni_generation_mode", params.uni_generation_mode);
-    }
-    if (params.uni_eta_generation !== undefined) {
-      searchParams.set("uni_eta_generation", String(params.uni_eta_generation));
-    }
-    if (params.use_pv) {
-      searchParams.set("use_pv", String(params.use_pv));
-      if (params.pv_kwp !== undefined) {
-        searchParams.set("pv_kwp", String(params.pv_kwp));
-      }
-      if (params.pv_tilt_deg !== undefined) {
-        searchParams.set("pv_tilt_deg", String(params.pv_tilt_deg));
-      }
-      if (params.pv_azimuth_deg !== undefined) {
-        searchParams.set("pv_azimuth_deg", String(params.pv_azimuth_deg));
-      }
-      if (params.pv_use_pvgis !== undefined) {
-        searchParams.set("pv_use_pvgis", String(params.pv_use_pvgis));
-      }
-      if (params.pv_pvgis_loss_percent !== undefined) {
-        searchParams.set(
-          "pv_pvgis_loss_percent",
-          String(params.pv_pvgis_loss_percent),
-        );
-      }
-      if (params.pv_pvgis_year !== undefined) {
-        searchParams.set("pv_pvgis_year", String(params.pv_pvgis_year));
-      }
-      if (params.annual_pv_yield_kwh_per_kwp !== undefined) {
-        searchParams.set(
-          "annual_pv_yield_kwh_per_kwp",
-          String(params.annual_pv_yield_kwh_per_kwp),
-        );
-      }
-    }
-    if (params.include_baseline !== undefined) {
-      searchParams.set("include_baseline", String(params.include_baseline));
-    }
-    if (params.baseline_only !== undefined) {
-      searchParams.set("baseline_only", String(params.baseline_only));
-    }
 
     const formData = new FormData();
     if (isCustom) {
