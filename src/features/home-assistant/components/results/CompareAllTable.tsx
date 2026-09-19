@@ -9,6 +9,7 @@ import { Text } from "@mantine/core";
 import { IconCrown } from "@tabler/icons-react";
 import { EPCBadge } from "../../../../components/shared";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
+import { relifeConcepts } from "../../../../constants/relifeConcepts";
 import { computeLifetimeCarbonKgCo2e } from "../../../../services/carrierSavingsService";
 import type {
   FinancialResults,
@@ -19,8 +20,12 @@ import type {
 import {
   formatCurrency,
   formatEnergyPerYear,
+  formatHealthyLifeDays,
+  formatHealthChange,
   formatPaybackYears,
   formatTonnageCo2,
+  getHealthChange,
+  toHealthyLifeDays,
 } from "../../utils/formatters";
 import classes from "./ResultsLayout.module.css";
 import shared from "../../../../components/shared/ResultsLayout.module.css";
@@ -67,6 +72,10 @@ export function CompareAllTable({
             <th>EPC</th>
             <th>Thermal needs</th>
             <th>
+              {relifeConcepts["thermal-health-impact"].label}{" "}
+              <ConceptExplainer conceptId="thermal-health-impact" />
+            </th>
+            <th>
               CO₂ <ConceptExplainer conceptId="operational-co2-emissions" />
             </th>
             <th>
@@ -98,6 +107,11 @@ export function CompareAllTable({
                 <EPCBadge epcClass={current.epcClass} size="sm" estimated />
               </td>
               <td>{formatEnergyPerYear(current.annualEnergyNeeds)}</td>
+              <td>
+                {formatHealthyLifeDays(
+                  toHealthyLifeDays(current.annualThermalDalyPerPerson),
+                )}
+              </td>
               <td>
                 {current.annualEmissionsTonCo2e !== undefined
                   ? formatTonnageCo2(current.annualEmissionsTonCo2e, {
@@ -131,6 +145,10 @@ export function CompareAllTable({
               result?.riskAssessment?.pointForecasts.PBP ?? result?.paybackTime;
             const monthly =
               result?.riskAssessment?.pointForecasts.MonthlyAvgSavings;
+            const avoidedDays = toHealthyLifeDays(
+              scenario.avoidedThermalDalyPerPerson,
+            );
+            const healthChange = getHealthChange(avoidedDays);
             const emissionsDelta =
               scenario.annualEmissionsTonCo2e !== undefined &&
               current?.annualEmissionsTonCo2e !== undefined
@@ -166,6 +184,22 @@ export function CompareAllTable({
                   <EPCBadge epcClass={scenario.epcClass} size="sm" estimated />
                 </td>
                 <td>{formatEnergyPerYear(scenario.annualEnergyNeeds)}</td>
+                <td>
+                  {formatHealthyLifeDays(
+                    toHealthyLifeDays(scenario.annualThermalDalyPerPerson),
+                  )}
+                  {avoidedDays !== undefined ? (
+                    <Text
+                      component="span"
+                      display="block"
+                      size="xs"
+                      fw={600}
+                      c={healthChange?.color ?? "dimmed"}
+                    >
+                      {formatHealthChange(avoidedDays, healthChange)}
+                    </Text>
+                  ) : null}
+                </td>
                 <td>
                   {scenario.annualEmissionsTonCo2e !== undefined
                     ? formatTonnageCo2(scenario.annualEmissionsTonCo2e, {
