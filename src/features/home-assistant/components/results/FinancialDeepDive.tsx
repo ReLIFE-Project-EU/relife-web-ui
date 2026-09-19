@@ -15,6 +15,7 @@ import {
   formatCurrency,
   formatPaybackYears,
   formatPercent,
+  isPaybackBeyondHorizon,
 } from "../../utils/formatters";
 import { FinancialMetricCard } from "./FinancialMetricCard";
 import { RiskGauge } from "./RiskGauge";
@@ -32,6 +33,13 @@ export function FinancialDeepDive({
   result,
   funding,
 }: FinancialDeepDiveProps) {
+  const paybackPercentiles = result?.riskAssessment?.percentiles?.PBP;
+  const projectLifetime = result?.riskAssessment?.metadata.project_lifetime;
+  const noPaybackWithinRange =
+    paybackPercentiles != null &&
+    isPaybackBeyondHorizon(paybackPercentiles.P10, projectLifetime) &&
+    isPaybackBeyondHorizon(paybackPercentiles.P90, projectLifetime);
+
   return (
     <div>
       <div className={shared.deepEyebrow}>Financials</div>
@@ -75,7 +83,9 @@ export function FinancialDeepDive({
                   result.riskAssessment?.metadata.project_lifetime,
                 )
               }
-              percentiles={result.riskAssessment?.percentiles?.PBP}
+              percentiles={
+                noPaybackWithinRange ? undefined : paybackPercentiles
+              }
               color="teal"
               lowerIsBetter
               highlighted
