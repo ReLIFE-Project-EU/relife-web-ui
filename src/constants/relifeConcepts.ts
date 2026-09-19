@@ -16,6 +16,7 @@ export type ConceptId =
   | "pv-grid-export"
   | "pv-self-consumption-rate"
   | "operational-co2-emissions"
+  | "thermal-health-impact"
   | "embodied-carbon"
   | "whole-life-carbon"
   | "investment"
@@ -180,6 +181,17 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
       "Hot water, lighting, and appliances are not counted, and neither is the carbon released in making and installing the renovation materials themselves. Figures are based on how electricity and gas are typically produced in your country, or on a European average when figures for your country aren't available.",
     professionalDetail:
       "Per-carrier calculation from the delivered-energy split: natural gas and net grid electricity at the Forecasting service's country factors (kgCO₂eq/kWh), plus self-consumed PV at the solar_pv lifecycle factor. Grid import is already net of PV self-consumption; grid export is not credited.",
+  },
+  "thermal-health-impact": {
+    id: "thermal-health-impact",
+    label: "Health impact from indoor temperature",
+    unit: "healthy-life days lost per person/year",
+    description:
+      "DALY is a unit used to compare health harm. One DALY equals one year of healthy life lost because of illness or early death.",
+    professionalDetail:
+      "For this result, the model looks at each day's average indoor temperature. Days below 20 °C or above 26 °C add health harm.",
+    caveat:
+      "The number is an average across a population, rather than a forecast for one resident.",
   },
   "embodied-carbon": {
     id: "embodied-carbon",

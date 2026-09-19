@@ -256,6 +256,9 @@ export class RenovationService implements IRenovationService {
       baselineSimulation,
       auditCtx?.child({ scenarioId: "current" }),
     );
+    if (baselineDaly !== undefined) {
+      baseline.annualThermalDalyPerPerson = baselineDaly;
+    }
 
     const packageScenarios = await mapWithConcurrencyLimit(
       packages,
@@ -495,6 +498,7 @@ export class RenovationService implements IRenovationService {
         auditCtx,
       );
       if (renovatedDaly !== undefined) {
+        scenario.annualThermalDalyPerPerson = renovatedDaly;
         scenario.avoidedThermalDalyPerPerson = baselineDaly - renovatedDaly;
       }
     }
@@ -515,6 +519,7 @@ export class RenovationService implements IRenovationService {
         pvSelfConsumption: scenario.pvSelfConsumption,
         pvSelfConsumptionRate: scenario.pvSelfConsumptionRate,
         pvSelfSufficiencyRate: scenario.pvSelfSufficiencyRate,
+        annualThermalDalyPerPerson: scenario.annualThermalDalyPerPerson,
         avoidedThermalDalyPerPerson: scenario.avoidedThermalDalyPerPerson,
       },
       auditCtx,

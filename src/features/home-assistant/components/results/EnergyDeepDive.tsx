@@ -1,7 +1,7 @@
 /**
  * EnergyDeepDive — left column of the HRA deep-dive panel.
- * Shows EPC swap, thermal needs, system energy use, and the
- * scenario's measure list, all relative to the current home today.
+ * Shows EPC swap, thermal needs, system energy use, health impact, and
+ * the scenario's measure list, all relative to the current home today.
  */
 
 import { Text } from "@mantine/core";
@@ -30,6 +30,7 @@ import {
   formatTonnageCo2,
 } from "../../utils/formatters";
 import { getEnergyIntensity } from "../../../../utils/epcUtils";
+import { ThermalHealthCard } from "./ThermalHealthCard";
 import classes from "./ResultsLayout.module.css";
 import shared from "../../../../components/shared/ResultsLayout.module.css";
 
@@ -50,7 +51,7 @@ export function EnergyDeepDive({
 
   return (
     <div>
-      <div className={shared.deepEyebrow}>Energy &amp; comfort</div>
+      <div className={shared.deepEyebrow}>Energy &amp; health</div>
       <h3 className={shared.deepHeading}>vs. your home today</h3>
 
       <div className={shared.miniGrid}>
@@ -154,6 +155,8 @@ export function EnergyDeepDive({
             }
           />
         ) : null}
+
+        <ThermalHealthCard current={current} selected={selected} />
       </div>
 
       {selected.pvGeneration !== undefined ? (

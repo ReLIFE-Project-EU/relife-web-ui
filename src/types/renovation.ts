@@ -279,6 +279,8 @@ export interface RenovationScenario {
   pvSelfSufficiencyRate?: number; // 0-1 PV self-sufficiency rate, when available
   annualEmissionsTonCo2e?: number; // t CO₂e/year operational HVAC emissions from the carrier split, when available
   embodiedCarbonKgCo2e?: number; // kg CO₂e one-off material carbon of the package's measures, when available
+  /** Annual per-person health harm from indoor heat and cold, measured in DALYs. */
+  annualThermalDalyPerPerson?: number;
   /** Annual per-person thermal DALYs avoided versus the current building. */
   avoidedThermalDalyPerPerson?: number;
   flexibilityIndex: number;

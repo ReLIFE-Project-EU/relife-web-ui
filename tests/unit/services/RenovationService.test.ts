@@ -498,6 +498,8 @@ describe("RenovationService", () => {
         exposure_days_for_period: 365,
       }),
     );
+    expect(scenarios[0]?.annualThermalDalyPerPerson).toBeCloseTo(0.01);
+    expect(scenarios[1]?.annualThermalDalyPerPerson).toBeCloseTo(0.004);
     expect(scenarios[1]?.avoidedThermalDalyPerPerson).toBeCloseTo(0.006);
   });
 
@@ -548,6 +550,8 @@ describe("RenovationService", () => {
     );
 
     expect(scenarios).toHaveLength(2);
+    expect(scenarios[0]?.annualThermalDalyPerPerson).toBeCloseTo(0.01);
+    expect(scenarios[1]?.annualThermalDalyPerPerson).toBeUndefined();
     expect(scenarios[1]?.avoidedThermalDalyPerPerson).toBeUndefined();
   });
 
