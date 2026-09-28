@@ -24,21 +24,18 @@ function successResult(options: {
     status: "success",
     // deliveredTotal deliberately disagrees with the "current" scenario below.
     estimation: {
-      estimatedEPC: "E",
       annualEnergyNeeds: 12_000,
       deliveredTotal: 9_999,
     },
     scenarios: [
       {
         id: "current",
-        epcClass: "E",
         annualEnergyNeeds: 12_000,
         annualEmissionsTonCo2e: 4,
         deliveredTotal: 14_000,
       },
       {
         id: PACKAGE_ID,
-        epcClass: "B",
         annualEnergyNeeds: 8_000,
         annualEmissionsTonCo2e: 1.5,
         deliveredTotal: 5_000,

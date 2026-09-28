@@ -46,8 +46,6 @@ function makeSimulation(
     renovatedAnnualEmissionsTonCo2eq: 2 - annualCo2ReductionTon,
     annualCo2ReductionTon,
     annualCo2ReductionPercentage: 20,
-    baselineDisplayEpcClass: "C",
-    renovatedDisplayEpcClass: "B",
     generatedAt: "2026-05-13T00:00:00.000Z",
     provenance: {
       source: "manual-seed",

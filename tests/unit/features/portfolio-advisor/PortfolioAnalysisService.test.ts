@@ -26,7 +26,6 @@ import type {
 } from "../../../../src/types/renovation";
 
 const estimation: EstimationResult = {
-  estimatedEPC: "D",
   annualEnergyNeeds: 15000,
   heatingCoolingNeeds: 15000,
   heatingDemand: 10000,
@@ -66,7 +65,6 @@ const scenarios: RenovationScenario[] = [
     id: "current",
     packageId: null,
     label: "Current Status",
-    epcClass: "D",
     annualEnergyNeeds: 15000,
     heatingCoolingNeeds: 15000,
     deliveredTotal: 11000,
@@ -80,7 +78,6 @@ const scenarios: RenovationScenario[] = [
     id: "renovated",
     packageId: "renovated",
     label: "After Renovation",
-    epcClass: "C",
     annualEnergyNeeds: 12000,
     heatingCoolingNeeds: 12000,
     deliveredTotal: 9000,

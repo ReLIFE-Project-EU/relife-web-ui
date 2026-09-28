@@ -152,7 +152,6 @@ describe("homeAssistantReducer package financial inputs", () => {
           id: "package-wall-insulation",
           packageId: "package-wall-insulation",
           label: "Wall Insulation",
-          epcClass: "C",
           annualEnergyNeeds: 12000,
           heatingCoolingNeeds: 12000,
           flexibilityIndex: 50,
@@ -289,7 +288,6 @@ describe("homeAssistantReducer package financial inputs", () => {
 });
 
 const mockEstimation: EstimationResult = {
-  estimatedEPC: "C",
   annualEnergyNeeds: 10_000,
   heatingCoolingNeeds: 10_000,
   heatingDemand: 8000,

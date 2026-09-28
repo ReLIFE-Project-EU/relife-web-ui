@@ -7,7 +7,6 @@
 
 import { forecasting } from "../api";
 import type { ECMScenario, EmissionFactorResponse } from "../types/forecasting";
-import type { EpcEnergyBasis } from "../types/energy";
 import type {
   BuildingInfo,
   EstimationResult,
@@ -22,7 +21,6 @@ import {
   computeComfortBandIndex,
   computeDailyMeanOperativeTemperatures,
   extractUniTotals,
-  getEPCClass,
   resolveEpcRatingIntensity,
   transformColumnarToRowFormat,
 } from "./energyUtils";
@@ -94,9 +92,6 @@ interface EcmScenarioEnergy {
   pvGridExport?: number;
   pvSelfConsumptionRate?: number;
   pvSelfSufficiencyRate?: number;
-  intensity: number;
-  epcBasis: EpcEnergyBasis;
-  epcClass: string;
 }
 
 export class RenovationService implements IRenovationService {
@@ -233,7 +228,6 @@ export class RenovationService implements IRenovationService {
       {
         packageCount: packages.length,
         packageIds: packages.map((p) => p.id),
-        baselineEPC: estimation.estimatedEPC,
         baselineDeliveredTotal: estimation.deliveredTotal,
         archetype: estimation.archetype,
       },
@@ -508,7 +502,6 @@ export class RenovationService implements IRenovationService {
       "renovation.scenario.end",
       {
         packageId: renovationPackage.id,
-        epcClass: scenario.epcClass,
         annualEnergyNeeds: scenario.annualEnergyNeeds,
         deliveredTotal: scenario.deliveredTotal,
         primaryEnergy: scenario.primaryEnergy,
@@ -681,7 +674,6 @@ export class RenovationService implements IRenovationService {
       "renovation.scenario.end",
       {
         packageId: "current",
-        epcClass: scenario.epcClass,
         annualEnergyNeeds: scenario.annualEnergyNeeds,
         deliveredTotal: scenario.deliveredTotal,
         primaryEnergy: scenario.primaryEnergy,
@@ -807,8 +799,8 @@ export class RenovationService implements IRenovationService {
       // TODO(pv-primary): apply electricity primary factor before reducing primary energy.
     }
 
-    // Rate on primary energy (falling back to delivered, then thermal demand)
-    // so system measures move the class, consistent with the ARV energy basis.
+    // Intensity on the ARV energy basis (primary, falling back to delivered,
+    // then thermal demand), kept for audit plausibility checks.
     const epcRating = resolveEpcRatingIntensity(
       {
         primaryEnergy,
@@ -863,9 +855,6 @@ export class RenovationService implements IRenovationService {
       pvGridExport,
       pvSelfConsumptionRate: pvIndicators?.self_consumption_rate,
       pvSelfSufficiencyRate: pvIndicators?.self_sufficiency_rate,
-      intensity: epcRating.intensity,
-      epcBasis: epcRating.basis,
-      epcClass: getEPCClass(epcRating.intensity),
     };
   }
 
@@ -890,7 +879,6 @@ export class RenovationService implements IRenovationService {
       id: meta.id,
       packageId: meta.packageId,
       label: meta.label,
-      epcClass: energy.epcClass,
       annualEnergyNeeds: Math.round(energy.scaledHvac),
       heatingCoolingNeeds: Math.round(energy.scaledHvac),
       ...(energy.deliveredTotal !== undefined
@@ -913,8 +901,6 @@ export class RenovationService implements IRenovationService {
       ...(energy.primaryEnergy !== undefined
         ? { primaryEnergy: Math.round(energy.primaryEnergy) }
         : {}),
-      epcEnergyIntensity: Math.round(energy.intensity),
-      epcEnergyBasis: energy.epcBasis,
       ...(energy.heatingPrimaryEnergy !== undefined
         ? { heatingPrimaryEnergy: Math.round(energy.heatingPrimaryEnergy) }
         : {}),

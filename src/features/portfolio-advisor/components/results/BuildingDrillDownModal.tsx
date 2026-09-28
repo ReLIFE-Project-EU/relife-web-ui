@@ -22,7 +22,6 @@ import {
 } from "@mantine/core";
 import { IconArrowRight, IconInfoCircle, IconX } from "@tabler/icons-react";
 import { ConceptMetricCard } from "../../../../components/shared/ConceptMetricCard";
-import { EPCBadge } from "../../../../components/shared/EPCBadge";
 import { ErrorAlert } from "../../../../components/shared/ErrorAlert";
 import { MetricEyebrow } from "../../../../components/shared/MetricEyebrow";
 import {
@@ -103,8 +102,6 @@ export function BuildingDrillDownModal({
     renovated?.annualEnergyNeeds,
   );
 
-  const epcBefore = result?.estimation?.estimatedEPC;
-  const epcAfter = renovated?.epcClass;
   const cashFlowData = fr?.riskAssessment?.cashFlowData;
   const availability = resolveSavingsAvailability(renovated, fr);
   const appraised = availability === "appraised";
@@ -220,24 +217,7 @@ export function BuildingDrillDownModal({
             <>
               <Stack gap="xs">
                 <MetricEyebrow>Energy &amp; carbon impact</MetricEyebrow>
-                <SimpleGrid cols={{ base: 2, sm: 3, md: 5 }} spacing="sm">
-                  <MetricCard
-                    label="EPC shift"
-                    value={
-                      epcBefore && epcAfter ? (
-                        <Group gap={6} wrap="nowrap">
-                          <EPCBadge epcClass={epcBefore} size="sm" estimated />
-                          <IconArrowRight
-                            size={14}
-                            color="var(--mantine-color-gray-5)"
-                          />
-                          <EPCBadge epcClass={epcAfter} size="sm" estimated />
-                        </Group>
-                      ) : (
-                        "—"
-                      )
-                    }
-                  />
+                <SimpleGrid cols={{ base: 2, sm: 3, md: 4 }} spacing="sm">
                   <MetricCard
                     label="Energy reduction"
                     value={

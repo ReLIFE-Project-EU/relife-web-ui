@@ -4,40 +4,6 @@
   border-radius: var(--mantine-radius-md);
 }
 
-.recoHead {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: var(--mantine-spacing-md);
-  align-items: start;
-}
-
-@media (max-width: 720px) {
-  .recoHead {
-    grid-template-columns: 1fr;
-  }
-}
-
-.recoEpcSwap {
-  display: flex;
-  align-items: center;
-  gap: var(--mantine-spacing-xs);
-  background: var(--mantine-color-gray-0);
-  border: 1px solid var(--mantine-color-gray-2);
-  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
-  border-radius: var(--mantine-radius-md);
-}
-
-.recoEpcSwap .epcArrow {
-  color: var(--mantine-color-gray-5);
-}
-
-.recoEpcSwap .epcLabel {
-  font-size: var(--mantine-font-size-xs);
-  color: var(--mantine-color-gray-7);
-  font-weight: 500;
-  margin-bottom: 4px;
-}
-
 .recoMetrics {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -149,17 +115,6 @@
   color: var(--mantine-color-gray-7);
   margin-top: 6px;
   flex-wrap: wrap;
-}
-
-.epcInline {
-  display: flex;
-  align-items: center;
-  gap: var(--mantine-spacing-xs);
-  margin-top: 4px;
-}
-
-.epcInlineArrow {
-  color: var(--mantine-color-gray-5);
 }
 
 .measures {

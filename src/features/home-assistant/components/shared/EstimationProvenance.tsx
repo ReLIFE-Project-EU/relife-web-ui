@@ -1,34 +1,22 @@
 import { Card, Group, Stack, Table, Text, Title } from "@mantine/core";
 import { IconBuildingCommunity, IconHome } from "@tabler/icons-react";
 import type { EstimationResult } from "../../../../types/renovation";
-import {
-  ConceptLabel,
-  DeltaValue,
-  EPCBadge,
-} from "../../../../components/shared";
+import { ConceptLabel, DeltaValue } from "../../../../components/shared";
 import {
   calculatePercentChange,
   formatEnergyPerYear,
 } from "../../utils/formatters";
-import { getEnergyIntensity } from "../../../../utils/epcUtils";
 
 export function ReferenceAdjustedComparisonCard({
   estimation,
-  floorArea,
 }: {
   estimation: EstimationResult;
-  floorArea?: number;
 }) {
   const reference = estimation.referenceEstimation;
 
   if (!reference) {
     return null;
   }
-
-  const referenceIntensity = getEnergyIntensity(reference, floorArea);
-  const adjustedIntensity = getEnergyIntensity(estimation, floorArea);
-
-  const epcChanged = estimation.estimatedEPC !== reference.estimatedEPC;
 
   return (
     <Card withBorder radius="md" p="lg">
@@ -69,35 +57,6 @@ export function ReferenceAdjustedComparisonCard({
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            <Table.Tr>
-              <Table.Td>
-                <ConceptLabel conceptId="estimated-epc" />
-              </Table.Td>
-              <Table.Td>
-                <EPCBadge
-                  epcClass={reference.estimatedEPC}
-                  size="md"
-                  energyIntensity={referenceIntensity}
-                  estimated
-                />
-              </Table.Td>
-              <Table.Td>
-                <Group gap="xs">
-                  <EPCBadge
-                    epcClass={estimation.estimatedEPC}
-                    size="md"
-                    energyIntensity={adjustedIntensity}
-                    estimated
-                  />
-                  {epcChanged && (
-                    <Text size="xs" c="dimmed">
-                      from {reference.estimatedEPC}
-                    </Text>
-                  )}
-                </Group>
-              </Table.Td>
-            </Table.Tr>
-
             <Table.Tr>
               <Table.Td>
                 <ConceptLabel conceptId="annual-building-thermal-needs" />

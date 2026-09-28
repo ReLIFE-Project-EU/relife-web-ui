@@ -173,14 +173,6 @@ export function formatEnergyPerYear(value: number): string {
   return `${formatNumber(value)} kWh/year`;
 }
 
-/**
- * Format energy intensity (per square meter per year).
- * Example: 150 -> "150 kWh/m²/year"
- */
-export function formatEnergyIntensity(value: number): string {
-  return `${formatNumber(value)} kWh/m²/year`;
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Area Formatting
 // ─────────────────────────────────────────────────────────────────────────────

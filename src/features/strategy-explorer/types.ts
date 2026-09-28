@@ -87,8 +87,6 @@ export interface RSEForecastingCacheEntry {
 
 export interface RSEForecastingScenarioSnapshot {
   annualEnergyKwh: number;
-  /** Low-confidence frontend display convenience only. Not a legal EPC. */
-  displayEpcClass: string;
   primaryEnergyUni11300Summary: Record<string, unknown>;
   pvHpSummary?: Record<string, unknown>;
   co2Inputs: RSEEmissionScenarioInput[];
@@ -151,10 +149,6 @@ export interface RSESimulationResult {
   renovatedAnnualEmissionsTonCo2eq: number;
   annualCo2ReductionTon: number;
   annualCo2ReductionPercentage: number;
-  /** Low-confidence frontend display convenience only. Not a legal EPC. */
-  baselineDisplayEpcClass: string;
-  /** Low-confidence frontend display convenience only. Not a legal EPC. */
-  renovatedDisplayEpcClass: string;
   generatedAt: string;
   provenance: RSECacheEntryProvenance;
 }

@@ -1,6 +1,6 @@
 /**
  * BuildingInfoStep Component
- * Screen 1: Collects building information and triggers EPC estimation.
+ * Screen 1: Collects building information and triggers energy estimation.
  */
 
 import {
@@ -156,7 +156,9 @@ export function BuildingInfoStep() {
       dispatch({
         type: "ESTIMATION_ERROR",
         error:
-          error instanceof Error ? error.message : "Failed to estimate EPC",
+          error instanceof Error
+            ? error.message
+            : "Failed to estimate energy performance",
       });
     }
   };

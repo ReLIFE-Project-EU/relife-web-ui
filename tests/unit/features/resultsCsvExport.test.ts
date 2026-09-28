@@ -30,7 +30,6 @@ const successResult = {
   buildingId: "b1",
   status: "success",
   estimation: {
-    estimatedEPC: "D",
     annualEnergyNeeds: 20000,
     deliveredTotal: 18000,
   },
@@ -46,7 +45,6 @@ const successResult = {
     },
     {
       id: "renovated",
-      epcClass: "B",
       annualEnergyNeeds: 12000,
       deliveredTotal: 10000,
       annualEmissionsTonCo2e: 2.5,
@@ -146,7 +144,6 @@ describe("buildBuildingsCsv", () => {
     const errorRow = dataRows[1];
     expect(cell(errorRow, "Status")).toBe("error");
     expect(cell(errorRow, "NPV (EUR)")).toBe("");
-    expect(cell(errorRow, "EPC before")).toBe("");
 
     const rejectedRow = dataRows[2];
     expect(cell(rejectedRow, "Status")).toBe("rejected");
@@ -177,8 +174,6 @@ describe("buildSummaryCsv", () => {
     totalWholeLifeCarbonTon: 72,
     portfolioRoi: 0.12,
     portfolioPaybackYears: 8.5,
-    epcCountsBefore: { E: 1 },
-    epcCountsAfter: { B: 1 },
   };
 
   test("emits a Metric,Value table with raw aggregates", () => {
@@ -197,14 +192,5 @@ describe("buildSummaryCsv", () => {
     const lines = buildSummaryCsv(aggregate).split("\r\n");
 
     expect(lines).toContain("Total system energy before (kWh/year),");
-  });
-
-  test("lists only the EPC classes the portfolio occupies", () => {
-    const lines = buildSummaryCsv(aggregate).split("\r\n");
-
-    expect(lines).toContain("EPC B before (buildings),0");
-    expect(lines).toContain("EPC B after (buildings),1");
-    expect(lines).toContain("EPC E before (buildings),1");
-    expect(lines.some((line) => line.startsWith("EPC G "))).toBe(false);
   });
 });

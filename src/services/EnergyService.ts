@@ -1,13 +1,12 @@
 /**
  * Energy Service - Real Forecasting API Implementation
  *
- * Provides EPC estimation and energy consumption calculations using the
+ * Provides baseline energy estimation and consumption calculations using the
  * Forecasting API's direct simulation endpoint with archetype mode and PVGIS weather data.
  *
  * Architecture:
  * - Uses GET /building/available to dynamically discover available archetypes
  * - Uses POST /simulate?archetype=true&weather_source=pvgis for energy simulation
- * - Calculates EPC class locally from energy intensity (kWh/m²)
  * - Scales results based on user's floor area vs archetype's floor area
  *
  * Error Handling:
@@ -25,7 +24,6 @@ import {
   DEFAULT_FLOOR_AREA,
   calculateAnnualTotals,
   extractUniTotals,
-  getEPCClass,
   resolveEpcRatingIntensity,
   transformColumnarToRowFormat,
 } from "./energyUtils";
@@ -618,9 +616,9 @@ export class EnergyService implements IEnergyService {
       uniTotals !== undefined
         ? uniTotals.primaryEnergy * areaScaleFactor
         : undefined;
-    // EPC is rated on primary energy (EU EPgl,nren basis), falling back to
-    // delivered then thermal demand so a heating-system swap actually moves the
-    // class. See resolveEpcRatingIntensity.
+    // Intensity on the EPC rating basis (primary energy, falling back to
+    // delivered then thermal demand), kept for audit plausibility checks.
+    // See resolveEpcRatingIntensity.
     const epcRating = resolveEpcRatingIntensity(
       {
         primaryEnergy: scaledPrimaryEnergy,
@@ -630,7 +628,6 @@ export class EnergyService implements IEnergyService {
       userArea,
     );
     const energyIntensity = epcRating.intensity;
-    const estimatedEPC = getEPCClass(energyIntensity);
 
     const comfortIndex = calculateComfortIndex(building);
     const flexibilityIndex = calculateFlexibilityIndex(building);
@@ -661,7 +658,6 @@ export class EnergyService implements IEnergyService {
           primaryEnergy: scaledPrimaryEnergy,
         },
         energyIntensity,
-        estimatedEPC,
         uniTotalsAvailable: uniTotals !== undefined,
         comfortIndex,
         flexibilityIndex,
@@ -671,7 +667,6 @@ export class EnergyService implements IEnergyService {
     );
 
     return {
-      estimatedEPC,
       annualEnergyNeeds: Math.round(annualEnergyNeeds),
       heatingCoolingNeeds: Math.round(scaledHvacTotal),
       heatingDemand: Math.round(scaledHeating),
@@ -697,8 +692,6 @@ export class EnergyService implements IEnergyService {
       ...(scaledPrimaryEnergy !== undefined
         ? { primaryEnergy: Math.round(scaledPrimaryEnergy) }
         : {}),
-      epcEnergyIntensity: Math.round(energyIntensity),
-      epcEnergyBasis: epcRating.basis,
       archetypeFloorArea: archetypeArea,
       archetype: {
         category: archetype.category,
@@ -720,7 +713,7 @@ export class EnergyService implements IEnergyService {
   }
 
   /**
-   * Estimate EPC and energy consumption based on building characteristics.
+   * Estimate energy needs and consumption based on building characteristics.
    *
    * Archetype resolution:
    * 1. Uses building.selectedArchetype when available (set by BuildingSelector)
@@ -859,15 +852,12 @@ export class EnergyService implements IEnergyService {
           modifiedSystem: validatedSystem,
           validationNotes,
           referenceEstimation: {
-            estimatedEPC: referenceEstimation.estimatedEPC,
             annualEnergyNeeds: referenceEstimation.annualEnergyNeeds,
             heatingCoolingNeeds: referenceEstimation.heatingCoolingNeeds,
             flexibilityIndex: referenceEstimation.flexibilityIndex,
             comfortIndex: referenceEstimation.comfortIndex,
             deliveredTotal: referenceEstimation.deliveredTotal,
             primaryEnergy: referenceEstimation.primaryEnergy,
-            epcEnergyIntensity: referenceEstimation.epcEnergyIntensity,
-            epcEnergyBasis: referenceEstimation.epcEnergyBasis,
           },
           auditCtx,
         });
@@ -875,14 +865,12 @@ export class EnergyService implements IEnergyService {
           "energy",
           "energy.estimate.end",
           {
-            estimatedEPC: result.estimatedEPC,
             annualEnergyNeeds: result.annualEnergyNeeds,
             heatingCoolingNeeds: result.heatingCoolingNeeds,
             deliveredTotal: result.deliveredTotal,
             primaryEnergy: result.primaryEnergy,
             archetypeFloorArea: result.archetypeFloorArea,
             modified: true,
-            referenceEstimatedEPC: referenceEstimation.estimatedEPC,
           },
           auditCtx,
         );
@@ -918,7 +906,6 @@ export class EnergyService implements IEnergyService {
         "energy",
         "energy.estimate.end",
         {
-          estimatedEPC: result.estimatedEPC,
           annualEnergyNeeds: result.annualEnergyNeeds,
           heatingCoolingNeeds: result.heatingCoolingNeeds,
           deliveredTotal: result.deliveredTotal,

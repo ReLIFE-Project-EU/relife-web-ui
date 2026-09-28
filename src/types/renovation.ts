@@ -8,7 +8,7 @@
  * - [ ] Technical API: MCDA pillar endpoint integration
  */
 
-import type { DeliveredEnergyCarrierBreakdown, EpcEnergyBasis } from "./energy";
+import type { DeliveredEnergyCarrierBreakdown } from "./energy";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Building Information Types (Screen 1)
@@ -62,7 +62,7 @@ export interface BuildingInfo {
   projectLifetime: number; // Required, 1-30 years, default: 20
 
   // Note: EPC (Energy Performance Certificate) is NOT a user input.
-  // It is calculated by the Forecasting API and used as input to the Financial API.
+  // The Financial ARV model resolves a national class from simulated energy intensity.
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -70,7 +70,6 @@ export interface BuildingInfo {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface EstimationResult {
-  estimatedEPC: string; // UI label (A+ to G), maps to Greek for API
   annualEnergyNeeds: number; // kWh/year (HVAC demand, API-derived)
   heatingCoolingNeeds: number; // kWh/year (HVAC demand, API-derived)
   /**
@@ -99,10 +98,6 @@ export interface EstimationResult {
   carrierBreakdown?: DeliveredEnergyCarrierBreakdown;
   /** UNI/TS 11300 total primary energy, when available. */
   primaryEnergy?: number;
-  /** Energy intensity (kWh/m²/year) used to derive `estimatedEPC`. */
-  epcEnergyIntensity?: number;
-  /** Which energy basis backed `estimatedEPC` (primary, delivered, or thermal-demand fallback). */
-  epcEnergyBasis?: EpcEnergyBasis;
 
   /**
    * Notices returned during validation of a modified archetype.
@@ -115,7 +110,6 @@ export interface EstimationResult {
    * Present when the user estimated an adjusted archetype.
    */
   referenceEstimation?: {
-    estimatedEPC: string;
     annualEnergyNeeds: number;
     heatingCoolingNeeds: number;
     flexibilityIndex: number;
@@ -123,8 +117,6 @@ export interface EstimationResult {
     deliveredTotal?: number;
     carrierBreakdown?: DeliveredEnergyCarrierBreakdown;
     primaryEnergy?: number;
-    epcEnergyIntensity?: number;
-    epcEnergyBasis?: EpcEnergyBasis;
   };
 
   /**
@@ -261,14 +253,11 @@ export type ScenarioId = string;
 export interface RenovationScenario {
   id: ScenarioId;
   label: string;
-  epcClass: string;
   annualEnergyNeeds: number; // kWh/year (HVAC demand, API-derived)
   heatingCoolingNeeds: number; // kWh/year (HVAC demand, API-derived)
   deliveredTotal?: number; // kWh/year (UNI/TS 11300 delivered energy, when available)
   carrierBreakdown?: DeliveredEnergyCarrierBreakdown; // kWh/year carrier split, when available
   primaryEnergy?: number; // kWh/year (UNI/TS 11300 primary energy, when available)
-  epcEnergyIntensity?: number; // kWh/m²/year used to derive epcClass
-  epcEnergyBasis?: EpcEnergyBasis; // basis behind epcClass (primary, delivered, or thermal-demand fallback)
   heatingPrimaryEnergy?: number; // kWh/year (UNI/TS 11300 primary energy for heating, when available)
   coolingPrimaryEnergy?: number; // kWh/year (UNI/TS 11300 primary energy for cooling, when available)
   heatPumpCop?: number; // COP used by Forecasting for heat-pump scenarios, when available

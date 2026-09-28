@@ -74,7 +74,6 @@ function makeEntry(
     payloadSchemaVersion: 1,
     baseline: {
       annualEnergyKwh: baselineAnnualEnergyKwh,
-      displayEpcClass: "G",
       primaryEnergyUni11300Summary: baselineSummary,
       co2Inputs: [],
       co2: {
@@ -94,7 +93,6 @@ function makeEntry(
     },
     renovated: {
       annualEnergyKwh: renovatedAnnualEnergyKwh,
-      displayEpcClass: "G",
       primaryEnergyUni11300Summary: renovatedSummary,
       co2Inputs: [],
       co2: {
@@ -209,7 +207,7 @@ describe("rseForecastingCacheService", () => {
     ]);
   });
 
-  test("normalizes cached numeric values and recomputes display-only EPC labels", () => {
+  test("normalizes cached numeric values", () => {
     const result = normalizeEntry(makeEntry(), makeTarget(100));
 
     expect(result).toEqual(
@@ -222,8 +220,6 @@ describe("rseForecastingCacheService", () => {
         annualEnergySavingsKwh: 4_000,
         baselineAnnualEmissionsTonCo2eq: 2.4,
         renovatedAnnualEmissionsTonCo2eq: 1.6,
-        baselineDisplayEpcClass: "C",
-        renovatedDisplayEpcClass: "B",
       }),
     );
     expect(result.annualEnergySavingsPercentage).toBeCloseTo(100 / 3);
@@ -302,16 +298,10 @@ describe("rseForecastingCacheService", () => {
       whole.carrierSourceBreakdown.baseline.naturalGasKwh * share,
     );
 
-    // Intensities are invariant: the ratio scales in both numerator and
-    // denominator, so percentages and the display EPC must not move.
+    // Ratios are invariant: numerator and denominator scale together, so
+    // percentages must not move.
     expect(dwelling.annualEnergySavingsPercentage).toBeCloseTo(
       whole.annualEnergySavingsPercentage,
-    );
-    expect(dwelling.baselineDisplayEpcClass).toBe(
-      whole.baselineDisplayEpcClass,
-    );
-    expect(dwelling.renovatedDisplayEpcClass).toBe(
-      whole.renovatedDisplayEpcClass,
     );
   });
 
@@ -338,19 +328,7 @@ describe("rseForecastingCacheService", () => {
     ).toThrow(RSEForecastingCacheServiceError);
   });
 
-  test("does not treat cached EPC labels as authoritative", () => {
-    const entry = makeEntry();
-
-    expect(entry.baseline.displayEpcClass).toBe("G");
-    expect(entry.renovated.displayEpcClass).toBe("G");
-
-    const result = normalizeEntry(entry, makeTarget(100));
-
-    expect(result.baselineDisplayEpcClass).toBe("C");
-    expect(result.renovatedDisplayEpcClass).toBe("B");
-  });
-
-  test("rejects invalid floor area needed for frontend EPC display", () => {
+  test("rejects invalid archetype floor area", () => {
     expect(() => normalizeEntry(makeEntry(), makeTarget(0))).toThrow(
       RSEForecastingCacheServiceError,
     );

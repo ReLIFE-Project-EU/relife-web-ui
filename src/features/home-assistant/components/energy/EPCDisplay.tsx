@@ -1,25 +1,12 @@
 /**
  * EPCDisplay Component
- * Shows the estimated EPC and key energy metrics.
+ * Shows the key baseline energy metrics.
  */
 
-import {
-  Box,
-  Card,
-  Group,
-  SimpleGrid,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Box, Card, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
-import { formatEnergyPerYear, formatNumber } from "../../utils/formatters";
-import { getEnergyIntensity } from "../../../../utils/epcUtils";
-import {
-  ConceptMetricCard,
-  EPCBadge,
-  ReferenceAdjustedComparisonCard,
-} from "../shared";
+import { formatEnergyPerYear } from "../../utils/formatters";
+import { ConceptMetricCard, ReferenceAdjustedComparisonCard } from "../shared";
 
 export function EPCDisplay() {
   const { state } = useHomeAssistant();
@@ -29,46 +16,22 @@ export function EPCDisplay() {
     return null;
   }
 
-  const floorArea = state.building.floorArea;
-  const energyIntensity = getEnergyIntensity(estimation, floorArea);
   const hasDeliveredConsumption = estimation.deliveredTotal !== undefined;
 
   return (
     <Stack gap="lg">
-      <ReferenceAdjustedComparisonCard
-        estimation={estimation}
-        floorArea={floorArea ?? undefined}
-      />
+      <ReferenceAdjustedComparisonCard estimation={estimation} />
 
       <Card withBorder radius="md" p="lg">
         <Stack gap="lg">
-          <Group justify="space-between" align="flex-start">
-            <Box>
-              <Title order={3} mb="xs">
-                Energy Overview
-              </Title>
-              <Text size="sm" c="dimmed">
-                Building needs and, when available, estimated system consumption
-              </Text>
-            </Box>
-
-            <Stack gap={4} align="center">
-              <Text size="xs" c="dimmed" fw={500}>
-                Estimated EPC
-              </Text>
-              <EPCBadge
-                epcClass={estimation.estimatedEPC}
-                size="xl"
-                energyIntensity={energyIntensity}
-                estimated
-              />
-              {energyIntensity !== undefined && (
-                <Text size="xs" c="dimmed">
-                  ~{formatNumber(energyIntensity)} kWh/m²/y
-                </Text>
-              )}
-            </Stack>
-          </Group>
+          <Box>
+            <Title order={3} mb="xs">
+              Energy Overview
+            </Title>
+            <Text size="sm" c="dimmed">
+              Building needs and, when available, estimated system consumption
+            </Text>
+          </Box>
 
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             <ConceptMetricCard

@@ -1,13 +1,12 @@
 /**
  * EnergyDeepDive — left column of the HRA deep-dive panel.
- * Shows EPC swap, thermal needs, system energy use, health impact, and
+ * Shows thermal needs, system energy use, CO₂, health impact, and
  * the scenario's measure list, all relative to the current home today.
  */
 
 import { Text } from "@mantine/core";
 import {
   IconBolt,
-  IconCertificate,
   IconCloud,
   IconPlug,
   IconSolarPanel,
@@ -19,7 +18,7 @@ import {
   relifeConcepts,
   type ConceptId,
 } from "../../../../constants/relifeConcepts";
-import { DeltaBadge, EPCBadge } from "../../../../components/shared";
+import { DeltaBadge } from "../../../../components/shared";
 import type { RenovationScenario } from "../../context/types";
 import { getScenarioColor } from "../../utils/colorUtils";
 import {
@@ -29,7 +28,6 @@ import {
   formatNumber,
   formatTonnageCo2,
 } from "../../utils/formatters";
-import { getEnergyIntensity } from "../../../../utils/epcUtils";
 import { ThermalHealthCard } from "./ThermalHealthCard";
 import classes from "./ResultsLayout.module.css";
 import shared from "../../../../components/shared/ResultsLayout.module.css";
@@ -37,17 +35,10 @@ import shared from "../../../../components/shared/ResultsLayout.module.css";
 interface EnergyDeepDiveProps {
   current: RenovationScenario;
   selected: RenovationScenario;
-  floorArea?: number;
 }
 
-export function EnergyDeepDive({
-  current,
-  selected,
-  floorArea,
-}: EnergyDeepDiveProps) {
+export function EnergyDeepDive({ current, selected }: EnergyDeepDiveProps) {
   const color = getScenarioColor(selected.id);
-  const intensityCurrent = getEnergyIntensity(current, floorArea);
-  const intensitySelected = getEnergyIntensity(selected, floorArea);
 
   return (
     <div>
@@ -55,37 +46,6 @@ export function EnergyDeepDive({
       <h3 className={shared.deepHeading}>vs. your home today</h3>
 
       <div className={shared.miniGrid}>
-        <div className={shared.miniCard}>
-          <div className={shared.miniLabel}>
-            <IconCertificate size={14} />
-            EPC class
-            <ConceptExplainer conceptId="estimated-epc" />
-          </div>
-          <div className={classes.epcInline}>
-            <EPCBadge
-              epcClass={current.epcClass}
-              size="md"
-              estimated
-              energyIntensity={intensityCurrent}
-            />
-            <span className={classes.epcInlineArrow} aria-hidden>
-              →
-            </span>
-            <EPCBadge
-              epcClass={selected.epcClass}
-              size="md"
-              estimated
-              energyIntensity={intensitySelected}
-            />
-          </div>
-          {intensityCurrent !== undefined && intensitySelected !== undefined ? (
-            <Text size="xs" c="dimmed" mt={6}>
-              ~{formatNumber(intensityCurrent)} → ~
-              {formatNumber(intensitySelected)} kWh/m²/year
-            </Text>
-          ) : null}
-        </div>
-
         <MiniMetric
           icon={<IconBolt size={14} />}
           conceptId="annual-building-thermal-needs"

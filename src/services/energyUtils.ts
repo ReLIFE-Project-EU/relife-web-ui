@@ -2,7 +2,7 @@
  * Shared energy constants and helper functions.
  *
  * Used by both EnergyService (baseline estimation) and RenovationService
- * (post-renovation simulation) to ensure consistent EPC classification,
+ * (post-renovation simulation) to ensure consistent energy-intensity basis,
  * HVAC energy aggregation, and energy pricing assumptions.
  */
 
@@ -16,21 +16,6 @@ import type { EpcEnergyBasis } from "../types/energy";
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * EPC class thresholds based on energy intensity (kWh/m²/year).
- * Aligned with European energy performance standards.
- */
-export const EPC_THRESHOLDS: { class: string; maxValue: number }[] = [
-  { class: "A+", maxValue: 30 },
-  { class: "A", maxValue: 50 },
-  { class: "B", maxValue: 90 },
-  { class: "C", maxValue: 150 },
-  { class: "D", maxValue: 230 },
-  { class: "E", maxValue: 330 },
-  { class: "F", maxValue: 450 },
-  { class: "G", maxValue: Infinity },
-];
 
 /**
  * Default floor area if not provided (m²).
@@ -49,30 +34,16 @@ export interface ExtractedUniTotals {
 // Helper Functions
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Determine EPC class from energy intensity (kWh/m²/year).
- *
- * The threshold table is calibrated for primary-energy intensity (the EU/Italian
- * EPgl,nren basis); feed it a value resolved via {@link resolveEpcRatingIntensity}.
- */
-export function getEPCClass(energyIntensity: number): string {
-  for (const threshold of EPC_THRESHOLDS) {
-    if (energyIntensity <= threshold.maxValue) {
-      return threshold.class;
-    }
-  }
-  return "G";
-}
-
 export interface EpcRatingIntensity {
-  /** Energy intensity in kWh/m²/year used to derive the EPC class. */
+  /** Energy intensity in kWh/m²/year on the EPC rating basis. */
   intensity: number;
   /** Which energy quantity the intensity was derived from. */
   basis: EpcEnergyBasis;
 }
 
 /**
- * Resolve the energy intensity (kWh/m²/year) used to rate the EPC class.
+ * Resolve the energy intensity (kWh/m²/year) the Financial ARV model rates a
+ * national EPC class from.
  *
  * EU/Italian EPC is defined on non-renewable primary energy, which thermal
  * demand (ideal HVAC needs) does not capture — net thermal demand is invariant

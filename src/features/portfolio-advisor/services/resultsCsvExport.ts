@@ -10,7 +10,6 @@
 import { serializeCsv, type CsvColumn } from "../../../utils/csvExport";
 import { getEnergyReduction } from "../../../utils/formatters";
 import { getCountryCode } from "../../../utils/countries";
-import { getEPCImprovement, occupiedEpcClasses } from "../../../utils/epcUtils";
 import { computeLifetimeCarbonKgCo2e } from "../../../services/carrierSavingsService";
 import { resolveSavingsAvailability } from "../../../services/savingsState";
 import type { PortfolioPackageAggregate } from "./portfolioAggregation";
@@ -62,25 +61,6 @@ const buildingExportColumns: CsvColumn<BuildingExportRow>[] = [
     key: "floorArea",
     header: "Floor area (m2)",
     value: (r) => r.building.floorArea,
-  },
-  {
-    key: "epcBefore",
-    header: "EPC before",
-    value: (r) => r.result.estimation?.estimatedEPC,
-  },
-  {
-    key: "epcAfter",
-    header: "EPC after",
-    value: (r) => renovatedOf(r.result)?.epcClass,
-  },
-  {
-    key: "epcImprovement",
-    header: "EPC improvement (classes)",
-    value: (r) => {
-      const before = r.result.estimation?.estimatedEPC;
-      const after = renovatedOf(r.result)?.epcClass;
-      return before && after ? getEPCImprovement(before, after) : undefined;
-    },
   },
   {
     key: "thermalBefore",
@@ -306,26 +286,6 @@ export function buildSummaryCsv(aggregate: PortfolioPackageAggregate): string {
       metric: "Total whole-life carbon (t CO2e)",
       value: aggregate.totalWholeLifeCarbonTon,
     },
-    ...epcDistributionRows(aggregate),
   ];
   return serializeCsv(rows, summaryColumns);
-}
-
-/** One row per EPC class the portfolio occupies, before and after. */
-function epcDistributionRows(
-  aggregate: PortfolioPackageAggregate,
-): SummaryRow[] {
-  return occupiedEpcClasses(
-    aggregate.epcCountsBefore,
-    aggregate.epcCountsAfter,
-  ).flatMap((epcClass) => [
-    {
-      metric: `EPC ${epcClass} before (buildings)`,
-      value: aggregate.epcCountsBefore[epcClass] ?? 0,
-    },
-    {
-      metric: `EPC ${epcClass} after (buildings)`,
-      value: aggregate.epcCountsAfter[epcClass] ?? 0,
-    },
-  ]);
 }

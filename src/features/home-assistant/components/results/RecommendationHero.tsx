@@ -17,7 +17,6 @@ import {
   IconLeaf,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
-import { EPCBadge } from "../../../../components/shared";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
 import {
   resolveSavingsAvailability,
@@ -113,51 +112,32 @@ export function RecommendationHero({
             </Alert>
           ) : winner && currentScenario ? (
             <>
-              <div className={classes.recoHead}>
-                <div>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      marginBottom: 6,
-                    }}
-                  >
-                    <ScenDot scenarioId={winner.id} size={12} />
-                    <Text size="xs" c="dimmed" fw={500}>
-                      {winner.measures.length} measures
-                      {winnerResult?.capitalExpenditure !== undefined
-                        ? ` · ${formatCurrency(winnerResult.capitalExpenditure)} investment`
-                        : null}
-                    </Text>
-                  </div>
-                  <Text component="h2" fz={26} fw={700} lh={1.15} m={0}>
-                    {winner.label}
+              <div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    marginBottom: 6,
+                  }}
+                >
+                  <ScenDot scenarioId={winner.id} size={12} />
+                  <Text size="xs" c="dimmed" fw={500}>
+                    {winner.measures.length} measures
+                    {winnerResult?.capitalExpenditure !== undefined
+                      ? ` · ${formatCurrency(winnerResult.capitalExpenditure)} investment`
+                      : null}
                   </Text>
-                  <SavingsCopy
-                    current={currentScenario}
-                    winner={winner}
-                    result={winnerResult}
-                    savings={savings}
-                  />
                 </div>
-                <div className={classes.recoEpcSwap}>
-                  <div>
-                    <div className={classes.epcLabel}>EPC today</div>
-                    <EPCBadge
-                      epcClass={currentScenario.epcClass}
-                      size="md"
-                      estimated
-                    />
-                  </div>
-                  <span className={classes.epcArrow} aria-hidden>
-                    →
-                  </span>
-                  <div>
-                    <div className={classes.epcLabel}>After</div>
-                    <EPCBadge epcClass={winner.epcClass} size="md" estimated />
-                  </div>
-                </div>
+                <Text component="h2" fz={26} fw={700} lh={1.15} m={0}>
+                  {winner.label}
+                </Text>
+                <SavingsCopy
+                  current={currentScenario}
+                  winner={winner}
+                  result={winnerResult}
+                  savings={savings}
+                />
               </div>
 
               <div className={classes.recoMetrics}>

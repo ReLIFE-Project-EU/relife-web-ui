@@ -10,7 +10,7 @@ import {
   RSE_UNAVAILABLE_REASONS,
   type RSEUnavailableReason,
 } from "../constants";
-import { extractUniTotals, getEPCClass } from "../../../services/energyUtils";
+import { extractUniTotals } from "../../../services/energyUtils";
 import {
   MEASURE_TO_ELEMENT,
   PV_MEASURE_ID,
@@ -104,8 +104,8 @@ export const rseForecastingCacheService = createRSEForecastingCacheService();
  * Cache payloads always describe the whole reference building, so rows that
  * model a single dwelling (Apartments) take their share of every
  * absolute figure by floor area — the same share-of-the-bill scaling HRA
- * applies. Percentages and the display EPC are intensities, so they are
- * unchanged by construction and stay on the cached whole-building basis.
+ * applies. Percentages are ratios, so they are unchanged by construction and
+ * stay on the cached whole-building basis.
  */
 export function normalizeEntry(
   entry: RSEForecastingCacheEntry,
@@ -115,7 +115,7 @@ export function normalizeEntry(
 
   assertPositiveFinite(
     details.floorArea,
-    "Archetype floor area must be available to derive the display EPC label.",
+    "Archetype floor area must be available to scale cached results.",
     RSE_UNAVAILABLE_REASONS.invalidFloorArea,
   );
   assertNonNegativeFinite(
@@ -194,12 +194,6 @@ export function normalizeEntry(
     annualCo2ReductionPercentage: percentageSavings(
       entry.baseline.co2.annualEmissionsTonCo2eq,
       annualCo2ReductionTon,
-    ),
-    baselineDisplayEpcClass: getEPCClass(
-      entry.baseline.annualEnergyKwh / details.floorArea,
-    ),
-    renovatedDisplayEpcClass: getEPCClass(
-      entry.renovated.annualEnergyKwh / details.floorArea,
     ),
     generatedAt: entry.generatedAt,
     provenance: entry.provenance,

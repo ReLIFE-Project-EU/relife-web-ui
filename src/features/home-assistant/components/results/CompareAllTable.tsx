@@ -7,7 +7,6 @@
 
 import { Text } from "@mantine/core";
 import { IconCrown } from "@tabler/icons-react";
-import { EPCBadge } from "../../../../components/shared";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
 import { relifeConcepts } from "../../../../constants/relifeConcepts";
 import { computeLifetimeCarbonKgCo2e } from "../../../../services/carrierSavingsService";
@@ -69,7 +68,6 @@ export function CompareAllTable({
         <thead>
           <tr>
             <th>Package</th>
-            <th>EPC</th>
             <th>Thermal needs</th>
             <th>
               {relifeConcepts["thermal-health-impact"].label}{" "}
@@ -102,9 +100,6 @@ export function CompareAllTable({
                     Current home
                   </div>
                 </div>
-              </td>
-              <td>
-                <EPCBadge epcClass={current.epcClass} size="sm" estimated />
               </td>
               <td>{formatEnergyPerYear(current.annualEnergyNeeds)}</td>
               <td>
@@ -179,9 +174,6 @@ export function CompareAllTable({
                       />
                     ) : null}
                   </div>
-                </td>
-                <td>
-                  <EPCBadge epcClass={scenario.epcClass} size="sm" estimated />
                 </td>
                 <td>{formatEnergyPerYear(scenario.annualEnergyNeeds)}</td>
                 <td>

@@ -8,8 +8,6 @@ export type ConceptId =
   | "apartment-floor-area"
   | "annual-building-thermal-needs"
   | "system-energy-consumption"
-  | "estimated-epc"
-  | "scenario-epc-comparison-note"
   | "energy-intensity"
   | "pv-generation"
   | "pv-self-consumption"
@@ -54,7 +52,6 @@ export interface ReLifeConcept {
 
 export type MeasureEffectKind =
   | "lowers"
-  | "may-improve"
   | "indirectly-lowers"
   | "does-not-lower"
   | "generates"
@@ -118,21 +115,6 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
       "Differs from Annual building thermal needs because of system efficiency: a gas boiler at η≈0.9 burns ~110 kWh of gas per 100 kWh of heat, while a heat pump at COP≈3 uses ~33 kWh of electricity for the same heat. Covers HVAC end uses only — domestic hot water, lighting, and appliances are not included. Shown only when the simulation returns delivered energy.",
     professionalDetail:
       "Computed by extractUniTotals as deliveredThermal + E_delivered_electric_total_kWh from the UNI/TS 11300 summary; deliveredThermal is forced to 0 when a heat pump is detected (heat_pump_applied) to avoid double-counting electric input. Used as the energy-savings basis for Financial API calculations when comparable before-and-after values are available.",
-  },
-  "estimated-epc": {
-    id: "estimated-epc",
-    label: "Estimated EPC",
-    description:
-      "Approximate energy class from modeled primary energy per floor area (UNI EP_total), shown for comparison.",
-    caveat: "This is not an official Energy Performance Certificate.",
-    professionalDetail:
-      "Letter bands map primary-energy intensity (kWh/m²/year, the EU EPgl,nren basis) to approximate classes via resolveEpcRatingIntensity. Falls back to delivered energy, then to thermal needs, when primary energy is unavailable (e.g. heat-pump baselines without UNI data); in that fallback the class is rougher and does not fully reflect the heating fuel.",
-  },
-  "scenario-epc-comparison-note": {
-    id: "scenario-epc-comparison-note",
-    label: "Estimated EPC in scenario comparison",
-    description:
-      "Some columns include a heating-system upgrade and/or solar (PV). The estimated class is derived from modeled primary energy per m² (UNI EP_total). Heating-system upgrades change that primary-energy figure, so they can move the class. Solar (PV) self-consumption lowers delivered energy and running costs, but is not netted out of the primary-energy figure the class is based on — so a PV package can save money and grid electricity without changing the estimated class. This is not an official Energy Performance Certificate.",
   },
   "energy-intensity": {
     id: "energy-intensity",
@@ -425,13 +407,6 @@ const envelopeMeasureEffect = (
         "The building loses or gains less heat, so it needs less heating and cooling to stay comfortable.",
     },
     {
-      kind: "may-improve",
-      conceptId: "estimated-epc",
-      label: "May improve estimated EPC",
-      description:
-        "Lower modeled energy intensity can move the estimated EPC class upward.",
-    },
-    {
       kind: "indirectly-lowers",
       conceptId: "system-energy-consumption",
       label: "Indirectly lowers system energy",
@@ -557,5 +532,4 @@ export const financialMetricConceptIds = {
   ARV: "arv",
   BreakEven: "break-even-year",
   EnergyReduction: "annual-building-thermal-needs",
-  EPCClass: "estimated-epc",
 } as const satisfies Record<string, ConceptId>;

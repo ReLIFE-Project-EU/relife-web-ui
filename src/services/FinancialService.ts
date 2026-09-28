@@ -97,10 +97,9 @@ function resolveConstructionYear(building: BuildingInfo): number {
 /**
  * Energy intensity (kWh/m²/year) sent to the ARV model as `energy_consumption_*`.
  *
- * The ARV model resolves a national EPC class from this value, so it must use
- * the same basis as the displayed EPC badge (primary energy, falling back to
- * delivered then thermal demand) — otherwise the property-value story and the
- * EPC badge can contradict each other.
+ * The ARV model resolves a national EPC class from this value, so it uses the
+ * EPC rating basis: primary energy, falling back to delivered then thermal
+ * demand.
  */
 function resolveArvEnergyIntensity(
   source: {
@@ -403,7 +402,6 @@ export class FinancialService implements IFinancialService {
         "financial.scenario.start",
         {
           scenarioId: scenario.id,
-          scenarioEPC: scenario.epcClass,
           measureIds: scenario.measureIds,
         },
         auditCtx,

@@ -89,8 +89,6 @@ function makeSimulation(entry: RSEForecastingCacheEntry): RSESimulationResult {
     renovatedAnnualEmissionsTonCo2eq: 1,
     annualCo2ReductionTon: packageMultiplier,
     annualCo2ReductionPercentage: 50,
-    baselineDisplayEpcClass: "C",
-    renovatedDisplayEpcClass: "B",
     generatedAt: "2026-05-13T00:00:00.000Z",
     provenance: {
       source: "manual-seed",

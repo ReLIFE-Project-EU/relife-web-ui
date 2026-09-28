@@ -12,7 +12,6 @@ import {
   IconCircleMinus,
   IconInfoCircle,
   IconSolarPanel,
-  IconTrendingUp,
 } from "@tabler/icons-react";
 import type {
   MeasureEffectKind,
@@ -29,7 +28,6 @@ const effectStyle: Record<
   }
 > = {
   lowers: { color: "green", icon: IconArrowDown },
-  "may-improve": { color: "teal", icon: IconTrendingUp },
   "indirectly-lowers": { color: "green", icon: IconBolt },
   "does-not-lower": { color: "gray", icon: IconCircleMinus },
   generates: { color: "yellow", icon: IconSolarPanel },

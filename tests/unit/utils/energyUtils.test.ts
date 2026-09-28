@@ -2,7 +2,6 @@ import { describe, test, expect } from "vitest";
 
 import {
   computeDailyMeanOperativeTemperatures,
-  getEPCClass,
   resolveEpcRatingIntensity,
   transformColumnarToRowFormat,
   calculateAnnualTotals,
@@ -14,40 +13,6 @@ import type {
   HourlyBuildingColumnar,
   UNI11300Results,
 } from "../../../src/types/forecasting";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// getEPCClass
-// ─────────────────────────────────────────────────────────────────────────────
-
-describe("getEPCClass", () => {
-  test("returns A+ at the inclusive upper bound (30 kWh/m²/yr)", () => {
-    expect(getEPCClass(30)).toBe("A+");
-  });
-
-  test("transitions to A just above the A+ threshold", () => {
-    expect(getEPCClass(30.01)).toBe("A");
-  });
-
-  test("returns A at its inclusive upper bound (50 kWh/m²/yr)", () => {
-    expect(getEPCClass(50)).toBe("A");
-  });
-
-  test("returns G for values above all thresholds (500 kWh/m²/yr)", () => {
-    expect(getEPCClass(500)).toBe("G");
-  });
-
-  test("returns A+ for the minimum value (0 kWh/m²/yr)", () => {
-    expect(getEPCClass(0)).toBe("A+");
-  });
-
-  test("returns correct class at every threshold boundary", () => {
-    expect(getEPCClass(90)).toBe("B");
-    expect(getEPCClass(150)).toBe("C");
-    expect(getEPCClass(230)).toBe("D");
-    expect(getEPCClass(330)).toBe("E");
-    expect(getEPCClass(450)).toBe("F");
-  });
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // resolveEpcRatingIntensity
@@ -79,21 +44,6 @@ describe("resolveEpcRatingIntensity", () => {
   test("falls back to thermal demand and flags it when neither is available", () => {
     expect(resolveEpcRatingIntensity({ annualEnergyNeeds: 9000 }, 100)).toEqual(
       { intensity: 90, basis: "thermal-demand" },
-    );
-  });
-
-  test("system swap moves the rating: same thermal demand, lower primary energy", () => {
-    // Gas boiler vs heat pump: identical thermal needs, very different primary energy.
-    const gasBoiler = resolveEpcRatingIntensity(
-      { primaryEnergy: 22000, annualEnergyNeeds: 15000 },
-      100,
-    );
-    const heatPump = resolveEpcRatingIntensity(
-      { primaryEnergy: 9000, annualEnergyNeeds: 15000 },
-      100,
-    );
-    expect(getEPCClass(gasBoiler.intensity)).not.toBe(
-      getEPCClass(heatPump.intensity),
     );
   });
 

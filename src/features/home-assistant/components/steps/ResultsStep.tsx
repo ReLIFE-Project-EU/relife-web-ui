@@ -313,7 +313,6 @@ export function ResultsStep() {
                         <EnergyDeepDive
                           current={currentScenario}
                           selected={selectedScenario}
-                          floorArea={state.building.floorArea ?? undefined}
                         />
                         <FinancialDeepDive
                           selected={selectedScenario}

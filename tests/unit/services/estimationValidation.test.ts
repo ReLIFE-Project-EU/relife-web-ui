@@ -36,7 +36,6 @@ function makeEstimation(
   overrides: Partial<EstimationResult["archetype"]> = {},
 ): EstimationResult {
   return {
-    estimatedEPC: "G",
     annualEnergyNeeds: 0,
     heatingCoolingNeeds: 0,
     heatingDemand: 0,
@@ -167,7 +166,6 @@ describe("validateEstimation", () => {
 
   test("missing archetype data degrades gracefully without crashing", () => {
     const estimation: EstimationResult = {
-      estimatedEPC: "G",
       annualEnergyNeeds: 0,
       heatingCoolingNeeds: 0,
       heatingDemand: 0,

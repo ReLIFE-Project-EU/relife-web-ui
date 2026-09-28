@@ -229,7 +229,7 @@ Answer these questions by reading the code (not assuming):
 - How is the area scale factor computed? What is the ratio?
 - Which energy values are scaled by this factor, and which are not?
 - How is delivered energy extracted from the API response?
-- How is EPC class derived from energy intensity? What thresholds are used?
+- Which energy basis backs the energy intensity (primary, delivered, or thermal-demand fallback)?
 - How is annual energy cost computed? What price per kWh is applied?
 - Is the energy price flat or stochastic?
 - How are comfort and flexibility indices computed? Are they frontend-defined heuristics?
@@ -263,8 +263,7 @@ Answer these questions:
 - How are energy savings computed? Is it delivered energy difference, thermal needs difference, or something else?
 - Is there a feature flag or constant controlling the savings semantic?
 - How are funding options applied to CAPEX? (subsidy percentage? loan percentage?)
-- How is the ARV request constructed? Which EPC class is used — scenario EPC or current EPC?
-- What determines whether system measures use current EPC vs. scenario EPC?
+- How is the ARV request constructed? Which energy intensities are sent as before and after, and on which basis?
 - How is the risk assessment request built? Which fields are passed? What is omitted?
 - When is risk assessment skipped? Is there a zero-savings check?
 - How are API responses normalized? Any scale factors? Default values?
@@ -375,7 +374,7 @@ For each financial indicator across all buildings:
 - Are there extreme outliers? (e.g., one building with NPV 100× the mean)
 - Do similar building types produce similar results? If not, why not?
 - Are there buildings with zero or negative energy savings? Why?
-- Do all buildings show the same EPC class? (suspicious if yes)
+- Do all buildings show the same energy intensity? (suspicious if yes)
 
 ---
 
@@ -503,7 +502,7 @@ the implementation, the inputs, or the domain assumptions.
 - NPV exceeding 5× CAPEX for standard energy renovations is anomalous.
 - Payback period exceeding 2× project lifetime indicates negative or negligible savings.
 - Energy savings cannot exceed baseline consumption.
-- EPC class should not degrade after renovation (unless measures are intentionally removed).
+- Energy intensity should not increase after renovation (unless measures are intentionally removed).
 - ARV per square meter should be within plausible regional market ranges.
 - Area scale factor should be within [0.2, 5.0] for reasonable residential buildings.
 
@@ -615,7 +614,7 @@ For each anomaly, identify the layer where the issue originates:
 ### 6. Known Disharmonies (Expected Gaps)
 
 [Any gaps that are expected given the current architecture, e.g.,
-"Frontend uses flat pricing for EPC display, backend uses stochastic pricing.
+"Frontend uses flat pricing for energy cost display, backend uses stochastic pricing.
 The displayed cost will differ from financial analysis.
 This is NOT a bug — it's an intentional simplification."]
 

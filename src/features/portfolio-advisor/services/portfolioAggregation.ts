@@ -49,10 +49,6 @@ export interface PortfolioPackageAggregate {
 
   portfolioRoi: number | undefined;
   portfolioPaybackYears: number | undefined;
-
-  /** Counts of contributing buildings per EPC class letter. */
-  epcCountsBefore: Record<string, number>;
-  epcCountsAfter: Record<string, number>;
 }
 
 /**
@@ -62,8 +58,8 @@ export interface PortfolioPackageAggregate {
  * because that is what FinancialService prices the savings against; the two
  * sources disagree materially (~15% on delivered energy in a plain run), so a
  * chart built on the estimation would contradict the money beside it. Thermal
- * needs and EPC stay on the estimation, where the rest of the screen reads
- * them, and where the two sources agree. Resolved here so the split can later
+ * needs stay on the estimation, where the rest of the screen reads them, and
+ * where the two sources agree. Resolved here so the split can later
  * be unified in one place.
  */
 function baselineFiguresOf(result: BuildingAnalysisResult) {
@@ -71,7 +67,6 @@ function baselineFiguresOf(result: BuildingAnalysisResult) {
   return {
     thermalKwh: result.estimation?.annualEnergyNeeds,
     deliveredKwh: scenario?.deliveredTotal,
-    epcClass: result.estimation?.estimatedEPC,
     emissionsTon: scenario?.annualEmissionsTonCo2e,
   };
 }
@@ -99,11 +94,6 @@ function resolveOptional(
   contributors: number,
 ): number | undefined {
   return total.complete && contributors > 0 ? total.sum : undefined;
-}
-
-function tallyEpc(counts: Record<string, number>, epcClass?: string): void {
-  if (!epcClass) return;
-  counts[epcClass] = (counts[epcClass] ?? 0) + 1;
 }
 
 function isFiniteNumber(value: number | undefined): value is number {
@@ -140,8 +130,6 @@ export function aggregatePortfolioPackage(input: {
   const embodiedCarbon = newOptionalTotal();
   const wholeLifeCarbon = newOptionalTotal();
 
-  const epcCountsBefore: Record<string, number> = {};
-  const epcCountsAfter: Record<string, number> = {};
   const cashFlowContributions: Array<{
     netByYear: number[];
     count: number;
@@ -216,9 +204,6 @@ export function aggregatePortfolioPackage(input: {
         ? wholeLifeKgCo2e / KG_PER_TONNE
         : undefined,
     );
-
-    tallyEpc(epcCountsBefore, baseline.epcClass);
-    tallyEpc(epcCountsAfter, scenario.epcClass);
   }
 
   const contributors = coverage.contributing;
@@ -246,7 +231,5 @@ export function aggregatePortfolioPackage(input: {
         ? netProfitEur / totalCapexEur
         : undefined,
     portfolioPaybackYears: computePooledPaybackYears(cashFlowContributions),
-    epcCountsBefore,
-    epcCountsAfter,
   };
 }

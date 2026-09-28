@@ -34,7 +34,6 @@ const cacheEntryRow = {
   payload: {
     baseline: {
       annualEnergyKwh: 12_000,
-      displayEpcClass: "D",
       primaryEnergyUni11300Summary: {},
       co2Inputs: [],
       co2: {
@@ -54,7 +53,6 @@ const cacheEntryRow = {
     },
     renovated: {
       annualEnergyKwh: 8_000,
-      displayEpcClass: "C",
       primaryEnergyUni11300Summary: {},
       co2Inputs: [],
       co2: {

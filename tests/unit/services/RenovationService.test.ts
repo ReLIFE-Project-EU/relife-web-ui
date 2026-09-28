@@ -115,7 +115,6 @@ const mockBuilding: BuildingInfo = {
 };
 
 const mockEstimation: EstimationResult = {
-  estimatedEPC: "D",
   annualEnergyNeeds: 15000,
   heatingCoolingNeeds: 15000,
   heatingDemand: 10000,

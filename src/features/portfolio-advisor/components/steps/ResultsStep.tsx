@@ -1,7 +1,7 @@
 /**
  * ResultsStep Component
  * Step 3: Portfolio analysis results display, organized in two tabs:
- *   1. Portfolio summary — portfolio totals + EPC distribution + energy charts
+ *   1. Portfolio summary — portfolio totals + energy charts
  *   2. Per building     — sortable / filterable results table with row drill-down
  *   Methodology / data transparency is shown inline under Portfolio summary
  */
@@ -52,7 +52,6 @@ import {
 } from "../results/BuildingResultsTable";
 import { BuildingDrillDownModal } from "../results/BuildingDrillDownModal";
 import { EnergyChart } from "../results/EnergyChart";
-import { EPCDistribution } from "../results/EPCDistribution";
 import {
   aggregatePortfolioPackage,
   type PortfolioPackageAggregate,
@@ -324,21 +323,6 @@ const PortfolioSummary = memo(function PortfolioSummary({
           </Stack>
         </Card>
       </SimpleGrid>
-
-      <Card withBorder radius="md" p="lg">
-        <Stack gap="sm">
-          <Box>
-            <Title order={5}>EPC distribution</Title>
-            <Text size="xs" c="dimmed">
-              Buildings per class before and after renovation.
-            </Text>
-          </Box>
-          <EPCDistribution
-            before={aggregate.epcCountsBefore}
-            after={aggregate.epcCountsAfter}
-          />
-        </Stack>
-      </Card>
     </Stack>
   );
 });
@@ -358,14 +342,6 @@ function DataTransparencyContent() {
         </ThemeIcon>
       }
     >
-      <List.Item>
-        <Text size="xs" c="dimmed">
-          <Text span size="xs" fw={500} c="dimmed">
-            EPC classes
-          </Text>{" "}
-          — {ConceptSentence("estimated-epc")}
-        </Text>
-      </List.Item>
       <List.Item>
         <Text size="xs" c="dimmed">
           <Text span size="xs" fw={500} c="dimmed">

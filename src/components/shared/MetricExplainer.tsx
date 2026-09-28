@@ -22,8 +22,7 @@ export type FinancialMetricType =
   | "CAPEX"
   | "ARV"
   | "BreakEven"
-  | "EnergyReduction"
-  | "EPCClass";
+  | "EnergyReduction";
 
 interface MetricExplainerProps {
   metric: FinancialMetricType;

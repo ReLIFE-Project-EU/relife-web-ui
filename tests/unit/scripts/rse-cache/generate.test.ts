@@ -53,7 +53,6 @@ describe("generateRSECacheSeedSql", () => {
     expect(simulateCalls[1]).toEqual(
       expect.objectContaining({ include_baseline: false }),
     );
-    expect(result.entries[0].payload.baseline.displayEpcClass).toBe("C");
     expect(result.sql).toContain("INSERT INTO public.rse_cache_versions");
     expect(result.sql).toContain(
       "ON CONFLICT (cache_version) DO UPDATE SET status = EXCLUDED.status",

@@ -19,7 +19,6 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import {
-  IconArrowRight,
   IconChevronDown,
   IconChevronUp,
   IconInfoCircle,
@@ -27,7 +26,6 @@ import {
 } from "@tabler/icons-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { DeltaBadge } from "../../../../components/shared/DeltaValue";
-import { EPCBadge } from "../../../../components/shared/EPCBadge";
 import { MetricEyebrow } from "../../../../components/shared/MetricEyebrow";
 import {
   formatCurrency,
@@ -38,7 +36,6 @@ import {
   getEnergyReduction,
   isPaybackBeyondHorizon,
 } from "../../../../utils/formatters";
-import { getEnergyIntensity } from "../../../../utils/epcUtils";
 import type { PRABuilding, BuildingAnalysisResult } from "../../context/types";
 import {
   resolveSavingsAvailability,
@@ -62,9 +59,8 @@ type StatusFilter =
 
 /**
  * Below this the table scrolls sideways rather than compressing. Set from the
- * width at which the EPC badges stop truncating and the system-energy value
- * stops wrapping, which is wider than the mockup's 900 because the real screen
- * keeps the full concept labels.
+ * width at which the system-energy value stops wrapping, which is wider than
+ * the mockup's 900 because the real screen keeps the full concept labels.
  */
 const TABLE_MIN_WIDTH = 1040;
 
@@ -235,7 +231,7 @@ export function BuildingResultsTable({
     0,
   );
 
-  const energyColumnCount = showDeliveredEnergyColumn ? 3 : 2;
+  const energyColumnCount = showDeliveredEnergyColumn ? 2 : 1;
 
   return (
     <Card withBorder radius="md" p={0}>
@@ -293,9 +289,6 @@ export function BuildingResultsTable({
                 sort={sort}
                 onSort={toggleSort}
               />
-              <PlainTh unit="before → after" groupStart>
-                Estimated EPC
-              </PlainTh>
               <SortableTh
                 label="Energy reduction"
                 unit="thermal needs"
@@ -303,6 +296,7 @@ export function BuildingResultsTable({
                 sort={sort}
                 onSort={toggleSort}
                 numeric
+                groupStart
               />
               {showDeliveredEnergyColumn && (
                 <PlainTh unit="kWh delivered/year" numeric>
@@ -384,16 +378,6 @@ function ResultsRow({
   const appraised = availability === "appraised";
   const fr = result.financialResults;
   const renovated = renovatedOf(result);
-  const epcBefore = result.estimation?.estimatedEPC;
-  const epcAfter = renovated?.epcClass;
-  const intensityBefore = getEnergyIntensity(
-    result.estimation ?? {},
-    building.floorArea,
-  );
-  const intensityAfter = getEnergyIntensity(
-    renovated ?? {},
-    building.floorArea,
-  );
   // Baseline scenario, not the step-1 estimation: this is the figure the
   // Financial service prices savings against, and what the portfolio summary
   // above this table already sums.
@@ -441,48 +425,10 @@ function ResultsRow({
           )}
         </Group>
       </Table.Td>
-      <Table.Td style={{ borderLeft: GROUP_BORDER, verticalAlign: "middle" }}>
-        {epcBefore || epcAfter ? (
-          // Mantine's Badge label is `overflow: hidden`, so its min-content
-          // width is near zero and the column happily squeezes "~G" down to
-          // "~..". Pinning the row to max-content gives the cell a real
-          // minimum for the table to lay out against.
-          <Group gap="xs" wrap="nowrap" style={{ minWidth: "max-content" }}>
-            {epcBefore ? (
-              <EPCBadge
-                epcClass={epcBefore}
-                size="sm"
-                energyIntensity={intensityBefore}
-                estimated
-              />
-            ) : (
-              <Text size="sm" c="dimmed">
-                —
-              </Text>
-            )}
-            <IconArrowRight
-              size={14}
-              color="var(--mantine-color-gray-5)"
-              aria-hidden
-            />
-            {epcAfter ? (
-              <EPCBadge
-                epcClass={epcAfter}
-                size="sm"
-                energyIntensity={intensityAfter}
-                estimated
-              />
-            ) : (
-              <Text size="sm" c="dimmed">
-                —
-              </Text>
-            )}
-          </Group>
-        ) : (
-          "-"
-        )}
-      </Table.Td>
-      <Table.Td ta="right" style={{ verticalAlign: "middle" }}>
+      <Table.Td
+        ta="right"
+        style={{ borderLeft: GROUP_BORDER, verticalAlign: "middle" }}
+      >
         {energyReduction !== undefined ? (
           <DeltaBadge delta={energyReduction} higherIsBetter={false} />
         ) : (

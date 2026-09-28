@@ -37,7 +37,7 @@ const features = [
   {
     icon: IconChartBar,
     title: "Financial & Risk Outputs",
-    description: `Review ${relifeConcepts.npv.label}, ${relifeConcepts.roi.label}, ${relifeConcepts["payback-period"].label}, investment, energy/EPC shifts, and Monte Carlo risk ranges or probabilities when the Financial Service returns them.`,
+    description: `Review ${relifeConcepts.npv.label}, ${relifeConcepts.roi.label}, ${relifeConcepts["payback-period"].label}, investment, energy shifts, and Monte Carlo risk ranges or probabilities when the Financial Service returns them.`,
   },
   {
     icon: IconCalculator,

@@ -34,7 +34,6 @@ import type {
   RSEForecastingCacheEntry,
   RSEForecastingScenarioSnapshot,
 } from "../../src/features/strategy-explorer/types.ts";
-import { getEPCClass } from "../../src/services/energyUtils.ts";
 import { buildECMParams } from "../../src/services/renovationEcmParams.ts";
 import type { RenovationMeasureId } from "../../src/types/renovation.ts";
 import type {
@@ -720,13 +719,11 @@ async function buildPayload(params: {
   const baseline = toScenarioSnapshot(
     baselineScenario,
     baselineInputs,
-    params.target.archetype.floorArea,
     baselineComponents,
   );
   const renovated = toScenarioSnapshot(
     renovatedScenario,
     renovatedInputs,
-    params.target.archetype.floorArea,
     renovatedComponents,
   );
   const co2Comparison = toComparisonSnapshot(baseline, renovated);
@@ -825,12 +822,11 @@ async function calculateEmissionComponents(
 }
 
 /** Convert a single ECM scenario plus its CO2 comparison results into the
- *  snapshot shape stored in the cache payload.  Computes the display EPC class
- *  from annual energy per floor area and aggregates CO2 metrics from components. */
+ *  snapshot shape stored in the cache payload, aggregating CO2 metrics from
+ *  components. */
 function toScenarioSnapshot(
   scenario: ECMScenario,
   co2Inputs: RSEEmissionScenarioInput[],
-  floorArea: number,
   co2Components: RSEEmissionResult[],
 ): RSEForecastingScenarioSnapshot {
   const summary = requirePrimaryEnergySummary(scenario);
@@ -868,7 +864,6 @@ function toScenarioSnapshot(
 
   return {
     annualEnergyKwh,
-    displayEpcClass: getEPCClass(annualEnergyKwh / floorArea),
     primaryEnergyUni11300Summary: summary,
     pvHpSummary: readOptionalRecord(scenario, "results.pv_hp.summary"),
     co2Inputs,
