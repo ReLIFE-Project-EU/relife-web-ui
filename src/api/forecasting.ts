@@ -78,12 +78,13 @@ export const forecasting = {
       name: params.name,
     });
 
-    return request<{ bui: unknown; system: unknown }>(
-      `/forecasting/building?${searchParams.toString()}`,
-      {
-        method: "POST",
-      },
-    );
+    return request<{
+      bui: unknown;
+      system: unknown;
+      uni11300_input_example: unknown;
+    }>(`/forecasting/building?${searchParams.toString()}`, {
+      method: "POST",
+    });
   },
 
   /**
@@ -177,6 +178,9 @@ export const forecasting = {
       formData.append("bui_json", JSON.stringify(cp.bui));
       if (cp.system) {
         formData.append("system_json", JSON.stringify(cp.system));
+      }
+      if (cp.uni11300Config) {
+        formData.append("uni11300_json", JSON.stringify(cp.uni11300Config));
       }
     }
 

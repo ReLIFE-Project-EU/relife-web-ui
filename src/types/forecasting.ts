@@ -225,6 +225,8 @@ export interface ECMApplicationResponse {
   country: string | null;
   /** Weather data source */
   weather_source: "pvgis" | "epw";
+  /** Applied UNI settings: archetype, supplied custom config, or historical example. */
+  uni11300_config_source?: "archetype" | "custom" | "example";
   /** U-values requested in the API call */
   u_values_requested: {
     roof: number | null;
@@ -340,6 +342,8 @@ export interface ECMCustomBuildingParams extends ECMBaseParams {
   bui: unknown;
   /** Modified system payload from applyAllModifications() (optional) */
   system?: unknown;
+  /** UNI settings from the source archetype, retained for custom scenarios. */
+  uni11300Config?: unknown;
 }
 
 /**

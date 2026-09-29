@@ -169,6 +169,11 @@ const stubArchetypeDetails: ArchetypeDetails = {
   location: { lat: 37.98, lng: 23.73 },
   bui: realisticBui,
   system: realisticSystem,
+  uni11300Config: {
+    input_unit: "Wh",
+    heating_params: { eta_generation: 0.8 },
+    cooling_params: { eer: 2.5 },
+  },
 };
 
 const unmodifiedBuilding: BuildingInfo = {
@@ -236,10 +241,20 @@ describe("EnergyService", () => {
       modifications: { floorArea: 150 },
     };
 
-    await service.estimateEPC(modifiedBuilding);
+    const { estimation } = await service.estimateEPC(modifiedBuilding);
 
     expect(mockValidateCustomBuilding).toHaveBeenCalledOnce();
     expect(mockSimulateECM).toHaveBeenCalledTimes(2);
+    expect(mockSimulateECM).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bui: realisticBui,
+        uni11300Config: stubArchetypeDetails.uni11300Config,
+        baseline_only: true,
+      }),
+    );
+    expect(estimation.uni11300Config).toEqual(
+      stubArchetypeDetails.uni11300Config,
+    );
   });
 
   test("identical archetype simulations reuse the in-flight request", async () => {
@@ -312,6 +327,7 @@ describe("EnergyService", () => {
       expect.objectContaining({
         bui: validatedBui,
         system: realisticSystem,
+        uni11300Config: stubArchetypeDetails.uni11300Config,
         baseline_only: true,
       }),
     );

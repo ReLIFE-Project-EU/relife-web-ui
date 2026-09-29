@@ -356,6 +356,7 @@ export class BuildingService implements IBuildingService {
       },
       bui,
       system,
+      uni11300Config: response.uni11300_input_example,
     };
 
     this.archetypeDetailsCache.set(cacheKey, details);

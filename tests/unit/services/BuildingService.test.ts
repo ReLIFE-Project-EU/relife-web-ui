@@ -111,6 +111,11 @@ const stubBuiResponse = {
     distribution_loss_coeff: 0.02,
     efficiency_model: {},
   },
+  uni11300_input_example: {
+    input_unit: "Wh",
+    heating_params: { eta_generation: 0.94 },
+    cooling_params: { cop_generation: 3.3 },
+  },
 };
 
 const archetypeList = [
@@ -135,6 +140,9 @@ describe("BuildingService", () => {
     const result = await service.getArchetypeDetails(archetypeList[0]);
 
     expect(result.floorArea).toBe(120);
+    expect(result.uni11300Config).toEqual(
+      stubBuiResponse.uni11300_input_example,
+    );
   });
 
   test("getArchetypeDetails computes area-weighted wall U-value", async () => {

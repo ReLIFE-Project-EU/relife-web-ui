@@ -113,11 +113,17 @@ describe("buildECMParams", () => {
   test("returns custom-building ECM params when a modified BUI is supplied", () => {
     const modifiedBui = { building: { net_floor_area: 100 } };
     const modifiedSystem = { heating: "custom" };
+    const uni11300Config = {
+      input_unit: "Wh",
+      heating_params: {},
+      cooling_params: {},
+    };
 
     const params = buildECMParams(["wall-insulation"], {
       kind: "custom",
       modifiedBui,
       modifiedSystem,
+      uni11300Config,
       floorArea: 100,
     });
 
@@ -125,6 +131,7 @@ describe("buildECMParams", () => {
       expect.objectContaining({
         bui: modifiedBui,
         system: modifiedSystem,
+        uni11300Config,
         scenario_elements: "wall",
         u_wall: 0.25,
       }),
@@ -132,6 +139,16 @@ describe("buildECMParams", () => {
     expect(params).not.toHaveProperty("category");
     expect(params).not.toHaveProperty("country");
     expect(params).not.toHaveProperty("name");
+  });
+
+  test("rejects a modified building without its UNI settings", () => {
+    expect(() =>
+      buildECMParams([], {
+        kind: "custom",
+        modifiedBui: {},
+        floorArea: 100,
+      }),
+    ).toThrow("missing its archetype UNI/TS 11300 settings");
   });
 
   test("returns archetype ECM params when archetype context is supplied", () => {

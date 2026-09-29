@@ -151,6 +151,7 @@ export interface EstimationResult {
    * used for baseline simulation, ensuring savings are computed on comparable results. */
   modifiedBui?: unknown;
   modifiedSystem?: unknown;
+  uni11300Config?: unknown;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

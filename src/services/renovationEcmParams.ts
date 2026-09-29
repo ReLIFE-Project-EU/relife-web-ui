@@ -44,6 +44,7 @@ export type BuildECMParamsContext =
       kind: "custom";
       modifiedBui: unknown;
       modifiedSystem?: unknown;
+      uni11300Config?: unknown;
       floorArea: number | null;
     };
 
@@ -51,6 +52,11 @@ export function buildECMParams(
   measureIds: readonly RenovationMeasureId[],
   context: BuildECMParamsContext,
 ): ECMApplicationParams {
+  if (context.kind === "custom" && !context.uni11300Config) {
+    throw new Error(
+      "Modified building is missing its archetype UNI/TS 11300 settings",
+    );
+  }
   const elements = measureIds
     .map((measureId) => MEASURE_TO_ELEMENT[measureId])
     .filter((element): element is string => element !== undefined)
@@ -123,6 +129,7 @@ export function buildECMParams(
     ? ({
         bui: context.modifiedBui,
         system: context.modifiedSystem,
+        uni11300Config: context.uni11300Config,
         ...commonParams,
       } as ECMCustomBuildingParams)
     : ({

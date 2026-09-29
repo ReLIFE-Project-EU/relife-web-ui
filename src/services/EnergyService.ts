@@ -553,6 +553,7 @@ export class EnergyService implements IEnergyService {
     userArea: number;
     modifiedBui?: unknown;
     modifiedSystem?: unknown;
+    uni11300Config?: unknown;
     validationNotes?: string[];
     referenceEstimation?: EstimationResult["referenceEstimation"];
     auditCtx?: AuditCtx;
@@ -566,6 +567,7 @@ export class EnergyService implements IEnergyService {
       userArea,
       modifiedBui,
       modifiedSystem,
+      uni11300Config,
       validationNotes,
       referenceEstimation,
       auditCtx,
@@ -707,6 +709,7 @@ export class EnergyService implements IEnergyService {
         ? {
             modifiedBui,
             modifiedSystem,
+            uni11300Config,
           }
         : {}),
     };
@@ -812,6 +815,7 @@ export class EnergyService implements IEnergyService {
             kind: "custom",
             modifiedBui: validatedBui,
             modifiedSystem: validatedSystem,
+            uni11300Config: archetypeDetails.uni11300Config,
             floorArea:
               building.modifications.floorArea ?? archetypeDetails.floorArea,
           }),
@@ -850,6 +854,7 @@ export class EnergyService implements IEnergyService {
           userArea: building.floorArea || DEFAULT_FLOOR_AREA,
           modifiedBui: validatedBui,
           modifiedSystem: validatedSystem,
+          uni11300Config: archetypeDetails.uni11300Config,
           validationNotes,
           referenceEstimation: {
             annualEnergyNeeds: referenceEstimation.annualEnergyNeeds,

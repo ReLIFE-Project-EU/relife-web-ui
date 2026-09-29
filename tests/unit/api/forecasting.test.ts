@@ -29,6 +29,23 @@ describe("forecasting.simulateECM", () => {
     mockUploadRequest.mockResolvedValue({ scenarios: [] });
   });
 
+  test("sends source UNI settings for a modified building", async () => {
+    const bui = { building: { name: "modified" } };
+    const uni11300Config = {
+      input_unit: "Wh",
+      heating_params: {},
+      cooling_params: {},
+    };
+    await forecasting.simulateECM({ bui, uni11300Config, baseline_only: true });
+
+    const form = mockUploadRequest.mock.calls[0]?.[1] as FormData;
+    expect(JSON.parse(form.get("bui_json") as string)).toEqual(bui);
+    expect(JSON.parse(form.get("uni11300_json") as string)).toEqual(
+      uni11300Config,
+    );
+    expect(getSearchParams().get("archetype")).toBe("false");
+  });
+
   test("serializes envelope-only params without PV or include_baseline", async () => {
     await forecasting.simulateECM({
       category: "SFH",

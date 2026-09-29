@@ -697,6 +697,7 @@ export class RenovationService implements IRenovationService {
           kind: "custom",
           modifiedBui: estimation.modifiedBui,
           modifiedSystem: estimation.modifiedSystem,
+          uni11300Config: estimation.uni11300Config,
           floorArea: estimation.archetypeFloorArea ?? null,
         }
       : {

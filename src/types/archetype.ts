@@ -44,6 +44,7 @@ export interface ArchetypeDetails extends ArchetypeInfo {
   // Full BUI and System payloads for modification
   bui: BuildingPayload;
   system: SystemPayload;
+  uni11300Config?: unknown;
 }
 
 /**
