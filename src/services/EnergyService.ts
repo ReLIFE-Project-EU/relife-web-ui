@@ -810,14 +810,19 @@ export class EnergyService implements IEnergyService {
         const validatedBui = validationResponse.bui_checked ?? bui;
         const validatedSystem = validationResponse.system_checked ?? system;
 
+        const simulatedArea =
+          building.modifications.floorArea ?? archetypeDetails.floorArea;
+        const userArea = building.floorArea || DEFAULT_FLOOR_AREA;
+        const referenceArea =
+          archetypeDetails.floorArea * (userArea / simulatedArea);
+
         const [customSimulation, referenceSimulation] = await Promise.all([
           simulateEcmBaseline({
             kind: "custom",
             modifiedBui: validatedBui,
             modifiedSystem: validatedSystem,
             uni11300Config: archetypeDetails.uni11300Config,
-            floorArea:
-              building.modifications.floorArea ?? archetypeDetails.floorArea,
+            floorArea: simulatedArea,
           }),
           this.simulateArchetype({
             category: archetype.category,
@@ -832,10 +837,10 @@ export class EnergyService implements IEnergyService {
           matchStrategy,
           building: {
             ...building,
-            floorArea: archetypeDetails.floorArea,
+            floorArea: referenceArea,
           },
           archetypeArea: archetypeDetails.floorArea,
-          userArea: archetypeDetails.floorArea,
+          userArea: referenceArea,
           auditCtx,
         });
 
@@ -849,9 +854,8 @@ export class EnergyService implements IEnergyService {
           archetype,
           matchStrategy,
           building,
-          archetypeArea:
-            building.modifications.floorArea ?? archetypeDetails.floorArea,
-          userArea: building.floorArea || DEFAULT_FLOOR_AREA,
+          archetypeArea: simulatedArea,
+          userArea,
           modifiedBui: validatedBui,
           modifiedSystem: validatedSystem,
           uni11300Config: archetypeDetails.uni11300Config,
