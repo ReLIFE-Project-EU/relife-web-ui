@@ -28,6 +28,14 @@ For local backend builds, `task fetch-sources` clones the financial, forecasting
 - `task test-e2e`: starts the locally built Docker stack and runs Playwright journeys for HRA and PRA. See [E2E prerequisites and commands](./tests/e2e/README.md).
 - `task test`: both of the above.
 
+### Calibration review
+
+Open `/calibration` directly (there is no navigation entry) and select **Run calibration**. This independent screen uses the existing Financial cost lookup and Forecasting baseline simulation services to show 21 fixed-quantity cost checks and six single-family-house cases: Austria, Italy, and Greece, each for 1946–1969 and 2011–present.
+
+The tables expose effective reference prices, selected archetype assumptions, and heating/cooling, delivered, and primary energy intensities. The source data and outputs are both subjects for expert review; they are not validated benchmarks. Runs refresh service instances, use at most two concurrent checks, and retain successful cases when others fail. Simulations may take several minutes and use the application's existing loading overlay. Results remain local to the page; rerunning clears the previous results.
+
+Each table has a **Download CSV** button, available after a run finishes. Exports contain the selected values and case details with units, timestamps, and failure statuses; unavailable numerical values remain empty.
+
 ### Visitor analytics
 
 The Docker Compose stack starts Umami for visitor tracking. Its dashboard is available locally at `127.0.0.1:${HOST_PORT_UMAMI}`. Override the default Umami passwords and app secret in `.env.local` before using a shared or public deployment.

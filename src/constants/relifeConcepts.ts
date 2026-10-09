@@ -8,6 +8,7 @@ export type ConceptId =
   | "apartment-floor-area"
   | "annual-building-thermal-needs"
   | "system-energy-consumption"
+  | "primary-energy"
   | "energy-intensity"
   | "pv-generation"
   | "pv-self-consumption"
@@ -115,6 +116,13 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
       "Differs from Annual building thermal needs because of system efficiency: a gas boiler at η≈0.9 burns ~110 kWh of gas per 100 kWh of heat, while a heat pump at COP≈3 uses ~33 kWh of electricity for the same heat. Covers HVAC end uses only — domestic hot water, lighting, and appliances are not included. Shown only when the simulation returns delivered energy.",
     professionalDetail:
       "Computed by extractUniTotals as deliveredThermal + E_delivered_electric_total_kWh from the UNI/TS 11300 summary; deliveredThermal is forced to 0 when a heat pump is detected (heat_pump_applied) to avoid double-counting electric input. Used as the energy-savings basis for Financial API calculations when comparable before-and-after values are available.",
+  },
+  "primary-energy": {
+    id: "primary-energy",
+    label: "Primary energy",
+    description:
+      "Energy use expressed at the source, including the conversion and supply factors applied by the model. It differs from energy delivered to the building and from its heating and cooling demand.",
+    unit: "kWh primary/year",
   },
   "energy-intensity": {
     id: "energy-intensity",

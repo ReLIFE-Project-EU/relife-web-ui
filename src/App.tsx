@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { Calibration } from "./routes/Calibration";
 import { Forecasting } from "./routes/Forecasting";
 import { Home } from "./routes/Home";
 import { HomeAssistantLanding } from "./routes/HomeAssistantLanding";
@@ -17,6 +18,7 @@ function App() {
       <Routes>
         {/* Home - Tool Selector */}
         <Route path="/" element={<Home />} />
+        <Route path="/calibration" element={<Calibration />} />
 
         {/* Group 1: Strategy Explorer (Policymakers, Researchers) */}
         <Route
