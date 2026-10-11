@@ -10,6 +10,7 @@ import type { ArchetypeDetails } from "../../../types/archetype";
 import type { BuildingInfo, EstimationResult } from "../../../types/renovation";
 import { mapWithConcurrencyLimit } from "../../../utils/concurrency";
 import { countryNamesEqual } from "../../../utils/countries";
+import { errorMessage } from "../../../utils/errorMessage";
 import {
   BUILDING_CASES,
   CALIBRATION_COUNTRIES,
@@ -52,10 +53,6 @@ function createServices(): CalibrationServices {
     energy: new EnergyService(building),
     financial: new FinancialService(),
   };
-}
-
-export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 function buildingInput(

@@ -9,10 +9,7 @@ import { theme } from "../../../src/theme";
 const { runCalibration } = vi.hoisted(() => ({ runCalibration: vi.fn() }));
 vi.mock(
   "../../../src/features/calibration/services/calibrationService",
-  () => ({
-    runCalibration,
-    errorMessage: (error: unknown) => String(error),
-  }),
+  () => ({ runCalibration }),
 );
 
 Object.defineProperty(window, "matchMedia", {

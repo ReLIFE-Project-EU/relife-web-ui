@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ArchetypeDetails } from "../../../types/archetype";
+import { errorMessage } from "../../../utils/errorMessage";
 import {
-  errorMessage,
   runCalibration,
   type CalibrationUpdate,
   type CheckState,

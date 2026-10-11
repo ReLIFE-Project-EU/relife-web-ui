@@ -18,6 +18,7 @@
 
 import { forecasting } from "../api";
 import { APIError } from "../types/common";
+import type { BuildingPayload } from "../types/archetype";
 import type { ArchetypeInfo, ECMScenario } from "../types/forecasting";
 import type { BuildingInfo, EstimationResult } from "../types/renovation";
 import {
@@ -638,6 +639,7 @@ export class EnergyService implements IEnergyService {
       "energy",
       "energy.simulation.summary",
       {
+        basis: modifiedBui === undefined ? "archetype" : "custom",
         archetype: {
           name: archetype.name,
           category: archetype.category,
@@ -650,6 +652,7 @@ export class EnergyService implements IEnergyService {
           Q_H_total: heatingTotal,
           Q_C_total: coolingTotal,
           Q_HC_total: hvacTotal,
+          deliveredTotal: uniTotals?.deliveredTotal,
         },
         scaled: {
           heatingDemand: scaledHeating,
@@ -661,6 +664,7 @@ export class EnergyService implements IEnergyService {
         },
         energyIntensity,
         uniTotalsAvailable: uniTotals !== undefined,
+        uniSummary: simulationResponse.results.primary_energy_uni11300?.summary,
         comfortIndex,
         flexibilityIndex,
         validationNoteCount: validationNotes?.length ?? 0,
@@ -809,6 +813,16 @@ export class EnergyService implements IEnergyService {
         // The backend auto-corrects minor issues and returns the fixed versions.
         const validatedBui = validationResponse.bui_checked ?? bui;
         const validatedSystem = validationResponse.system_checked ?? system;
+        auditLog.debug(
+          "energy",
+          "energy.archetype.details",
+          {
+            catalogueBui: archetypeDetails.bui,
+            modifiedBui: validatedBui as BuildingPayload,
+            uni11300Config: archetypeDetails.uni11300Config,
+          },
+          auditCtx,
+        );
 
         const simulatedArea =
           building.modifications.floorArea ?? archetypeDetails.floorArea;
@@ -895,6 +909,16 @@ export class EnergyService implements IEnergyService {
         country: archetype.country,
         name: archetype.name,
       });
+      auditLog.debug(
+        "energy",
+        "energy.archetype.details",
+        {
+          catalogueBui: archetypeDetails.bui,
+          modifiedBui: undefined,
+          uni11300Config: archetypeDetails.uni11300Config,
+        },
+        auditCtx,
+      );
 
       const simulationResponse = await this.simulateArchetype({
         category: archetype.category,

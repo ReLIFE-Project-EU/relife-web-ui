@@ -629,6 +629,7 @@ export class FinancialService implements IFinancialService {
           scenarioId: scenario.id,
           capitalExpenditure: scenarioResults.capitalExpenditure,
           annualMaintenanceCost: scenarioResults.annualMaintenanceCost,
+          monthlyAvgSavings: riskResult?.pointForecasts.MonthlyAvgSavings,
           netPresentValue: scenarioResults.netPresentValue,
           returnOnInvestment: scenarioResults.returnOnInvestment,
           paybackTime: scenarioResults.paybackTime,

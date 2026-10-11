@@ -36,6 +36,7 @@ import { ErrorAlert, StepNavigation } from "../shared";
 import shared from "../../../../components/shared/ResultsLayout.module.css";
 import type { ScenarioId } from "../../context/types";
 import { validateEstimation } from "../../../../services/estimationValidation";
+import { LineageLink } from "../../../lineage";
 import { formatFixed } from "../../utils/formatters";
 
 const RECOMMENDATION_ERROR =
@@ -241,6 +242,7 @@ export function ResultsStep() {
           to see a different recommendation, or open a section below for the
           full numbers.
         </Text>
+        <LineageLink scope="hra" />
       </Box>
 
       {estimationDiagnostic?.level === "low-confidence" && (

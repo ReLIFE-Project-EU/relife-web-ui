@@ -445,7 +445,7 @@ export class RenovationService implements IRenovationService {
     auditLog.debug(
       "renovation",
       "renovation.ecm.params",
-      { ecmParams: ecmParams as unknown as Record<string, unknown> },
+      { ecmParams },
       auditCtx,
     );
     const ecmResponse = await forecasting.simulateECM(ecmParams);
@@ -837,6 +837,7 @@ export class RenovationService implements IRenovationService {
         },
         renovatedIntensity: epcRating.intensity,
         uniTotalsAvailable: uniTotals !== undefined,
+        uniSummary: ecmScenario.results.primary_energy_uni11300?.summary,
         pvSelfConsumptionApplied: pvSelfConsumption !== undefined && hasPv,
       },
       auditCtx,

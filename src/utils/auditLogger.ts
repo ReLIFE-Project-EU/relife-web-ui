@@ -18,6 +18,7 @@
  * orthogonal so DevTools filtering remains useful.
  */
 
+import type { AuditPayloads } from "../types/auditEvents";
 import { downloadBlob } from "./download";
 
 export type AuditLevel = "debug" | "info" | "warn" | "error";
@@ -45,6 +46,11 @@ export interface AuditEvent {
   scenarioId?: string;
   data: Record<string, unknown>;
 }
+
+/** Payload is required and typed for events in `AuditPayloads`. */
+type AuditArgs<E extends string> = E extends keyof AuditPayloads
+  ? [data: AuditPayloads[E], ctx?: AuditCtx]
+  : [data?: Record<string, unknown>, ctx?: AuditCtx];
 
 export interface AuditCtx {
   scope: AuditScope;
@@ -181,6 +187,7 @@ function downloadJson(filename: string, payload: unknown): void {
 
 export const auditLog = {
   enabled: ENABLED,
+  debugEnabled: ENABLED && MIN_LEVEL === "debug",
 
   /**
    * Begin a new top-level run for a tool. Sets the ambient context so
@@ -205,37 +212,33 @@ export const auditLog = {
     return ambientCtx;
   },
 
-  debug(
+  debug<E extends string>(
     category: AuditCategory,
-    event: string,
-    data: Record<string, unknown> = {},
-    ctx?: AuditCtx,
+    event: E,
+    ...args: AuditArgs<E>
   ): void {
-    emit("debug", category, event, data, ctx);
+    emit("debug", category, event, args[0] ?? {}, args[1]);
   },
-  info(
+  info<E extends string>(
     category: AuditCategory,
-    event: string,
-    data: Record<string, unknown> = {},
-    ctx?: AuditCtx,
+    event: E,
+    ...args: AuditArgs<E>
   ): void {
-    emit("info", category, event, data, ctx);
+    emit("info", category, event, args[0] ?? {}, args[1]);
   },
-  warn(
+  warn<E extends string>(
     category: AuditCategory,
-    event: string,
-    data: Record<string, unknown> = {},
-    ctx?: AuditCtx,
+    event: E,
+    ...args: AuditArgs<E>
   ): void {
-    emit("warn", category, event, data, ctx);
+    emit("warn", category, event, args[0] ?? {}, args[1]);
   },
-  error(
+  error<E extends string>(
     category: AuditCategory,
-    event: string,
-    data: Record<string, unknown> = {},
-    ctx?: AuditCtx,
+    event: E,
+    ...args: AuditArgs<E>
   ): void {
-    emit("error", category, event, data, ctx);
+    emit("error", category, event, args[0] ?? {}, args[1]);
   },
 
   /** Snapshot the in-memory buffer (does not clear it). */

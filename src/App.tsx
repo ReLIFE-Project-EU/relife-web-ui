@@ -6,6 +6,7 @@ import { Forecasting } from "./routes/Forecasting";
 import { Home } from "./routes/Home";
 import { HomeAssistantLanding } from "./routes/HomeAssistantLanding";
 import { HomeAssistantTool } from "./routes/HomeAssistantTool";
+import { Lineage } from "./routes/Lineage";
 import { MyPortfolios } from "./routes/MyPortfolios";
 import { PortfolioAdvisorLanding } from "./routes/PortfolioAdvisorLanding";
 import { PortfolioAdvisorTool } from "./routes/PortfolioAdvisorTool";
@@ -43,6 +44,9 @@ function App() {
         {/* Group 3: Home Assistant (Homeowners) */}
         <Route path="/home-assistant" element={<HomeAssistantLanding />} />
         <Route path="/home-assistant/tool" element={<HomeAssistantTool />} />
+
+        {/* Calculation lineage of a tool run (debug builds) */}
+        <Route path="/lineage" element={<Lineage />} />
 
         <Route
           path="/forecasting"

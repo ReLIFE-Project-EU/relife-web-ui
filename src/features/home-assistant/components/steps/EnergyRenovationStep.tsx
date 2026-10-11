@@ -9,6 +9,8 @@ import { IconInfoCircle } from "@tabler/icons-react";
 import { EnergyTariffPanel } from "../../../../components/shared/EnergyTariffPanel";
 import { isApartmentLikeCategory } from "../../../../constants/buildingFormOptions";
 import { estimatePackageEmbodiedCarbon } from "../../../../services/embodiedCarbon";
+import { auditLog } from "../../../../utils/auditLogger";
+import { LineageLink } from "../../../lineage";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 import { usePackageCostEstimation } from "../../hooks/usePackageCostEstimation";
@@ -75,6 +77,7 @@ export function EnergyRenovationStep() {
     if (!state.estimation || !state.baselineSimulation) return;
 
     dispatch({ type: "START_EVALUATION" });
+    const auditCtx = auditLog.current() ?? undefined;
 
     try {
       const selectedPackages = suggestedPackages.filter((pkg) =>
@@ -86,6 +89,7 @@ export function EnergyRenovationStep() {
         state.estimation,
         state.baselineSimulation,
         selectedPackages,
+        auditCtx,
       );
 
       // Material carbon rides along with the scenarios so ranking eligibility
@@ -125,6 +129,7 @@ export function EnergyRenovationStep() {
         financialAssumptions: {
           gasTariffEurPerKwh: state.gasTariffEurPerKwh,
         },
+        auditCtx,
       });
 
       dispatch({
@@ -174,6 +179,7 @@ export function EnergyRenovationStep() {
           Review your building's current energy performance and select
           renovation options.
         </Text>
+        <LineageLink scope="hra" />
       </Box>
 
       {/* Energy Estimation Results */}
