@@ -123,6 +123,8 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     description:
       "Energy use expressed at the source, including the conversion and supply factors applied by the model. It differs from energy delivered to the building and from its heating and cooling demand.",
     unit: "kWh primary/year",
+    caveat:
+      "Covers heating and cooling only. Domestic hot water, lighting, and appliances are not included, so values are lower than energy certificates that include them.",
   },
   "energy-intensity": {
     id: "energy-intensity",
