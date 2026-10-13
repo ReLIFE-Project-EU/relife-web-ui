@@ -1,7 +1,20 @@
-import { useMemo } from "react";
-import { Alert, Container, Stack, Text, Title } from "@mantine/core";
-import { IconAlertCircle, IconInfoCircle } from "@tabler/icons-react";
+import { useMemo, useState } from "react";
+import {
+  Alert,
+  Button,
+  Container,
+  Group,
+  Stack,
+  Text,
+  Title,
+} from "@mantine/core";
+import {
+  IconAlertCircle,
+  IconDownload,
+  IconInfoCircle,
+} from "@tabler/icons-react";
 import { useSearchParams } from "react-router-dom";
+import { downloadJson } from "../../utils/download";
 import { errorMessage } from "../../utils/errorMessage";
 import { LineageTimeline } from "./components/LineageTimeline";
 import { loadLineageSnapshot } from "./lineageSnapshot";
@@ -13,6 +26,7 @@ const OTHER_VERSION_MESSAGE =
 export function LineageView() {
   const [searchParams] = useSearchParams();
   const scope = searchParams.get("scope");
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const { snapshot, error } = useMemo((): {
     snapshot?: LineageSnapshot;
@@ -35,19 +49,40 @@ export function LineageView() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <div>
-          <Title order={2}>Calculation lineage</Title>
+        <Group justify="space-between" align="flex-start">
+          <div>
+            <Title order={2}>Calculation lineage</Title>
+            {snapshot && (
+              <Text c="dimmed" size="sm">
+                Run {snapshot.runId} · captured{" "}
+                {new Date(snapshot.capturedAt).toLocaleString()}
+              </Text>
+            )}
+          </div>
           {snapshot && (
-            <Text c="dimmed" size="sm">
-              Run {snapshot.runId} · captured{" "}
-              {new Date(snapshot.capturedAt).toLocaleString()}
-            </Text>
+            <Button
+              variant="default"
+              leftSection={<IconDownload size={16} />}
+              onClick={() => {
+                try {
+                  downloadJson(
+                    `relife-lineage-${snapshot.runId}.json`,
+                    snapshot,
+                  );
+                  setExportError(null);
+                } catch (cause) {
+                  setExportError(errorMessage(cause));
+                }
+              }}
+            >
+              Export JSON
+            </Button>
           )}
-        </div>
+        </Group>
 
-        {error && (
+        {(error || exportError) && (
           <Alert color="red" icon={<IconAlertCircle size={16} />}>
-            {error}
+            {error || exportError}
           </Alert>
         )}
 

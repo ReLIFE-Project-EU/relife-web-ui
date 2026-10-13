@@ -19,7 +19,7 @@
  */
 
 import type { AuditPayloads } from "../types/auditEvents";
-import { downloadBlob } from "./download";
+import { downloadJson } from "./download";
 
 export type AuditLevel = "debug" | "info" | "warn" | "error";
 
@@ -175,14 +175,6 @@ function emit(
 
   const sink = console[level] ?? console.log;
   sink.call(console, "[relife-audit]", entry);
-}
-
-function downloadJson(filename: string, payload: unknown): void {
-  downloadBlob(
-    filename,
-    [JSON.stringify(payload, null, 2)],
-    "application/json",
-  );
 }
 
 export const auditLog = {

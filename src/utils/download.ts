@@ -18,3 +18,11 @@ export function downloadBlob(
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+export function downloadJson(filename: string, payload: unknown): void {
+  downloadBlob(
+    filename,
+    [JSON.stringify(payload, null, 2)],
+    "application/json",
+  );
+}
