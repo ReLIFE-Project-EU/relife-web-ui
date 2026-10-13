@@ -245,7 +245,7 @@ describe("BuildingSelector", () => {
     expect(screen.queryByLabelText(/Apartment floor area/)).toBeNull();
     expect(screen.queryByLabelText("Apartment level")).toBeNull();
     expect(
-      (screen.getByLabelText(/Floor area \(m2\)/) as HTMLInputElement).value,
+      (screen.getByLabelText(/Total floor area/) as HTMLInputElement).value,
     ).toBe("500");
   });
 

@@ -24,13 +24,18 @@ import type {
   BuildingModifications,
 } from "../../types/archetype";
 import { APARTMENT_LOCATION_OPTIONS } from "../../constants/buildingFormOptions";
-import { relifeConcepts } from "../../constants/relifeConcepts";
 import { ConceptExplainer } from "../shared/ConceptExplainer";
+import { GeometrySketch } from "./GeometrySketch";
 import {
+  BUILDING_MODE_TEXT,
   FLAT_LIMITED_FIELDS,
+  FLAT_MODE_TEXT,
   FULL_FIELD_GROUPS,
   LIMITED_FIELDS,
-  formatNumber,
+  OVERRIDE_FOOTER_TEXT,
+  VALUATION_ONLY_NOTE,
+  formatFloorArea,
+  formatPerFloorArea,
   type SelectorCopy,
 } from "./selectorConfig";
 import { browserNumberSeparators } from "../../utils/formatters";
@@ -45,6 +50,14 @@ import type {
   BuildingSelectorDraft,
   BuildingSelectorMode,
 } from "./types";
+
+/** Notes sit under their input so the inputs in a row stay aligned. */
+const NOTE_BELOW_INPUT: ("label" | "input" | "description" | "error")[] = [
+  "label",
+  "input",
+  "description",
+  "error",
+];
 
 interface ModificationValidation {
   isValid: boolean;
@@ -106,13 +119,44 @@ export function AdjustmentPanel({
             : group,
         );
 
-  const footerText = flatUnit
-    ? `${relifeConcepts["apartment-floor-area"].caveat} Floors in the building and apartment level are used for property valuation only; neither changes the energy estimate.`
-    : scope === "limited"
-      ? "Geometry changes affect the simulation."
-      : isApartmentSelection(details)
-        ? "Only changed values override the selected reference building. Apartment level sets the floor number used in property valuation; energy is simulated for the whole building."
-        : "Only changed values override the selected reference building.";
+  const footerText =
+    !flatUnit && scope === "full" && isApartmentSelection(details)
+      ? `${OVERRIDE_FOOTER_TEXT} Apartment level sets the floor number used in property valuation; energy is simulated for the whole building.`
+      : OVERRIDE_FOOTER_TEXT;
+
+  const { floorArea, numberOfFloors, floorHeight, apartmentLocation } = draft;
+  const hasFloorCount =
+    typeof numberOfFloors === "number" && numberOfFloors > 0;
+  const hasFloorArea = typeof floorArea === "number" && floorArea > 0;
+  const perFloorNote =
+    !flatUnit && hasFloorArea && hasFloorCount
+      ? formatPerFloorArea(floorArea, numberOfFloors)
+      : undefined;
+  const hasGeometry =
+    hasFloorArea &&
+    hasFloorCount &&
+    typeof floorHeight === "number" &&
+    floorHeight > 0;
+  const sketch = !hasGeometry ? null : flatUnit ? (
+    apartmentLocation && (
+      <GeometrySketch
+        mode="flat"
+        floors={numberOfFloors}
+        floorHeight={floorHeight}
+        flatFloorArea={floorArea}
+        apartmentLocation={apartmentLocation}
+        accentColor={copy.accentColor}
+      />
+    )
+  ) : (
+    <GeometrySketch
+      mode="building"
+      floors={numberOfFloors}
+      floorHeight={floorHeight}
+      totalFloorArea={floorArea}
+      accentColor={copy.accentColor}
+    />
+  );
 
   return (
     <Paper withBorder radius="md" p="md" bg="gray.0">
@@ -152,6 +196,9 @@ export function AdjustmentPanel({
 
         <Collapse in={opened}>
           <Stack gap="md">
+            <Text size="sm">
+              {flatUnit ? FLAT_MODE_TEXT : BUILDING_MODE_TEXT}
+            </Text>
             {fieldGroups.map((group) => (
               <Box key={group.title}>
                 <Text size="xs" fw={700} c="dimmed" tt="uppercase" mb={6}>
@@ -169,7 +216,7 @@ export function AdjustmentPanel({
                               conceptId={
                                 flatUnit
                                   ? "apartment-floor-area"
-                                  : "modeled-property"
+                                  : "total-floor-area"
                               }
                             />
                           </>
@@ -177,6 +224,12 @@ export function AdjustmentPanel({
                           field.label
                         )
                       }
+                      description={
+                        field.key === "floorArea" && perFloorNote
+                          ? perFloorNote
+                          : field.description
+                      }
+                      inputWrapperOrder={NOTE_BELOW_INPUT}
                       value={draft[field.key]}
                       onChange={(value) =>
                         onDraftChange({ [field.key]: value ?? "" })
@@ -190,6 +243,9 @@ export function AdjustmentPanel({
                     />
                   ))}
                 </SimpleGrid>
+                {(group.fields === LIMITED_FIELDS ||
+                  group.fields === FLAT_LIMITED_FIELDS) &&
+                  sketch}
               </Box>
             ))}
 
@@ -205,6 +261,8 @@ export function AdjustmentPanel({
                       (flatUnit ? draft.apartmentLocation : null),
                   })
                 }
+                description={flatUnit ? VALUATION_ONLY_NOTE : undefined}
+                inputWrapperOrder={NOTE_BELOW_INPUT}
                 clearable={!flatUnit}
                 withAsterisk={flatUnit}
                 allowDeselect={!flatUnit}
@@ -260,12 +318,11 @@ export function AdjustmentPanel({
             {mode === "map" ? mapPeriod : getArchetypePeriod(details)}
           </Text>
           <Text size="xs" c="dimmed">
-            {formatNumber(
+            {formatFloorArea(
               typeof draft.floorArea === "number"
                 ? draft.floorArea
                 : details.floorArea,
-            )}{" "}
-            m2
+            )}
           </Text>
           {activeModifications && (
             <Badge color={copy.accentColor} variant="light" size="xs">

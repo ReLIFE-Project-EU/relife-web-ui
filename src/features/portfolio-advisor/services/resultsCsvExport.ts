@@ -59,7 +59,7 @@ const buildingExportColumns: CsvColumn<BuildingExportRow>[] = [
   { key: "category", header: "Category", value: (r) => r.building.category },
   {
     key: "floorArea",
-    header: "Floor area (m2)",
+    header: "Total floor area (m2)",
     value: (r) => r.building.floorArea,
   },
   {

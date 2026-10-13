@@ -5,6 +5,7 @@ export const HEATING_SYSTEM_CONFLICT_MESSAGE =
 
 export type ConceptId =
   | "modeled-property"
+  | "total-floor-area"
   | "apartment-floor-area"
   | "annual-building-thermal-needs"
   | "system-energy-consumption"
@@ -86,6 +87,12 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     unit: "properties",
     description:
       "One property is one Apartment or one whole Single-Family or Multi-Family House. A Multi-Family House represents the owner renovating the entire residential building, including all family units.",
+  },
+  "total-floor-area": {
+    id: "total-floor-area",
+    label: "Total floor area (m²)",
+    description:
+      "Floor area of all floors added together. For an apartment, the floor area of the flat.",
   },
   "apartment-floor-area": {
     id: "apartment-floor-area",

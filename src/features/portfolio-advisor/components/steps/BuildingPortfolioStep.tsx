@@ -35,6 +35,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useCallback, useMemo, useState } from "react";
+import { relifeConcepts } from "../../../../constants/relifeConcepts";
 import { compareConstructionPeriods } from "../../../../utils/apiMappings";
 import { checkAreaArchetypeMismatch } from "../../../../utils/inputSanityChecks";
 import {
@@ -284,7 +285,7 @@ export function BuildingPortfolioStep() {
                     onSort={toggleSort}
                   />
                   <SortableTh
-                    label="Floor area (m²)"
+                    label={relifeConcepts["total-floor-area"].label}
                     sortKey="floorArea"
                     sort={sort}
                     onSort={toggleSort}

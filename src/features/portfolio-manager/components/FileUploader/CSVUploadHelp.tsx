@@ -61,7 +61,7 @@ const CSV_COLUMN_DETAILS: Record<
     example: "Italy",
   },
   floor_area: {
-    description: `Floor area of the modeled property in square meters. ${relifeConcepts["modeled-property"].description}`,
+    description: `${relifeConcepts["total-floor-area"].description} In square meters. ${relifeConcepts["modeled-property"].description}`,
     example: "9800",
   },
   construction_period: {

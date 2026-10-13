@@ -6,6 +6,7 @@ import {
 import type { BuildingSelectorDraft, BuildingSelectorHost } from "./types";
 import { findCategoryDef } from "../../constants/archetypeCategories";
 import { relifeConcepts } from "../../constants/relifeConcepts";
+import { floorAreaPerFloor } from "../../utils/archetypeModifier";
 
 type NumericDraftField = Exclude<
   keyof BuildingSelectorDraft,
@@ -19,6 +20,8 @@ export interface AdjustmentField {
   max: number;
   step?: number;
   decimalScale?: number;
+  /** Short note under the input on what the value affects. */
+  description?: string;
 }
 
 export interface SelectorCopy {
@@ -38,7 +41,12 @@ export interface SelectorCopy {
 }
 
 export const LIMITED_FIELDS: AdjustmentField[] = [
-  { key: "floorArea", label: "Floor area (m2)", min: 10, max: 1000 },
+  {
+    key: "floorArea",
+    label: relifeConcepts["total-floor-area"].label,
+    min: 10,
+    max: 1000,
+  },
   { key: "numberOfFloors", label: "Number of floors", min: 1, max: 20 },
   {
     key: "floorHeight",
@@ -50,15 +58,34 @@ export const LIMITED_FIELDS: AdjustmentField[] = [
   },
 ];
 
+export const BUILDING_MODE_TEXT =
+  "These values describe the whole building used in the simulation.";
+export const FLAT_MODE_TEXT =
+  "These values describe one flat. Energy is simulated for the whole reference building, and your flat gets a share of it by floor area.";
+export const VALUATION_ONLY_NOTE = "Property valuation only";
+export const OVERRIDE_FOOTER_TEXT =
+  "Only changed values override the selected reference building.";
+
 /** Geometry fields relabeled for flat-unit mode: the floor area describes
  *  the user's apartment while floors/height still describe the building. */
 export const FLAT_LIMITED_FIELDS: AdjustmentField[] = LIMITED_FIELDS.map(
   (field) => {
     if (field.key === "floorArea") {
-      return { ...field, label: relifeConcepts["apartment-floor-area"].label };
+      return {
+        ...field,
+        label: relifeConcepts["apartment-floor-area"].label,
+        description: "Sets your flat's share",
+      };
     }
     if (field.key === "numberOfFloors") {
-      return { ...field, label: "Floors in the building" };
+      return {
+        ...field,
+        label: "Floors in the building",
+        description: VALUATION_ONLY_NOTE,
+      };
+    }
+    if (field.key === "floorHeight") {
+      return { ...field, description: "Applies to the whole building" };
     }
     return field;
   },
@@ -163,6 +190,17 @@ export function formatNumber(value: number): string {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(
     value,
   );
+}
+
+export function formatFloorArea(value: number): string {
+  return `${formatNumber(value)} m²`;
+}
+
+export function formatPerFloorArea(
+  totalFloorArea: number,
+  floors: number,
+): string {
+  return `${formatFloorArea(floorAreaPerFloor(totalFloorArea, floors))} per floor`;
 }
 
 export function formatCoords(lat: number, lng: number): string {
