@@ -112,6 +112,14 @@ const realisticBui: BuildingPayload = {
       orientation: { azimuth: 0, tilt: 0 },
     },
     {
+      name: "Slab to ground",
+      type: "opaque" as const,
+      area: 50,
+      u_value: 1.0,
+      sky_view_factor: 0,
+      orientation: { azimuth: 0, tilt: 0 },
+    },
+    {
       name: "Window north",
       type: "transparent" as const,
       area: 5,

@@ -10,7 +10,10 @@ import type {
 import {
   applyAllModifications,
   applyFloorAreaModification,
+  applyGeometryModification,
   applySetpointModification,
+  floorAreaPerFloor,
+  surfaceAreasFromBui,
   validateModifications,
 } from "../../../src/utils/archetypeModifier";
 
@@ -137,6 +140,107 @@ function createMockSystem(): SystemPayload {
   };
 }
 
+const SIDES = [
+  { side: "north", azimuth: 0 },
+  { side: "east", azimuth: 90 },
+  { side: "south", azimuth: 180 },
+  { side: "west", azimuth: 270 },
+];
+
+/** Ten-surface envelope in the shape Forecasting archetypes use. */
+function createEnvelopeBui(spec: {
+  name: string;
+  netFloorArea: number;
+  floors: number;
+  floorHeight: number;
+  perimeter: number;
+  footprint: number;
+  wallPerSide: number;
+  windowPerSide: number;
+}): BuildingPayload {
+  const base = createMockBui();
+  return {
+    ...base,
+    building: {
+      ...base.building,
+      name: spec.name,
+      net_floor_area: spec.netFloorArea,
+      n_floors: spec.floors,
+      height: spec.floorHeight,
+      exposed_perimeter: spec.perimeter,
+    },
+    building_surface: [
+      createMockSurface({
+        name: "Roof surface",
+        type: "opaque",
+        area: spec.footprint,
+        sky_view_factor: 1,
+        orientation: { azimuth: 0, tilt: 0 },
+      }),
+      createMockSurface({
+        name: "Slab to ground",
+        type: "opaque",
+        area: spec.footprint,
+        sky_view_factor: 0,
+        orientation: { azimuth: 0, tilt: 0 },
+      }),
+      ...SIDES.flatMap(({ side, azimuth }) => [
+        createMockSurface({
+          name: `Opaque ${side} surface`,
+          type: "opaque",
+          area: spec.wallPerSide,
+          orientation: { azimuth, tilt: 90 },
+        }),
+        createMockSurface({
+          name: `Transparent ${side} surface`,
+          type: "transparent",
+          area: spec.windowPerSide,
+          orientation: { azimuth, tilt: 90 },
+        }),
+      ]),
+    ],
+  };
+}
+
+// Source values from relife-forecasting-service building_examples.py.
+const SFH_1946_1969 = createEnvelopeBui({
+  name: "SFH_1946_1969",
+  netFloorArea: 125,
+  floors: 2,
+  floorHeight: 2.7,
+  perimeter: 46,
+  footprint: 120,
+  wallPerSide: 52.2,
+  windowPerSide: 9.9,
+});
+const AT_SFH_1946_1969 = createEnvelopeBui({
+  name: "AT_SFH_1946-1969",
+  netFloorArea: 165.4,
+  floors: 2,
+  floorHeight: 2.7,
+  perimeter: 39.4,
+  footprint: 82.7,
+  wallPerSide: 44.175,
+  windowPerSide: 9.05,
+});
+/** Target floor area from issue #86, compared against AT_SFH_1946-1969. */
+const ISSUE_TARGET_FLOOR_AREA = 165;
+
+/** Ratios the geometry assumptions keep constant across adjustments. */
+function envelopeShape(bui: BuildingPayload) {
+  const { roofM2, floorM2, wallM2, windowM2 } = surfaceAreasFromBui(bui);
+  const { exposed_perimeter, n_floors, height } = bui.building;
+  const facadeM2 = wallM2 + windowM2;
+  return {
+    roofM2,
+    floorM2,
+    planShape: exposed_perimeter / Math.sqrt(floorM2),
+    facadePerPerimeterHeight:
+      facadeM2 / (exposed_perimeter * n_floors * height),
+    windowShare: windowM2 / facadeM2,
+  };
+}
+
 function createMockArchetypeDetails(): ArchetypeDetails {
   const bui = createMockBui();
   return {
@@ -253,53 +357,85 @@ describe("archetypeModifier", () => {
     });
   });
 
-  // ---- applyGeometryModification (via applyAllModifications) ----
+  // ---- applyGeometryModification ----
 
-  describe("applyAllModifications – geometry", () => {
-    it("scales wall and window areas when total building height changes", () => {
-      const archetype = createMockArchetypeDetails();
-      // Mock BUI: n_floors=2, height=6 → original total height = 12
-      // Change to n_floors=1 → new total height = 6 → scale = 0.5
-      const mods: BuildingModifications = { numberOfFloors: 1 };
+  describe("applyGeometryModification", () => {
+    it.each([
+      {
+        label: "SFH_1946_1969 at the issue's target area",
+        source: SFH_1946_1969,
+        edit: { floorArea: ISSUE_TARGET_FLOOR_AREA },
+      },
+      {
+        label: "AT_SFH_1946-1969 on 3 floors",
+        source: AT_SFH_1946_1969,
+        edit: { numberOfFloors: 3 },
+      },
+      {
+        label: "AT_SFH_1946-1969 with 3 m floors",
+        source: AT_SFH_1946_1969,
+        edit: { floorHeight: 3 },
+      },
+      {
+        label: "AT_SFH_1946-1969 at 200 m² on 3 floors",
+        source: AT_SFH_1946_1969,
+        edit: { floorArea: 200, numberOfFloors: 3 },
+      },
+    ])("$label follows the geometry assumptions", ({ source, edit }) => {
+      const adjusted = applyGeometryModification(source, edit);
+      const totalFloorArea = edit.floorArea ?? source.building.net_floor_area;
+      const footprint = floorAreaPerFloor(
+        totalFloorArea,
+        adjusted.building.n_floors,
+      );
+      const before = envelopeShape(source);
+      const after = envelopeShape(adjusted);
 
-      const { bui } = applyAllModifications(archetype, mods);
-
-      expect(bui.building.n_floors).toBe(1);
-      for (const surface of bui.building_surface) {
-        const name = surface.name.toLowerCase();
-        if (name.includes("roof")) {
-          // Roof area unchanged (horizontal surface)
-          expect(surface.area).toBe(50);
-        } else if (surface.type === "transparent") {
-          // Window areas halved (vertical surface)
-          expect(surface.area).toBeCloseTo(2.5, 5);
-        } else {
-          // Wall areas halved (vertical surface)
-          expect(surface.area).toBeCloseTo(10, 5);
-        }
-      }
+      expect(adjusted.building.net_floor_area).toBe(totalFloorArea);
+      expect(after.roofM2).toBeCloseTo(footprint);
+      expect(after.floorM2).toBeCloseTo(footprint);
+      expect(after.planShape).toBeCloseTo(before.planShape);
+      expect(after.facadePerPerimeterHeight).toBeCloseTo(
+        before.facadePerPerimeterHeight,
+      );
+      expect(after.windowShare).toBeCloseTo(before.windowShare);
     });
 
-    it("does not scale surfaces when total height is unchanged", () => {
-      const archetype = createMockArchetypeDetails();
-      // Mock BUI: n_floors=2, height=6 → total=12
-      // Change to n_floors=4, floorHeight=3 → total=12 (same)
-      const mods: BuildingModifications = { numberOfFloors: 4, floorHeight: 3 };
+    it("returns the source geometry when the inputs match the source", () => {
+      const { net_floor_area, n_floors, height, exposed_perimeter } =
+        AT_SFH_1946_1969.building;
 
-      const { bui } = applyAllModifications(archetype, mods);
+      const adjusted = applyGeometryModification(AT_SFH_1946_1969, {
+        floorArea: net_floor_area,
+        numberOfFloors: n_floors,
+        floorHeight: height,
+      });
 
-      expect(bui.building.n_floors).toBe(4);
-      expect(bui.building.height).toBe(3);
-      for (const surface of bui.building_surface) {
-        const name = surface.name.toLowerCase();
-        if (name.includes("roof")) {
-          expect(surface.area).toBe(50);
-        } else if (surface.type === "transparent") {
-          expect(surface.area).toBe(5);
-        } else {
-          expect(surface.area).toBe(20);
-        }
-      }
+      expect(adjusted.building.exposed_perimeter).toBeCloseTo(
+        exposed_perimeter,
+      );
+      adjusted.building_surface.forEach((surface, i) => {
+        expect(surface.area).toBeCloseTo(
+          AT_SFH_1946_1969.building_surface[i].area,
+        );
+      });
+    });
+
+    it("keeps the source envelope size when no floor area is given", () => {
+      // SFH_1946_1969 declares 125 m² on a 2 × 120 m² envelope; a height
+      // edit must not shrink its roof and slab to the declared area.
+      const before = surfaceAreasFromBui(SFH_1946_1969);
+
+      const adjusted = applyGeometryModification(SFH_1946_1969, {
+        floorHeight: 3,
+      });
+      const after = surfaceAreasFromBui(adjusted);
+
+      expect(adjusted.building.net_floor_area).toBe(
+        SFH_1946_1969.building.net_floor_area,
+      );
+      expect(after.roofM2).toBeCloseTo(before.roofM2);
+      expect(after.floorM2).toBeCloseTo(before.floorM2);
     });
   });
 

@@ -157,6 +157,7 @@ export function validateModifications(
 // Modification Functions
 // ============================================================================
 
+/** Linear share of the envelope, e.g. one flat's portion of its block. */
 export function applyFloorAreaModification(
   bui: BuildingPayload,
   newFloorArea: number,
@@ -176,36 +177,63 @@ export function applyFloorAreaModification(
   return modified;
 }
 
+/** Footprint of a building whose floors share the same plan. */
+export function floorAreaPerFloor(
+  totalFloorArea: number,
+  floors: number,
+): number {
+  return totalFloorArea / floors;
+}
+
+/**
+ * Reshape the envelope for new geometry inputs, from the source in one pass.
+ * - Floor area is the total over all floors; footprint = total ÷ floors.
+ * - Roof and ground slab follow the footprint.
+ * - Exposed perimeter keeps the source plan shape, so it scales with √footprint.
+ * - Walls and windows scale with perimeter × floors × floor height, keeping
+ *   the source window share and orientation split.
+ * - Without a floor area, the source envelope (ground area × floors) sets the
+ *   size, so a declared area that disagrees with it never reshapes the roof.
+ */
 export function applyGeometryModification(
   bui: BuildingPayload,
-  numberOfFloors?: number,
-  floorHeight?: number,
+  geometry: Pick<
+    BuildingModifications,
+    "floorArea" | "numberOfFloors" | "floorHeight"
+  >,
 ): BuildingPayload {
+  const source = bui.building;
+  const sourceFootprint = bui.building_surface
+    .filter((surface) => classifyEnvelopeSurface(surface) === "floor")
+    .reduce((sum, surface) => sum + surface.area, 0);
+  if (sourceFootprint <= 0) {
+    throw new Error(
+      `Cannot adjust geometry: building "${source.name}" has no ground surface.`,
+    );
+  }
+
+  const floors = geometry.numberOfFloors ?? source.n_floors;
+  const floorHeight = geometry.floorHeight ?? source.height;
+  const totalFloorArea =
+    geometry.floorArea ?? sourceFootprint * source.n_floors;
+  const footprintScale =
+    floorAreaPerFloor(totalFloorArea, floors) / sourceFootprint;
+  const perimeterScale = Math.sqrt(footprintScale);
+  const facadeScale =
+    (perimeterScale * floors * floorHeight) / (source.n_floors * source.height);
+
   const modified = clonePayload(bui);
-
-  const originalTotalHeight = bui.building.n_floors * bui.building.height;
-  const newTotalHeight =
-    (numberOfFloors ?? bui.building.n_floors) *
-    (floorHeight ?? bui.building.height);
-
-  if (numberOfFloors !== undefined) {
-    modified.building.n_floors = numberOfFloors;
-  }
-
-  if (floorHeight !== undefined) {
-    modified.building.height = floorHeight;
-  }
-
-  // Rescale vertical surfaces (walls + windows) when total building height changes
-  if (originalTotalHeight > 0 && newTotalHeight !== originalTotalHeight) {
-    const heightScale = newTotalHeight / originalTotalHeight;
-    modified.building_surface = modified.building_surface.map((surface) => {
-      if (isVerticalSurface(surface)) {
-        return { ...surface, area: surface.area * heightScale };
-      }
-      return surface;
-    });
-  }
+  modified.building.net_floor_area =
+    geometry.floorArea ?? source.net_floor_area;
+  modified.building.n_floors = floors;
+  modified.building.height = floorHeight;
+  modified.building.exposed_perimeter *= perimeterScale;
+  modified.building_surface = modified.building_surface.map((surface) => {
+    const element = classifyEnvelopeSurface(surface);
+    const scale =
+      element === "roof" || element === "floor" ? footprintScale : facadeScale;
+    return { ...surface, area: surface.area * scale };
+  });
 
   return modified;
 }
@@ -275,22 +303,12 @@ export function applyAllModifications(
 ): { bui: BuildingPayload; system: SystemPayload } {
   let modifiedBui = clonePayload(archetypeDetails.bui);
 
-  if (modifications.floorArea !== undefined) {
-    modifiedBui = applyFloorAreaModification(
-      modifiedBui,
-      modifications.floorArea,
-    );
-  }
-
   if (
+    modifications.floorArea !== undefined ||
     modifications.numberOfFloors !== undefined ||
     modifications.floorHeight !== undefined
   ) {
-    modifiedBui = applyGeometryModification(
-      modifiedBui,
-      modifications.numberOfFloors,
-      modifications.floorHeight,
-    );
+    modifiedBui = applyGeometryModification(modifiedBui, modifications);
   }
 
   if (
@@ -328,17 +346,6 @@ export function applyAllModifications(
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-function isVerticalSurface(surface: BuildingSurface): boolean {
-  const name = surface.name.toLowerCase();
-  if (surface.type === "transparent") return true;
-  return (
-    surface.type === "opaque" &&
-    !name.includes("roof") &&
-    !name.includes("slab") &&
-    !name.includes("ground")
-  );
-}
 
 /**
  * A near-zero sky-view factor marks a ground-contact (slab/floor) surface: it
