@@ -128,6 +128,7 @@ async function check<T>(
 export async function runCalibration(
   update: (event: CalibrationUpdate) => void,
   services: CalibrationServices = createServices(),
+  signal?: AbortSignal,
 ): Promise<void> {
   let catalog: Awaited<ReturnType<IBuildingService["getArchetypes"]>> = [];
   let catalogError: string | undefined;
@@ -226,7 +227,8 @@ export async function runCalibration(
     );
   });
 
+  // Once aborted, checks that have not started are skipped.
   await mapWithConcurrencyLimit([...costJobs, ...buildingJobs], 2, (job) =>
-    job(),
+    signal?.aborted ? Promise.resolve() : job(),
   );
 }

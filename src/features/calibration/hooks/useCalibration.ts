@@ -28,10 +28,12 @@ export function useCalibration() {
   const [error, setError] = useState<string>();
   const activeRun = useRef(0);
   const runningRef = useRef(false);
+  const runAbort = useRef<AbortController | null>(null);
 
   useEffect(
     () => () => {
       activeRun.current += 1;
+      runAbort.current?.abort();
     },
     [],
   );
@@ -68,8 +70,9 @@ export function useCalibration() {
       });
     };
 
+    runAbort.current = new AbortController();
     try {
-      await runCalibration(update);
+      await runCalibration(update, undefined, runAbort.current.signal);
     } catch (cause) {
       if (activeRun.current === runId) setError(errorMessage(cause));
     } finally {
