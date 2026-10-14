@@ -36,6 +36,7 @@ function services() {
           flexibilityIndex: 50,
           comfortIndex: 50,
           archetypeFloorArea: 250,
+          roofArea: 125,
         },
         baselineSimulation: {
           scenario_id: "baseline",

@@ -68,11 +68,11 @@ const ENVELOPE_ACTIONS = [
   { action: "Windows", area_m2: 20 },
 ];
 
-/** With 100 m² floor area: heating 100 × 0.05 = 5 kW; PV 100 × 0.045 = 4.5 kWp. */
+/** Heating 100 m² × 0.05 = 5 kW; PV on the 60 m² roof hits the 3 kWp minimum. */
 const COMBINED_ACTIONS = [
   ...ENVELOPE_ACTIONS,
   { action: "Air-water Heat Pump", capacity_kw: 5 },
-  { action: "PV", capacity_kw: 4.5 },
+  { action: "PV", capacity_kw: 3 },
 ];
 
 function makeArchetypeDetails(floorArea: number): ArchetypeDetails {
@@ -227,7 +227,8 @@ describe("computeFinancials", () => {
 
   test("prices an Apartment share and whole-building envelope quantities consistently", async () => {
     // A 100 m² dwelling inside a 400 m² reference building: envelope surfaces
-    // take a quarter share, HVAC/PV are sized from the dwelling itself.
+    // and PV take a quarter share (PV after the whole-roof 3 kWp minimum, so it
+    // matches the share of cached output); HVAC is sized from the dwelling.
     const details = {
       ...makeArchetypeDetails(400),
       bui: {
@@ -250,7 +251,7 @@ describe("computeFinancials", () => {
       { action: "Floor insulation", area_m2: 12.5 },
       { action: "Windows", area_m2: 5 },
       { action: "Air-water Heat Pump", capacity_kw: 5 },
-      { action: "PV", capacity_kw: 4.5 },
+      { action: "PV", capacity_kw: 0.75 },
     ]);
 
     // Material carbon follows the same geometry. Checked on the envelope

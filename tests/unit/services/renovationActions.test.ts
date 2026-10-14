@@ -18,6 +18,7 @@ describe("buildRenovationActions", () => {
       measureIds: ["wall-insulation", "roof-insulation", "windows"],
       surfaceAreas,
       floorArea: 100,
+      pvKwp: null,
     });
 
     expect(actions).toEqual([
@@ -27,16 +28,15 @@ describe("buildRenovationActions", () => {
     ]);
   });
 
-  test("maps PV to capacity via floor-area heuristic", () => {
+  test("maps PV to the given array size", () => {
     const actions = buildRenovationActions({
       measureIds: ["pv"],
       surfaceAreas,
       floorArea: 120,
+      pvKwp: 5.4,
     });
 
-    expect(actions).toHaveLength(1);
-    expect(actions[0].action).toBe("PV");
-    expect(actions[0].capacity_kw).toBeCloseTo(5.4, 1);
+    expect(actions).toEqual([{ action: "PV", capacity_kw: 5.4 }]);
   });
 
   test("maps heat pump to the HVAC stopgap capacity", () => {
@@ -44,6 +44,7 @@ describe("buildRenovationActions", () => {
       measureIds: ["air-water-heat-pump"],
       surfaceAreas,
       floorArea: 120,
+      pvKwp: null,
     });
 
     expect(actions).toEqual([
@@ -56,16 +57,18 @@ describe("buildRenovationActions", () => {
       measureIds: ["wall-insulation"],
       surfaceAreas: { ...surfaceAreas, wallM2: 0 },
       floorArea: 100,
+      pvKwp: null,
     });
 
     expect(actions).toEqual([]);
   });
 
-  test("skips capacity actions when floor area is unavailable", () => {
+  test("skips capacity actions when their size is unavailable", () => {
     const actions = buildRenovationActions({
       measureIds: ["pv", "air-water-heat-pump"],
       surfaceAreas,
       floorArea: null,
+      pvKwp: null,
     });
 
     expect(actions).toEqual([]);
@@ -76,6 +79,7 @@ describe("buildRenovationActions", () => {
       measureIds: ["solar-thermal"],
       surfaceAreas,
       floorArea: 100,
+      pvKwp: null,
     });
 
     expect(actions).toEqual([]);

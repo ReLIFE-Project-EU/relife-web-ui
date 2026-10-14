@@ -172,9 +172,8 @@ export function EnergyRenovationStep() {
           icon={<IconInfoCircle size={16} />}
           title="About PV assumptions"
         >
-          We estimate solar production for each building from its floor area,
-          using a typical south-facing roof setup. Real output depends on roof
-          direction, shade, and available space.
+          We estimate solar production for each building from its roof area,
+          assuming a typical south-facing setup.
         </Alert>
       )}
 

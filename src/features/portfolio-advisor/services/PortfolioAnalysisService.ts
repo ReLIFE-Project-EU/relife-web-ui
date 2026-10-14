@@ -15,6 +15,7 @@ import { normalizeSystemSelection } from "../../../services/measureNormalization
 import { packageUsesHeatingStopgap } from "../../../services/renovationActions";
 import { estimatePackageEmbodiedCarbon } from "../../../services/embodiedCarbon";
 import { lookupPackageCosts } from "../../../services/packageCostLookup";
+import { modeledPvKwp } from "../../../services/pvConfig";
 import { isApartmentLikeCategory } from "../../../constants/buildingFormOptions";
 import type {
   BuildingInfo,
@@ -273,6 +274,7 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
           {
             archetype: estimation.archetype,
             floorArea: building.floorArea,
+            pvKwp: modeledPvKwp(estimation, building.floorArea),
             scaleEnvelopeToFloorArea: isApartmentLikeCategory(
               building.propertyType,
             ),
@@ -431,6 +433,7 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
         archetype: estimation.archetype,
         measureIds,
         floorArea: building.floorArea,
+        pvKwp: modeledPvKwp(estimation, building.floorArea),
         scaleEnvelopeToFloorArea: isApartmentLikeCategory(
           building.propertyType,
         ),

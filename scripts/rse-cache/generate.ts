@@ -35,6 +35,7 @@ import type {
   RSEForecastingScenarioSnapshot,
 } from "../../src/features/strategy-explorer/types.ts";
 import { buildECMParams } from "../../src/services/renovationEcmParams.ts";
+import type { BuildingPayload } from "../../src/types/archetype.ts";
 import type { RenovationMeasureId } from "../../src/types/renovation.ts";
 import type {
   ArchetypeInfo,
@@ -42,6 +43,7 @@ import type {
   ECMApplicationResponse,
   ECMScenario,
 } from "../../src/types/forecasting.ts";
+import { surfaceAreasFromBui } from "../../src/utils/archetypeModifier.ts";
 import { resolveEmissionFactorCountry } from "../../src/utils/emissionFactorCountry.ts";
 
 const UNIT_SEPARATOR = "\u001f";
@@ -97,9 +99,9 @@ const createSilentSeedLogger = (): RSESeedLogger => {
   return logger;
 };
 
-/** Archetype reference plus the floor area required by the ECM simulator. */
+/** Archetype reference plus the roof area that sizes its PV array. */
 export interface RSESeedArchetype extends RSEArchetypeRef {
-  floorArea: number;
+  roofArea: number;
 }
 
 /** One cell in the cache matrix: a single (archetype, package) combination. */
@@ -596,7 +598,7 @@ async function generateSeedEntryForTarget(params: {
     ...buildECMParams(measureIds, {
       kind: "archetype",
       archetype: params.target.archetype,
-      floorArea: params.target.archetype.floorArea,
+      roofArea: params.target.archetype.roofArea,
     }),
     include_baseline: false,
   };
@@ -606,7 +608,7 @@ async function generateSeedEntryForTarget(params: {
     {
       baselineOnly: true,
       source: "archetype",
-      floorArea: params.target.archetype.floorArea,
+      roofArea: params.target.archetype.roofArea,
     },
   );
   params.logger.debug(
@@ -616,7 +618,7 @@ async function generateSeedEntryForTarget(params: {
       measureIds,
       includeBaseline: false,
       source: "archetype",
-      floorArea: params.target.archetype.floorArea,
+      roofArea: params.target.archetype.roofArea,
     },
   );
   const baselineEcmResponse =
@@ -1706,7 +1708,11 @@ export async function resolveSeedArchetypes(
 
       const details = await forecastingClient.getArchetypeDetails(archetype);
       const floorArea = readPath(details.bui, "building.net_floor_area");
+      const roofArea = Array.isArray(readPath(details.bui, "building_surface"))
+        ? surfaceAreasFromBui(details.bui as BuildingPayload).roofM2
+        : 0;
 
+      // RSE scales cached output by this area, so it must be positive.
       if (
         typeof floorArea !== "number" ||
         !Number.isFinite(floorArea) ||
@@ -1716,22 +1722,27 @@ export async function resolveSeedArchetypes(
           `Forecasting archetype ${archetype.country}/${archetype.category}/${archetype.name} is missing a positive bui.building.net_floor_area`,
         );
       }
+      if (!(roofArea > 0)) {
+        throw new Error(
+          `Forecasting archetype ${archetype.country}/${archetype.category}/${archetype.name} has no roof surface in bui.building_surface`,
+        );
+      }
 
       logger.debug(
         "archetypes.details.success",
-        "Resolved archetype floor area",
+        "Resolved archetype roof area",
         {
           country: archetype.country,
           category: archetype.category,
           name: archetype.name,
-          floorArea,
+          roofArea,
           elapsedMs: Date.now() - startedAt,
         },
       );
 
       return {
         ...archetype,
-        floorArea,
+        roofArea,
       };
     }),
   );

@@ -1,19 +1,32 @@
 import { describe, expect, test } from "vitest";
 
-import { pvKwpFromFloorArea } from "../../../src/services/pvConfig";
+import {
+  modeledPvKwp,
+  pvKwpFromRoofArea,
+} from "../../../src/services/pvConfig";
 
-describe("pvKwpFromFloorArea", () => {
-  test("derives PV capacity from floor area with min and max bounds", () => {
-    expect(pvKwpFromFloorArea(50)).toBe(3);
-    expect(pvKwpFromFloorArea(85)).toBeCloseTo(3.825, 3);
-    expect(pvKwpFromFloorArea(120)).toBeCloseTo(5.4, 1);
-    expect(pvKwpFromFloorArea(2500)).toBe(100);
+describe("pvKwpFromRoofArea", () => {
+  test("derives PV capacity from roof area with min and max bounds", () => {
+    expect(pvKwpFromRoofArea(50)).toBe(3);
+    expect(pvKwpFromRoofArea(85)).toBeCloseTo(3.825, 3);
+    expect(pvKwpFromRoofArea(120)).toBeCloseTo(5.4, 1);
+    expect(pvKwpFromRoofArea(2500)).toBe(100);
   });
 
-  test("returns null when floor area cannot support PV sizing", () => {
-    expect(pvKwpFromFloorArea(null)).toBeNull();
-    expect(pvKwpFromFloorArea(0)).toBeNull();
-    expect(pvKwpFromFloorArea(-10)).toBeNull();
-    expect(pvKwpFromFloorArea(Number.NaN)).toBeNull();
+  test("returns null when roof area cannot support PV sizing", () => {
+    expect(pvKwpFromRoofArea(null)).toBeNull();
+    expect(pvKwpFromRoofArea(0)).toBeNull();
+    expect(pvKwpFromRoofArea(-10)).toBeNull();
+    expect(pvKwpFromRoofArea(Number.NaN)).toBeNull();
+  });
+});
+
+describe("modeledPvKwp", () => {
+  // Clamping the whole roof before taking the share keeps a flat's PV cost
+  // equal to the output it is credited with, instead of a 3 kWp minimum.
+  test("takes the home's share after clamping the whole roof", () => {
+    expect(
+      modeledPvKwp({ roofArea: 50, archetypeFloorArea: 400 }, 100),
+    ).toBeCloseTo(0.75, 3);
   });
 });

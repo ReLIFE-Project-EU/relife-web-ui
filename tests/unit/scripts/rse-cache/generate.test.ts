@@ -37,7 +37,7 @@ describe("generateRSECacheSeedSql", () => {
               country: "IT",
               category: "Residential",
               name: "Detached '1980'",
-              floorArea: 100,
+              roofArea: 100,
             },
             packageId: "envelope",
           },
@@ -99,7 +99,7 @@ describe("generateRSECacheSeedSql", () => {
               country: "IT",
               category: "Residential",
               name: "Detached 1980",
-              floorArea: 100,
+              roofArea: 100,
             },
             packageId: "systems-heat-pump",
           },
@@ -142,7 +142,7 @@ describe("generateRSECacheSeedSql", () => {
                 country: "IT",
                 category: "Residential",
                 name: "Detached 1980",
-                floorArea: 100,
+                roofArea: 100,
               },
               packageId: "envelope",
             },
@@ -179,7 +179,7 @@ describe("generateRSECacheSeedSql", () => {
               country: "IT",
               category: "Residential",
               name: "Detached 1980",
-              floorArea: 100,
+              roofArea: 100,
             },
             packageId: "combined",
           },
@@ -242,7 +242,7 @@ describe("generateRSECacheSeedSql", () => {
               country: "IT",
               category: "Residential",
               name: "Detached 1980",
-              floorArea: 100,
+              roofArea: 100,
             },
             packageId: "envelope",
           },
@@ -277,13 +277,13 @@ describe("resolveSeedArchetypes", () => {
         country: "IT",
         category: "Residential",
         name: "Detached 1980",
-        floorArea: 100,
+        roofArea: 100,
       },
       {
         country: "GR",
         category: "Residential",
         name: "Apartment 2000",
-        floorArea: 85,
+        roofArea: 85,
       },
     ]);
     expect(listCalls).toHaveLength(1);
@@ -293,7 +293,7 @@ describe("resolveSeedArchetypes", () => {
     ]);
   });
 
-  test("uses explicit archetype JSON but still fetches floor areas", async () => {
+  test("uses explicit archetype JSON but still fetches roof areas", async () => {
     const { client, listCalls, detailCalls } = makeForecastingClient({
       detailsByName: {
         "Detached 1980": makeArchetypeDetails(100),
@@ -310,7 +310,7 @@ describe("resolveSeedArchetypes", () => {
         country: "IT",
         category: "Residential",
         name: "Detached 1980",
-        floorArea: 100,
+        roofArea: 100,
       },
     ]);
     expect(listCalls).toEqual([]);
@@ -332,20 +332,32 @@ describe("resolveSeedArchetypes", () => {
     expect(detailCalls).toEqual([]);
   });
 
-  test("rejects discovered archetypes without a positive floor area", async () => {
-    const { client } = makeForecastingClient({
-      archetypes: [
-        { country: "IT", category: "Residential", name: "Detached 1980" },
-      ],
-      detailsByName: {
-        "Detached 1980": makeArchetypeDetails(0),
-      },
-    });
+  test.each([
+    {
+      geometry: "a positive floor area",
+      details: makeArchetypeDetails(50, 0),
+      error: "bui.building.net_floor_area",
+    },
+    {
+      geometry: "a roof surface",
+      details: makeArchetypeDetails(0, 100),
+      error: "has no roof surface",
+    },
+  ])(
+    "rejects discovered archetypes without $geometry",
+    async ({ details, error }) => {
+      const { client } = makeForecastingClient({
+        archetypes: [
+          { country: "IT", category: "Residential", name: "Detached 1980" },
+        ],
+        detailsByName: { "Detached 1980": details },
+      });
 
-    await expect(resolveSeedArchetypes(undefined, client)).rejects.toThrow(
-      "bui.building.net_floor_area",
-    );
-  });
+      await expect(resolveSeedArchetypes(undefined, client)).rejects.toThrow(
+        error,
+      );
+    },
+  );
 });
 
 describe("runRSESeedCli", () => {
@@ -1293,15 +1305,25 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-function makeArchetypeDetails(floorArea: number): {
+function makeArchetypeDetails(
+  roofArea: number,
+  floorArea = 2 * roofArea,
+): {
   bui: unknown;
   system: unknown;
 } {
   return {
     bui: {
-      building: {
-        net_floor_area: floorArea,
-      },
+      building: { net_floor_area: floorArea },
+      building_surface: [
+        {
+          name: "Roof surface",
+          type: "opaque",
+          area: roofArea,
+          u_value: 0.5,
+          sky_view_factor: 1,
+        },
+      ],
     },
     system: {},
   };

@@ -34,6 +34,7 @@ const estimation: EstimationResult = {
   comfortIndex: 70,
   annualEnergyConsumption: 15000,
   archetypeFloorArea: 100,
+  roofArea: 50,
   archetype: {
     category: "Multi family House",
     country: "Greece",

@@ -33,7 +33,6 @@ import {
   resolveArchetypeGeometry,
   type PackageCostLookupDeps,
 } from "./packageCostLookup";
-import { pvKwpFromFloorArea } from "./pvConfig";
 import { U_VALUE_TARGETS } from "./renovationEcmParams";
 
 /**
@@ -301,6 +300,7 @@ function measureCarbon(
   measureId: RenovationMeasureId,
   elements: Record<EnvelopeElement, EnvelopeElementGeometry>,
   floorArea: number | null,
+  pvKwp: number | null,
 ): number | null {
   const sheet = sheetFor(measureId);
   if (!sheet) return null;
@@ -322,8 +322,7 @@ function measureCarbon(
   }
 
   if (measureId === "pv") {
-    const kwp = pvKwpFromFloorArea(floorArea);
-    return kwp === null ? null : pvCarbon(sheet, kwp);
+    return pvKwp === null ? null : pvCarbon(sheet, pvKwp);
   }
 
   const capacityKw = heatingCapacityKwFromFloorArea(floorArea);
@@ -343,6 +342,7 @@ function measureCarbon(
 export function estimatePackageEmbodiedCarbonFromBui(params: {
   bui: BuildingPayload;
   floorArea: number | null;
+  pvKwp: number | null;
   measureIds: RenovationMeasureId[];
 }): number | null {
   const elements = envelopeElementsFromBui(params.bui);
@@ -352,7 +352,12 @@ export function estimatePackageEmbodiedCarbonFromBui(params: {
   for (const measureId of params.measureIds) {
     if (!DEFAULT_SHEET_BY_MEASURE[measureId]) continue;
 
-    const kgCO2e = measureCarbon(measureId, elements, params.floorArea);
+    const kgCO2e = measureCarbon(
+      measureId,
+      elements,
+      params.floorArea,
+      params.pvKwp,
+    );
     if (kgCO2e === null) return null;
 
     total += kgCO2e;
@@ -371,6 +376,7 @@ export async function estimatePackageEmbodiedCarbon(
   params: {
     archetype: ArchetypeInfo | undefined;
     floorArea: number | null;
+    pvKwp: number | null;
     measureIds: RenovationMeasureId[];
     scaleEnvelopeToFloorArea?: boolean;
   },
@@ -390,6 +396,7 @@ export async function estimatePackageEmbodiedCarbon(
   return estimatePackageEmbodiedCarbonFromBui({
     bui: geometry.bui,
     floorArea: geometry.floorArea,
+    pvKwp: params.pvKwp,
     measureIds: params.measureIds,
   });
 }

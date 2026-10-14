@@ -9,7 +9,7 @@
  *
  * This module is intentionally isolated and free of feature imports so it can be
  * deleted wholesale once a real sized capacity becomes available. It parallels
- * `pvKwpFromFloorArea` in `pvConfig.ts`.
+ * `pvKwpFromRoofArea` in `pvConfig.ts`.
  */
 
 /**

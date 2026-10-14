@@ -43,6 +43,7 @@ import type {
 } from "./types";
 import {
   applyAllModifications,
+  surfaceAreasFromBui,
   validateModifications,
 } from "../utils/archetypeModifier";
 import { countryNamesEqual, normalizeCountryName } from "../utils/countries";
@@ -327,7 +328,7 @@ export class EnergyService implements IEnergyService {
         name: params.name,
       },
       // Only read when a PV measure is applied, and a baseline run has none.
-      floorArea: null,
+      roofArea: null,
     }).catch((error: unknown) => {
       this.archetypeSimulationCache.delete(cacheKey);
       throw error;
@@ -551,6 +552,7 @@ export class EnergyService implements IEnergyService {
     matchStrategy: ArchetypeMatchStrategy;
     building: BuildingInfo;
     archetypeArea: number;
+    roofArea: number;
     userArea: number;
     modifiedBui?: unknown;
     modifiedSystem?: unknown;
@@ -565,6 +567,7 @@ export class EnergyService implements IEnergyService {
       matchStrategy,
       building,
       archetypeArea,
+      roofArea,
       userArea,
       modifiedBui,
       modifiedSystem,
@@ -699,6 +702,7 @@ export class EnergyService implements IEnergyService {
         ? { primaryEnergy: Math.round(scaledPrimaryEnergy) }
         : {}),
       archetypeFloorArea: archetypeArea,
+      roofArea,
       archetype: {
         category: archetype.category,
         country: archetype.country,
@@ -836,7 +840,7 @@ export class EnergyService implements IEnergyService {
             modifiedBui: validatedBui,
             modifiedSystem: validatedSystem,
             uni11300Config: archetypeDetails.uni11300Config,
-            floorArea: simulatedArea,
+            roofArea: null,
           }),
           this.simulateArchetype({
             category: archetype.category,
@@ -854,6 +858,7 @@ export class EnergyService implements IEnergyService {
             floorArea: referenceArea,
           },
           archetypeArea: archetypeDetails.floorArea,
+          roofArea: surfaceAreasFromBui(archetypeDetails.bui).roofM2,
           userArea: referenceArea,
           auditCtx,
         });
@@ -869,6 +874,7 @@ export class EnergyService implements IEnergyService {
           matchStrategy,
           building,
           archetypeArea: simulatedArea,
+          roofArea: surfaceAreasFromBui(validatedBui as BuildingPayload).roofM2,
           userArea,
           modifiedBui: validatedBui,
           modifiedSystem: validatedSystem,
@@ -893,6 +899,7 @@ export class EnergyService implements IEnergyService {
             deliveredTotal: result.deliveredTotal,
             primaryEnergy: result.primaryEnergy,
             archetypeFloorArea: result.archetypeFloorArea,
+            roofArea: result.roofArea,
             modified: true,
           },
           auditCtx,
@@ -932,6 +939,7 @@ export class EnergyService implements IEnergyService {
         matchStrategy,
         building,
         archetypeArea: archetypeDetails.floorArea,
+        roofArea: surfaceAreasFromBui(archetypeDetails.bui).roofM2,
         userArea: building.floorArea || DEFAULT_FLOOR_AREA,
         auditCtx,
       });
@@ -944,6 +952,7 @@ export class EnergyService implements IEnergyService {
           deliveredTotal: result.deliveredTotal,
           primaryEnergy: result.primaryEnergy,
           archetypeFloorArea: result.archetypeFloorArea,
+          roofArea: result.roofArea,
           modified: false,
         },
         auditCtx,

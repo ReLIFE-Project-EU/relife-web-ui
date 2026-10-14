@@ -6,6 +6,7 @@ import {
   scaleArchetypeGeometry,
   type ResolvedArchetypeGeometry,
 } from "../../../services/packageCostLookup";
+import { modeledPvKwp } from "../../../services/pvConfig";
 import {
   buildSchemes,
   mapWireRiskResponse,
@@ -16,6 +17,7 @@ import { computeCarrierFinancialEnergySavings } from "../../../services/carrierS
 import type { EstimatePackageCostsResult } from "../../../services/types";
 import type { ArchetypeDetails } from "../../../types/archetype";
 import { APIError } from "../../../types/common";
+import { surfaceAreasFromBui } from "../../../utils/archetypeModifier";
 import type {
   RiskAssessmentRequest,
   RiskAssessmentResponse,
@@ -85,6 +87,13 @@ export async function computeFinancials(
     floorArea: input.modeledFloorArea,
     scaleEnvelopeToFloorArea: true,
   });
+  const pvKwp = modeledPvKwp(
+    {
+      roofArea: surfaceAreasFromBui(input.details.bui).roofM2,
+      archetypeFloorArea: input.details.floorArea,
+    },
+    input.modeledFloorArea,
+  );
 
   // Resolve gross CAPEX and annual maintenance from EU reference data via the
   // shared Financial lookup. Data-shaped failures (unsupported country, no
@@ -98,6 +107,7 @@ export async function computeFinancials(
         country: input.archetype.country,
         bui: geometry.bui,
         floorArea: geometry.floorArea,
+        pvKwp,
         measureIds: RSE_PACKAGES[input.packageId].measureIds,
         projectLifetime: assumptions.projectLifetimeYears,
       },
@@ -200,6 +210,7 @@ export async function computeFinancials(
   return normalizeRiskResponse(
     input,
     geometry,
+    pvKwp,
     capexEur,
     effectiveCapexEur,
     annualMaintenanceEur,
@@ -236,6 +247,7 @@ export async function computeFinancialsBatch(
 function normalizeRiskResponse(
   input: RSEFinancialServiceInput,
   geometry: ResolvedArchetypeGeometry,
+  pvKwp: number | null,
   capexEur: number,
   effectiveCapexEur: number,
   annualMaintenanceEur: number,
@@ -251,6 +263,7 @@ function normalizeRiskResponse(
   const embodiedCarbonKgCo2e = estimatePackageEmbodiedCarbonFromBui({
     bui: geometry.bui,
     floorArea: geometry.floorArea,
+    pvKwp,
     measureIds: RSE_PACKAGES[input.packageId].measureIds,
   });
   const pf = mapped.pointForecasts;

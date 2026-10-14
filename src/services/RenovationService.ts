@@ -698,7 +698,7 @@ export class RenovationService implements IRenovationService {
           modifiedBui: estimation.modifiedBui,
           modifiedSystem: estimation.modifiedSystem,
           uni11300Config: estimation.uni11300Config,
-          floorArea: estimation.archetypeFloorArea ?? null,
+          roofArea: estimation.roofArea,
         }
       : {
           kind: "archetype",
@@ -707,7 +707,7 @@ export class RenovationService implements IRenovationService {
             country: estimation.archetype!.country,
             name: estimation.archetype!.name,
           },
-          floorArea: estimation.archetypeFloorArea ?? null,
+          roofArea: estimation.roofArea,
         };
   }
 

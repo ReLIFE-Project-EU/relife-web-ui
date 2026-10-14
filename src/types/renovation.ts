@@ -131,6 +131,9 @@ export interface EstimationResult {
    */
   archetypeFloorArea: number;
 
+  /** Roof area (m²) of the simulated building; sizes its PV array. */
+  roofArea: number;
+
   /**
    * Archetype used for the estimation.
    * Persisted here so it can be reused for renovation simulations (Step 2),

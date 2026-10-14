@@ -1,10 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { buildECMParams } from "../../../src/services/renovationEcmParams";
-import {
-  PV_DEFAULTS,
-  pvKwpFromFloorArea,
-} from "../../../src/services/pvConfig";
+import { PV_DEFAULTS, pvKwpFromRoofArea } from "../../../src/services/pvConfig";
 
 const archetypeContext = {
   kind: "archetype",
@@ -13,7 +10,7 @@ const archetypeContext = {
     category: "SFH",
     name: "GR_SFH_1961_1980",
   },
-  floorArea: 100,
+  roofArea: 100,
 } as const;
 
 describe("buildECMParams", () => {
@@ -66,7 +63,7 @@ describe("buildECMParams", () => {
     expect(params).toEqual(
       expect.objectContaining({
         use_pv: true,
-        pv_kwp: pvKwpFromFloorArea(archetypeContext.floorArea),
+        pv_kwp: pvKwpFromRoofArea(archetypeContext.roofArea),
         pv_tilt_deg: PV_DEFAULTS.tiltDeg,
         pv_azimuth_deg: PV_DEFAULTS.azimuthDeg,
         pv_use_pvgis: PV_DEFAULTS.usePvgis,
@@ -91,22 +88,22 @@ describe("buildECMParams", () => {
         use_heat_pump: true,
         heat_pump_cop: 3.2,
         use_pv: true,
-        pv_kwp: pvKwpFromFloorArea(archetypeContext.floorArea),
+        pv_kwp: pvKwpFromRoofArea(archetypeContext.roofArea),
       }),
     );
     expect(params).not.toHaveProperty("include_baseline");
   });
 
-  test("throws when PV requires a missing or invalid floor area", () => {
-    const invalidFloorAreas: Array<number | null> = [null, 0, Number.NaN, -1];
+  test("throws when PV requires a missing or invalid roof area", () => {
+    const invalidRoofAreas: Array<number | null> = [null, 0, Number.NaN, -1];
 
-    for (const floorArea of invalidFloorAreas) {
+    for (const roofArea of invalidRoofAreas) {
       expect(() =>
         buildECMParams(["pv"], {
           ...archetypeContext,
-          floorArea,
+          roofArea,
         }),
-      ).toThrow("PV measure requires a valid archetype floor area");
+      ).toThrow("PV measure requires a simulated roof area");
     }
   });
 
@@ -124,7 +121,7 @@ describe("buildECMParams", () => {
       modifiedBui,
       modifiedSystem,
       uni11300Config,
-      floorArea: 100,
+      roofArea: 100,
     });
 
     expect(params).toEqual(
@@ -146,7 +143,7 @@ describe("buildECMParams", () => {
       buildECMParams([], {
         kind: "custom",
         modifiedBui: {},
-        floorArea: 100,
+        roofArea: 100,
       }),
     ).toThrow("missing its archetype UNI/TS 11300 settings");
   });

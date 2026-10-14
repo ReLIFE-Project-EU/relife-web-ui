@@ -5,7 +5,7 @@
 
 import { Alert, Box, Text, Title } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
-import { pvKwpFromFloorArea } from "../../../../services/pvConfig";
+import { modeledPvKwp } from "../../../../services/pvConfig";
 import type { RenovationMeasureId } from "../../context/types";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
@@ -18,7 +18,9 @@ export function MeasureSelector() {
 
   const selectedMeasures = state.renovation.selectedMeasures;
   const hasPv = selectedMeasures.includes("pv");
-  const pvKwp = pvKwpFromFloorArea(state.building.floorArea);
+  const pvKwp = state.estimation
+    ? modeledPvKwp(state.estimation, state.building.floorArea)
+    : null;
 
   const handleToggleMeasure = (measureId: RenovationMeasureId) => {
     dispatch({ type: "TOGGLE_MEASURE", measureId });
@@ -53,10 +55,10 @@ export function MeasureSelector() {
         >
           {pvKwp !== null && state.building.floorArea !== null ? (
             <>
-              We estimate solar production from your floor area using a typical
-              south-facing roof setup.{" "}
+              We estimate solar production from the building's roof area,
+              assuming a typical south-facing setup.{" "}
               {/* The API uses archetype-basis sizing; this shows the user-equivalent size. */}
-              For your building, this is roughly{" "}
+              For your home, this is roughly{" "}
               <Text span inherit fw={700}>
                 {formatDecimal(pvKwp)} kWp
               </Text>
@@ -66,9 +68,9 @@ export function MeasureSelector() {
             </>
           ) : (
             <>
-              We estimate solar production from floor area using a typical
-              south-facing roof setup. Enter a valid floor area to include PV in
-              the comparison.
+              We estimate solar production from the building's roof area,
+              assuming a typical south-facing setup. Enter a valid floor area to
+              include PV in the comparison.
             </>
           )}
         </Alert>

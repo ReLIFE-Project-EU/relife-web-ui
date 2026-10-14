@@ -9,6 +9,7 @@ import { IconInfoCircle } from "@tabler/icons-react";
 import { EnergyTariffPanel } from "../../../../components/shared/EnergyTariffPanel";
 import { isApartmentLikeCategory } from "../../../../constants/buildingFormOptions";
 import { estimatePackageEmbodiedCarbon } from "../../../../services/embodiedCarbon";
+import { modeledPvKwp } from "../../../../services/pvConfig";
 import { auditLog } from "../../../../utils/auditLogger";
 import { LineageLink } from "../../../lineage";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
@@ -94,6 +95,7 @@ export function EnergyRenovationStep() {
 
       // Material carbon rides along with the scenarios so ranking eligibility
       // sees it, from the same geometry and apartment scaling as the cost lookup.
+      const pvKwp = modeledPvKwp(state.estimation, state.building.floorArea);
       const embodiedCarbon = await Promise.all(
         evaluated.map((scenario) =>
           scenario.measureIds.length === 0
@@ -102,6 +104,7 @@ export function EnergyRenovationStep() {
                 {
                   archetype: state.estimation?.archetype,
                   floorArea: state.building.floorArea,
+                  pvKwp,
                   measureIds: scenario.measureIds,
                   scaleEnvelopeToFloorArea: isApartmentLikeCategory(
                     state.building.buildingType,

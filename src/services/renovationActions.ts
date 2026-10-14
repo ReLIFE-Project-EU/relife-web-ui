@@ -4,9 +4,9 @@
  * CAPEX/OPEX lookup: a surface `area_m2` for envelope measures, or a
  * `capacity_kw` for PV and heating systems.
  *
- * Pure: callers supply the building's surface areas and floor area. Actions
- * whose quantity cannot be resolved are skipped, so the caller can decide
- * whether the remaining list is enough to request a lookup.
+ * Pure: callers supply the building's surface areas, floor area and PV size.
+ * Actions whose quantity cannot be resolved are skipped, so the caller can
+ * decide whether the remaining list is enough to request a lookup.
  */
 
 import type {
@@ -15,7 +15,6 @@ import type {
 } from "../types/financial";
 import type { RenovationMeasureId } from "../types/renovation";
 import { heatingCapacityKwFromFloorArea } from "./hvacSizing";
-import { pvKwpFromFloorArea } from "./pvConfig";
 
 /** Per-element surface areas (m²); shape matches `surfaceAreasFromBui`. */
 export interface SurfaceAreas {
@@ -104,6 +103,7 @@ export function buildRenovationActions(params: {
   measureIds: RenovationMeasureId[];
   surfaceAreas: SurfaceAreas;
   floorArea: number | null;
+  pvKwp: number | null;
 }): RenovationAction[] {
   const actions: RenovationAction[] = [];
 
@@ -121,7 +121,7 @@ export function buildRenovationActions(params: {
 
     const capacityKw =
       quantity.kind === "pvCapacity"
-        ? pvKwpFromFloorArea(params.floorArea)
+        ? params.pvKwp
         : heatingCapacityKwFromFloorArea(params.floorArea);
     if (capacityKw !== null) actions.push({ action, capacity_kw: capacityKw });
   }

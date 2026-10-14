@@ -44,6 +44,7 @@ function makeEstimation(
     comfortIndex: 50,
     annualEnergyConsumption: 0,
     archetypeFloorArea,
+    roofArea: 0,
     archetype: {
       category: "Single Family House",
       country: "Greece",
@@ -174,6 +175,7 @@ describe("validateEstimation", () => {
       comfortIndex: 50,
       annualEnergyConsumption: 0,
       archetypeFloorArea: 0,
+      roofArea: 0,
     };
     const diagnostic = validateEstimation(estimation, makeBuilding());
     expect(diagnostic.level).toBe("ok");

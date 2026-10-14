@@ -296,6 +296,7 @@ const mockEstimation: EstimationResult = {
   comfortIndex: 60,
   annualEnergyConsumption: 11_000,
   archetypeFloorArea: 120,
+  roofArea: 60,
 };
 
 describe("homeAssistantReducer CLEAR_ACCEPTED_ARCHETYPE", () => {

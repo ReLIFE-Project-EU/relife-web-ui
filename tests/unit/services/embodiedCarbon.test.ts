@@ -36,6 +36,7 @@ describe("estimatePackageEmbodiedCarbonFromBui", () => {
     const modest = estimatePackageEmbodiedCarbonFromBui({
       bui: bui([surface("Wall", "opaque", 100, 0.8)]),
       floorArea: 120,
+      pvKwp: null,
       measureIds: ["wall-insulation"],
     });
     expect(modest).toBeCloseTo(674, 0);
@@ -44,6 +45,7 @@ describe("estimatePackageEmbodiedCarbonFromBui", () => {
     const poor = estimatePackageEmbodiedCarbonFromBui({
       bui: bui([surface("Wall", "opaque", 100, 1.5)]),
       floorArea: 120,
+      pvKwp: null,
       measureIds: ["wall-insulation"],
     });
     expect(poor).toBeGreaterThan(modest!);
@@ -56,6 +58,7 @@ describe("estimatePackageEmbodiedCarbonFromBui", () => {
     const extrapolated = estimatePackageEmbodiedCarbonFromBui({
       bui: bui([surface("Roof", "opaque", 50, 2.0)]),
       floorArea: 120,
+      pvKwp: null,
       measureIds: ["roof-insulation"],
     });
 
@@ -73,21 +76,22 @@ describe("estimatePackageEmbodiedCarbonFromBui", () => {
     const carbon = estimatePackageEmbodiedCarbonFromBui({
       bui: bui([surface("Window", "transparent", 20, 3.0)]),
       floorArea: 120,
+      pvKwp: null,
       measureIds: ["windows"],
     });
 
     expect(carbon).toBeCloseTo(86 * 20, 0);
   });
 
-  test("sizes system measures from floor area", () => {
+  test("prices system measures by capacity", () => {
     const envelope = bui([surface("Wall", "opaque", 100, 0.8)]);
 
-    // 120 m² → 5.4 kWp (0.045 kWp/m²) → modules only at 0.597 kgCO₂e/Wp.
-    // The sheet's inverter row is deliberately excluded; see the PV note in
-    // embodiedCarbon.ts.
+    // 5.4 kWp → modules only at 0.597 kgCO₂e/Wp. The sheet's inverter row is
+    // deliberately excluded; see the PV note in embodiedCarbon.ts.
     const pv = estimatePackageEmbodiedCarbonFromBui({
       bui: envelope,
       floorArea: 120,
+      pvKwp: 5.4,
       measureIds: ["pv"],
     });
     expect(pv).toBeCloseTo(5.4 * 1000 * 0.597, 0);
@@ -97,11 +101,13 @@ describe("estimatePackageEmbodiedCarbonFromBui", () => {
     const heatPump = estimatePackageEmbodiedCarbonFromBui({
       bui: envelope,
       floorArea: 120,
+      pvKwp: null,
       measureIds: ["air-water-heat-pump"],
     });
     const boiler = estimatePackageEmbodiedCarbonFromBui({
       bui: envelope,
       floorArea: 120,
+      pvKwp: null,
       measureIds: ["condensing-boiler"],
     });
 
@@ -112,6 +118,7 @@ describe("estimatePackageEmbodiedCarbonFromBui", () => {
       estimatePackageEmbodiedCarbonFromBui({
         bui: envelope,
         floorArea: 120,
+        pvKwp: 5.4,
         measureIds: ["pv", "air-water-heat-pump"],
       }),
     ).toBeCloseTo(pv! + heatPump!, 0);
@@ -123,6 +130,7 @@ describe("estimatePackageEmbodiedCarbonFromBui", () => {
       estimatePackageEmbodiedCarbonFromBui({
         bui: envelope,
         floorArea,
+        pvKwp: null,
         measureIds: ["air-water-heat-pump"],
       })!;
 
@@ -143,6 +151,7 @@ describe("estimatePackageEmbodiedCarbonFromBui", () => {
       estimatePackageEmbodiedCarbonFromBui({
         bui: wall,
         floorArea: 120,
+        pvKwp: null,
         measureIds,
       });
 

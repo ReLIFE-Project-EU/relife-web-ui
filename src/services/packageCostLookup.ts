@@ -35,6 +35,8 @@ export interface PackageCostLookupParams {
   measureIds: RenovationMeasureId[];
   /** Building floor area; falls back to the archetype's when null. */
   floorArea: number | null;
+  /** PV array credited to the home (see `modeledPvKwp`). */
+  pvKwp: number | null;
   /** Optional evaluation horizon (years). */
   projectLifetime?: number;
   /**
@@ -56,8 +58,10 @@ export interface PackageCostLookupFromDetailsParams {
   country: string | null | undefined;
   /** BUI payload providing the envelope surface areas. */
   bui: BuildingPayload;
-  /** Floor area used to size HVAC/PV capacity. */
+  /** Floor area used to size HVAC capacity. */
   floorArea: number | null;
+  /** PV array credited to the home (see `modeledPvKwp`). */
+  pvKwp: number | null;
   /** Package measures to price. */
   measureIds: RenovationMeasureId[];
   /** Optional evaluation horizon (years). */
@@ -83,6 +87,7 @@ export async function lookupPackageCostsFromDetails(
     measureIds: params.measureIds,
     surfaceAreas: surfaceAreasFromBui(params.bui),
     floorArea: params.floorArea,
+    pvKwp: params.pvKwp,
   });
   if (renovationActions.length === 0) {
     throw new Error("No priceable measures in this package.");
@@ -100,9 +105,9 @@ export async function lookupPackageCostsFromDetails(
  * any unmet precondition (missing location/archetype, no priceable measures)
  * or lookup failure so callers can surface it in their own way.
  *
- * Envelope surface areas come from the archetype BUI; HVAC/PV capacity is sized
- * from the floor area. Per-building modifications that change envelope geometry
- * are not reflected here.
+ * Envelope surface areas come from the archetype BUI; HVAC capacity is sized
+ * from the floor area, and PV comes from the caller. Per-building modifications
+ * that change envelope geometry are not reflected here.
  */
 export async function lookupPackageCosts(
   params: PackageCostLookupParams,
@@ -129,6 +134,7 @@ export async function lookupPackageCosts(
       country,
       bui: geometry.bui,
       floorArea: geometry.floorArea,
+      pvKwp: params.pvKwp,
       measureIds: params.measureIds,
       projectLifetime: params.projectLifetime,
     },
@@ -139,7 +145,7 @@ export async function lookupPackageCosts(
 export interface ResolvedArchetypeGeometry {
   /** Envelope geometry, scaled to the modeled floor area where requested. */
   bui: BuildingPayload;
-  /** Floor area used to size HVAC/PV capacity. */
+  /** Floor area used to size HVAC capacity. */
   floorArea: number;
 }
 

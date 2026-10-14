@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { lookupPackageCosts } from "../../../services/packageCostLookup";
+import { modeledPvKwp } from "../../../services/pvConfig";
 import { isApartmentLikeCategory } from "../../../constants/buildingFormOptions";
 import { useHomeAssistant } from "./useHomeAssistant";
 import { useHomeAssistantServices } from "./useHomeAssistantServices";
@@ -45,6 +46,9 @@ export function usePackageCostEstimation(): PackageCostEstimation {
   // so envelope measure costs must be scaled to the flat as well.
   const isFlatShare = isApartmentLikeCategory(state.building.buildingType);
   const archetype = state.estimation?.archetype;
+  const pvKwp = state.estimation
+    ? modeledPvKwp(state.estimation, buildingFloorArea)
+    : null;
 
   const clearError = useCallback((packageId: string) => {
     setErrorsById((prev) => {
@@ -73,6 +77,7 @@ export function usePackageCostEstimation(): PackageCostEstimation {
             archetype,
             measureIds: pkg.measureIds,
             floorArea: buildingFloorArea,
+            pvKwp,
             projectLifetime: buildingProjectLifetime,
             scaleEnvelopeToFloorArea: isFlatShare,
           },
@@ -113,6 +118,7 @@ export function usePackageCostEstimation(): PackageCostEstimation {
       buildingProjectLifetime,
       isFlatShare,
       archetype,
+      pvKwp,
     ],
   );
 

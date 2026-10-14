@@ -4,7 +4,7 @@ import type {
   ECMCustomBuildingParams,
 } from "../types/forecasting";
 import type { RenovationMeasureId } from "../types/renovation";
-import { PV_DEFAULTS, pvKwpFromFloorArea } from "./pvConfig.ts";
+import { PV_DEFAULTS, pvKwpFromRoofArea } from "./pvConfig.ts";
 
 /**
  * Element U-values (W/m²K) the ECM engine is asked to reach. Exported because
@@ -38,14 +38,14 @@ export type BuildECMParamsContext =
         category: string;
         name: string;
       };
-      floorArea: number | null;
+      roofArea: number | null;
     }
   | {
       kind: "custom";
       modifiedBui: unknown;
       modifiedSystem?: unknown;
       uni11300Config?: unknown;
-      floorArea: number | null;
+      roofArea: number | null;
     };
 
 export function buildECMParams(
@@ -78,10 +78,10 @@ export function buildECMParams(
     measureIds.includes("air-water-heat-pump");
 
   if (hasPv) {
-    const pvKwp = pvKwpFromFloorArea(context.floorArea);
+    const pvKwp = pvKwpFromRoofArea(context.roofArea);
     if (pvKwp === null) {
       throw new Error(
-        "PV measure requires a valid archetype floor area on the estimation",
+        "PV measure requires a simulated roof area on the estimation",
       );
     }
     commonParams.use_pv = true;
