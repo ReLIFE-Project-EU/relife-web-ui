@@ -1,4 +1,6 @@
-import { Stack, Text } from "@mantine/core";
+import { Box, Flex, Stack, Text } from "@mantine/core";
+import { APARTMENT_LOCATION_OPTIONS } from "../../constants/buildingFormOptions";
+import { relifeConcepts } from "../../constants/relifeConcepts";
 import { toNearestWholeFloorCount } from "../../utils/buildingFloorNumbers";
 import { mapApartmentLocationToFloorNumber } from "./buildingSelectorUtils";
 import {
@@ -8,16 +10,16 @@ import {
 } from "./selectorConfig";
 import type { ApartmentLocation } from "./types";
 
-/** Layout in SVG viewBox units; the sketch never renders wider than `width`. */
+/** Fixed drawing area and schematic width; area never determines the outline. */
 const SKETCH = {
-  width: 320,
-  height: 120,
-  buildingLeft: 56,
-  buildingWidth: 112,
+  width: 160,
+  height: 160,
+  buildingLeft: 36,
+  buildingWidth: 100,
+  groundY: 148,
+  maxStackHeight: 140,
   groundOverhang: 16,
-  gap: 8,
-  fontSize: 11,
-  strokeWidth: 1.5,
+  gap: 10,
 } as const;
 
 type GeometrySketchProps = {
@@ -37,95 +39,130 @@ type GeometrySketchProps = {
 export function GeometrySketch(props: GeometrySketchProps) {
   const { floors, floorHeight, accentColor } = props;
   const drawnFloors = toNearestWholeFloorCount(floors);
-  const groundY = SKETCH.height - SKETCH.strokeWidth;
-  const floorPx = groundY / drawnFloors;
+  const groundY = SKETCH.groundY;
+  // Compress the supported 1–20 floors / 2–6 m range without scaling the labels.
+  const stackHeight = Math.min(
+    SKETCH.maxStackHeight,
+    SKETCH.maxStackHeight * Math.sqrt((drawnFloors * floorHeight) / (20 * 6)),
+  );
+  const floorPx = stackHeight / drawnFloors;
   const markedFloor =
     props.mode === "flat"
       ? mapApartmentLocationToFloorNumber(props.apartmentLocation, floors)
       : 0;
   const markedTop = groundY - (markedFloor + 1) * floorPx;
-  const markedMiddle = markedTop + floorPx / 2;
   const buildingRight = SKETCH.buildingLeft + SKETCH.buildingWidth;
 
   const floorCount = `${formatNumber(floors)} ${floors === 1 ? "floor" : "floors"}`;
   const heightLabel = `${formatNumber(floorHeight)} m`;
-  const floorLabel =
+  const areaLabel =
+    relifeConcepts[
+      props.mode === "flat" ? "apartment-floor-area" : "total-floor-area"
+    ].label;
+  const areaValue = formatFloorArea(
+    props.mode === "flat" ? props.flatFloorArea : props.totalFloorArea,
+  );
+  const locationLabel =
     props.mode === "flat"
-      ? `Your flat: ${formatFloorArea(props.flatFloorArea)}`
-      : formatPerFloorArea(props.totalFloorArea, floors);
-  const caption =
-    props.mode === "flat"
-      ? `Building: ${floorCount}`
-      : `${floorCount} · ${formatFloorArea(props.totalFloorArea)} in total`;
+      ? APARTMENT_LOCATION_OPTIONS.find(
+          ({ value }) => value === props.apartmentLocation,
+        )?.label
+      : undefined;
 
   const accentFill = `var(--mantine-color-${accentColor}-light)`;
   const accentStroke = `var(--mantine-color-${accentColor}-filled)`;
-  const textFill = "var(--mantine-color-text)";
 
   return (
-    <Stack gap={4} mt="sm">
-      <svg
-        viewBox={`0 0 ${SKETCH.width} ${SKETCH.height}`}
-        style={{ width: "100%", maxWidth: SKETCH.width }}
-        role="img"
-        aria-label={`${caption}. ${floorLabel}. Floor height: ${heightLabel}.`}
-      >
-        {Array.from({ length: drawnFloors }, (_, floor) => {
-          const filled = props.mode === "building" || floor === markedFloor;
-          return (
-            <rect
+    <Flex gap="md" align="center" wrap="wrap">
+      <Box style={{ flex: `0 0 ${SKETCH.width}px` }}>
+        <svg
+          viewBox={`0 0 ${SKETCH.width} ${SKETCH.height}`}
+          width={SKETCH.width}
+          height={SKETCH.height}
+          style={{ display: "block" }}
+          role="img"
+          aria-label={`Building geometry preview. ${floorCount}. ${heightLabel} per floor.${locationLabel ? ` Your flat: ${locationLabel}.` : ""}`}
+        >
+          <rect
+            x={SKETCH.buildingLeft}
+            y={groundY - stackHeight}
+            width={SKETCH.buildingWidth}
+            height={stackHeight}
+            fill={accentFill}
+            stroke={accentStroke}
+            strokeWidth={2}
+          />
+          {Array.from({ length: drawnFloors - 1 }, (_, floor) => (
+            <line
               key={floor}
-              x={SKETCH.buildingLeft}
-              y={groundY - (floor + 1) * floorPx}
-              width={SKETCH.buildingWidth}
-              height={floorPx}
-              fill={filled ? accentFill : "none"}
-              stroke={
-                filled ? accentStroke : "var(--mantine-color-default-border)"
-              }
-              strokeWidth={SKETCH.strokeWidth}
+              x1={SKETCH.buildingLeft}
+              x2={buildingRight}
+              y1={groundY - (floor + 1) * floorPx}
+              y2={groundY - (floor + 1) * floorPx}
+              stroke={accentStroke}
+              strokeOpacity={0.3}
             />
-          );
-        })}
-        <line
-          x1={SKETCH.buildingLeft - SKETCH.groundOverhang}
-          x2={buildingRight + SKETCH.groundOverhang}
-          y1={groundY}
-          y2={groundY}
-          stroke="var(--mantine-color-dimmed)"
-          strokeWidth={SKETCH.strokeWidth}
-        />
-        <line
-          x1={SKETCH.buildingLeft - SKETCH.gap}
-          x2={SKETCH.buildingLeft - SKETCH.gap}
-          y1={markedTop}
-          y2={markedTop + floorPx}
-          stroke={textFill}
-          strokeWidth={SKETCH.strokeWidth}
-        />
-        <text
-          x={SKETCH.buildingLeft - 2 * SKETCH.gap}
-          y={markedMiddle}
-          textAnchor="end"
-          dominantBaseline="middle"
-          fontSize={SKETCH.fontSize}
-          fill={textFill}
-        >
-          {heightLabel}
-        </text>
-        <text
-          x={buildingRight + SKETCH.gap}
-          y={markedMiddle}
-          dominantBaseline="middle"
-          fontSize={SKETCH.fontSize}
-          fill={textFill}
-        >
-          {floorLabel}
-        </text>
-      </svg>
-      <Text size="xs" c="dimmed">
-        {caption}
-      </Text>
-    </Stack>
+          ))}
+          {props.mode === "flat" && (
+            <rect
+              x={buildingRight - 30}
+              y={markedTop + floorPx * 0.2}
+              width={22}
+              height={floorPx * 0.6}
+              fill={accentStroke}
+            />
+          )}
+          <line
+            x1={SKETCH.buildingLeft - SKETCH.groundOverhang}
+            x2={buildingRight + SKETCH.groundOverhang}
+            y1={groundY}
+            y2={groundY}
+            stroke="var(--mantine-color-dimmed)"
+            strokeWidth={2}
+          />
+          <path
+            d={`M ${SKETCH.buildingLeft - SKETCH.gap + 4} ${markedTop}
+                h -8 m 4 0 v ${floorPx} m -4 0 h 8`}
+            fill="none"
+            stroke="var(--mantine-color-text)"
+            strokeWidth={1.5}
+          />
+        </svg>
+      </Box>
+      <Stack
+        gap={6}
+        mih={140}
+        justify="center"
+        style={{ flex: "1 1 180px", minWidth: 0, overflowWrap: "anywhere" }}
+      >
+        <Text size="xs">
+          Floor height:{" "}
+          <Text span fw={600}>
+            {heightLabel}
+          </Text>
+        </Text>
+        <Text size="xs">
+          Building:{" "}
+          <Text span fw={600}>
+            {floorCount}
+          </Text>
+        </Text>
+        <Text size="xs">
+          {areaLabel}:{" "}
+          <Text span fw={600} style={{ display: "inline-block" }}>
+            {areaValue}
+          </Text>
+        </Text>
+        {props.mode === "building" ? (
+          <Text size="xs" c="dimmed">
+            {formatPerFloorArea(props.totalFloorArea, floors)}
+          </Text>
+        ) : (
+          <Text size="xs" c={`${accentColor}.9`} fw={600}>
+            Your flat · {locationLabel}
+          </Text>
+        )}
+      </Stack>
+    </Flex>
   );
 }

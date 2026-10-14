@@ -137,24 +137,72 @@ export function AdjustmentPanel({
     hasFloorCount &&
     typeof floorHeight === "number" &&
     floorHeight > 0;
-  const sketch = !hasGeometry ? null : flatUnit ? (
-    apartmentLocation && (
-      <GeometrySketch
-        mode="flat"
-        floors={numberOfFloors}
-        floorHeight={floorHeight}
-        flatFloorArea={floorArea}
-        apartmentLocation={apartmentLocation}
-        accentColor={copy.accentColor}
-      />
-    )
-  ) : (
-    <GeometrySketch
-      mode="building"
-      floors={numberOfFloors}
-      floorHeight={floorHeight}
-      totalFloorArea={floorArea}
-      accentColor={copy.accentColor}
+  const showSketch = hasGeometry && (!flatUnit || !!apartmentLocation);
+  // Keep the same layout while inputs are empty; fallback values stay hidden.
+  const sketchGeometry = {
+    floors: hasFloorCount ? numberOfFloors : 1,
+    floorHeight:
+      typeof floorHeight === "number" && floorHeight > 0 ? floorHeight : 3,
+    accentColor: copy.accentColor,
+  };
+  const sketch = (
+    <Paper withBorder radius="sm" p="sm" bg="white" pos="relative">
+      <Box
+        style={{ visibility: showSketch ? "visible" : "hidden" }}
+        aria-hidden={!showSketch}
+      >
+        {flatUnit ? (
+          <GeometrySketch
+            {...sketchGeometry}
+            mode="flat"
+            flatFloorArea={hasFloorArea ? floorArea : 1}
+            apartmentLocation={apartmentLocation ?? "middle"}
+          />
+        ) : (
+          <GeometrySketch
+            {...sketchGeometry}
+            mode="building"
+            totalFloorArea={hasFloorArea ? floorArea : 1}
+          />
+        )}
+      </Box>
+      {!showSketch && (
+        <Text
+          size="xs"
+          c="dimmed"
+          ta="center"
+          p="sm"
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "grid",
+            placeItems: "center",
+          }}
+        >
+          Enter geometry values to see the preview
+        </Text>
+      )}
+    </Paper>
+  );
+
+  const apartmentLevel = isApartmentSelection(details) && (
+    <Select
+      label="Apartment level"
+      data={APARTMENT_LOCATION_OPTIONS}
+      value={draft.apartmentLocation}
+      onChange={(value) =>
+        onDraftChange({
+          apartmentLocation:
+            (value as ApartmentLocation | null) ??
+            (flatUnit ? draft.apartmentLocation : null),
+        })
+      }
+      description={flatUnit ? VALUATION_ONLY_NOTE : undefined}
+      inputWrapperOrder={NOTE_BELOW_INPUT}
+      clearable={!flatUnit}
+      withAsterisk={flatUnit}
+      allowDeselect={!flatUnit}
+      size="xs"
     />
   );
 
@@ -225,8 +273,8 @@ export function AdjustmentPanel({
                         )
                       }
                       description={
-                        field.key === "floorArea" && perFloorNote
-                          ? perFloorNote
+                        field.key === "floorArea" && !flatUnit
+                          ? (perFloorNote ?? "\u00a0")
                           : field.description
                       }
                       inputWrapperOrder={NOTE_BELOW_INPUT}
@@ -244,31 +292,16 @@ export function AdjustmentPanel({
                   ))}
                 </SimpleGrid>
                 {(group.fields === LIMITED_FIELDS ||
-                  group.fields === FLAT_LIMITED_FIELDS) &&
-                  sketch}
+                  group.fields === FLAT_LIMITED_FIELDS) && (
+                  <Stack gap="sm" mt="sm">
+                    {flatUnit && apartmentLevel}
+                    {sketch}
+                  </Stack>
+                )}
               </Box>
             ))}
 
-            {isApartmentSelection(details) && (
-              <Select
-                label="Apartment level"
-                data={APARTMENT_LOCATION_OPTIONS}
-                value={draft.apartmentLocation}
-                onChange={(value) =>
-                  onDraftChange({
-                    apartmentLocation:
-                      (value as ApartmentLocation | null) ??
-                      (flatUnit ? draft.apartmentLocation : null),
-                  })
-                }
-                description={flatUnit ? VALUATION_ONLY_NOTE : undefined}
-                inputWrapperOrder={NOTE_BELOW_INPUT}
-                clearable={!flatUnit}
-                withAsterisk={flatUnit}
-                allowDeselect={!flatUnit}
-                size="xs"
-              />
-            )}
+            {!flatUnit && apartmentLevel}
 
             {areaWarning.warning && (
               <Alert color="yellow" variant="light" p="xs">
