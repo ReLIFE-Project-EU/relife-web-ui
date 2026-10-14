@@ -4,7 +4,7 @@
  */
 
 import { useEffect } from "react";
-import { Alert, Box, Divider, Stack, Text, Title } from "@mantine/core";
+import { Alert, Box, Divider, Flex, Stack, Text, Title } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { EnergyTariffPanel } from "../../../../components/shared/EnergyTariffPanel";
 import { isApartmentLikeCategory } from "../../../../constants/buildingFormOptions";
@@ -174,16 +174,22 @@ export function EnergyRenovationStep() {
   return (
     <Stack gap="xl">
       {/* Header */}
-      <Box>
-        <Title order={2} mb="xs">
-          Energy Results & Renovation Options
-        </Title>
-        <Text c="dimmed" size="sm">
-          Review your building's current energy performance and select
-          renovation options.
-        </Text>
+      <Flex
+        direction={{ base: "column", md: "row" }}
+        align="flex-start"
+        gap="md"
+      >
+        <Box style={{ flex: 1, minWidth: 0 }}>
+          <Title order={2} mb="xs">
+            Energy Results & Renovation Options
+          </Title>
+          <Text c="dimmed" size="sm">
+            Review your building's current energy performance and select
+            renovation options.
+          </Text>
+        </Box>
         <LineageLink scope="hra" />
-      </Box>
+      </Flex>
 
       {/* Energy Estimation Results */}
       <EPCDisplay />

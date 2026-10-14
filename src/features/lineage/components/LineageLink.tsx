@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Button, Group, Text } from "@mantine/core";
-import { IconTimelineEvent } from "@tabler/icons-react";
+import { Button, Stack, Text, Tooltip } from "@mantine/core";
+import { IconExternalLink, IconTimelineEvent } from "@tabler/icons-react";
 import { useHref } from "react-router-dom";
 import { auditLog } from "../../../utils/auditLogger";
 import { errorMessage } from "../../../utils/errorMessage";
@@ -31,20 +31,43 @@ export function LineageLink({ scope }: LineageLinkProps) {
   };
 
   return (
-    <Group gap="xs">
-      <Button
-        variant="subtle"
-        size="compact-sm"
-        leftSection={<IconTimelineEvent size={16} />}
-        onClick={handleClick}
+    <Stack gap="xs" maw="100%" style={{ flexShrink: 0 }}>
+      <Tooltip
+        label="Inspect the inputs and calculation steps. Opens in a new tab."
+        events={{ hover: true, focus: true, touch: false }}
+        multiline
+        maw={260}
+        withArrow
       >
-        View calculation lineage
-      </Button>
+        <Button
+          variant="light"
+          color="relife"
+          size="sm"
+          leftSection={<IconTimelineEvent size={16} aria-hidden="true" />}
+          rightSection={<IconExternalLink size={14} aria-hidden="true" />}
+          aria-label="View calculation lineage (opens in a new tab)"
+          vars={() => ({
+            root: {
+              "--button-color": "var(--mantine-color-relife-9)",
+              "--button-bd": "1px solid var(--mantine-color-relife-2)",
+            },
+          })}
+          onClick={handleClick}
+        >
+          View calculation lineage
+        </Button>
+      </Tooltip>
       {error && (
-        <Text size="sm" c="red">
+        <Text
+          size="sm"
+          c="red"
+          role="alert"
+          maw={260}
+          style={{ overflowWrap: "anywhere" }}
+        >
           {error}
         </Text>
       )}
-    </Group>
+    </Stack>
   );
 }

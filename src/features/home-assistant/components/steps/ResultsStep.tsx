@@ -12,6 +12,7 @@ import {
   Accordion,
   Alert,
   Box,
+  Flex,
   Stack,
   Text,
   ThemeIcon,
@@ -233,17 +234,23 @@ export function ResultsStep() {
 
   return (
     <Stack gap="lg">
-      <Box>
-        <Title order={2} mb="xs">
-          Your renovation results
-        </Title>
-        <Text c="dimmed" size="sm">
-          Your best option based on what matters most to you. Change the profile
-          to see a different recommendation, or open a section below for the
-          full numbers.
-        </Text>
+      <Flex
+        direction={{ base: "column", md: "row" }}
+        align="flex-start"
+        gap="md"
+      >
+        <Box style={{ flex: 1, minWidth: 0 }}>
+          <Title order={2} mb="xs">
+            Your renovation results
+          </Title>
+          <Text c="dimmed" size="sm">
+            Your best option based on what matters most to you. Change the
+            profile to see a different recommendation, or open a section below
+            for the full numbers.
+          </Text>
+        </Box>
         <LineageLink scope="hra" />
-      </Box>
+      </Flex>
 
       {estimationDiagnostic?.level === "low-confidence" && (
         <ErrorAlert
