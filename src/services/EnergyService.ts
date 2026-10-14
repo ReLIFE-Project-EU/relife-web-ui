@@ -784,18 +784,25 @@ export class EnergyService implements IEnergyService {
       auditCtx,
     );
 
-    if (building.isModified && building.modifications) {
-      try {
-        const archetypeDetails = await this.buildingService.getArchetypeDetails(
-          {
-            category: archetype.category,
-            country: archetype.country,
-            name: archetype.name,
-          },
+    try {
+      const archetypeDetails = await this.buildingService.getArchetypeDetails({
+        category: archetype.category,
+        country: archetype.country,
+        name: archetype.name,
+      });
+      const modifications = building.modifications;
+      const matchingGeometryOnly =
+        modifications &&
+        Object.entries(modifications).every(
+          ([key, value]) =>
+            (key === "floorArea" && value === archetypeDetails.floorArea) ||
+            (key === "numberOfFloors" &&
+              value === archetypeDetails.numberOfFloors),
         );
 
+      if (building.isModified && modifications && !matchingGeometryOnly) {
         const localValidation = validateModifications(
-          building.modifications,
+          modifications,
           archetypeDetails,
         );
         if (!localValidation.isValid) {
@@ -806,7 +813,7 @@ export class EnergyService implements IEnergyService {
 
         const { bui, system } = applyAllModifications(
           archetypeDetails,
-          building.modifications,
+          modifications,
         );
         const validationResponse = await forecasting.validateCustomBuilding({
           bui,
@@ -829,7 +836,7 @@ export class EnergyService implements IEnergyService {
         );
 
         const simulatedArea =
-          building.modifications.floorArea ?? archetypeDetails.floorArea;
+          modifications.floorArea ?? archetypeDetails.floorArea;
         const userArea = building.floorArea || DEFAULT_FLOOR_AREA;
         const referenceArea =
           archetypeDetails.floorArea * (userArea / simulatedArea);
@@ -905,17 +912,8 @@ export class EnergyService implements IEnergyService {
           auditCtx,
         );
         return { estimation: result, baselineSimulation: customSimulation };
-      } catch (error) {
-        this.handleSimulationError(error);
       }
-    }
 
-    try {
-      const archetypeDetails = await this.buildingService.getArchetypeDetails({
-        category: archetype.category,
-        country: archetype.country,
-        name: archetype.name,
-      });
       auditLog.debug(
         "energy",
         "energy.archetype.details",

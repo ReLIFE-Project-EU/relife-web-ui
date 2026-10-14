@@ -208,6 +208,48 @@ describe("PortfolioAnalysisService", () => {
     );
   });
 
+  test.each([
+    "Single Family House",
+    "Multi family House",
+    "Apartment buildings",
+  ])("%s receives CSV geometry only for houses", async (category) => {
+    for (const source of ["csv", "manual"] as const) {
+      for (const existing of [undefined, { wallUValue: 0.3, floorArea: 90 }]) {
+        await service.analyzePortfolio({
+          buildings: [
+            createBuilding({
+              source,
+              category,
+              propertyType: category,
+              floorArea: 150,
+              numberOfFloors: 3,
+              modifications: existing,
+            }),
+          ],
+          selectedMeasures: ["wall-insulation"],
+          funding,
+          projectLifetime: 20,
+          onProgress: vi.fn(),
+          globalCapex: 12000,
+          globalMaintenanceCost: 500,
+        });
+        const modifications =
+          source === "csv" && category !== "Apartment buildings"
+            ? { ...existing, floorArea: 150, numberOfFloors: 3 }
+            : existing;
+        expect(mockEstimateEPC).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            floorArea: 150,
+            numberOfFloors: 3,
+            modifications,
+            isModified: !!modifications,
+          }),
+          expect.anything(),
+        );
+      }
+    }
+  });
+
   /**
    * Every selection shape collapses to one "renovated" package; only the
    * surviving measure ids differ, so they are asserted from one table.

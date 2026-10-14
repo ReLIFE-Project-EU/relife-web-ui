@@ -265,6 +265,113 @@ describe("EnergyService", () => {
     );
   });
 
+  test.each([
+    [150, 2],
+    [100, 3],
+    [150, 3],
+  ])(
+    "reshapes %s m² over %s floors without result scaling",
+    async (floorArea, numberOfFloors) => {
+      // Catalogue footprint and net area can differ. Preserve the CSV total
+      // even when it matches the reference's net area.
+      vi.mocked(mockBuildingService.getArchetypeDetails).mockResolvedValue({
+        ...stubArchetypeDetails,
+        bui: {
+          ...realisticBui,
+          building_surface: realisticBui.building_surface.map((surface) =>
+            surface.name === "Opaque roof surface" ||
+            surface.name === "Slab to ground"
+              ? { ...surface, area: 40 }
+              : surface,
+          ),
+        },
+      });
+      mockValidateCustomBuilding.mockImplementation(
+        async ({ bui, system }) => ({
+          bui_checked: bui,
+          system_checked: system,
+          bui_issues: [],
+          system_messages: [],
+        }),
+      );
+      const customBaseline = {
+        ...stubSimulationResponse,
+        results: {
+          ...stubSimulationResponse.results,
+          hourly_building: { Q_H: [800000], Q_C: [200000] },
+        },
+      };
+      mockSimulateECM.mockImplementation(async (params) => ({
+        scenarios: [params.bui ? customBaseline : stubSimulationResponse],
+      }));
+
+      const { estimation, baselineSimulation } = await service.estimateEPC({
+        ...unmodifiedBuilding,
+        floorArea,
+        numberOfFloors,
+        isModified: true,
+        modifications: { floorArea, numberOfFloors },
+      });
+
+      const submitted = mockValidateCustomBuilding.mock.calls[0][0].bui;
+      expect(submitted.building.net_floor_area).toBe(floorArea);
+      expect(submitted.building.n_floors).toBe(numberOfFloors);
+      expect(submitted.building_surface[2].area).toBeCloseTo(
+        floorArea / numberOfFloors,
+      );
+      expect(mockSimulateECM).toHaveBeenCalledWith(
+        expect.objectContaining({ bui: submitted }),
+      );
+      expect(mockBuildingService.getArchetypeDetails).toHaveBeenCalledOnce();
+      expect(estimation.modifiedBui).toEqual(submitted);
+      expect(estimation.roofArea).toBeCloseTo(floorArea / numberOfFloors);
+      expect(estimation.archetypeFloorArea).toBe(floorArea);
+      expect(estimation.annualEnergyNeeds).toBe(1000);
+      expect(estimation.referenceEstimation?.annualEnergyNeeds).toBe(2628);
+      expect(estimation.deliveredTotal).toBe(1500);
+      expect(estimation.primaryEnergy).toBe(2100);
+      expect(baselineSimulation).toBe(customBaseline);
+    },
+  );
+
+  test.each([
+    { floorArea: 100 },
+    { numberOfFloors: 2 },
+    { floorArea: 100, numberOfFloors: 2 },
+  ])("matching geometry %j reuses the reference", async (modifications) => {
+    const result = await service.estimateEPC({
+      ...unmodifiedBuilding,
+      isModified: true,
+      modifications,
+    });
+    expect(mockValidateCustomBuilding).not.toHaveBeenCalled();
+    expect(mockSimulateECM).toHaveBeenCalledOnce();
+    expect(mockBuildingService.getArchetypeDetails).toHaveBeenCalledOnce();
+    expect(result.baselineSimulation).toBe(stubSimulationResponse);
+    expect(result.estimation.modifiedBui).toBeUndefined();
+  });
+
+  test("matching geometry preserves other modifications", async () => {
+    mockValidateCustomBuilding.mockImplementation(async ({ bui, system }) => ({
+      bui_checked: bui,
+      system_checked: system,
+      bui_issues: [],
+      system_messages: [],
+    }));
+    await service.estimateEPC({
+      ...unmodifiedBuilding,
+      isModified: true,
+      modifications: { floorArea: 100, numberOfFloors: 2, wallUValue: 0.3 },
+    });
+    expect(mockValidateCustomBuilding).toHaveBeenCalledOnce();
+    const submitted = mockValidateCustomBuilding.mock.calls[0][0].bui;
+    expect(submitted.building_surface[0].u_value).toBe(0.3);
+    expect(mockSimulateECM).toHaveBeenCalledWith(
+      expect.objectContaining({ bui: submitted }),
+    );
+    expect(mockSimulateECM).toHaveBeenCalledTimes(2);
+  });
+
   test("identical archetype simulations reuse the in-flight request", async () => {
     await Promise.all([
       service.estimateEPC(unmodifiedBuilding),

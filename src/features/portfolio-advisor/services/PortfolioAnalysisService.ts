@@ -468,8 +468,18 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     b: PRABuilding,
     projectLifetime: number,
   ): BuildingInfo {
+    const modifications =
+      b.source === "csv" &&
+      (b.propertyType === "Single Family House" ||
+        b.propertyType === "Multi family House")
+        ? {
+            ...b.modifications,
+            floorArea: b.floorArea,
+            numberOfFloors: b.numberOfFloors,
+          }
+        : b.modifications;
     const hasModifications =
-      b.modifications && Object.keys(b.modifications).length > 0;
+      modifications && Object.keys(modifications).length > 0;
 
     return {
       country: b.country,
@@ -485,7 +495,7 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
           }
         : undefined,
       isModified: !!hasModifications,
-      modifications: hasModifications ? b.modifications : undefined,
+      modifications: hasModifications ? modifications : undefined,
       floorArea: b.floorArea,
       numberOfFloors: b.numberOfFloors,
       climateZone: "",
