@@ -6,11 +6,6 @@
  * the transcribed sheets stand in until a verified contract arrives. When one
  * does, this module is what gets replaced — the figures are not copied anywhere
  * else.
- *
- * Geometry comes from the unmodified archetype, matching the CAPEX lookup. So
- * per-building modifications that change envelope geometry or element U-values
- * are not reflected here even though the energy simulation does apply them —
- * the same limitation `lookupPackageCosts` carries.
  */
 
 import {
@@ -21,7 +16,6 @@ import {
   type TechnicalSheetId,
 } from "../constants/technical-sheets";
 import type { BuildingPayload } from "../types/archetype";
-import type { ArchetypeInfo } from "../types/forecasting";
 import type { RenovationMeasureId } from "../types/renovation";
 import {
   envelopeElementsFromBui,
@@ -32,6 +26,7 @@ import { heatingCapacityKwFromFloorArea } from "./hvacSizing";
 import {
   resolveArchetypeGeometry,
   type PackageCostLookupDeps,
+  type SimulatedBuilding,
 } from "./packageCostLookup";
 import { U_VALUE_TARGETS } from "./renovationEcmParams";
 
@@ -368,13 +363,13 @@ export function estimatePackageEmbodiedCarbonFromBui(params: {
 }
 
 /**
- * Same estimate, resolving the archetype geometry first. Shares
- * `resolveArchetypeGeometry` with the cost lookup so both work from identical
- * surfaces, including the apartment floor-area scaling.
+ * Same estimate for the simulated building. Shares `resolveArchetypeGeometry`
+ * with the cost lookup so both work from identical surfaces, including the
+ * apartment floor-area scaling.
  */
 export async function estimatePackageEmbodiedCarbon(
   params: {
-    archetype: ArchetypeInfo | undefined;
+    estimation: SimulatedBuilding | null;
     floorArea: number | null;
     pvKwp: number | null;
     measureIds: RenovationMeasureId[];
@@ -382,11 +377,11 @@ export async function estimatePackageEmbodiedCarbon(
   },
   deps: Pick<PackageCostLookupDeps, "building">,
 ): Promise<number | null> {
-  if (!params.archetype) return null;
+  if (!params.estimation?.archetype) return null;
 
   const geometry = await resolveArchetypeGeometry(
     {
-      archetype: params.archetype,
+      estimation: params.estimation,
       floorArea: params.floorArea,
       scaleEnvelopeToFloorArea: params.scaleEnvelopeToFloorArea,
     },

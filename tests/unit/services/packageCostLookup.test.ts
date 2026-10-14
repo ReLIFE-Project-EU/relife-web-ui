@@ -1,16 +1,32 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { lookupPackageCosts } from "../../../src/services/packageCostLookup";
+import { ArchetypeMatchStrategy } from "../../../src/services/archetypeMatching";
+import {
+  estimatePackageEmbodiedCarbon,
+  estimatePackageEmbodiedCarbonFromBui,
+} from "../../../src/services/embodiedCarbon";
+import {
+  lookupPackageCosts,
+  type SimulatedBuilding,
+} from "../../../src/services/packageCostLookup";
 import type {
   IBuildingService,
   IFinancialService,
 } from "../../../src/services/types";
-import type { ArchetypeInfo } from "../../../src/types/forecasting";
+import type { BuildingPayload } from "../../../src/types/archetype";
+import {
+  applyGeometryModification,
+  surfaceAreasFromBui,
+} from "../../../src/utils/archetypeModifier";
 
-const archetype: ArchetypeInfo = {
-  category: "Multi family House",
-  country: "Greece",
-  name: "MFH-1961-1980",
+const estimation: SimulatedBuilding = {
+  archetype: {
+    category: "Multi family House",
+    country: "Greece",
+    name: "MFH-1961-1980",
+    matchStrategy: ArchetypeMatchStrategy.USER_SELECTED,
+  },
+  archetypeFloorArea: 120,
 };
 
 // One wall surface → positive wall area → at least one priceable action.
@@ -61,7 +77,7 @@ describe("lookupPackageCosts", () => {
     const result = await lookupPackageCosts(
       {
         country: "Greece",
-        archetype,
+        estimation,
         measureIds: ["wall-insulation"],
         floorArea: 100,
         pvKwp: null,
@@ -87,7 +103,7 @@ describe("lookupPackageCosts", () => {
     await lookupPackageCosts(
       {
         country: "Greece",
-        archetype,
+        estimation,
         measureIds: ["wall-insulation"],
         floorArea: null,
         pvKwp: null,
@@ -119,7 +135,7 @@ describe("lookupPackageCosts", () => {
     await lookupPackageCosts(
       {
         country: "Greece",
-        archetype,
+        estimation,
         measureIds: ["wall-insulation"],
         floorArea: 100,
         pvKwp: null,
@@ -141,7 +157,7 @@ describe("lookupPackageCosts", () => {
       lookupPackageCosts(
         {
           country: "Atlantis",
-          archetype,
+          estimation,
           measureIds: ["wall-insulation"],
           floorArea: 100,
           pvKwp: null,
@@ -159,7 +175,7 @@ describe("lookupPackageCosts", () => {
       lookupPackageCosts(
         {
           country: "Greece",
-          archetype: undefined,
+          estimation: null,
           measureIds: ["wall-insulation"],
           floorArea: 100,
           pvKwp: null,
@@ -176,7 +192,7 @@ describe("lookupPackageCosts", () => {
       lookupPackageCosts(
         {
           country: "Greece",
-          archetype,
+          estimation,
           measureIds: [],
           floorArea: 100,
           pvKwp: null,
@@ -185,5 +201,80 @@ describe("lookupPackageCosts", () => {
       ),
     ).rejects.toThrow(/No priceable measures/);
     expect(estimatePackageCosts).not.toHaveBeenCalled();
+  });
+
+  test("cost and carbon read a house resized to one floor", async () => {
+    // Two floors over an 80 m² footprint; one floor doubles the roof.
+    const house = {
+      building: {
+        name: "house",
+        net_floor_area: 160,
+        n_floors: 2,
+        height: 2.7,
+        exposed_perimeter: 36,
+      },
+      building_surface: [
+        {
+          name: "Roof",
+          type: "opaque",
+          area: 80,
+          u_value: 1,
+          sky_view_factor: 1,
+        },
+        {
+          name: "Slab",
+          type: "opaque",
+          area: 80,
+          u_value: 1,
+          sky_view_factor: 0,
+        },
+        {
+          name: "Wall",
+          type: "opaque",
+          area: 150,
+          u_value: 1.2,
+          sky_view_factor: 0.5,
+        },
+      ],
+    } as unknown as BuildingPayload;
+    const modifiedBui = applyGeometryModification(house, { numberOfFloors: 1 });
+    const resized = { ...estimation, archetypeFloorArea: 160, modifiedBui };
+    const roofOnly = {
+      floorArea: 160,
+      pvKwp: null,
+      measureIds: ["roof-insulation" as const],
+    };
+    const { deps, getArchetypeDetails, estimatePackageCosts } = makeDeps();
+
+    await lookupPackageCosts(
+      {
+        country: "Greece",
+        estimation: resized,
+        measureIds: ["roof-insulation", "wall-insulation"],
+        floorArea: 160,
+        pvKwp: null,
+      },
+      deps,
+    );
+    const carbon = await estimatePackageEmbodiedCarbon(
+      { ...roofOnly, estimation: resized },
+      deps,
+    );
+
+    expect(getArchetypeDetails).not.toHaveBeenCalled();
+    const [roof, wall] = (
+      estimatePackageCosts.mock.calls[0][0] as {
+        renovationActions: Array<{ action: string; area_m2?: number }>;
+      }
+    ).renovationActions;
+    expect(roof).toEqual({
+      action: "Roof insulation - Accessible",
+      area_m2: 160,
+    });
+    expect(wall.area_m2).toBeCloseTo(surfaceAreasFromBui(modifiedBui).wallM2);
+    expect(wall.area_m2).toBeLessThan(150);
+    expect(carbon).toBeCloseTo(
+      2 * estimatePackageEmbodiedCarbonFromBui({ ...roofOnly, bui: house })!,
+    );
   });
 });

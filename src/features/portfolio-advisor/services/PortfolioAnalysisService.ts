@@ -272,7 +272,7 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       scenario.embodiedCarbonKgCo2e =
         (await estimatePackageEmbodiedCarbon(
           {
-            archetype: estimation.archetype,
+            estimation,
             floorArea: building.floorArea,
             pvKwp: modeledPvKwp(estimation, building.floorArea),
             scaleEnvelopeToFloorArea: isApartmentLikeCategory(
@@ -430,7 +430,7 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     const result = await lookupPackageCosts(
       {
         country: building.country,
-        archetype: estimation.archetype,
+        estimation,
         measureIds,
         floorArea: building.floorArea,
         pvKwp: modeledPvKwp(estimation, building.floorArea),

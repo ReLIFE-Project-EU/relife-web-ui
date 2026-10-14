@@ -45,10 +45,8 @@ export function usePackageCostEstimation(): PackageCostEstimation {
   // Apartments are modeled as a share of the reference building,
   // so envelope measure costs must be scaled to the flat as well.
   const isFlatShare = isApartmentLikeCategory(state.building.buildingType);
-  const archetype = state.estimation?.archetype;
-  const pvKwp = state.estimation
-    ? modeledPvKwp(state.estimation, buildingFloorArea)
-    : null;
+  const estimation = state.estimation;
+  const pvKwp = estimation ? modeledPvKwp(estimation, buildingFloorArea) : null;
 
   const clearError = useCallback((packageId: string) => {
     setErrorsById((prev) => {
@@ -74,7 +72,7 @@ export function usePackageCostEstimation(): PackageCostEstimation {
         const result = await lookupPackageCosts(
           {
             country: buildingCountry,
-            archetype,
+            estimation,
             measureIds: pkg.measureIds,
             floorArea: buildingFloorArea,
             pvKwp,
@@ -117,7 +115,7 @@ export function usePackageCostEstimation(): PackageCostEstimation {
       buildingFloorArea,
       buildingProjectLifetime,
       isFlatShare,
-      archetype,
+      estimation,
       pvKwp,
     ],
   );

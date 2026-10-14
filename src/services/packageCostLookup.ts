@@ -22,15 +22,23 @@ import type {
   IBuildingService,
   IFinancialService,
 } from "./types";
-import type { RenovationMeasureId } from "../types/renovation";
+import type {
+  EstimationResult,
+  RenovationMeasureId,
+} from "../types/renovation";
 import type { ArchetypeDetails, BuildingPayload } from "../types/archetype";
-import type { ArchetypeInfo } from "../types/forecasting";
+
+/** The building the energy simulation ran on. */
+export type SimulatedBuilding = Pick<
+  EstimationResult,
+  "archetype" | "archetypeFloorArea" | "modifiedBui"
+>;
 
 export interface PackageCostLookupParams {
   /** Raw building country (code or display name); resolved internally. */
   country: string | null | undefined;
-  /** Resolved archetype to read envelope geometry from. */
-  archetype: ArchetypeInfo | undefined;
+  /** Estimation whose simulated building supplies the envelope. */
+  estimation: SimulatedBuilding | null;
   /** Package measures to price. */
   measureIds: RenovationMeasureId[];
   /** Building floor area; falls back to the archetype's when null. */
@@ -105,16 +113,15 @@ export async function lookupPackageCostsFromDetails(
  * any unmet precondition (missing location/archetype, no priceable measures)
  * or lookup failure so callers can surface it in their own way.
  *
- * Envelope surface areas come from the archetype BUI; HVAC capacity is sized
- * from the floor area, and PV comes from the caller. Per-building modifications
- * that change envelope geometry are not reflected here.
+ * Envelope surface areas come from the simulated building; HVAC capacity is
+ * sized from the floor area, and PV comes from the caller.
  */
 export async function lookupPackageCosts(
   params: PackageCostLookupParams,
   deps: PackageCostLookupDeps,
 ): Promise<EstimatePackageCostsResult> {
   const country = getCountryDisplayName(params.country);
-  if (!country || !params.archetype) {
+  if (!country || !params.estimation?.archetype) {
     throw new Error(
       "Cost estimate unavailable: missing building location or archetype.",
     );
@@ -122,7 +129,7 @@ export async function lookupPackageCosts(
 
   const geometry = await resolveArchetypeGeometry(
     {
-      archetype: params.archetype,
+      estimation: params.estimation,
       floorArea: params.floorArea,
       scaleEnvelopeToFloorArea: params.scaleEnvelopeToFloorArea,
     },
@@ -152,7 +159,7 @@ export interface ResolvedArchetypeGeometry {
 /**
  * Apply the optional floor-area scaling to already-fetched archetype geometry.
  * Callers that hold `ArchetypeDetails` (RSE expands its portfolio up front) use
- * this directly; `resolveArchetypeGeometry` is the fetching variant.
+ * this directly; `resolveArchetypeGeometry` resolves it from an estimation.
  */
 export function scaleArchetypeGeometry(
   details: Pick<ArchetypeDetails, "bui" | "floorArea">,
@@ -176,24 +183,28 @@ export function scaleArchetypeGeometry(
 }
 
 /**
- * Fetch an archetype's geometry and apply the optional floor-area scaling.
+ * The simulated building's geometry with the optional floor-area scaling: the
+ * adjusted BUI when the estimation has one, else the catalogue archetype.
  * Shared with the embodied-carbon calculation so both derive their quantities
  * from identical geometry; `getArchetypeDetails` is instance-cached, so the
  * second caller costs no extra request.
  */
 export async function resolveArchetypeGeometry(
   params: {
-    archetype: ArchetypeInfo;
+    estimation: SimulatedBuilding;
     floorArea: number | null;
     scaleEnvelopeToFloorArea?: boolean;
   },
   deps: Pick<PackageCostLookupDeps, "building">,
 ): Promise<ResolvedArchetypeGeometry> {
-  const details = await deps.building.getArchetypeDetails({
-    category: params.archetype.category,
-    country: params.archetype.country,
-    name: params.archetype.name,
-  });
+  const { archetype, archetypeFloorArea, modifiedBui } = params.estimation;
+  const details = modifiedBui
+    ? { bui: modifiedBui as BuildingPayload, floorArea: archetypeFloorArea }
+    : await deps.building.getArchetypeDetails({
+        category: archetype!.category,
+        country: archetype!.country,
+        name: archetype!.name,
+      });
 
   return scaleArchetypeGeometry(details, {
     floorArea: params.floorArea,

@@ -102,7 +102,7 @@ export function EnergyRenovationStep() {
             ? null
             : estimatePackageEmbodiedCarbon(
                 {
-                  archetype: state.estimation?.archetype,
+                  estimation: state.estimation,
                   floorArea: state.building.floorArea,
                   pvKwp,
                   measureIds: scenario.measureIds,
