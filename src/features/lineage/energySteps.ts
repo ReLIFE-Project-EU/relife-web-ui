@@ -16,7 +16,7 @@ import {
 import type { LineageStep } from "./lineageModel";
 
 const SIMULATED_CAPTION =
-  "ISO 52016 hourly simulation with UNI/TS 11300 system losses. The engine does not return the settings it applies internally.";
+  "ISO 52016 hourly simulation with UNI/TS 11300 system losses.";
 const SCALED_CAPTION =
   "Factor = floor area ÷ simulated floor area. With PV, grid electricity and delivered energy are net of PV self-consumption.";
 const CATALOGUE_CAPTION = "Declared catalogue values.";
