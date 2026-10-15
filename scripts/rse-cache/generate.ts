@@ -16,6 +16,8 @@ import { Command, CommanderError } from "commander";
 import pino, { type DestinationStream, type Logger as PinoLogger } from "pino";
 import pinoPretty from "pino-pretty";
 
+import { makeArchetypeCatalogClient } from "../forecasting/archetypes.ts";
+
 import {
   RSE_CACHE_PAYLOAD_SCHEMA_VERSION,
   RSE_CO2_METHODS,
@@ -2204,34 +2206,9 @@ export function makeFetchForecastingClient(
   const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
 
   return {
-    async listArchetypes(): Promise<ArchetypeInfo[]> {
-      return jsonRequest(
-        `${normalizedBaseUrl}/forecasting/building/available`,
-        {
-          method: "GET",
-        },
-        logger,
-      );
-    },
-
-    async getArchetypeDetails(
-      archetype: RSEArchetypeRef,
-    ): Promise<{ bui: unknown; system: unknown }> {
-      const searchParams = new URLSearchParams({
-        archetype: "true",
-        category: archetype.category,
-        country: archetype.country,
-        name: archetype.name,
-      });
-
-      return jsonRequest(
-        `${normalizedBaseUrl}/forecasting/building?${searchParams.toString()}`,
-        {
-          method: "POST",
-        },
-        logger,
-      );
-    },
+    ...makeArchetypeCatalogClient(baseUrl, (url, init) =>
+      jsonRequest(url, init, logger),
+    ),
 
     async simulateECM(
       params: ECMApplicationParams,

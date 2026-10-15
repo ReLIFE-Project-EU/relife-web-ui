@@ -14,7 +14,8 @@
     "format": "prettier --write .",
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:e2e": "playwright test",
-    "rse:seed": "node --experimental-strip-types scripts/rse-cache/generate.ts"
+    "rse:seed": "node --experimental-strip-types scripts/rse-cache/generate.ts",
+    "forecasting:export-archetypes": "node --experimental-strip-types scripts/forecasting/export-archetypes.ts"
   },
   "dependencies": {
     "@mantine/charts": "^8.3.12",

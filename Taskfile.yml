@@ -85,6 +85,11 @@ tasks:
     cmds:
       - ./scripts/release.sh {{.CLI_ARGS}}
 
+  forecasting-export-archetypes:
+    desc: "Export the full Forecasting archetype catalogue to reproducible JSON"
+    cmds:
+      - npm run forecasting:export-archetypes -- {{.CLI_ARGS}}
+
   rse-seed:
     desc: "Generate an RSE forecasting cache seed"
     cmds:
