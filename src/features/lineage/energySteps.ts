@@ -1,3 +1,4 @@
+import type { ConceptId } from "../../constants/relifeConcepts";
 import type { AuditPayloads } from "../../types/auditEvents";
 import type { DeliveredEnergyCarrierBreakdown } from "../../types/energy";
 import type { UNI11300Summary } from "../../types/forecasting";
@@ -257,6 +258,14 @@ export function referenceStep(events: AuditEvent[]): LineageStep | null {
       numberField(heating, heatingKey),
       numberField(cooling, coolingKey),
     ]);
+  const fraction = (stage: string, conceptId: ConceptId, key: string) => {
+    const row = conceptRow(
+      conceptId,
+      [numberField(heating, key), numberField(cooling, key)],
+      { decimals: 3 },
+    );
+    return { ...row, label: `${stage} ${row.label.toLowerCase()}` };
+  };
 
   return {
     title: "Reference building",
@@ -308,6 +317,33 @@ export function referenceStep(events: AuditEvent[]): LineageStep | null {
           efficiency("Distribution η", "eta_distribution", "eta_distribution"),
           efficiency("Storage η", "eta_storage", "eta_storage"),
           efficiency("Generation η / COP", "eta_generation", "cop_generation"),
+          fraction("Emission", "recovered-loss-fraction", "f_recov_emission"),
+          fraction(
+            "Distribution",
+            "recovered-loss-fraction",
+            "f_recov_distribution",
+          ),
+          fraction("Storage", "recovered-loss-fraction", "f_recov_storage"),
+          fraction(
+            "Emission",
+            "auxiliary-electricity-fraction",
+            "aux_emission_fraction",
+          ),
+          fraction(
+            "Distribution",
+            "auxiliary-electricity-fraction",
+            "aux_distribution_fraction",
+          ),
+          fraction(
+            "Storage",
+            "auxiliary-electricity-fraction",
+            "aux_storage_fraction",
+          ),
+          fraction(
+            "Generation",
+            "auxiliary-electricity-fraction",
+            "aux_generation_fraction",
+          ),
         ],
       ),
     ],

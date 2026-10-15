@@ -9,6 +9,8 @@ export type ConceptId =
   | "apartment-floor-area"
   | "annual-building-thermal-needs"
   | "system-energy-consumption"
+  | "recovered-loss-fraction"
+  | "auxiliary-electricity-fraction"
   | "primary-energy"
   | "energy-intensity"
   | "pv-generation"
@@ -122,6 +124,18 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     caveat: "Hot water, lighting and appliances are not included.",
     professionalDetail:
       "Energy savings are used in the financial analysis when comparable before-and-after results are available.",
+  },
+  "recovered-loss-fraction": {
+    id: "recovered-loss-fraction",
+    label: "Heat recovery share",
+    description:
+      "How much heat released by equipment or pipes is counted as heat inside the building. For example, 0.8 means 80%. This heat reduces heating needs but adds to cooling needs.",
+  },
+  "auxiliary-electricity-fraction": {
+    id: "auxiliary-electricity-fraction",
+    label: "Extra electricity factor",
+    description:
+      "Estimates electricity used by supporting equipment, such as pumps and fans. For example, 0.005 means 0.5% of the energy amount for that part of the system.",
   },
   "primary-energy": {
     id: "primary-energy",
