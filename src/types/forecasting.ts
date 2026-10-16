@@ -12,6 +12,9 @@ export interface ArchetypeInfo {
   category: string; // "Single Family House", "Multi family House", "Apartment buildings"
   country: string; // "Italy", "Greece", etc.
   name: string; // Specific archetype identifier, e.g. "AT_SFH_0-1945"
+  /** Configured BUI reference coordinates; older catalogues omit these fields. */
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 // ============================================================================

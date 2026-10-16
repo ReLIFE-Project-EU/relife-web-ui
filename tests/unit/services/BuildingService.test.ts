@@ -13,6 +13,21 @@ vi.mock("../../../src/api", () => ({
 }));
 
 import { BuildingService } from "../../../src/services/BuildingService";
+import type { ArchetypeInfo } from "../../../src/types/forecasting";
+
+const salzburgArchetype: ArchetypeInfo = {
+  category: "Single Family House",
+  country: "Austria",
+  name: "SFH_1946_1969",
+  latitude: 47.8095,
+  longitude: 13.055,
+};
+const viennaArchetype: ArchetypeInfo = {
+  ...salzburgArchetype,
+  name: "AT_SFH_1946-1969",
+  latitude: 48.2082,
+  longitude: 16.3738,
+};
 
 const stubBuiResponse = {
   bui: {
@@ -132,6 +147,86 @@ describe("BuildingService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     service = new BuildingService();
+  });
+
+  test.each([salzburgArchetype, viennaArchetype])(
+    "matches the nearer same-country, same-period reference: $name",
+    async (nearest) => {
+      const other =
+        nearest === salzburgArchetype ? viennaArchetype : salzburgArchetype;
+      mockListArchetypes.mockResolvedValue([other, nearest]);
+      const result = await service.findMatchingArchetype(
+        nearest.category,
+        "1946-1969",
+        { lat: nearest.latitude!, lng: nearest.longitude! },
+      );
+      expect(result?.archetype.name).toBe(nearest.name);
+      expect(result?.scoreBreakdown.geoScore).toBe(1);
+      expect(result?.matchQuality).toBe("excellent");
+      expect(mockGetArchetypeDetails).not.toHaveBeenCalled();
+    },
+  );
+
+  test("preserves country priority over actual geographic distance", async () => {
+    mockListArchetypes.mockResolvedValue([
+      { ...salzburgArchetype, country: "Germany", name: "DE_SFH_1946-1969" },
+      viennaArchetype,
+    ]);
+    const result = await service.findMatchingArchetype(
+      salzburgArchetype.category,
+      "1946-1969",
+      { lat: 47.8095, lng: 13.055 },
+    );
+    expect(result?.archetype.name).toBe(viennaArchetype.name);
+  });
+
+  test("preserves period priority over actual geographic distance", async () => {
+    mockListArchetypes.mockResolvedValue([
+      { ...salzburgArchetype, name: "SFH_1970_1979" },
+      viennaArchetype,
+    ]);
+    const result = await service.findMatchingArchetype(
+      salzburgArchetype.category,
+      "1946-1969",
+      { lat: 47.8095, lng: 13.055 },
+    );
+    expect(result?.archetype.name).toBe(viennaArchetype.name);
+    expect(result?.periodRelaxed).toBe(false);
+  });
+
+  test("matches older catalogue entries without substituting a capital", async () => {
+    mockListArchetypes.mockResolvedValue([
+      { ...salzburgArchetype, latitude: undefined, longitude: undefined },
+    ]);
+    const result = await service.findMatchingArchetype(
+      salzburgArchetype.category,
+      "1946-1969",
+      { lat: 47.8095, lng: 13.055 },
+    );
+    expect(result?.archetype.name).toBe(salzburgArchetype.name);
+    expect(result?.scoreBreakdown).toEqual({
+      countryScore: 1,
+      periodScore: 1,
+      geoScore: 0,
+      total: 110,
+    });
+    expect(mockGetArchetypeDetails).not.toHaveBeenCalled();
+  });
+
+  test("orders categories by their archetype coordinates and puts unknown distances last", async () => {
+    mockListArchetypes.mockResolvedValue([
+      { ...viennaArchetype, category: "Apartment buildings" },
+      { ...salzburgArchetype, category: "Multi family House", latitude: null },
+      salzburgArchetype,
+    ]);
+    expect(
+      await service.getAvailableCategories({ lat: 47.8095, lng: 13.055 }),
+    ).toEqual([
+      "Single Family House",
+      "Apartment buildings",
+      "Multi family House",
+    ]);
+    expect(mockGetArchetypeDetails).not.toHaveBeenCalled();
   });
 
   test("getArchetypeDetails extracts floor area", async () => {

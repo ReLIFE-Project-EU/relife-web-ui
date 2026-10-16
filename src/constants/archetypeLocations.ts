@@ -10,6 +10,27 @@ import { detectEuropeanCountryCode } from "../utils/geo/europeanCountryDetector"
  */
 export const MAX_EU_DISTANCE_KM = 4000;
 
+/** Loaded detail coordinates take precedence over catalogue metadata. */
+export function getArchetypeLocation(archetype: {
+  latitude?: number | null;
+  longitude?: number | null;
+  location?: { lat: number; lng: number };
+}): { lat: number; lng: number } | undefined {
+  const lat = archetype.location?.lat ?? archetype.latitude;
+  const lng = archetype.location?.lng ?? archetype.longitude;
+  if (
+    typeof lat !== "number" ||
+    typeof lng !== "number" ||
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    Math.abs(lat) > 90 ||
+    Math.abs(lng) > 180
+  ) {
+    return undefined;
+  }
+  return { lat, lng };
+}
+
 /**
  * Detect the most likely EU-27 country for given coordinates using
  * bundled offline polygons. Returns canonical display names to keep

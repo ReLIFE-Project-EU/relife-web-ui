@@ -11,10 +11,11 @@ import {
 import L from "leaflet";
 import { Box, Center, Loader, Stack, Text } from "@mantine/core";
 import type { ArchetypeInfo } from "../../types/forecasting";
-import {
-  getCountryDisplayName,
-  getCountryReferenceLocation,
-} from "../../utils/countries";
+import type { ArchetypeDetails } from "../../types/archetype";
+import { getCountryDisplayName } from "../../utils/countries";
+import { getArchetypeLocation } from "../../constants/archetypeLocations";
+import { getArchetypeKey } from "./buildingSelectorUtils";
+import { formatCoords } from "./selectorConfig";
 
 import "leaflet/dist/leaflet.css";
 import iconUrl from "leaflet/dist/images/marker-icon.png";
@@ -51,27 +52,29 @@ function MapViewUpdater({
   lat,
   lng,
   selectedKey,
-  highlightedArchetype,
+  referenceLat,
+  referenceLng,
 }: {
   lat: number | null;
   lng: number | null;
   selectedKey: string | null;
-  highlightedArchetype?: ArchetypeInfo | null;
+  referenceLat: number | null;
+  referenceLng: number | null;
 }) {
   const map = useMapEvents({});
-  const highlightedCoords = highlightedArchetype
-    ? getCountryReferenceLocation(highlightedArchetype.country)
-    : null;
 
   useEffect(() => {
-    if (!selectedKey || lat === null || lng === null || !highlightedCoords) {
+    if (
+      !selectedKey ||
+      lat === null ||
+      lng === null ||
+      referenceLat === null ||
+      referenceLng === null
+    ) {
       return;
     }
 
-    const bounds = L.latLngBounds(
-      [lat, lng],
-      [highlightedCoords.lat, highlightedCoords.lng],
-    );
+    const bounds = L.latLngBounds([lat, lng], [referenceLat, referenceLng]);
 
     if (bounds.getNorthEast().equals(bounds.getSouthWest())) {
       map.setView([lat, lng], 10);
@@ -79,7 +82,7 @@ function MapViewUpdater({
     }
 
     map.fitBounds(bounds, { padding: [48, 48] });
-  }, [selectedKey, highlightedCoords, lat, lng, map]);
+  }, [selectedKey, referenceLat, referenceLng, lat, lng, map]);
 
   return null;
 }
@@ -112,7 +115,7 @@ export interface BuildingSelectorMapProps {
   lat: number | null;
   lng: number | null;
   archetypes: ArchetypeInfo[];
-  highlightedArchetype?: ArchetypeInfo | null;
+  highlightedArchetype?: ArchetypeDetails | null;
   selectedKey: string | null;
   accentColor: string;
   compact?: boolean;
@@ -137,13 +140,19 @@ export function BuildingSelectorMap({
     lat !== null && lng !== null ? [lat, lng] : DEFAULT_CENTER;
 
   const referenceMarkers = useMemo(() => {
+    const byKey = new Map(
+      archetypes.map((archetype) => [getArchetypeKey(archetype), archetype]),
+    );
+    if (highlightedArchetype) {
+      byKey.set(getArchetypeKey(highlightedArchetype), highlightedArchetype);
+    }
     const byLocation = new Map<
       string,
       { lat: number; lng: number; archetypes: ArchetypeInfo[] }
     >();
 
-    archetypes.forEach((archetype) => {
-      const coords = getCountryReferenceLocation(archetype.country);
+    byKey.forEach((archetype) => {
+      const coords = getArchetypeLocation(archetype);
       if (!coords) return;
       const key = `${coords.lat},${coords.lng}`;
       const current = byLocation.get(key);
@@ -155,26 +164,22 @@ export function BuildingSelectorMap({
     });
 
     return Array.from(byLocation.values());
-  }, [archetypes]);
+  }, [archetypes, highlightedArchetype]);
 
   const highlightedCoords = highlightedArchetype
-    ? getCountryReferenceLocation(highlightedArchetype.country)
-    : null;
+    ? getArchetypeLocation(highlightedArchetype)
+    : undefined;
+  const referenceLat = highlightedCoords?.lat ?? null;
+  const referenceLng = highlightedCoords?.lng ?? null;
 
   const sortedReferenceMarkers = useMemo(() => {
-    if (!highlightedCoords) return referenceMarkers;
-    return [...referenceMarkers].sort((a, b) => {
-      const aSelected =
-        highlightedCoords.lat === a.lat && highlightedCoords.lng === a.lng
-          ? 1
-          : 0;
-      const bSelected =
-        highlightedCoords.lat === b.lat && highlightedCoords.lng === b.lng
-          ? 1
-          : 0;
-      return aSelected - bSelected;
-    });
-  }, [referenceMarkers, highlightedCoords]);
+    return referenceMarkers
+      .map((marker) => ({
+        ...marker,
+        isSelected: referenceLat === marker.lat && referenceLng === marker.lng,
+      }))
+      .sort((a, b) => Number(a.isSelected) - Number(b.isSelected));
+  }, [referenceMarkers, referenceLat, referenceLng]);
 
   if (loading) {
     return (
@@ -210,7 +215,8 @@ export function BuildingSelectorMap({
             lat={lat}
             lng={lng}
             selectedKey={selectedKey}
-            highlightedArchetype={highlightedArchetype}
+            referenceLat={referenceLat}
+            referenceLng={referenceLng}
           />
         )}
 
@@ -228,9 +234,14 @@ export function BuildingSelectorMap({
         )}
 
         {sortedReferenceMarkers.map((marker) => {
-          const isSelected =
-            highlightedCoords?.lat === marker.lat &&
-            highlightedCoords.lng === marker.lng;
+          const { isSelected } = marker;
+          const countryCounts = new Map<string, number>();
+          marker.archetypes.forEach((archetype) => {
+            const country =
+              getCountryDisplayName(archetype.country) ?? archetype.country;
+            countryCounts.set(country, (countryCounts.get(country) ?? 0) + 1);
+          });
+          const countries = Array.from(countryCounts);
 
           return (
             <Box
@@ -266,9 +277,13 @@ export function BuildingSelectorMap({
               >
                 <Popup>
                   <Text size="sm" fw={500}>
-                    {getCountryDisplayName(marker.archetypes[0].country) ??
-                      marker.archetypes[0].country}{" "}
-                    reference buildings
+                    {countries.length === 1
+                      ? `${countries[0][0]} reference buildings`
+                      : "Reference buildings"}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    Reference coordinates:{" "}
+                    {formatCoords(marker.lat, marker.lng)}
                   </Text>
                   <Text
                     size="xs"
@@ -278,6 +293,12 @@ export function BuildingSelectorMap({
                     {marker.archetypes.length} archetype
                     {marker.archetypes.length === 1 ? "" : "s"} available
                   </Text>
+                  {countries.length > 1 &&
+                    countries.map(([country, count]) => (
+                      <Text key={country} size="xs" c="dimmed">
+                        {country}: {count}
+                      </Text>
+                    ))}
                 </Popup>
               </CircleMarker>
             </Box>

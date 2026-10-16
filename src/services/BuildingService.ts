@@ -22,6 +22,7 @@ import {
 import {
   MAX_EU_DISTANCE_KM,
   detectCountry,
+  getArchetypeLocation,
   getReferenceLocationForCountry,
 } from "../constants/archetypeLocations";
 import type {
@@ -80,9 +81,7 @@ export class BuildingService implements IBuildingService {
       if (userLocation) {
         const scored = archetypes
           .map((archetype) => {
-            const referenceLocation = getReferenceLocationForCountry(
-              archetype.country,
-            );
+            const referenceLocation = getArchetypeLocation(archetype);
             if (!referenceLocation) {
               return { archetype, distance: Infinity };
             }
@@ -181,7 +180,7 @@ export class BuildingService implements IBuildingService {
     // Geographic score: inverse normalized distance
     let geoScore = 0.0;
     if (coords) {
-      const refLocation = getReferenceLocationForCountry(archetype.country);
+      const refLocation = getArchetypeLocation(archetype);
       if (refLocation) {
         const distance = calculateDistance(
           coords.lat,
@@ -364,8 +363,7 @@ export class BuildingService implements IBuildingService {
   }
 
   /**
-   * Get available building categories based on coordinates
-   * Returns only categories that have archetypes near the given location
+   * Get building categories ordered by distance to the nearest archetype.
    */
   async getAvailableCategories(
     coords?: { lat: number; lng: number } | null,
@@ -386,7 +384,7 @@ export class BuildingService implements IBuildingService {
         (a) => a.category === category,
       );
       const distances = categoryArchetypes.map((archetype) => {
-        const refLocation = getReferenceLocationForCountry(archetype.country);
+        const refLocation = getArchetypeLocation(archetype);
         if (!refLocation) return Infinity;
         return calculateDistance(
           coords.lat!,
