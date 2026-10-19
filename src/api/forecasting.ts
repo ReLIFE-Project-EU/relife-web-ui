@@ -170,6 +170,8 @@ export const forecasting = {
       ...pvParams,
       include_baseline: params.include_baseline,
       baseline_only: params.baseline_only,
+      // The UI reads only the core hourly columns and the summaries.
+      lean: true,
     });
 
     const formData = new FormData();
