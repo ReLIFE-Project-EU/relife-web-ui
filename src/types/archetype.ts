@@ -57,7 +57,8 @@ export interface BuildingPayload {
     longitude: number;
     net_floor_area: number;
     n_floors: number;
-    height: number;
+    height: number; // m, all floors
+    volume: number; // m³
     exposed_perimeter: number;
     wall_thickness: number;
     building_type_class: string;
@@ -81,6 +82,10 @@ export interface BuildingPayload {
     airflow_rates: {
       infiltration_rate: number;
       units: string;
+    };
+    construction: {
+      thermal_bridge_heat_W_K: number;
+      [key: string]: unknown;
     };
     internal_gains: InternalGain[];
     [key: string]: unknown;

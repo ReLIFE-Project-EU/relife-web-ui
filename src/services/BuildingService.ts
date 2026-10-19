@@ -330,7 +330,7 @@ export class BuildingService implements IBuildingService {
       ...archetype,
       floorArea: bui.building.net_floor_area,
       numberOfFloors: bui.building.n_floors,
-      floorHeight: bui.building.height,
+      floorHeight: bui.building.height / bui.building.n_floors,
       totalWindowArea: bui.building_surface
         .filter((s) => s.type === "transparent")
         .reduce((sum, s) => sum + s.area, 0),

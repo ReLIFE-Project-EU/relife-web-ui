@@ -210,7 +210,8 @@ describe("lookupPackageCosts", () => {
         name: "house",
         net_floor_area: 160,
         n_floors: 2,
-        height: 2.7,
+        height: 5.4,
+        volume: 432,
         exposed_perimeter: 36,
       },
       building_surface: [
@@ -236,6 +237,7 @@ describe("lookupPackageCosts", () => {
           sky_view_factor: 0.5,
         },
       ],
+      building_parameters: { construction: { thermal_bridge_heat_W_K: 31 } },
     } as unknown as BuildingPayload;
     const modifiedBui = applyGeometryModification(house, { numberOfFloors: 1 });
     const resized = { ...estimation, archetypeFloorArea: 160, modifiedBui };

@@ -186,14 +186,14 @@ export function floorAreaPerFloor(
 }
 
 /**
- * Reshape the envelope for new geometry inputs, from the source in one pass.
- * - Floor area is the total over all floors; footprint = total ÷ floors.
- * - Roof and ground slab follow the footprint.
- * - Exposed perimeter keeps the source plan shape, so it scales with √footprint.
- * - Walls and windows scale with perimeter × floors × floor height, keeping
- *   the source window share and orientation split.
- * - Without a floor area, the source envelope (ground area × floors) sets the
- *   size, so a declared area that disagrees with it never reshapes the roof.
+ * Adjusts building geometry for new floor area, floor count, or height:
+ * - Floor area: total across all floors; footprint = area ÷ floors
+ * - Height: sum of all floors
+ * - Roof and ground scale with footprint size
+ * - Exposed perimeter scales with √footprint (plan shape constant)
+ * - Walls/windows scale with perimeter × height
+ * - Volume = footprint × height; thermal bridges scale with envelope area
+ * - If no floor area provided, source footprint × floors is used
  */
 export function applyGeometryModification(
   bui: BuildingPayload,
@@ -213,20 +213,21 @@ export function applyGeometryModification(
   }
 
   const floors = geometry.numberOfFloors ?? source.n_floors;
-  const floorHeight = geometry.floorHeight ?? source.height;
+  const floorHeight = geometry.floorHeight ?? source.height / source.n_floors;
   const totalFloorArea =
     geometry.floorArea ?? sourceFootprint * source.n_floors;
   const footprintScale =
     floorAreaPerFloor(totalFloorArea, floors) / sourceFootprint;
   const perimeterScale = Math.sqrt(footprintScale);
-  const facadeScale =
-    (perimeterScale * floors * floorHeight) / (source.n_floors * source.height);
+  const heightScale = (floors * floorHeight) / source.height;
+  const facadeScale = perimeterScale * heightScale;
 
   const modified = clonePayload(bui);
   modified.building.net_floor_area =
     geometry.floorArea ?? source.net_floor_area;
   modified.building.n_floors = floors;
-  modified.building.height = floorHeight;
+  modified.building.height = floors * floorHeight;
+  modified.building.volume *= footprintScale * heightScale;
   modified.building.exposed_perimeter *= perimeterScale;
   modified.building_surface = modified.building_surface.map((surface) => {
     const element = classifyEnvelopeSurface(surface);
@@ -234,6 +235,8 @@ export function applyGeometryModification(
       element === "roof" || element === "floor" ? footprintScale : facadeScale;
     return { ...surface, area: surface.area * scale };
   });
+  modified.building_parameters.construction.thermal_bridge_heat_W_K *=
+    envelopeArea(modified) / envelopeArea(bui);
 
   return modified;
 }
@@ -335,6 +338,14 @@ export function applyAllModifications(
     );
   }
 
+  // Ratios keep the archetype's sizing margin and design temperature.
+  const source = archetypeDetails.bui;
+  const capacities = modifiedBui.building_parameters.system_capacities;
+  capacities.heating_capacity *=
+    designHeatLoss(modifiedBui) / designHeatLoss(source);
+  capacities.cooling_capacity *=
+    modifiedBui.building.net_floor_area / source.building.net_floor_area;
+
   const modifiedSystem = clonePayload(archetypeDetails.system);
 
   return {
@@ -386,6 +397,34 @@ function classifyEnvelopeSurface(surface: BuildingSurface): EnvelopeElement {
     return "floor";
   }
   return "wall";
+}
+
+/** Forecasting's heating sizing counts ground loss at half and air at 0.34 Wh/m³K. */
+const GROUND_LOSS_FACTOR = 0.5;
+const AIR_HEAT_CAPACITY_WH_M3K = 0.34;
+
+/** Design heat loss (W/K), as Forecasting sizes archetype heating. */
+function designHeatLoss(bui: BuildingPayload): number {
+  const transmission = bui.building_surface.reduce(
+    (sum, surface) =>
+      sum +
+      surface.area *
+        surface.u_value *
+        (classifyEnvelopeSurface(surface) === "floor" ? GROUND_LOSS_FACTOR : 1),
+    0,
+  );
+  const { construction, airflow_rates } = bui.building_parameters;
+  return (
+    transmission +
+    construction.thermal_bridge_heat_W_K +
+    AIR_HEAT_CAPACITY_WH_M3K *
+      airflow_rates.infiltration_rate *
+      bui.building.volume
+  );
+}
+
+function envelopeArea(bui: BuildingPayload): number {
+  return bui.building_surface.reduce((sum, surface) => sum + surface.area, 0);
 }
 
 /**

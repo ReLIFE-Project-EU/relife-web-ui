@@ -38,6 +38,7 @@ function createMockBui(): BuildingPayload {
       net_floor_area: 100,
       n_floors: 2,
       height: 6,
+      volume: 300,
       exposed_perimeter: 40,
       wall_thickness: 0.3,
       building_type_class: "SFH",
@@ -111,6 +112,7 @@ function createMockBui(): BuildingPayload {
         infiltration_rate: 0.5,
         units: "ACH",
       },
+      construction: { thermal_bridge_heat_W_K: 10 },
       internal_gains: [
         {
           name: "Occupancy",
@@ -166,7 +168,8 @@ function createEnvelopeBui(spec: {
       name: spec.name,
       net_floor_area: spec.netFloorArea,
       n_floors: spec.floors,
-      height: spec.floorHeight,
+      height: spec.floors * spec.floorHeight,
+      volume: spec.footprint * spec.floors * spec.floorHeight,
       exposed_perimeter: spec.perimeter,
     },
     building_surface: [
@@ -223,20 +226,43 @@ const AT_SFH_1946_1969 = createEnvelopeBui({
   wallPerSide: 44.175,
   windowPerSide: 9.05,
 });
+/** AT_SFH_1946-1969 with Forecasting's catalogue U-values, ventilation and sizing. */
+const AT_SFH_1946_1969_U: Record<string, number> = {
+  Roof: 0.583,
+  Slab: 0.84,
+  Opaque: 0.986,
+  Transparent: 1.582,
+};
+const AT_SFH_1946_1969_SIZED: BuildingPayload = {
+  ...AT_SFH_1946_1969,
+  building_surface: AT_SFH_1946_1969.building_surface.map((surface) => ({
+    ...surface,
+    u_value: AT_SFH_1946_1969_U[surface.name.split(" ")[0]],
+  })),
+  building_parameters: {
+    ...AT_SFH_1946_1969.building_parameters,
+    system_capacities: {
+      heating_capacity: 18_700,
+      cooling_capacity: 16_540,
+      units: "W",
+    },
+    airflow_rates: { infiltration_rate: 0.8, units: "ACH" },
+    construction: { thermal_bridge_heat_W_K: 37.83 },
+  },
+};
 /** Target floor area from issue #86, compared against AT_SFH_1946-1969. */
 const ISSUE_TARGET_FLOOR_AREA = 165;
 
 /** Ratios the geometry assumptions keep constant across adjustments. */
 function envelopeShape(bui: BuildingPayload) {
   const { roofM2, floorM2, wallM2, windowM2 } = surfaceAreasFromBui(bui);
-  const { exposed_perimeter, n_floors, height } = bui.building;
+  const { exposed_perimeter, height } = bui.building;
   const facadeM2 = wallM2 + windowM2;
   return {
     roofM2,
     floorM2,
     planShape: exposed_perimeter / Math.sqrt(floorM2),
-    facadePerPerimeterHeight:
-      facadeM2 / (exposed_perimeter * n_floors * height),
+    facadePerPerimeterHeight: facadeM2 / (exposed_perimeter * height),
     windowShare: windowM2 / facadeM2,
   };
 }
@@ -408,7 +434,7 @@ describe("archetypeModifier", () => {
       const adjusted = applyGeometryModification(AT_SFH_1946_1969, {
         floorArea: net_floor_area,
         numberOfFloors: n_floors,
-        floorHeight: height,
+        floorHeight: height / n_floors,
       });
 
       expect(adjusted.building.exposed_perimeter).toBeCloseTo(
@@ -437,6 +463,46 @@ describe("archetypeModifier", () => {
       expect(after.roofM2).toBeCloseTo(before.roofM2);
       expect(after.floorM2).toBeCloseTo(before.floorM2);
     });
+  });
+
+  describe("applyAllModifications – sizing", () => {
+    // Pins the resize to Forecasting's sizing: expected values come from its
+    // _make_extended_building run on the resized geometry.
+    it.each([
+      {
+        label: "80 m²",
+        edit: { floorArea: 80 },
+        volume: 216,
+        thermalBridges: 22.807,
+        heating: 11_200,
+        cooling: 8_000,
+      },
+      {
+        label: "one floor",
+        edit: { numberOfFloors: 1 },
+        volume: 446.58,
+        thermalBridges: 48.134,
+        heating: 19_700,
+        cooling: 16_540,
+      },
+    ])(
+      "sizes AT_SFH_1946-1969 at $label like Forecasting's catalogue",
+      ({ edit, volume, thermalBridges, heating, cooling }) => {
+        const { bui } = applyAllModifications(
+          { ...createMockArchetypeDetails(), bui: AT_SFH_1946_1969_SIZED },
+          edit,
+        );
+        const { construction, system_capacities } = bui.building_parameters;
+
+        expect(bui.building.volume).toBeCloseTo(volume);
+        expect(construction.thermal_bridge_heat_W_K).toBeCloseTo(
+          thermalBridges,
+        );
+        // Forecasting rounds heating up to 100 W.
+        expect(system_capacities.heating_capacity).toBeCloseTo(heating, -2);
+        expect(system_capacities.cooling_capacity).toBeCloseTo(cooling);
+      },
+    );
   });
 
   // ---- applyThermalModification (via applyAllModifications) ----
