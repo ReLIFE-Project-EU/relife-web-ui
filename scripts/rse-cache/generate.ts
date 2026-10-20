@@ -274,6 +274,7 @@ export async function generateRSECacheSeedSql(
   const targetKeys = new Set<string>();
   const logger = options.logger ?? createSilentSeedLogger();
   const targetTotal = options.targets.length;
+  const loadBaseline = createBaselineLoader(forecastingClient);
 
   for (const [index, target] of options.targets.entries()) {
     const targetIndex = index + 1;
@@ -298,6 +299,7 @@ export async function generateRSECacheSeedSql(
       generatedAt: options.generatedAt,
       forecastingServiceVersion: options.forecastingServiceVersion,
       forecastingClient,
+      loadBaseline,
       logger: targetLogger,
       measureIds,
     });
@@ -355,6 +357,7 @@ async function generateRSECacheSeedRun(params: {
   retryMaxDelayMs: number;
 }): Promise<RSESeedRunState> {
   const entries = [...(params.existingState?.entries ?? [])];
+  const loadBaseline = createBaselineLoader(params.forecastingClient, entries);
   const failures = [...(params.existingState?.failures ?? [])];
   const completedKeys = new Set(entries.map(entryTargetKey));
   const priorFailureKeys = new Set(
@@ -399,6 +402,7 @@ async function generateRSECacheSeedRun(params: {
             generatedAt: params.generatedAt,
             forecastingServiceVersion: params.forecastingServiceVersion,
             forecastingClient: params.forecastingClient,
+            loadBaseline,
             logger: targetLogger,
             measureIds,
           }),
@@ -586,6 +590,7 @@ async function generateSeedEntryForTarget(params: {
   generatedAt: string;
   forecastingServiceVersion?: string;
   forecastingClient: RSEForecastingSeedClient;
+  loadBaseline: ReturnType<typeof createBaselineLoader>;
   logger: RSESeedLogger;
   measureIds?: readonly RenovationMeasureId[];
 }): Promise<RSESeedEntryRow> {
@@ -595,7 +600,6 @@ async function generateSeedEntryForTarget(params: {
   params.logger.debug("seed.target.start", "Generating seed target", {
     measureIds,
   });
-  const baselineEcmParams = buildBaselineOnlyECMParams(params.target);
   const ecmParams = {
     ...buildECMParams(measureIds, {
       kind: "archetype",
@@ -604,15 +608,6 @@ async function generateSeedEntryForTarget(params: {
     }),
     include_baseline: false,
   };
-  params.logger.debug(
-    "forecasting.ecm.baseline_request_summary",
-    "ECM baseline request summary",
-    {
-      baselineOnly: true,
-      source: "archetype",
-      roofArea: params.target.archetype.roofArea,
-    },
-  );
   params.logger.debug(
     "forecasting.ecm.request_summary",
     "ECM request summary",
@@ -623,14 +618,13 @@ async function generateSeedEntryForTarget(params: {
       roofArea: params.target.archetype.roofArea,
     },
   );
-  const baselineEcmResponse =
-    await params.forecastingClient.simulateECM(baselineEcmParams);
+  const baseline = await params.loadBaseline(params.target, params.logger);
   const ecmResponse = await params.forecastingClient.simulateECM(ecmParams);
   const payload = await buildPayload({
     target: params.target,
     generatedAt: params.generatedAt,
     forecastingServiceVersion: params.forecastingServiceVersion,
-    baselineEcmResponse,
+    baseline,
     ecmResponse,
     forecastingClient: params.forecastingClient,
     logger: params.logger,
@@ -647,6 +641,62 @@ async function generateSeedEntryForTarget(params: {
   };
 }
 
+/** Retain only completed baseline snapshots, scoped to one seed run. */
+function createBaselineLoader(
+  forecastingClient: RSEForecastingSeedClient,
+  entries: RSESeedEntryRow[] = [],
+) {
+  const baselines = new Map<string, Promise<RSEForecastingScenarioSnapshot>>(
+    entries.map((entry) => [
+      [
+        entry.archetype_country,
+        entry.archetype_category,
+        entry.archetype_name,
+      ].join(UNIT_SEPARATOR),
+      Promise.resolve(entry.payload.baseline),
+    ]),
+  );
+
+  return (
+    target: RSESeedTarget,
+    logger: RSESeedLogger,
+  ): Promise<RSEForecastingScenarioSnapshot> => {
+    const { country, category, name } = target.archetype;
+    const key = [country, category, name].join(UNIT_SEPARATOR);
+    const cached = baselines.get(key);
+    if (cached) {
+      return cached;
+    }
+
+    const baseline = (async () => {
+      logger.debug(
+        "forecasting.ecm.baseline_request_summary",
+        "ECM baseline request summary",
+        {
+          baselineOnly: true,
+          source: "archetype",
+          roofArea: target.archetype.roofArea,
+        },
+      );
+      const response = await forecastingClient.simulateECM(
+        buildBaselineOnlyECMParams(target),
+      );
+      return buildScenarioSnapshot({
+        scenario: pickBaselineScenario(response),
+        archetypeCountry: country,
+        scenarioNamePrefix: "baseline",
+        forecastingClient,
+        logger,
+      });
+    })().catch((error: unknown) => {
+      baselines.delete(key);
+      throw error;
+    });
+    baselines.set(key, baseline);
+    return baseline;
+  };
+}
+
 function buildBaselineOnlyECMParams(
   target: RSESeedTarget,
 ): ECMApplicationParams {
@@ -658,19 +708,17 @@ function buildBaselineOnlyECMParams(
   };
 }
 
-/** Turn one ECM response into a full cache payload:
- *  pick baseline/renovated scenarios, build carrier-split CO2 inputs, calculate
- *  per-carrier emissions through Forecasting, then cross-check aggregate savings. */
+/** Combine the shared baseline and renovated snapshot, then validate savings. */
 async function buildPayload(params: {
   target: RSESeedTarget;
   generatedAt: string;
   forecastingServiceVersion?: string;
-  baselineEcmResponse: ECMApplicationResponse;
+  baseline: RSEForecastingScenarioSnapshot;
   ecmResponse: ECMApplicationResponse;
   forecastingClient: RSEForecastingSeedClient;
   logger: RSESeedLogger;
 }): Promise<RSEForecastingCachePayload> {
-  const baselineScenario = pickBaselineScenario(params.baselineEcmResponse);
+  const baseline = params.baseline;
   const renovatedScenario = pickRenovatedScenario(params.ecmResponse);
 
   params.logger.debug(
@@ -678,58 +726,17 @@ async function buildPayload(params: {
     "ECM response summary",
     {
       scenarioCount: params.ecmResponse.scenarios.length,
-      baselineScenarioId: baselineScenario.scenario_id,
       renovatedScenarioId: renovatedScenario.scenario_id,
     },
   );
 
-  const baselineInputs = mapForecastingEnergyToEmissionScenarios(
-    baselineScenario.results,
-    {
-      scenarioNamePrefix: "baseline",
-      archetypeCountry: params.target.archetype.country,
-    },
-  );
-  const renovatedInputs = mapForecastingEnergyToEmissionScenarios(
-    renovatedScenario.results,
-    {
-      scenarioNamePrefix: "renovated",
-      archetypeCountry: params.target.archetype.country,
-    },
-  );
-  params.logger.debug("co2.inputs.summary", "CO2 input summary", {
-    scenario: "baseline",
-    carrierCount: baselineInputs.length,
-    carriers: summarizeCo2Inputs(baselineInputs),
+  const renovated = await buildScenarioSnapshot({
+    scenario: renovatedScenario,
+    archetypeCountry: params.target.archetype.country,
+    scenarioNamePrefix: "renovated",
+    forecastingClient: params.forecastingClient,
+    logger: params.logger,
   });
-  params.logger.debug("co2.inputs.summary", "CO2 input summary", {
-    scenario: "renovated",
-    carrierCount: renovatedInputs.length,
-    carriers: summarizeCo2Inputs(renovatedInputs),
-  });
-  const [baselineComponents, renovatedComponents] = await Promise.all([
-    calculateEmissionComponents(
-      baselineInputs,
-      params.forecastingClient,
-      childSeedLogger(params.logger, { scenario: "baseline" }),
-    ),
-    calculateEmissionComponents(
-      renovatedInputs,
-      params.forecastingClient,
-      childSeedLogger(params.logger, { scenario: "renovated" }),
-    ),
-  ]);
-
-  const baseline = toScenarioSnapshot(
-    baselineScenario,
-    baselineInputs,
-    baselineComponents,
-  );
-  const renovated = toScenarioSnapshot(
-    renovatedScenario,
-    renovatedInputs,
-    renovatedComponents,
-  );
   const co2Comparison = toComparisonSnapshot(baseline, renovated);
 
   validatePayload(baseline, renovated, co2Comparison);
@@ -761,6 +768,33 @@ async function buildPayload(params: {
       notes: "Generated by scripts/rse-cache/generate.ts",
     },
   };
+}
+
+async function buildScenarioSnapshot(params: {
+  scenario: ECMScenario;
+  archetypeCountry: string;
+  scenarioNamePrefix: "baseline" | "renovated";
+  forecastingClient: RSEForecastingSeedClient;
+  logger: RSESeedLogger;
+}): Promise<RSEForecastingScenarioSnapshot> {
+  const inputs = mapForecastingEnergyToEmissionScenarios(
+    params.scenario.results,
+    {
+      scenarioNamePrefix: params.scenarioNamePrefix,
+      archetypeCountry: params.archetypeCountry,
+    },
+  );
+  params.logger.debug("co2.inputs.summary", "CO2 input summary", {
+    scenario: params.scenarioNamePrefix,
+    carrierCount: inputs.length,
+    carriers: summarizeCo2Inputs(inputs),
+  });
+  const components = await calculateEmissionComponents(
+    inputs,
+    params.forecastingClient,
+    childSeedLogger(params.logger, { scenario: params.scenarioNamePrefix }),
+  );
+  return toScenarioSnapshot(params.scenario, inputs, components);
 }
 
 /** Require the explicit baseline scenario requested for RSE cache generation. */
@@ -2217,6 +2251,7 @@ export function makeFetchForecastingClient(
       const searchParams = new URLSearchParams({
         archetype: isCustom ? "false" : "true",
         weather_source: params.weatherSource ?? "pvgis",
+        lean: "true",
       });
 
       for (const [key, value] of Object.entries(params)) {

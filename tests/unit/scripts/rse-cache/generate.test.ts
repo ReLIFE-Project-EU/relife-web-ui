@@ -1,4 +1,8 @@
-import { describe, expect, test, vi } from "vitest";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import {
   generateRSECacheSeedSql,
@@ -7,7 +11,9 @@ import {
   runRSESeedCli,
   type RSEGeneratedSeed,
   type RSEForecastingSeedClient,
+  type RSESeedRunState,
 } from "../../../../scripts/rse-cache/generate.ts";
+import { RSE_PACKAGE_IDS } from "../../../../src/features/strategy-explorer/constants.ts";
 import type { RSEEmissionScenarioInput } from "../../../../src/features/strategy-explorer/types";
 import type { ECMApplicationParams } from "../../../../src/types/forecasting";
 
@@ -256,6 +262,215 @@ describe("generateRSECacheSeedSql", () => {
       absoluteTonCo2eq: -0.8,
       percentage: -50,
     });
+  });
+});
+
+describe("baseline reuse", () => {
+  const archetype = {
+    country: "IT",
+    category: "Residential",
+    name: "Detached 1980",
+    roofArea: 100,
+  };
+  const options = {
+    cacheVersion: "1.test.baseline-reuse",
+    generatedAt: "2026-05-12T10:04:00.000Z",
+    targets: RSE_PACKAGE_IDS.map((packageId) => ({ archetype, packageId })),
+  };
+
+  test("reuses baseline simulation and CO2 without changing entry values", async () => {
+    const { client, simulateCalls, calculateInputs } =
+      makeReusableBaselineClient();
+    const result = await generateRSECacheSeedSql(options, client);
+    const individualEntries = [];
+
+    for (const target of options.targets) {
+      const individual = await generateRSECacheSeedSql(
+        { ...options, targets: [target] },
+        makeReusableBaselineClient().client,
+      );
+      individualEntries.push(...individual.entries);
+    }
+
+    expect(result.entries).toEqual(individualEntries);
+    expect(simulateCalls).toHaveLength(5);
+    expect(simulateCalls.filter((call) => call.baseline_only)).toHaveLength(1);
+    expect(
+      simulateCalls.slice(1).every((call) => call.include_baseline === false),
+    ).toBe(true);
+    expect(
+      calculateInputs.filter((input) => input.name.startsWith("baseline:")),
+    ).toHaveLength(2);
+    expect(
+      calculateInputs.filter((input) => input.name.startsWith("renovated:")),
+    ).toHaveLength(4);
+  });
+
+  test.each([
+    { country: "DE" },
+    { category: "Office" },
+    { name: "Detached 1990" },
+  ])("separates archetypes by $country $category $name", async (identity) => {
+    const { client, simulateCalls } = makeReusableBaselineClient();
+    await generateRSECacheSeedSql(
+      {
+        ...options,
+        targets: [
+          options.targets[0],
+          { archetype: { ...archetype, ...identity }, packageId: "envelope" },
+        ],
+      },
+      client,
+    );
+
+    expect(simulateCalls.filter((call) => call.baseline_only)).toHaveLength(2);
+  });
+
+  test("does not reuse baselines across generation runs", async () => {
+    const { client, simulateCalls } = makeReusableBaselineClient();
+    await generateRSECacheSeedSql(options, client);
+    await generateRSECacheSeedSql(options, client);
+
+    expect(simulateCalls.filter((call) => call.baseline_only)).toHaveLength(2);
+  });
+});
+
+describe("checkpointed baseline reuse", () => {
+  let directory: string;
+
+  beforeEach(async () => {
+    directory = await mkdtemp(join(tmpdir(), "rse-seed-test-"));
+  });
+
+  afterEach(async () => {
+    await rm(directory, { recursive: true, force: true });
+  });
+
+  function run(client: RSEForecastingSeedClient, maxAttempts = 2) {
+    return runRSESeedCli(
+      [
+        "--cache-version",
+        "1.test.baseline-reuse",
+        "--archetypes",
+        '[{"country":"IT","category":"Residential","name":"Detached 1980"}]',
+        "--forecasting-base-url",
+        "http://127.0.0.1/api",
+        "--checkpoint",
+        join(directory, "checkpoint.json"),
+        "--failures-out",
+        join(directory, "failures.json"),
+        "--out",
+        join(directory, "seed.sql"),
+        "--max-attempts",
+        String(maxAttempts),
+        "--retry-initial-delay-ms",
+        "0",
+        "--retry-max-delay-ms",
+        "0",
+        "--log-level",
+        "silent",
+      ],
+      {
+        env: {},
+        stdout: () => undefined,
+        writeFile,
+        applySeed: async () => undefined,
+        makeForecastingClient: () => client,
+        now: () => new Date("2026-05-12T10:04:00.000Z"),
+      },
+    );
+  }
+
+  test.each([
+    "baseline simulation",
+    "baseline CO2",
+    "renovated simulation",
+    "renovated CO2",
+  ])(
+    "recovers from a failed %s without discarding successful baselines",
+    async (stage) => {
+      const { client } = makeReusableBaselineClient();
+      const simulate = client.simulateECM.bind(client);
+      const calculate = client.calculateEmissions.bind(client);
+      let failed = false;
+      const simulateSpy = vi
+        .spyOn(client, "simulateECM")
+        .mockImplementation(async (params) => {
+          const currentStage = params.baseline_only
+            ? "baseline simulation"
+            : "renovated simulation";
+          if (!failed && stage === currentStage) {
+            failed = true;
+            throw new TypeError("fetch failed");
+          }
+          return simulate(params);
+        });
+      vi.spyOn(client, "calculateEmissions").mockImplementation(
+        async (input) => {
+          const currentStage = input.name.startsWith("baseline:")
+            ? "baseline CO2"
+            : "renovated CO2";
+          if (!failed && stage === currentStage) {
+            failed = true;
+            throw new TypeError("fetch failed");
+          }
+          return calculate(input);
+        },
+      );
+
+      await run(client);
+      const state = JSON.parse(
+        await readFile(join(directory, "checkpoint.json"), "utf8"),
+      ) as RSESeedRunState;
+
+      expect(failed).toBe(true);
+      expect(state.coverage.complete).toBe(true);
+      expect(state.failures).toEqual([]);
+      expect(
+        simulateSpy.mock.calls.filter(([params]) => params.baseline_only),
+      ).toHaveLength(stage.startsWith("baseline") ? 2 : 1);
+    },
+  );
+
+  test("resumes missing packages using a completed checkpoint baseline", async () => {
+    const first = makeReusableBaselineClient();
+    const simulate = first.client.simulateECM.bind(first.client);
+    vi.spyOn(first.client, "simulateECM").mockImplementation(async (params) => {
+      if (params.use_heat_pump && !params.use_pv) {
+        throw new TypeError("fetch failed");
+      }
+      return simulate(params);
+    });
+    await expect(run(first.client, 1)).rejects.toThrow("failed target");
+    const partial = JSON.parse(
+      await readFile(join(directory, "checkpoint.json"), "utf8"),
+    ) as RSESeedRunState;
+    expect(partial.entries).toHaveLength(3);
+
+    const resumed = makeReusableBaselineClient();
+    await run(resumed.client);
+    const complete = JSON.parse(
+      await readFile(join(directory, "checkpoint.json"), "utf8"),
+    ) as RSESeedRunState;
+
+    expect(resumed.simulateCalls).toHaveLength(1);
+    expect(resumed.simulateCalls[0].baseline_only).toBeUndefined();
+    expect(
+      resumed.calculateInputs.every((input) =>
+        input.name.startsWith("renovated:"),
+      ),
+    ).toBe(true);
+    expect(complete.coverage).toEqual(
+      expect.objectContaining({ complete: true, skipped: 3, failed: 0 }),
+    );
+    expect(
+      complete.entries.every(
+        (entry) =>
+          JSON.stringify(entry.payload.baseline) ===
+          JSON.stringify(partial.entries[0].payload.baseline),
+      ),
+    ).toBe(true);
+    expect(complete.entries.slice(0, 3)).toEqual(partial.entries);
   });
 });
 
@@ -963,10 +1178,22 @@ describe("runRSESeedCli", () => {
           country: "IT",
           category: "Residential",
           name: "Detached 1980",
+          lean: "true",
         }),
       }),
     );
     expect(JSON.stringify(httpRequest)).not.toContain("user:pass");
+    const ecmRequests = parseJsonLines(errors).filter(
+      (log) =>
+        log.event === "forecasting.http.request" &&
+        log.endpoint === "/api/forecasting/ecm_application",
+    );
+    expect(ecmRequests).toHaveLength(2);
+    expect(
+      ecmRequests.every(
+        (log) => (log.queryParams as Record<string, string>).lean === "true",
+      ),
+    ).toBe(true);
   });
 
   test("suppresses structured logs when log level is silent", async () => {
@@ -1187,6 +1414,18 @@ describe("runRSESeedCli", () => {
     ).rejects.toThrow("--publish cannot be combined with --publish-partial");
   });
 });
+
+function makeReusableBaselineClient() {
+  return makeForecastingClient({
+    baselineScenarios: [
+      makeScenario("baseline", 12_000, {
+        thermalKwh: 10_000,
+        electricTotalKwh: 1_000,
+      }),
+    ],
+    scenarios: [makeScenario("renovated", 8_000, { thermalKwh: 8_000 })],
+  });
+}
 
 function makeForecastingClient(response?: {
   archetypes?: Array<{ country: string; category: string; name: string }>;
