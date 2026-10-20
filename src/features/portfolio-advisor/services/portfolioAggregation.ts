@@ -167,8 +167,8 @@ export function aggregatePortfolioPackage(input: {
     // zero understates the portfolio rather than admitting it is unknown.
     const appraised = financials.riskAssessment !== null;
     addOptional(npv, appraised ? financials.netPresentValue : undefined);
-    // ROI is reported against the post-subsidy CAPEX, so net profit must be
-    // rebuilt on that same basis before the portfolio ratio is taken.
+    // ROI is reported against the upfront share of the post-subsidy CAPEX;
+    // every building has the same loan share, so CAPEX weights it correctly.
     const roi = financials.returnOnInvestment;
     addOptional(
       netProfit,

@@ -105,8 +105,8 @@ export function aggregatePackage(
       hasNPV = true;
     }
 
-    // The backend computes ROI against the effective (post-incentive) CAPEX,
-    // so net profit must be reconstructed on the same basis.
+    // The backend computes ROI against the upfront share of the effective
+    // CAPEX; every archetype has the same loan share, so CAPEX weights it.
     if (
       isFiniteNumber(financial.pointForecasts.ROI) &&
       financial.effectiveCapexEur > 0
