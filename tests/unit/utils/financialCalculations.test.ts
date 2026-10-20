@@ -192,4 +192,13 @@ describe("computePooledPaybackYears", () => {
       computePooledPaybackYears([{ netByYear: [0, 50, 50], count: 1 }]),
     ).toBe(0);
   });
+
+  test("pays back once the cumulative total stays non-negative", () => {
+    // Nothing upfront, then two years out of pocket.
+    expect(
+      computePooledPaybackYears([
+        { netByYear: [0, -30, -30, 40, 40], count: 1 },
+      ]),
+    ).toBeCloseTo(3.5, 5);
+  });
 });

@@ -38,9 +38,9 @@ import {
 import {
   formatCurrency,
   formatDecimal,
+  formatPaybackYears,
   formatPercent,
   formatTonnageCo2,
-  formatYears,
   getEnergyReduction,
 } from "../../../../utils/formatters";
 import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
@@ -227,7 +227,10 @@ const PortfolioSummary = memo(function PortfolioSummary({
             <ConceptMetricCard
               conceptId="payback-period"
               prefix="Portfolio"
-              value={orDash(aggregate.portfolioPaybackYears, formatYears)}
+              value={orDash(
+                aggregate.portfolioPaybackYears,
+                formatPaybackYears,
+              )}
             />
             <ConceptMetricCard
               conceptId="annual-maintenance-cost"

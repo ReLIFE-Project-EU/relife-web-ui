@@ -27,6 +27,7 @@ import {
 import { useMemo, useState, type ReactNode } from "react";
 import { DeltaBadge } from "../../../../components/shared/DeltaValue";
 import { MetricEyebrow } from "../../../../components/shared/MetricEyebrow";
+import { NotApplicable } from "../../../../components/shared/NotApplicable";
 import {
   formatCurrency,
   formatDecimal,
@@ -34,6 +35,7 @@ import {
   formatFixed,
   formatPercent,
   getEnergyReduction,
+  IMMEDIATE_PAYBACK_LABEL,
   isPaybackBeyondHorizon,
 } from "../../../../utils/formatters";
 import type { PRABuilding, BuildingAnalysisResult } from "../../context/types";
@@ -93,7 +95,8 @@ interface RowVm {
   availability: SavingsAvailability;
   energyReduction: number | undefined;
   npv: number | undefined;
-  roi: number | undefined;
+  /** Null when the service returned no ROI (shown as n/a). */
+  roi: number | null | undefined;
   pbp: number | undefined;
 }
 
@@ -118,15 +121,18 @@ function buildRowVms(
       const energyBefore = result.estimation?.annualEnergyNeeds;
       const energyAfter = renovated?.annualEnergyNeeds;
       const energyReduction = getEnergyReduction(energyBefore, energyAfter);
+      // A skipped appraisal leaves placeholder zeros, which would sort as real.
+      const appraisedFr =
+        isSuccess && availability === "appraised" ? fr : undefined;
       return {
         building,
         result,
         isSuccess,
         availability,
         energyReduction,
-        npv: isSuccess && fr ? fr.netPresentValue : undefined,
-        roi: isSuccess && fr ? fr.returnOnInvestment : undefined,
-        pbp: isSuccess && fr ? fr.paybackTime : undefined,
+        npv: appraisedFr?.netPresentValue,
+        roi: appraisedFr?.returnOnInvestment,
+        pbp: appraisedFr?.paybackTime,
       } satisfies RowVm;
     })
     .filter((v): v is RowVm => v !== null);
@@ -158,18 +164,19 @@ function applyStatusFilter(rows: RowVm[], filter: StatusFilter): RowVm[] {
 
 function applySort(rows: RowVm[], sort: SortState): RowVm[] {
   const dir = sort.dir === "asc" ? 1 : -1;
+  const missingLast = dir * Infinity;
   const get = (r: RowVm): number | string => {
     switch (sort.key) {
       case "name":
         return r.building.name.toLowerCase();
       case "energyReduction":
-        return r.energyReduction ?? Infinity;
+        return r.energyReduction ?? missingLast;
       case "npv":
-        return r.npv ?? -Infinity;
+        return r.npv ?? missingLast;
       case "roi":
-        return r.roi ?? -Infinity;
+        return r.roi ?? missingLast;
       case "pbp":
-        return r.pbp ?? Infinity;
+        return r.pbp ?? missingLast;
     }
   };
   return [...rows].sort((a, b) => {
@@ -372,7 +379,15 @@ function ResultsRow({
   showDeliveredEnergyColumn: boolean;
   onClick?: (vm: RowVm) => void;
 }) {
-  const { building, result, isSuccess, availability, energyReduction } = row;
+  const {
+    building,
+    result,
+    isSuccess,
+    availability,
+    energyReduction,
+    roi,
+    pbp,
+  } = row;
   // A skipped appraisal leaves placeholder zeros on the result; showing them
   // dimmed still shows a number, so render them as unavailable instead.
   const appraised = availability === "appraised";
@@ -482,9 +497,13 @@ function ResultsRow({
           c={appraised ? undefined : "dimmed"}
           style={{ fontVariantNumeric: "tabular-nums" }}
         >
-          {isSuccess && fr && appraised
-            ? formatPercent(fr.returnOnInvestment * 100)
-            : "—"}
+          {roi === undefined ? (
+            "—"
+          ) : roi === null ? (
+            <NotApplicable result={fr} />
+          ) : (
+            formatPercent(roi * 100)
+          )}
         </Text>
       </Table.Td>
       <Table.Td ta="right" style={{ verticalAlign: "middle" }}>
@@ -493,14 +512,16 @@ function ResultsRow({
           c={appraised ? undefined : "dimmed"}
           style={{ fontVariantNumeric: "tabular-nums" }}
         >
-          {isSuccess && fr && appraised
-            ? isPaybackBeyondHorizon(
-                fr.paybackTime,
-                fr.riskAssessment?.metadata.project_lifetime,
-              )
-              ? "No payback"
-              : formatDecimal(fr.paybackTime)
-            : "—"}
+          {pbp === undefined
+            ? "—"
+            : pbp === 0
+              ? IMMEDIATE_PAYBACK_LABEL
+              : isPaybackBeyondHorizon(
+                    pbp,
+                    fr?.riskAssessment?.metadata.project_lifetime,
+                  )
+                ? "No payback"
+                : formatDecimal(pbp)}
         </Text>
       </Table.Td>
     </Table.Tr>

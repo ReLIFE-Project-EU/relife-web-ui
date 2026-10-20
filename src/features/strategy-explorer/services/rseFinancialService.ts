@@ -279,8 +279,8 @@ function normalizeRiskResponse(
     status: "available",
     pointForecasts: {
       NPV: pf.NPV,
-      IRR: pf.IRR,
-      ROI: pf.ROI,
+      IRR: pf.IRR ?? undefined,
+      ROI: pf.ROI ?? undefined,
       PBP: pf.PBP,
       DPP: pf.DPP,
     },

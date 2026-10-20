@@ -11,6 +11,7 @@ export { SubsidyInput } from "./SubsidyInput";
 export { MetricCard } from "./MetricCard";
 export { MetricEyebrow } from "./MetricEyebrow";
 export { MetricExplainer } from "./MetricExplainer";
+export { NotApplicable } from "./NotApplicable";
 export type { FinancialMetricType } from "./MetricExplainer";
 export { RangeIndicator } from "./RangeIndicator";
 export type { RangeIndicatorProps } from "./RangeIndicator";

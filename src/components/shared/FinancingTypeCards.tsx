@@ -104,6 +104,7 @@ export function FinancingTypeCards({
                 suffix="%"
                 min={0}
                 max={100}
+                clampBehavior="strict"
                 step={5}
                 size="sm"
                 {...browserNumberSeparators}

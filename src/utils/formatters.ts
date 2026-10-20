@@ -215,15 +215,20 @@ export function isPaybackBeyondHorizon(
   return projectLifetime !== undefined && value > projectLifetime;
 }
 
+/** Payback of 0: the owner never has money of their own at risk. */
+export const IMMEDIATE_PAYBACK_LABEL = "Immediate (no upfront investment)";
+
 /**
- * Format a payback duration, rendering the censored "never pays back"
- * sentinel as a label instead of a fake year count.
- * Example: (10.5, 20) -> "10.5 years"; (21, 20) -> "No payback within horizon"
+ * Format a payback duration, rendering 0 and the censored "never pays back"
+ * sentinel as labels instead of year counts.
+ * Example: (0) -> "Immediate (no upfront investment)"; (10.5, 20) -> "10.5 years";
+ * (21, 20) -> "No payback within horizon"
  */
 export function formatPaybackYears(
   value: number,
-  projectLifetime: number | undefined,
+  projectLifetime?: number,
 ): string {
+  if (value === 0) return IMMEDIATE_PAYBACK_LABEL;
   return isPaybackBeyondHorizon(value, projectLifetime)
     ? "No payback within horizon"
     : formatYears(value);

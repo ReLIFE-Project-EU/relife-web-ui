@@ -5,7 +5,7 @@
  */
 
 import { Text } from "@mantine/core";
-import { FundingPills } from "../../../../components/shared";
+import { FundingPills, NotApplicable } from "../../../../components/shared";
 import type {
   FinancialResults,
   FundingOptions,
@@ -71,25 +71,20 @@ export function FinancialDeepDive({
               color="green"
               highlighted
             />
-            <FinancialMetricCard
-              conceptId="payback-period"
-              metricType="PBP"
-              value={
-                result.riskAssessment?.pointForecasts.PBP ?? result.paybackTime
-              }
-              formatter={(v) =>
-                formatPaybackYears(
-                  v,
-                  result.riskAssessment?.metadata.project_lifetime,
-                )
-              }
-              percentiles={
-                noPaybackWithinRange ? undefined : paybackPercentiles
-              }
-              color="teal"
-              lowerIsBetter
-              highlighted
-            />
+            {result.riskAssessment ? (
+              <FinancialMetricCard
+                conceptId="payback-period"
+                metricType="PBP"
+                value={result.riskAssessment.pointForecasts.PBP}
+                formatter={(v) => formatPaybackYears(v, projectLifetime)}
+                percentiles={
+                  noPaybackWithinRange ? undefined : paybackPercentiles
+                }
+                color="teal"
+                lowerIsBetter
+                highlighted
+              />
+            ) : null}
             {result.riskAssessment?.pointForecasts.MonthlyAvgSavings !==
             undefined ? (
               <FinancialMetricCard
@@ -130,17 +125,23 @@ function SecondaryMetrics({ result }: { result: FinancialResults }) {
   const roi =
     result.riskAssessment?.pointForecasts.ROI ?? result.returnOnInvestment;
   const dpp = result.riskAssessment?.pointForecasts.DPP;
+  const ratio = (value: number | null) =>
+    value === null ? (
+      <NotApplicable result={result} />
+    ) : (
+      formatPercent(value * 100)
+    );
 
   return (
     <div className={classes.finExtras}>
       {irr !== undefined ? (
         <span>
-          <b>IRR</b> {formatPercent(irr * 100)}
+          <b>IRR</b> {ratio(irr)}
         </span>
       ) : null}
       {roi !== undefined ? (
         <span>
-          <b>ROI</b> {formatPercent(roi * 100)}
+          <b>ROI</b> {ratio(roi)}
         </span>
       ) : null}
       {dpp !== undefined ? (

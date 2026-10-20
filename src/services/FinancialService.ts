@@ -269,6 +269,7 @@ export class FinancialService implements IFinancialService {
     const mapped = mapWireRiskResponse(wire, {
       schemeType,
       projectLifetime: request.project_lifetime,
+      loanTerm: request.loan_term,
     });
 
     return {
@@ -614,7 +615,7 @@ export class FinancialService implements IFinancialService {
           : Math.round(effectiveCost),
         annualMaintenanceCost:
           riskResult?.metadata.annual_maintenance_cost ?? annualMaintenanceCost,
-        returnOnInvestment: riskResult?.pointForecasts.ROI ?? 0,
+        returnOnInvestment: riskResult ? riskResult.pointForecasts.ROI : 0,
         paybackTime: riskResult?.pointForecasts.PBP ?? 0,
         netPresentValue: riskResult?.pointForecasts.NPV ?? 0,
         afterRenovationValue: arvResult?.totalPrice ?? null,

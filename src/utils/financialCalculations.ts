@@ -50,13 +50,14 @@ export function applyFundingReduction(
 
 /**
  * Payback from a pooled cash-flow series: each contributor's net cash flows are
- * scaled by its count and summed, then the break-even point is interpolated
- * linearly within the break-even year (the same convention as the backend PBP).
+ * scaled by its count and summed, then payback is the year from which the
+ * cumulative total stays non-negative, interpolated linearly (the same
+ * convention as the backend PBP). It is 0 when the total never goes negative.
  * Averaging individual payback periods would weight buildings instead of euros
  * and silently drop the ones that never break even, so it is avoided.
  *
  * Returns `undefined` when a contributor lacks a series, the series disagree on
- * length, or the pooled series never breaks even.
+ * length, or the pooled total is still negative in the last year.
  */
 export function computePooledPaybackYears(
   contributions: Array<{ netByYear: number[]; count: number } | null>,
@@ -87,20 +88,22 @@ export function computePooledPaybackYears(
     }
   }
 
-  const investment = -pooled[0];
-  if (investment <= 0) {
-    return 0;
-  }
-
   let cumulative = 0;
-  for (let year = 1; year < yearCount; year++) {
-    const previous = cumulative;
+  let lastNegativeYear = -1;
+  let lastNegativeTotal = 0;
+  for (let year = 0; year < yearCount; year++) {
     cumulative += pooled[year];
-    if (cumulative >= investment) {
-      const flow = pooled[year];
-      return flow > 0 ? year - 1 + (investment - previous) / flow : year;
+    if (cumulative < 0) {
+      lastNegativeYear = year;
+      lastNegativeTotal = cumulative;
     }
   }
 
-  return undefined;
+  if (lastNegativeYear === -1) {
+    return 0;
+  }
+  if (lastNegativeYear === yearCount - 1) {
+    return undefined;
+  }
+  return lastNegativeYear - lastNegativeTotal / pooled[lastNegativeYear + 1];
 }

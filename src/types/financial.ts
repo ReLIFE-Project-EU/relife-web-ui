@@ -168,9 +168,10 @@ export interface SchemeKpiHistogram {
   feasible_counts: number[];
   /** 30 counts of infeasible scenarios per bin. */
   infeasible_counts: number[];
-  p10: number;
-  p50: number;
-  p90: number;
+  /** Null when no simulated value is finite (the bins are then empty). */
+  p10: number | null;
+  p50: number | null;
+  p90: number | null;
   /** Threshold used to split feasible/infeasible (PBP/DPP); null otherwise. */
   project_lifetime: number | null;
 }

@@ -136,8 +136,7 @@ export function CompareAllTable({
             const npv =
               result?.riskAssessment?.pointForecasts.NPV ??
               result?.netPresentValue;
-            const pbp =
-              result?.riskAssessment?.pointForecasts.PBP ?? result?.paybackTime;
+            const pbp = result?.riskAssessment?.pointForecasts.PBP;
             const monthly =
               result?.riskAssessment?.pointForecasts.MonthlyAvgSavings;
             const avoidedDays = toHealthyLifeDays(

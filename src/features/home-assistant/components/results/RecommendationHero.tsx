@@ -78,6 +78,7 @@ export function RecommendationHero({
 }: RecommendationHeroProps) {
   const winner = getWinner(renovationScenarios, ranking);
   const winnerResult = winner ? financialResults[winner.id] : undefined;
+  const winnerPbp = winnerResult?.riskAssessment?.pointForecasts.PBP;
   const personaLabel =
     personas.find((p) => p.id === selectedPersona)?.name ?? "your priorities";
   const savings = resolveSavingsState(currentScenario, winner, winnerResult);
@@ -151,15 +152,14 @@ export function RecommendationHero({
                   icon={<IconClockHour3 size={14} />}
                   label="Payback period"
                   value={
-                    winnerResult
+                    winnerPbp !== undefined
                       ? formatPaybackYears(
                           // Rounded for the headline; the deep-dive keeps the
                           // exact figure. Censoring is handled downstream.
-                          Math.round(
-                            winnerResult.riskAssessment?.pointForecasts.PBP ??
-                              winnerResult.paybackTime,
-                          ),
-                          winnerResult.riskAssessment?.metadata
+                          // Under half a year stays unrounded: 0 means no
+                          // upfront investment.
+                          Math.round(winnerPbp) || winnerPbp,
+                          winnerResult?.riskAssessment?.metadata
                             .project_lifetime,
                         )
                       : "—"
@@ -481,7 +481,7 @@ function SavingsCopy({ current, winner, result, savings }: SavingsCopyProps) {
         <>
           , but <b>does not pay for itself</b> over the project horizon
         </>
-      ) : pbp !== undefined ? (
+      ) : pbp !== undefined && pbp !== 0 ? (
         isPaybackBeyondHorizon(
           pbp,
           result?.riskAssessment?.metadata.project_lifetime,

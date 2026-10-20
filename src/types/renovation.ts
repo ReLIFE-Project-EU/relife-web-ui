@@ -308,8 +308,8 @@ export interface ARVResult {
  */
 export interface RiskAssessmentPointForecasts {
   NPV: number; // Net Present Value (EUR)
-  IRR: number; // Internal Rate of Return (decimal, e.g., 0.057 = 5.7%)
-  ROI: number; // Return on Investment (decimal)
+  IRR: number | null; // Internal Rate of Return (decimal, e.g., 0.057 = 5.7%); null when not applicable
+  ROI: number | null; // Return on Investment (decimal); null when not applicable
   PBP: number; // Payback Period (years)
   DPP: number; // Discounted Payback Period (years)
   MonthlyAvgSavings: number; // EUR/month
@@ -438,7 +438,7 @@ export interface FinancialResults {
   // Derived/cached values from API responses for convenience
   capitalExpenditure: number; // From metadata.capex
   annualMaintenanceCost?: number; // EUR/year, from request or Financial API metadata
-  returnOnInvestment: number; // From pointForecasts.ROI
+  returnOnInvestment: number | null; // From pointForecasts.ROI
   paybackTime: number; // From pointForecasts.PBP
   netPresentValue: number; // From pointForecasts.NPV
   afterRenovationValue: number | null; // From arv.totalPrice; null when ARV is unavailable (e.g. unsupported country)

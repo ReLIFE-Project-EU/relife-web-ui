@@ -523,7 +523,7 @@ describe("computeFinancials", () => {
     });
   });
 
-  test("defaults missing indicators to zero and omits their percentiles", async () => {
+  test("leaves a missing IRR unset and omits its percentiles", async () => {
     mockAssessRisk.mockResolvedValue({
       results: {
         equity: {
@@ -549,7 +549,7 @@ describe("computeFinancials", () => {
     const result = await computeFinancials(makeCarrierInput());
 
     expect(result.pointForecasts.NPV).toBe(10_000);
-    expect(result.pointForecasts.IRR).toBe(0);
+    expect(result.pointForecasts.IRR).toBeUndefined();
     expect(result.percentiles?.NPV?.P50).toBe(10_000);
     expect(result.percentiles?.IRR).toBeUndefined();
   });

@@ -113,7 +113,10 @@ export function CashFlowChart({
     });
   }
 
-  if (data.loan_term && data.loan_term > 0) {
+  const loanOutlastsHorizon =
+    projectLifetime !== undefined && (data.loan_term ?? 0) > projectLifetime;
+
+  if (data.loan_term && data.loan_term > 0 && !loanOutlastsHorizon) {
     referenceLines.push({
       x: data.loan_term,
       color: "orange.6",
@@ -215,6 +218,12 @@ export function CashFlowChart({
               </Group>
             )}
           </Group>
+          {loanOutlastsHorizon ? (
+            <Text size="xs" c="dimmed" mt="xs">
+              The loan runs past the {projectLifetime}-year horizon, so the
+              remaining balance is repaid in year {projectLifetime}.
+            </Text>
+          ) : null}
         </Box>
       </Stack>
     </Card>

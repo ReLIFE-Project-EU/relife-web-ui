@@ -228,13 +228,19 @@ export function buildMcdaTopsisRequest(
   )
     .filter((status) => status.eligible)
     .map((status) => status.scenario);
-  const technologies = rankableScenarios.map((scenario) =>
-    deriveTechnologyKpis(scenario, financialResults[scenario.id]),
-  );
   const neutralizedKeys = resolveNeutralizedKpiKeys(
     rankableScenarios,
     financialResults,
   );
+  const technologies = rankableScenarios.map((scenario) => {
+    const technology = deriveTechnologyKpis(
+      scenario,
+      financialResults[scenario.id],
+    );
+    // A neutralized KPI only drops out of TOPSIS if every technology sends 0.
+    for (const key of neutralizedKeys) technology[key] = 0;
+    return technology;
+  });
 
   return {
     profile,
@@ -290,7 +296,8 @@ export function deriveTechnologyKpis(
 
 /**
  * `gwp_kpi` joins the neutralized list unless every rankable scenario yields a
- * finite lifetime-carbon figure.
+ * finite lifetime-carbon figure, and `irr_kpi` unless every one yields a finite
+ * IRR.
  *
  * Resolved per run rather than excluding scenarios, because operational
  * emissions are optional by design (`RenovationService.annotateScenarioEmissions`
@@ -302,17 +309,29 @@ export function resolveNeutralizedKpiKeys(
   rankableScenarios: RenovationScenario[],
   financialResults: Record<ScenarioId, FinancialResults>,
 ): McdaKpiKey[] {
-  const available =
+  const everyFinite = (
+    read: (scenario: RenovationScenario) => number | null | undefined,
+  ) =>
     rankableScenarios.length > 0 &&
-    rankableScenarios.every((scenario) =>
-      isFiniteNumber(
-        getLifetimeCarbonKgCo2e(scenario, financialResults[scenario.id]),
-      ),
-    );
+    rankableScenarios.every((scenario) => isFiniteNumber(read(scenario)));
 
-  return available
-    ? BASE_NEUTRALIZED_KPI_KEYS
-    : [...BASE_NEUTRALIZED_KPI_KEYS, "gwp_kpi"];
+  const keys = [...BASE_NEUTRALIZED_KPI_KEYS];
+  if (
+    !everyFinite((scenario) =>
+      getLifetimeCarbonKgCo2e(scenario, financialResults[scenario.id]),
+    )
+  ) {
+    keys.push("gwp_kpi");
+  }
+  if (
+    !everyFinite(
+      (scenario) =>
+        financialResults[scenario.id]?.riskAssessment?.pointForecasts.IRR,
+    )
+  ) {
+    keys.push("irr_kpi");
+  }
+  return keys;
 }
 
 // Required, not defaulted: the shared-scale rule below would otherwise fire on

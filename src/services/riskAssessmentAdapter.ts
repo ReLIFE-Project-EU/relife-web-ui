@@ -84,11 +84,11 @@ export interface MappedRiskResult {
 /**
  * Map the wire response for a single requested scheme into the internal shape.
  * `schemeType` is the scheme we sent (so we read back the matching result);
- * `projectLifetime` is echoed into metadata.
+ * `projectLifetime` is echoed into metadata; `loanTerm` is the bank loan's term.
  */
 export function mapWireRiskResponse(
   response: RiskAssessmentResponse,
-  params: { schemeType: string; projectLifetime: number },
+  params: { schemeType: string; projectLifetime: number; loanTerm?: number },
 ): MappedRiskResult {
   const scheme = response.results[params.schemeType];
   if (!scheme) {
@@ -106,8 +106,8 @@ export function mapWireRiskResponse(
 
   const pointForecasts: RiskAssessmentPointForecasts = {
     NPV: perc.NPV?.P50 ?? 0,
-    IRR: perc.IRR?.P50 ?? 0,
-    ROI: perc.ROI?.P50 ?? 0,
+    IRR: perc.IRR?.P50 ?? null,
+    ROI: perc.ROI?.P50 ?? null,
     PBP: perc.PBP?.P50 ?? 0,
     DPP: perc.DPP?.P50 ?? 0,
     // Derived: the new contract no longer returns these directly. Uses the
@@ -126,6 +126,7 @@ export function mapWireRiskResponse(
       netByYear,
       inflowByYear,
       cashflow.outflows.P50 ?? [],
+      params.schemeType === "bank_loan" ? (params.loanTerm ?? null) : null,
     ),
     metadata: {
       n_sims: scheme.summary.n_sims,
@@ -166,7 +167,7 @@ function mapChartMetadata(
     {};
   for (const indicator of RISK_INDICATORS) {
     const h = histograms[indicator];
-    if (!h) continue;
+    if (!h || h.p10 == null || h.p50 == null || h.p90 == null) continue;
     const centers = binCenters(h.bin_edges);
     const counts = h.feasible_counts.map(
       (feasible, i) => feasible + (h.infeasible_counts[i] ?? 0),
@@ -215,6 +216,7 @@ function mapCashFlowData(
   net: number[],
   inflows: number[],
   outflows: number[],
+  loanTerm: number | null,
 ): CashFlowData {
   let running = 0;
   let breakevenYear: number | null = null;
@@ -232,6 +234,6 @@ function mapCashFlowData(
     annual_net_cash_flow: net,
     cumulative_cash_flow: cumulative,
     breakeven_year: breakevenYear,
-    loan_term: null,
+    loan_term: loanTerm,
   };
 }

@@ -15,6 +15,7 @@ import {
   ConceptExplainer,
   ConceptLabel,
   MetricEyebrow,
+  NotApplicable,
   RangeIndicator,
 } from "../../../../components/shared";
 import {
@@ -24,8 +25,8 @@ import {
 import {
   formatCurrency,
   formatDecimal,
+  formatPaybackYears,
   formatPercent,
-  formatYears,
 } from "../../../../utils/formatters";
 import type {
   FinancialChartMetadata,
@@ -87,14 +88,14 @@ const INDICATOR_CONFIGS: IndicatorConfig[] = [
     conceptId: financialMetricConceptIds.PBP,
     color: "orange",
     lowerIsBetter: true,
-    formatter: formatYears,
+    formatter: formatPaybackYears,
   },
   {
     indicator: "DPP",
     conceptId: financialMetricConceptIds.DPP,
     color: "yellow",
     lowerIsBetter: true,
-    formatter: formatYears,
+    formatter: formatPaybackYears,
   },
 ];
 
@@ -113,9 +114,10 @@ export function FinancialRiskAnalytics({
       INDICATOR_CONFIGS.filter(
         ({ indicator }) =>
           hasPercentileData(percentiles?.[indicator]) ||
-          chartMetadata?.[indicator],
+          chartMetadata?.[indicator] ||
+          getPointForecastValue(financialResults, indicator) === null,
       ),
-    [chartMetadata, percentiles],
+    [chartMetadata, percentiles, financialResults],
   );
 
   const histogramIndicators = useMemo(
@@ -166,7 +168,6 @@ export function FinancialRiskAnalytics({
         <RiskRangeTable
           configs={availableIndicators}
           percentiles={percentiles}
-          chartMetadata={chartMetadata}
           financialResults={financialResults}
         />
       ) : null}
@@ -218,14 +219,10 @@ export function FinancialRiskAnalytics({
 function RiskRangeTable({
   configs,
   percentiles,
-  chartMetadata,
   financialResults,
 }: {
   configs: IndicatorConfig[];
   percentiles?: Partial<Record<FinancialRiskIndicator, PercentileData>>;
-  chartMetadata?: Partial<
-    Record<FinancialRiskIndicator, FinancialChartMetadata>
-  >;
   financialResults?: PRAFinancialResults;
 }) {
   return (
@@ -254,11 +251,9 @@ function RiskRangeTable({
         <RiskRangeRow
           key={config.indicator}
           config={config}
-          percentiles={
-            percentiles?.[config.indicator] ??
-            chartMetadata?.[config.indicator]?.statistics
-          }
+          percentiles={percentiles?.[config.indicator]}
           pointValue={getPointForecastValue(financialResults, config.indicator)}
+          financialResults={financialResults}
           last={index === configs.length - 1}
         />
       ))}
@@ -270,11 +265,13 @@ function RiskRangeRow({
   config,
   percentiles,
   pointValue,
+  financialResults,
   last,
 }: {
   config: IndicatorConfig;
   percentiles?: PercentileData;
-  pointValue?: number;
+  pointValue?: number | null;
+  financialResults?: PRAFinancialResults;
   last: boolean;
 }) {
   const concept = relifeConcepts[config.conceptId];
@@ -307,9 +304,13 @@ function RiskRangeRow({
           c={`${config.color}.7`}
           style={{ fontVariantNumeric: "tabular-nums" }}
         >
-          {pointValue !== undefined
-            ? config.formatter(pointValue)
-            : config.formatter(percentiles?.P50 ?? 0)}
+          {pointValue === null ? (
+            <NotApplicable result={financialResults} />
+          ) : pointValue !== undefined ? (
+            config.formatter(pointValue)
+          ) : (
+            config.formatter(percentiles?.P50 ?? 0)
+          )}
         </Text>
       </Stack>
       {hasRange ? (
@@ -436,7 +437,7 @@ function HistogramPanel({
 function getPointForecastValue(
   financialResults: PRAFinancialResults | undefined,
   indicator: FinancialRiskIndicator,
-): number | undefined {
+): number | null | undefined {
   const pointForecasts = financialResults?.riskAssessment?.pointForecasts;
   if (!pointForecasts) {
     return undefined;

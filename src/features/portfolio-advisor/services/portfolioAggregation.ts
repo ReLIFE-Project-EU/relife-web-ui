@@ -169,10 +169,11 @@ export function aggregatePortfolioPackage(input: {
     addOptional(npv, appraised ? financials.netPresentValue : undefined);
     // ROI is reported against the post-subsidy CAPEX, so net profit must be
     // rebuilt on that same basis before the portfolio ratio is taken.
+    const roi = financials.returnOnInvestment;
     addOptional(
       netProfit,
-      appraised
-        ? financials.returnOnInvestment * financials.capitalExpenditure
+      appraised && roi !== null
+        ? roi * financials.capitalExpenditure
         : undefined,
     );
 

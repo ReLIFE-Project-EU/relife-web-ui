@@ -26,6 +26,7 @@ import type {
 } from "../../../types/renovation";
 import { deriveConstructionYear } from "../../../utils/apiMappings";
 import { auditLog, type AuditCtx } from "../../../utils/auditLogger";
+import { errorMessage } from "../../../utils/errorMessage";
 import { validateEstimation } from "../../../services/estimationValidation";
 import { PRA_CONCURRENCY_LIMIT } from "../constants";
 import type {
@@ -121,10 +122,11 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
             buildingId: building.id,
           };
         } else {
+          const error = errorMessage(result.reason);
           results[building.id] = {
             buildingId: building.id,
             status: "error",
-            error: String(result.reason),
+            error,
           };
           auditLog.error(
             "portfolio",
@@ -132,7 +134,7 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
             {
               buildingId: building.id,
               buildingName: building.name,
-              error: String(result.reason),
+              error,
             },
             parentCtx.child({ buildingId: building.id }),
           );

@@ -165,8 +165,8 @@ describe("mapWireRiskResponse", () => {
 
     expect(mappedNull.percentiles?.IRR).toBeUndefined();
     expect(mappedNull.percentiles?.NPV).toBeDefined();
-    // Point forecast falls back to 0 rather than propagating null.
-    expect(mappedNull.pointForecasts.IRR).toBe(0);
+    // Point forecast stays null so the UI shows n/a, not 0%.
+    expect(mappedNull.pointForecasts.IRR).toBeNull();
   });
 
   test("throws when the requested scheme is absent", () => {

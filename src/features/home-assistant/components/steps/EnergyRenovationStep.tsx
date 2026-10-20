@@ -11,6 +11,7 @@ import { isApartmentLikeCategory } from "../../../../constants/buildingFormOptio
 import { estimatePackageEmbodiedCarbon } from "../../../../services/embodiedCarbon";
 import { modeledPvKwp } from "../../../../services/pvConfig";
 import { auditLog } from "../../../../utils/auditLogger";
+import { errorMessage } from "../../../../utils/errorMessage";
 import { LineageLink } from "../../../lineage";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
@@ -147,7 +148,7 @@ export function EnergyRenovationStep() {
         type: "EVALUATION_ERROR",
         error:
           error instanceof Error
-            ? error.message
+            ? errorMessage(error)
             : "Failed to evaluate measures",
       });
     }
