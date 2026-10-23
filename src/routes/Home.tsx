@@ -25,7 +25,7 @@ const tools = [
     title: "Renovation Strategy Explorer",
     badge: "Policymakers & Researchers",
     description:
-      "Analyze building stock at national and regional levels. Develop evidence-based renovation strategies and track policy impacts.",
+      "Compare renovation packages for representative building stock against budget, energy, or emissions goals.",
     icon: IconBuildingEstate,
     link: "/strategy-explorer",
     color: "blue",
@@ -34,7 +34,7 @@ const tools = [
     title: "Portfolio Renovation Advisor",
     badge: "Financial Institutions & ESCOs",
     description:
-      "Professional tools for portfolio-level renovation assessment. Evaluate multiple buildings with detailed financial analysis.",
+      "Estimate renovation costs, energy savings, and financial returns across your buildings.",
     icon: IconBriefcase,
     link: "/portfolio-advisor",
     color: "teal",
@@ -43,7 +43,7 @@ const tools = [
     title: "Home Renovation Assistant",
     badge: "Homeowners",
     description:
-      "Your personal guide to home renovation. Get clear, easy-to-understand advice on improving your home's energy efficiency.",
+      "Compare renovation options and estimate costs and energy savings for your home.",
     icon: IconHomeHeart,
     link: "/home-assistant",
     color: "orange",
@@ -81,17 +81,16 @@ export const Home = () => {
                 fw={900}
                 lh={1.1}
               >
-                Unlocking Data for{" "}
+                Compare building{" "}
                 <Text component="span" c="relife.6" inherit>
-                  Deep Renovation
+                  renovation options
                 </Text>
               </Title>
             </Box>
 
             <Text c="dimmed" size="xl" maw={600}>
-              Access ready-to-use resources for financial institutions, energy
-              service companies, and building owners to boost renovation rates
-              across Europe.
+              Estimate costs and energy savings for a home, a building
+              portfolio, or representative building stock.
             </Text>
 
             <Group justify="center" gap="md">
@@ -102,7 +101,7 @@ export const Home = () => {
                 href="https://relife-project.eu/"
                 target="_blank"
               >
-                Learn More
+                About ReLIFE
               </Button>
             </Group>
           </Stack>
@@ -155,7 +154,7 @@ export const Home = () => {
               </Text>
               <Group mt="auto">
                 <Text c={tool.color} fw={600} size="sm">
-                  Get Started
+                  View tool
                 </Text>
                 <IconArrowRight
                   size={16}

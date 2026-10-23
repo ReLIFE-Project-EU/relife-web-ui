@@ -24,26 +24,26 @@ import { relifeConcepts } from "../constants/relifeConcepts";
 const features = [
   {
     icon: IconListDetails,
-    title: "Building Portfolio Input",
+    title: "Building portfolio",
     description:
-      "Add buildings manually or with CSV import, including location, archetype/category, floor area, construction period, floors, and optional per-building cost or measure overrides.",
+      "Add buildings manually or import a CSV from your saved portfolios.",
   },
   {
     icon: IconTool,
-    title: "Renovation Package Setup",
+    title: "Renovation measures",
     description:
-      "Select supported measures for the portfolio, or override them per building, then analyze the resulting renovated scenario for each building.",
+      "Set measures for the whole portfolio or choose them for individual buildings.",
   },
   {
     icon: IconChartBar,
-    title: "Financial & Risk Outputs",
-    description: `Review ${relifeConcepts.npv.label}, ${relifeConcepts.roi.label}, ${relifeConcepts["payback-period"].label}, investment, energy shifts, and Monte Carlo risk ranges or probabilities when the Financial Service returns them.`,
+    title: "Financial results and risk",
+    description: `Compare ${relifeConcepts.npv.label.toLowerCase()}, ${relifeConcepts.roi.label.toLowerCase()}, and ${relifeConcepts["payback-period"].label.toLowerCase()}. Inspect risk estimates for individual buildings.`,
   },
   {
     icon: IconCalculator,
-    title: "Portfolio Summary & Drill-Downs",
+    title: "Portfolio and building results",
     description:
-      "Use aggregate metrics, status filters, sortable per-building rows, and drill-down panels to inspect successful, rejected, or failed analyses.",
+      "Review portfolio totals and compare individual building results.",
   },
 ];
 
@@ -54,15 +54,14 @@ export const PortfolioAdvisorLanding = () => {
         {/* Header */}
         <Box>
           <Badge color="teal" size="lg" mb="md">
-            Group 2: Financial Institutions & ESCOs
+            Financial Institutions & ESCOs
           </Badge>
           <Title order={1} mb="sm">
             Portfolio Renovation Advisor
           </Title>
           <Text c="dimmed" size="lg" maw={700} mb="lg">
-            Professional-grade tools for portfolio-level renovation assessment.
-            Evaluate multiple buildings, assess financial viability, and make
-            data-driven investment decisions.
+            Assess renovation costs, energy savings, and financial returns for
+            each building and your portfolio.
           </Text>
           <Button
             component={Link}
@@ -71,7 +70,7 @@ export const PortfolioAdvisorLanding = () => {
             color="teal"
             rightSection={<IconArrowRight size={18} />}
           >
-            Start Portfolio Analysis
+            Start portfolio analysis
           </Button>
         </Box>
 
@@ -83,7 +82,7 @@ export const PortfolioAdvisorLanding = () => {
           <List spacing="xs">
             <List.Item>Financial institutions and banks</List.Item>
             <List.Item>Energy Service Companies (ESCOs)</List.Item>
-            <List.Item>Large-scale building owners and managers</List.Item>
+            <List.Item>Building owners and managers</List.Item>
             <List.Item>Real estate investment funds</List.Item>
           </List>
         </Card>

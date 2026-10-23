@@ -24,26 +24,26 @@ import { relifeConcepts } from "../constants/relifeConcepts";
 const features = [
   {
     icon: IconListDetails,
-    title: "Archetype Portfolio Builder",
+    title: "Building stock",
     description:
-      "Select available country/category/archetype combinations and assign property counts to define a representative stock.",
+      "Select reference buildings by country and type, then enter how many properties each represents.",
   },
   {
     icon: IconTarget,
-    title: "Objective Selection",
+    title: "Renovation goal",
     description:
-      "Choose the ranking objective: budget-limited renovations, delivered system energy savings, or CO₂ reduction.",
+      "Focus on renovating within a budget, saving primary energy, or reducing CO₂ emissions.",
   },
   {
     icon: IconBuildingCommunity,
-    title: "Package Comparison",
+    title: "Renovation packages",
     description:
-      "Select predefined renovation packages; only archetype/package combinations available in the published forecasting cache are included.",
+      "Compare predefined packages using simulated building performance.",
   },
   {
     icon: IconChartBar,
-    title: "Ranked Results",
-    description: `View goal-specific package rankings with total investment, annual ${relifeConcepts["rse-total-energy-savings"].label.toLowerCase()}, ${relifeConcepts["rse-total-co2-reduction"].label.toLowerCase()}, and ${relifeConcepts["modeled-property"].unit} within budget where applicable.`,
+    title: "Ranked results",
+    description: `Compare ${relifeConcepts.investment.label.toLowerCase()}, ${relifeConcepts["rse-total-energy-savings"].label.toLowerCase()}, and ${relifeConcepts["rse-total-co2-reduction"].label.replace("Total", "total")}. See how many ${relifeConcepts["modeled-property"].unit} your budget covers.`,
   },
 ];
 
@@ -54,15 +54,14 @@ export function StrategyExplorerLanding() {
         {/* Header */}
         <Box>
           <Badge color="blue" size="lg" mb="md">
-            Group 1: Policymakers & Researchers
+            Policymakers & Researchers
           </Badge>
           <Title order={1} mb="sm">
             Renovation Strategy Explorer
           </Title>
           <Text c="dimmed" size="lg" maw={700} mb="lg">
-            Comprehensive tools for analyzing building stock at national and
-            regional levels. Develop evidence-based renovation strategies and
-            track policy impacts across Europe.
+            Compare renovation packages for representative building stock. Rank
+            them by budget, primary energy savings, or CO₂ reduction.
           </Text>
           <Button
             component={Link}
@@ -71,7 +70,7 @@ export function StrategyExplorerLanding() {
             color="blue"
             rightSection={<IconArrowRight size={18} />}
           >
-            Start Strategy Analysis
+            Compare strategies
           </Button>
         </Box>
 

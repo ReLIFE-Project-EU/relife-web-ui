@@ -24,25 +24,25 @@ import { relifeConcepts } from "../constants/relifeConcepts";
 const features = [
   {
     icon: IconHome2,
-    title: "Building Profile",
+    title: "Your home",
     description:
-      "Place your home on the map, select its type and construction period, then review the matched reference archetype before estimating energy performance.",
+      "Add your home's location, type, and construction period to find a reference building for the energy estimate.",
   },
   {
     icon: IconListCheck,
-    title: "Renovation Options",
+    title: "Renovation options",
     description:
-      "Select supported envelope, heating-system, and PV measures. The tool builds comparable packages and asks for package CAPEX and annual maintenance inputs before analysis.",
+      "Choose insulation, windows, heating, or solar panels. Review the estimated costs for each package.",
   },
   {
     icon: IconCoin,
-    title: "Funding & Financial Indicators",
-    description: `Model self-funded or loan-financed renovation with optional incentives, then compare ${relifeConcepts.npv.label}, ${relifeConcepts.roi.label}, and ${relifeConcepts["payback-period"].label} when available.`,
+    title: "Funding and returns",
+    description: `Include a loan or subsidy and compare ${relifeConcepts.roi.label.toLowerCase()} and ${relifeConcepts["payback-period"].label.toLowerCase()}.`,
   },
   {
     icon: IconBulb,
-    title: "Priority-Based Ranking",
-    description: `Rank comparable packages using the selected ${relifeConcepts["priority-profile"].label.toLowerCase()}: Environmentally Conscious, Health-Oriented, or Cost-Optimization Oriented.`,
+    title: "Your priorities",
+    description: `Rank packages by your ${relifeConcepts["priority-profile"].label.toLowerCase()}, with a focus on cost, health, or the environment.`,
   },
 ];
 
@@ -53,15 +53,14 @@ export const HomeAssistantLanding = () => {
         {/* Header */}
         <Box>
           <Badge color="orange" size="lg" mb="md">
-            Group 3: Homeowners
+            Homeowners
           </Badge>
           <Title order={1} mb="sm">
             Home Renovation Assistant
           </Title>
           <Text c="dimmed" size="lg" maw={700} mb="lg">
-            Your personal guide to home renovation. Get clear,
-            easy-to-understand advice on improving your home's energy
-            efficiency, comfort, and value.
+            Compare renovation options for your home, with estimates of costs,
+            energy savings, and financial returns.
           </Text>
           <Button
             component={Link}
@@ -70,7 +69,7 @@ export const HomeAssistantLanding = () => {
             rightSection={<IconArrowRight size={18} />}
             color="orange"
           >
-            Start Renovation Planning
+            Start planning
           </Button>
         </Box>
 
@@ -80,10 +79,9 @@ export const HomeAssistantLanding = () => {
             Designed for
           </Title>
           <List spacing="xs">
-            <List.Item>Private homeowners</List.Item>
+            <List.Item>Homeowners</List.Item>
             <List.Item>Tenants interested in energy improvements</List.Item>
-            <List.Item>Small-scale building owners</List.Item>
-            <List.Item>Anyone exploring home renovation options</List.Item>
+            <List.Item>Small building owners</List.Item>
           </List>
         </Card>
 
