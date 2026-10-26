@@ -20,8 +20,8 @@ export const LayoutFooter = forwardRef<HTMLDivElement>((_, ref) => {
       }}
     >
       <Box py="sm" px="sm">
-        <Group justify="space-between" align="center">
-          <Group gap="md" wrap="nowrap">
+        <Group justify="space-between" align="center" wrap="nowrap">
+          <Group gap="md" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
             <Image
               src={lifeLogo}
               alt="LIFE Programme"
@@ -41,7 +41,7 @@ export const LayoutFooter = forwardRef<HTMLDivElement>((_, ref) => {
             </Text>
           </Group>
 
-          <Group gap="sm" wrap="nowrap">
+          <Group gap="sm" wrap="nowrap" style={{ flexShrink: 0 }}>
             <ActionIcon
               size="md"
               color="gray"
