@@ -7,6 +7,7 @@
  */
 
 import {
+  Anchor,
   Badge,
   Box,
   Card,
@@ -418,9 +419,28 @@ function ResultsRow({
       </Table.Td>
       <Table.Td style={{ verticalAlign: "middle" }}>
         <Group gap="xs" wrap="wrap">
-          <Text size="sm" fw={500}>
-            {building.name}
-          </Text>
+          {onClick ? (
+            <Anchor
+              component="button"
+              type="button"
+              size="sm"
+              fw={500}
+              c="inherit"
+              ta="left"
+              underline="always"
+              aria-label={`View breakdown for ${building.name}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                onClick(row);
+              }}
+            >
+              {building.name}
+            </Anchor>
+          ) : (
+            <Text size="sm" fw={500}>
+              {building.name}
+            </Text>
+          )}
           <RowStatusBadge row={row} />
           {(result.costSource?.capexFromLookup ||
             result.costSource?.opexFromLookup) && (

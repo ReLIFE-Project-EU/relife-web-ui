@@ -18,7 +18,7 @@ import {
   IconBuildingEstate,
   IconHomeHeart,
 } from "@tabler/icons-react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const tools = [
   {
@@ -51,8 +51,6 @@ const tools = [
 ];
 
 export const Home = () => {
-  const navigate = useNavigate();
-
   return (
     <Box pb={80}>
       {/* Hero Section */}
@@ -114,6 +112,9 @@ export const Home = () => {
           {tools.map((tool) => (
             <Card
               key={tool.title}
+              component={Link}
+              to={tool.link}
+              aria-label={tool.title}
               padding="xl"
               radius="lg"
               withBorder
@@ -123,8 +124,9 @@ export const Home = () => {
                 cursor: "pointer",
                 display: "flex",
                 flexDirection: "column",
+                color: "inherit",
+                textDecoration: "none",
               }}
-              onClick={() => navigate(tool.link)}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "translateY(-5px)";
                 e.currentTarget.style.boxShadow = "var(--mantine-shadow-md)";
