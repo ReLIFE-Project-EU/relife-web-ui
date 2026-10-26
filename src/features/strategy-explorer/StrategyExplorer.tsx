@@ -24,6 +24,7 @@ import { useSyncGlobalLoading } from "../../contexts/global-loading";
 import { useWizardStepScroll } from "../../hooks/useWizardStepScroll";
 import { formatCurrency, formatNumber } from "../../utils/formatters";
 import { StrategyExplorerProvider } from "./context";
+import { useRSEPublishedCacheVersion } from "./hooks/useRSEPublishedCacheVersion";
 import {
   useCurrentStep,
   useStrategyExplorer,
@@ -178,6 +179,7 @@ function StrategyExplorerWizard() {
   const { state, dispatch } = useStrategyExplorer();
   const topRef = useRef<HTMLDivElement | null>(null);
   const currentStep = useCurrentStep();
+  const publishedCache = useRSEPublishedCacheVersion();
 
   useSyncGlobalLoading(state.isRunningWorkflow, "StrategyExplorer.workflow");
   useWizardStepScroll(currentStep, topRef);
@@ -211,14 +213,40 @@ function StrategyExplorerWizard() {
     <Container size="xl" py="xl">
       <Stack gap="xl">
         <Group justify="space-between" align="flex-start">
-          <div>
+          <Box style={{ minWidth: 0, maxWidth: "100%" }}>
             <Title order={1} mb="xs">
               Renovation Strategy Explorer
             </Title>
             <Text c="dimmed" size="lg">
               Public-authority strategy comparison tool
             </Text>
-          </div>
+            <Text
+              size="xs"
+              c="dimmed"
+              mt="xs"
+              role="status"
+              aria-atomic="true"
+              aria-busy={publishedCache.status === "loading"}
+              style={{ overflowWrap: "anywhere" }}
+            >
+              {publishedCache.status === "not-found" ? (
+                "No published cache version"
+              ) : (
+                <>
+                  Cache version:{" "}
+                  {publishedCache.status === "ready" ? (
+                    <Text span inherit ff="monospace">
+                      {publishedCache.cacheVersion}
+                    </Text>
+                  ) : publishedCache.status === "loading" ? (
+                    "Loading…"
+                  ) : (
+                    "unavailable"
+                  )}
+                </>
+              )}
+            </Text>
+          </Box>
 
           {state.currentStep > 0 && (
             <Button

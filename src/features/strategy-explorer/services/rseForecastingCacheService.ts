@@ -60,6 +60,10 @@ export function createRSEForecastingCacheService(
   api: RSECacheApiClient = rseCacheApi,
 ) {
   return {
+    getPublishedVersion(): Promise<RSEPublishedCacheVersion> {
+      return api.getPublishedVersion();
+    },
+
     async resolveCacheMatrix(
       request: RSECacheMatrixRequest,
     ): Promise<RSECacheMatrixResolution> {

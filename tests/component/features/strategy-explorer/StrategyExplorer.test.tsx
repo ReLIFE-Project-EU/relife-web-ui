@@ -1,13 +1,18 @@
 // @vitest-environment jsdom
 
 import React from "react";
-import { describe, expect, test, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MantineProvider } from "@mantine/core";
 import { theme } from "../../../../src/theme";
 import { GlobalLoadingProvider } from "../../../../src/contexts/global-loading";
 import { StrategyExplorer } from "../../../../src/features/strategy-explorer";
+import {
+  RSECacheApiError,
+  type RSEPublishedCacheVersion,
+} from "../../../../src/features/strategy-explorer/api/rseCacheApi";
+import { rseForecastingCacheService } from "../../../../src/features/strategy-explorer/services/rseForecastingCacheService";
 
 // jsdom does not implement matchMedia, ResizeObserver, or scrollIntoView.
 Object.defineProperty(window, "matchMedia", {
@@ -88,6 +93,7 @@ vi.mock(
   "../../../../src/features/strategy-explorer/services/rseForecastingCacheService",
   () => ({
     rseForecastingCacheService: {
+      getPublishedVersion: vi.fn(),
       listCachedArchetypes: vi.fn().mockResolvedValue([
         { country: "IT", category: "SFH", name: "ref-a" },
         { country: "IT", category: "MFH", name: "ref-b" },
@@ -194,114 +200,206 @@ function renderWithProviders(ui: React.ReactElement) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("StrategyExplorer integration", () => {
-  test("allows a user to complete the end-to-end workflow from portfolio selection to viewing analysis results", async () => {
-    const user = userEvent.setup();
+  const publishedVersion: RSEPublishedCacheVersion = {
+    cacheVersion: "2026-10-26.published.forecasting-revision-abc1234",
+    generatedAt: "2026-10-26T10:00:00Z",
+    co2Method: "forecasting-carrier-split-final-energy-gas-thermal-mvp",
+  };
+
+  beforeEach(() => {
+    vi.mocked(rseForecastingCacheService.getPublishedVersion)
+      .mockReset()
+      .mockResolvedValue(publishedVersion);
+  });
+
+  afterEach(cleanup);
+
+  test("shows loading before displaying the complete published version", async () => {
+    let resolveVersion!: (version: RSEPublishedCacheVersion) => void;
+    vi.mocked(
+      rseForecastingCacheService.getPublishedVersion,
+    ).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveVersion = resolve;
+      }),
+    );
+
     renderWithProviders(<StrategyExplorer />);
 
-    // Step 0 — Portfolio: wait for Select inputs to render
-    const countryCombo = await screen.findByPlaceholderText(
-      /select country/i,
-      {},
-      { timeout: 3000 },
+    const status = screen.getByRole("status");
+    expect(status.textContent).toBe("Cache version: Loading…");
+    expect(status.getAttribute("aria-busy")).toBe("true");
+
+    await act(async () => resolveVersion(publishedVersion));
+
+    expect(status.textContent).toBe(
+      `Cache version: ${publishedVersion.cacheVersion}`,
     );
-    const categoryCombo = screen.getByPlaceholderText(/select category/i);
-    const archetypeCombo = screen.getByPlaceholderText(/select archetype/i);
-
-    // Fill in portfolio row
-    await user.click(countryCombo);
-    await user.click(screen.getByText("Italy"));
-
-    expect(screen.getByLabelText("Properties")).toBeTruthy();
-    await user.click(categoryCombo);
-    await user.click(screen.getByText("Apartment", { exact: true }));
-    await user.click(archetypeCombo);
-    await user.click(screen.getByText("Italy · ref-c"));
-    expect(
-      (await screen.findByLabelText(
-        "Apartment floor area (m²)",
-      )) as HTMLInputElement,
-    ).toHaveProperty("value", "80");
-
-    await user.click(categoryCombo);
-    await user.click(screen.getByText("Multi-Family House"));
-    await user.click(archetypeCombo);
-    await user.clear(archetypeCombo);
-    await user.type(archetypeCombo, "ref-b");
-    await user.click(await screen.findByText("Italy · ref-b"));
-    expect(await screen.findByText("100 m²")).toBeTruthy();
-    expect(screen.queryByLabelText("Apartment floor area (m²)")).toBeNull();
-
-    await user.click(categoryCombo);
-    await user.click(screen.getByText("Single-Family House"));
-
-    await user.click(archetypeCombo);
-    await user.clear(archetypeCombo);
-    await user.type(archetypeCombo, "ref-a");
-    await user.click(await screen.findByText("Italy · ref-a"));
-
-    expect(await screen.findByText("Floor area")).toBeTruthy();
-    expect(screen.getByText("100 m²")).toBeTruthy();
-
-    const buildingCountInput = screen.getByPlaceholderText(/^Count$/i);
-    await user.clear(buildingCountInput);
-    await user.type(buildingCountInput, "10");
-
-    // Advance to Goal step
-    await user.click(screen.getByRole("button", { name: /choose goal/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText(/energy efficiency/i)).toBeTruthy();
-    });
-
-    // Select emission goal
-    await user.click(screen.getByText(/emission reduction/i));
-
-    // Advance to Packages step
-    await user.click(screen.getByRole("button", { name: /choose packages/i }));
-
-    await waitFor(() => {
-      expect(
-        screen.getByRole("button", { name: /run analysis/i }),
-      ).toBeTruthy();
-    });
-
-    // Run analysis
-    await user.click(screen.getByRole("button", { name: /run analysis/i }));
-
-    // Assert Results step renders
-    await waitFor(() => {
-      expect(screen.getByText(/strategy comparison results/i)).toBeTruthy();
-    });
-
-    // Assert ranking table with packages
-    expect(
-      screen.getAllByText("Envelope Package").length,
-    ).toBeGreaterThanOrEqual(1);
-    expect(
-      screen.getAllByText("Combined Package").length,
-    ).toBeGreaterThanOrEqual(1);
-
-    // Assert ranks are shown (within the ranking table)
-    const rankingTable = screen.getByTestId("rse-ranking-table");
-    expect(rankingTable.textContent).toContain("1");
-    expect(rankingTable.textContent).toContain("2");
-    expect(rankingTable.textContent).toContain("kg CO₂ reduced / €");
-    expect(rankingTable.textContent).toContain("1.3 kg/€");
-    expect(rankingTable.textContent).toContain("0.7 kg/€");
-    expect(rankingTable.textContent).not.toContain("0.0 t/€");
-
-    const scrollIntoViewMock = vi.mocked(Element.prototype.scrollIntoView);
-    scrollIntoViewMock.mockClear();
-    expect(screen.queryByText("Solar PV")).toBeNull();
-
-    const combinedRankingButton = screen.getAllByRole("button", {
-      name: /combined package/i,
-    })[0];
-    await user.click(combinedRankingButton);
-
-    expect(await screen.findByText("Solar PV")).toBeTruthy();
-    await waitFor(() => {
-      expect(scrollIntoViewMock).toHaveBeenCalled();
-    });
+    expect(status.getAttribute("aria-busy")).toBe("false");
   });
+
+  test.each([
+    {
+      error: new RSECacheApiError("No published version", "not-found"),
+      message: "No published cache version",
+    },
+    {
+      error: new RSECacheApiError("Internal database detail", "database"),
+      message: "Cache version: unavailable",
+    },
+    {
+      error: new Error("Unexpected internal detail"),
+      message: "Cache version: unavailable",
+    },
+  ])("shows '$message' for $error", async ({ error, message }) => {
+    vi.mocked(
+      rseForecastingCacheService.getPublishedVersion,
+    ).mockRejectedValueOnce(error);
+
+    renderWithProviders(<StrategyExplorer />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe(message);
+    });
+    expect(
+      screen.getByRole("heading", { name: "Building Portfolio" }),
+    ).toBeTruthy();
+    expect(screen.queryByText(error.message)).toBeNull();
+  });
+
+  test.each([false, true])(
+    "allows a user to complete the end-to-end workflow from portfolio selection to viewing analysis results (cache metadata unavailable: %s)",
+    async (metadataUnavailable) => {
+      if (metadataUnavailable) {
+        vi.mocked(
+          rseForecastingCacheService.getPublishedVersion,
+        ).mockRejectedValueOnce(
+          new RSECacheApiError("Lookup failed", "database"),
+        );
+      }
+      const user = userEvent.setup();
+      renderWithProviders(<StrategyExplorer />);
+
+      const expectedCacheLabel = metadataUnavailable
+        ? "Cache version: unavailable"
+        : `Cache version: ${publishedVersion.cacheVersion}`;
+      await waitFor(() => {
+        expect(screen.getByRole("status").textContent).toBe(expectedCacheLabel);
+      });
+
+      // Step 0 — Portfolio: wait for Select inputs to render
+      const countryCombo = await screen.findByPlaceholderText(
+        /select country/i,
+        {},
+        { timeout: 3000 },
+      );
+      const categoryCombo = screen.getByPlaceholderText(/select category/i);
+      const archetypeCombo = screen.getByPlaceholderText(/select archetype/i);
+
+      // Fill in portfolio row
+      await user.click(countryCombo);
+      await user.click(screen.getByText("Italy"));
+
+      expect(screen.getByLabelText("Properties")).toBeTruthy();
+      await user.click(categoryCombo);
+      await user.click(screen.getByText("Apartment", { exact: true }));
+      await user.click(archetypeCombo);
+      await user.click(screen.getByText("Italy · ref-c"));
+      expect(
+        (await screen.findByLabelText(
+          "Apartment floor area (m²)",
+        )) as HTMLInputElement,
+      ).toHaveProperty("value", "80");
+
+      await user.click(categoryCombo);
+      await user.click(screen.getByText("Multi-Family House"));
+      await user.click(archetypeCombo);
+      await user.clear(archetypeCombo);
+      await user.type(archetypeCombo, "ref-b");
+      await user.click(await screen.findByText("Italy · ref-b"));
+      expect(await screen.findByText("100 m²")).toBeTruthy();
+      expect(screen.queryByLabelText("Apartment floor area (m²)")).toBeNull();
+
+      await user.click(categoryCombo);
+      await user.click(screen.getByText("Single-Family House"));
+
+      await user.click(archetypeCombo);
+      await user.clear(archetypeCombo);
+      await user.type(archetypeCombo, "ref-a");
+      await user.click(await screen.findByText("Italy · ref-a"));
+
+      expect(await screen.findByText("Floor area")).toBeTruthy();
+      expect(screen.getByText("100 m²")).toBeTruthy();
+
+      const buildingCountInput = screen.getByPlaceholderText(/^Count$/i);
+      await user.clear(buildingCountInput);
+      await user.type(buildingCountInput, "10");
+
+      // Advance to Goal step
+      await user.click(screen.getByRole("button", { name: /choose goal/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText(/energy efficiency/i)).toBeTruthy();
+      });
+      expect(screen.getByRole("status").textContent).toBe(expectedCacheLabel);
+
+      // Select emission goal
+      await user.click(screen.getByText(/emission reduction/i));
+
+      // Advance to Packages step
+      await user.click(
+        screen.getByRole("button", { name: /choose packages/i }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /run analysis/i }),
+        ).toBeTruthy();
+      });
+      expect(screen.getByRole("status").textContent).toBe(expectedCacheLabel);
+
+      // Run analysis
+      await user.click(screen.getByRole("button", { name: /run analysis/i }));
+
+      // Assert Results step renders
+      await waitFor(() => {
+        expect(screen.getByText(/strategy comparison results/i)).toBeTruthy();
+      });
+      expect(screen.getByRole("status").textContent).toBe(expectedCacheLabel);
+      expect(
+        rseForecastingCacheService.getPublishedVersion,
+      ).toHaveBeenCalledTimes(1);
+
+      // Assert ranking table with packages
+      expect(
+        screen.getAllByText("Envelope Package").length,
+      ).toBeGreaterThanOrEqual(1);
+      expect(
+        screen.getAllByText("Combined Package").length,
+      ).toBeGreaterThanOrEqual(1);
+
+      // Assert ranks are shown (within the ranking table)
+      const rankingTable = screen.getByTestId("rse-ranking-table");
+      expect(rankingTable.textContent).toContain("1");
+      expect(rankingTable.textContent).toContain("2");
+      expect(rankingTable.textContent).toContain("kg CO₂ reduced / €");
+      expect(rankingTable.textContent).toContain("1.3 kg/€");
+      expect(rankingTable.textContent).toContain("0.7 kg/€");
+      expect(rankingTable.textContent).not.toContain("0.0 t/€");
+
+      const scrollIntoViewMock = vi.mocked(Element.prototype.scrollIntoView);
+      scrollIntoViewMock.mockClear();
+      expect(screen.queryByText("Solar PV")).toBeNull();
+
+      const combinedRankingButton = screen.getAllByRole("button", {
+        name: /combined package/i,
+      })[0];
+      await user.click(combinedRankingButton);
+
+      expect(await screen.findByText("Solar PV")).toBeTruthy();
+      await waitFor(() => {
+        expect(scrollIntoViewMock).toHaveBeenCalled();
+      });
+    },
+  );
 });
