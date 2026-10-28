@@ -133,7 +133,13 @@ const mockEstimation: EstimationResult = {
     bui: {
       building: { net_floor_area: 100 },
       building_surface: [
-        { name: "Roof", type: "opaque", area: ROOF_AREA, sky_view_factor: 1 },
+        {
+          name: "Roof",
+          type: "opaque",
+          area: ROOF_AREA,
+          sky_view_factor: 1,
+          orientation: { azimuth: 0, tilt: 0 },
+        },
       ],
     } as unknown as BuildingPayload,
     modeledFloorArea: 100,

@@ -20,7 +20,7 @@ function surface(
     area,
     u_value: uValue,
     sky_view_factor: name.toLowerCase().includes("slab") ? 0 : 0.5,
-    orientation: { azimuth: 0, tilt: 90 },
+    orientation: { azimuth: 0, tilt: /roof|slab/i.test(name) ? 0 : 90 },
   };
 }
 

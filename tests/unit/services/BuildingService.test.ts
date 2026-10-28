@@ -249,7 +249,7 @@ describe("BuildingService", () => {
     expect(result.thermalProperties.wallUValue).toBeCloseTo(137 / 85, 2);
   });
 
-  test("getArchetypeDetails identifies wall surfaces by cardinal names", async () => {
+  test("getArchetypeDetails keeps roof and windows out of the wall U-value", async () => {
     mockGetArchetypeDetails.mockResolvedValue(stubBuiResponse);
 
     const result = await service.getArchetypeDetails(archetypeList[0]);

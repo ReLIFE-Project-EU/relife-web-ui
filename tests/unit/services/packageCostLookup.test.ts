@@ -25,7 +25,13 @@ const simulated: SimulatedBuilding = {
   bui: {
     building: { net_floor_area: 120 },
     building_surface: [
-      { name: "wall_s", type: "opaque", area: 80, sky_view_factor: 0.5 },
+      {
+        name: "wall_s",
+        type: "opaque",
+        area: 80,
+        sky_view_factor: 0.5,
+        orientation: { azimuth: 0, tilt: 90 },
+      },
     ],
   } as unknown as BuildingPayload,
   modeledFloorArea: 120,
@@ -88,7 +94,13 @@ describe("lookupPackageCosts", () => {
       bui: {
         building: { net_floor_area: 2000, exposed_perimeter: 100 },
         building_surface: [
-          { name: "wall_s", type: "opaque", area: 800, sky_view_factor: 0.5 },
+          {
+            name: "wall_s",
+            type: "opaque",
+            area: 800,
+            sky_view_factor: 0.5,
+            orientation: { azimuth: 0, tilt: 90 },
+          },
         ],
       } as unknown as BuildingPayload,
       modeledFloorArea: 100,
@@ -172,6 +184,7 @@ describe("lookupPackageCosts", () => {
           area: 80,
           u_value: 1,
           sky_view_factor: 1,
+          orientation: { azimuth: 0, tilt: 0 },
         },
         {
           name: "Slab",
@@ -179,6 +192,7 @@ describe("lookupPackageCosts", () => {
           area: 80,
           u_value: 1,
           sky_view_factor: 0,
+          orientation: { azimuth: 0, tilt: 0 },
         },
         {
           name: "Wall",
@@ -186,6 +200,7 @@ describe("lookupPackageCosts", () => {
           area: 150,
           u_value: 1.2,
           sky_view_factor: 0.5,
+          orientation: { azimuth: 0, tilt: 90 },
         },
       ],
       building_parameters: { construction: { thermal_bridge_heat_W_K: 31 } },
@@ -229,7 +244,13 @@ describe("lookupPackageCosts", () => {
       bui: {
         building: { net_floor_area: 1200, exposed_perimeter: 140 },
         building_surface: [
-          { name: "Roof", type: "opaque", area: 400, sky_view_factor: 1 },
+          {
+            name: "Roof",
+            type: "opaque",
+            area: 400,
+            sky_view_factor: 1,
+            orientation: { azimuth: 0, tilt: 0 },
+          },
         ],
       } as unknown as BuildingPayload,
       modeledFloorArea: 100,

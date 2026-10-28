@@ -8,10 +8,12 @@ import type { ArchetypeInfo } from "../types/forecasting";
 import type {
   ArchetypeDetails,
   BuildingPayload,
-  BuildingSurface,
   SystemPayload,
 } from "../types/archetype";
-import { calculateDistance } from "../utils/archetypeModifier";
+import {
+  calculateDistance,
+  envelopeElementsFromBui,
+} from "../utils/archetypeModifier";
 import { extractArchetypePeriod } from "../utils/archetypePeriod";
 import {
   compareConstructionPeriods,
@@ -326,6 +328,7 @@ export class BuildingService implements IBuildingService {
     const system = response.system as unknown as SystemPayload;
 
     // Extract high-level details from BUI for UI display
+    const envelope = envelopeElementsFromBui(bui);
     const details: ArchetypeDetails = {
       ...archetype,
       floorArea: bui.building.net_floor_area,
@@ -335,9 +338,9 @@ export class BuildingService implements IBuildingService {
         .filter((s) => s.type === "transparent")
         .reduce((sum, s) => sum + s.area, 0),
       thermalProperties: {
-        wallUValue: this.extractUValue(bui, "wall"),
-        roofUValue: this.extractUValue(bui, "roof"),
-        windowUValue: this.extractUValue(bui, "window"),
+        wallUValue: envelope.wall.uValue ?? 0,
+        roofUValue: envelope.roof.uValue ?? 0,
+        windowUValue: envelope.window.uValue ?? 0,
       },
       setpoints: {
         heatingSetpoint:
@@ -490,59 +493,6 @@ export class BuildingService implements IBuildingService {
       scope: normalizedCountry ? "fallback" : "local",
       reason: normalizedCountry ? "no-local-archetypes" : null,
     };
-  }
-
-  /**
-   * Extract a representative U-value for a specific surface type.
-   *
-   * Wall surfaces in some archetypes (e.g. Greek) are named by orientation
-   * ("Opaque north surface") rather than by the word "wall", so we match on
-   * orientation keywords in addition to "wall".  This mirrors the detection
-   * logic already used in applyThermalModification (archetypeModifier.ts).
-   *
-   * When multiple surfaces of the same type are present (common for windows
-   * and walls), we return the area-weighted average U-value so the displayed
-   * default is representative of the whole envelope rather than an arbitrary
-   * first match.
-   */
-  private extractUValue(
-    bui: BuildingPayload,
-    type: "wall" | "roof" | "window",
-  ): number {
-    let surfaces: BuildingSurface[];
-
-    if (type === "window") {
-      surfaces = bui.building_surface.filter((s) => s.type === "transparent");
-    } else if (type === "roof") {
-      surfaces = bui.building_surface.filter(
-        (s) => s.type === "opaque" && s.name.toLowerCase().includes("roof"),
-      );
-    } else {
-      // Wall: match explicit "wall" name OR cardinal-orientation names.
-      // Exclude roof and ground/slab surfaces to avoid false positives.
-      surfaces = bui.building_surface.filter((s) => {
-        const name = s.name.toLowerCase();
-        return (
-          s.type === "opaque" &&
-          !name.includes("roof") &&
-          !name.includes("slab") &&
-          !name.includes("ground") &&
-          (name.includes("wall") ||
-            name.includes("north") ||
-            name.includes("south") ||
-            name.includes("east") ||
-            name.includes("west"))
-        );
-      });
-    }
-
-    if (surfaces.length === 0) return 0;
-
-    // Area-weighted average across all matched surfaces
-    const totalArea = surfaces.reduce((sum, s) => sum + s.area, 0);
-    if (totalArea === 0) return surfaces[0].u_value ?? 0;
-
-    return surfaces.reduce((sum, s) => sum + s.u_value * s.area, 0) / totalArea;
   }
 }
 

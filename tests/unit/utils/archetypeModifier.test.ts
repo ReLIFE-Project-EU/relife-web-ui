@@ -508,30 +508,19 @@ describe("archetypeModifier", () => {
   // ---- applyThermalModification (via applyAllModifications) ----
 
   describe("applyAllModifications – thermal", () => {
-    it("31: wallUValue=0.5 updates only wall/cardinal surfaces, not roof or window", () => {
+    it("31: wallUValue=0.5 updates only vertical opaque surfaces, not roof or window", () => {
       const archetype = createMockArchetypeDetails();
       const mods: BuildingModifications = { wallUValue: 0.5 };
 
       const { bui } = applyAllModifications(archetype, mods);
 
-      for (const surface of bui.building_surface) {
-        const name = surface.name.toLowerCase();
-        if (
-          surface.type === "opaque" &&
-          (name.includes("wall") ||
-            name.includes("north") ||
-            name.includes("south") ||
-            name.includes("east") ||
-            name.includes("west")) &&
-          !name.includes("roof")
-        ) {
-          expect(surface.u_value).toBe(0.5);
-        } else if (name.includes("roof")) {
-          expect(surface.u_value).toBe(0.8);
-        } else if (surface.type === "transparent") {
-          expect(surface.u_value).toBe(2.8);
-        }
-      }
+      bui.building_surface.forEach((surface, index) => {
+        const isWall =
+          surface.type === "opaque" && surface.orientation.tilt === 90;
+        expect(surface.u_value).toBe(
+          isWall ? 0.5 : archetype.bui.building_surface[index].u_value,
+        );
+      });
     });
   });
 

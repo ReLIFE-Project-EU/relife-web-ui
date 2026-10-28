@@ -248,29 +248,15 @@ export function applyThermalModification(
   windowU?: number,
 ): BuildingPayload {
   const modified = clonePayload(bui);
+  const uValueByElement: Partial<Record<EnvelopeElement, number>> = {
+    wall: wallU,
+    roof: roofU,
+    window: windowU,
+  };
 
   modified.building_surface = modified.building_surface.map((surface) => {
-    const newSurface = { ...surface };
-
-    if (surface.type === "opaque") {
-      const name = surface.name.toLowerCase();
-      if (name.includes("roof") && roofU !== undefined) {
-        newSurface.u_value = roofU;
-      } else if (
-        (name.includes("wall") ||
-          name.includes("north") ||
-          name.includes("south") ||
-          name.includes("east") ||
-          name.includes("west")) &&
-        wallU !== undefined
-      ) {
-        newSurface.u_value = wallU;
-      }
-    } else if (surface.type === "transparent" && windowU !== undefined) {
-      newSurface.u_value = windowU;
-    }
-
-    return newSurface;
+    const uValue = uValueByElement[classifyEnvelopeSurface(surface)];
+    return uValue === undefined ? surface : { ...surface, u_value: uValue };
   });
 
   return modified;
@@ -358,15 +344,6 @@ export function applyAllModifications(
 // Helper Functions
 // ============================================================================
 
-/**
- * A near-zero sky-view factor marks a ground-contact (slab/floor) surface: it
- * sees no sky. Mirrors the forecasting backend, which classifies ground slabs by
- * `sky_view_factor` in addition to name, so floor surfaces whose name does not
- * contain "slab"/"ground" are still detected. Vertical walls have a meaningfully
- * higher sky-view factor and are unaffected.
- */
-const GROUND_SKY_VIEW_FACTOR_MAX = 0.01;
-
 export type EnvelopeElement = "wall" | "roof" | "floor" | "window";
 
 export interface EnvelopeElementGeometry {
@@ -379,24 +356,13 @@ export interface EnvelopeElementGeometry {
 }
 
 /**
- * Classify a surface into an envelope element, reusing the same conventions as
- * the modification helpers: transparent surfaces are windows; opaque surfaces
- * are roof (by name), floor (by name or near-zero sky-view factor), otherwise
- * wall.
+ * Classify a surface by type and tilt, as Forecasting's `classify_surface`
+ * does: a flat surface that sees no sky is the ground floor.
  */
 function classifyEnvelopeSurface(surface: BuildingSurface): EnvelopeElement {
   if (surface.type === "transparent") return "window";
-
-  const name = surface.name.toLowerCase();
-  if (name.includes("roof")) return "roof";
-  if (
-    name.includes("slab") ||
-    name.includes("ground") ||
-    surface.sky_view_factor <= GROUND_SKY_VIEW_FACTOR_MAX
-  ) {
-    return "floor";
-  }
-  return "wall";
+  if (surface.orientation.tilt !== 0) return "wall";
+  return surface.sky_view_factor === 0 ? "floor" : "roof";
 }
 
 /** Forecasting's heating sizing counts ground loss at half and air at 0.34 Wh/m³K. */

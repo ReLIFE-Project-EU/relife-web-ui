@@ -36,6 +36,7 @@ const FIXTURE_BUI = {
       area: 80,
       u_value: 0.8,
       sky_view_factor: 0.5,
+      orientation: { azimuth: 0, tilt: 90 },
     },
     {
       name: "roof",
@@ -43,6 +44,7 @@ const FIXTURE_BUI = {
       area: 60,
       u_value: 0.6,
       sky_view_factor: 1,
+      orientation: { azimuth: 0, tilt: 0 },
     },
     {
       name: "slab_on_ground",
@@ -50,6 +52,7 @@ const FIXTURE_BUI = {
       area: 50,
       u_value: 0.9,
       sky_view_factor: 0,
+      orientation: { azimuth: 0, tilt: 0 },
     },
     {
       name: "window_south",
@@ -57,6 +60,7 @@ const FIXTURE_BUI = {
       area: 20,
       u_value: 2.8,
       sky_view_factor: 0.5,
+      orientation: { azimuth: 0, tilt: 90 },
     },
   ],
 } as unknown as SimulatedBuilding["bui"];

@@ -28,6 +28,10 @@ _Avoid_: flat unit, apartment mode
 A modeled home that is the entire simulated building, resized to the user's floor area and floors when they differ.
 _Avoid_: full building
 
+**Ground floor**:
+The part of a building's envelope in contact with the ground, as opposed to its walls, roof and windows; floor insulation targets it.
+_Avoid_: slab, ground slab (Forecasting's word, used only in its requests)
+
 **Area scale factor**:
 The modeled home's floor area divided by the simulated building's floor area; it scales energy, envelope and PV alike.
 _Avoid_: area ratio, scale ratio

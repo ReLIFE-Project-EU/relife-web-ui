@@ -1572,6 +1572,7 @@ function makeArchetypeDetails(
           area: roofArea,
           u_value: 0.5,
           sky_view_factor: 1,
+          orientation: { azimuth: 0, tilt: 0 },
         },
       ],
     },

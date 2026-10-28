@@ -55,6 +55,7 @@ function wallOnlyBui(netFloorArea: number): BuildingPayload {
         type: "opaque",
         area: 80,
         sky_view_factor: 0.5,
+        orientation: { azimuth: 0, tilt: 90 },
         u_value: 1.2,
       },
     ],
