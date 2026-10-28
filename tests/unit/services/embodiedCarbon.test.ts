@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
-import { estimatePackageEmbodiedCarbonFromBui } from "../../../src/services/embodiedCarbon";
+import { estimatePackageEmbodiedCarbon } from "../../../src/services/embodiedCarbon";
+import type { SimulatedBuilding } from "../../../src/services/simulatedBuilding";
 import type {
   BuildingPayload,
   BuildingSurface,
@@ -28,24 +29,35 @@ function bui(surfaces: BuildingSurface[]): BuildingPayload {
   return { building_surface: surfaces } as unknown as BuildingPayload;
 }
 
-describe("estimatePackageEmbodiedCarbonFromBui", () => {
+/** The whole building as modeled, so quantities come from it unscaled. */
+function simulated(
+  payload: BuildingPayload,
+  floorArea: number,
+): SimulatedBuilding {
+  return {
+    archetype: { category: "SFH", country: "Greece", name: "GR_SFH" },
+    bui: {
+      ...payload,
+      building: { net_floor_area: floorArea },
+    } as BuildingPayload,
+    modeledFloorArea: floorArea,
+  };
+}
+
+describe("estimatePackageEmbodiedCarbon", () => {
   test("picks the insulation thickness the wall's U-value target demands", () => {
     // Wall target is 0.25 W/m²K → R 4.0. A baseline of 0.8 already supplies
     // R 1.25, leaving R 2.75 for the panel: the thinnest EPS row clearing that
     // is 100 mm (R 2.88) at 6.74 kgCO₂e/m².
-    const modest = estimatePackageEmbodiedCarbonFromBui({
-      bui: bui([surface("Wall", "opaque", 100, 0.8)]),
-      floorArea: 120,
-      pvKwp: null,
+    const modest = estimatePackageEmbodiedCarbon({
+      simulated: simulated(bui([surface("Wall", "opaque", 100, 0.8)]), 120),
       measureIds: ["wall-insulation"],
     });
     expect(modest).toBeCloseTo(674, 0);
 
     // A worse wall needs a thicker panel, so the same area costs more carbon.
-    const poor = estimatePackageEmbodiedCarbonFromBui({
-      bui: bui([surface("Wall", "opaque", 100, 1.5)]),
-      floorArea: 120,
-      pvKwp: null,
+    const poor = estimatePackageEmbodiedCarbon({
+      simulated: simulated(bui([surface("Wall", "opaque", 100, 1.5)]), 120),
       measureIds: ["wall-insulation"],
     });
     expect(poor).toBeGreaterThan(modest!);
@@ -55,10 +67,8 @@ describe("estimatePackageEmbodiedCarbonFromBui", () => {
     // Roof target is 0.2 W/m²K → R 5.0. A 2.0 baseline leaves R 4.5, beyond the
     // 120 mm / R 3.5 row that ends the EPS table, so both thickness and carbon
     // are extended rather than clamped to the last row.
-    const extrapolated = estimatePackageEmbodiedCarbonFromBui({
-      bui: bui([surface("Roof", "opaque", 50, 2.0)]),
-      floorArea: 120,
-      pvKwp: null,
+    const extrapolated = estimatePackageEmbodiedCarbon({
+      simulated: simulated(bui([surface("Roof", "opaque", 50, 2.0)]), 120),
       measureIds: ["roof-insulation"],
     });
 
@@ -73,10 +83,11 @@ describe("estimatePackageEmbodiedCarbonFromBui", () => {
   test("chooses the lowest-carbon glazing that meets the window U target", () => {
     // Window target is 1.4 W/m²K. PVC double glazing (R 0.83 → U 1.21) clears
     // it, so the 86 kgCO₂e/m² row applies rather than triple glazing's 116.
-    const carbon = estimatePackageEmbodiedCarbonFromBui({
-      bui: bui([surface("Window", "transparent", 20, 3.0)]),
-      floorArea: 120,
-      pvKwp: null,
+    const carbon = estimatePackageEmbodiedCarbon({
+      simulated: simulated(
+        bui([surface("Window", "transparent", 20, 3.0)]),
+        120,
+      ),
       measureIds: ["windows"],
     });
 
@@ -84,30 +95,28 @@ describe("estimatePackageEmbodiedCarbonFromBui", () => {
   });
 
   test("prices system measures by capacity", () => {
-    const envelope = bui([surface("Wall", "opaque", 100, 0.8)]);
+    // A 120 m² roof sizes a 5.4 kWp array.
+    const envelope = bui([
+      surface("Wall", "opaque", 100, 0.8),
+      surface("Roof", "opaque", 120, 0.8),
+    ]);
 
     // 5.4 kWp → modules only at 0.597 kgCO₂e/Wp. The sheet's inverter row is
     // deliberately excluded; see the PV note in embodiedCarbon.ts.
-    const pv = estimatePackageEmbodiedCarbonFromBui({
-      bui: envelope,
-      floorArea: 120,
-      pvKwp: 5.4,
+    const pv = estimatePackageEmbodiedCarbon({
+      simulated: simulated(envelope, 120),
       measureIds: ["pv"],
     });
     expect(pv).toBeCloseTo(5.4 * 1000 * 0.597, 0);
 
     // The heat pump sheet gives banded capacities, so a sized capacity lands on
     // a whole band's figure; the boiler's discrete rows interpolate.
-    const heatPump = estimatePackageEmbodiedCarbonFromBui({
-      bui: envelope,
-      floorArea: 120,
-      pvKwp: null,
+    const heatPump = estimatePackageEmbodiedCarbon({
+      simulated: simulated(envelope, 120),
       measureIds: ["air-water-heat-pump"],
     });
-    const boiler = estimatePackageEmbodiedCarbonFromBui({
-      bui: envelope,
-      floorArea: 120,
-      pvKwp: null,
+    const boiler = estimatePackageEmbodiedCarbon({
+      simulated: simulated(envelope, 120),
       measureIds: ["condensing-boiler"],
     });
 
@@ -115,10 +124,8 @@ describe("estimatePackageEmbodiedCarbonFromBui", () => {
     expect(boiler).toBeGreaterThan(0);
     // Both are whole units, so a package with one is the sum of its parts.
     expect(
-      estimatePackageEmbodiedCarbonFromBui({
-        bui: envelope,
-        floorArea: 120,
-        pvKwp: 5.4,
+      estimatePackageEmbodiedCarbon({
+        simulated: simulated(envelope, 120),
         measureIds: ["pv", "air-water-heat-pump"],
       }),
     ).toBeCloseTo(pv! + heatPump!, 0);
@@ -127,10 +134,8 @@ describe("estimatePackageEmbodiedCarbonFromBui", () => {
   test("keeps scaling heat pumps past the sheet's largest band", () => {
     const envelope = bui([surface("Wall", "opaque", 100, 0.8)]);
     const hp = (floorArea: number) =>
-      estimatePackageEmbodiedCarbonFromBui({
-        bui: envelope,
-        floorArea,
-        pvKwp: null,
+      estimatePackageEmbodiedCarbon({
+        simulated: simulated(envelope, floorArea),
         measureIds: ["air-water-heat-pump"],
       })!;
 
@@ -148,10 +153,8 @@ describe("estimatePackageEmbodiedCarbonFromBui", () => {
   test("never reports a partial total", () => {
     const wall = bui([surface("Wall", "opaque", 100, 0.8)]);
     const total = (measureIds: RenovationMeasureId[]) =>
-      estimatePackageEmbodiedCarbonFromBui({
-        bui: wall,
-        floorArea: 120,
-        pvKwp: null,
+      estimatePackageEmbodiedCarbon({
+        simulated: simulated(wall, 120),
         measureIds,
       });
 

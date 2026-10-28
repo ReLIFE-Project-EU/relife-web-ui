@@ -16,7 +16,6 @@ import type {
   ScenarioId,
 } from "../types/renovation";
 import {
-  DEFAULT_FLOOR_AREA,
   calculateAnnualTotals,
   computeComfortBandIndex,
   computeDailyMeanOperativeTemperatures,
@@ -41,8 +40,12 @@ import {
   buildECMParams,
   MEASURE_TO_ELEMENT,
   PV_MEASURE_ID,
-  type BuildECMParamsContext,
 } from "./renovationEcmParams";
+import {
+  energyScaleFactor,
+  simulatedFloorArea,
+  type SimulatedBuilding,
+} from "./simulatedBuilding";
 import type { IRenovationService, RenovationMeasure } from "./types";
 import { auditLog, type AuditCtx } from "../utils/auditLogger";
 import { mapWithConcurrencyLimit } from "../utils/concurrency";
@@ -229,19 +232,17 @@ export class RenovationService implements IRenovationService {
         packageCount: packages.length,
         packageIds: packages.map((p) => p.id),
         baselineDeliveredTotal: estimation.deliveredTotal,
-        archetype: estimation.archetype,
+        archetype: {
+          ...estimation.simulated.archetype,
+          matchStrategy: estimation.matchStrategy,
+        },
       },
       auditCtx,
     );
 
-    if (!estimation.archetype) {
-      throw new Error("Missing archetype on baseline estimation result");
-    }
-
     // The baseline and the packages must come from the same engine, or
     // low-impact measures produce spurious negative savings.
     const baseline = this.buildBaselineScenario(
-      building,
       estimation,
       baselineSimulation,
       auditCtx,
@@ -258,13 +259,7 @@ export class RenovationService implements IRenovationService {
       packages,
       FORECASTING_SCENARIO_CONCURRENCY_LIMIT,
       (pkg) =>
-        this.evaluatePackageScenario(
-          building,
-          estimation,
-          pkg,
-          baselineDaly,
-          auditCtx,
-        ),
+        this.evaluatePackageScenario(estimation, pkg, baselineDaly, auditCtx),
     );
 
     const scenarios = [baseline, ...packageScenarios];
@@ -419,7 +414,6 @@ export class RenovationService implements IRenovationService {
   }
 
   private async evaluatePackageScenario(
-    building: BuildingInfo,
     estimation: EstimationResult,
     renovationPackage: RenovationPackage,
     baselineDaly: number | undefined,
@@ -440,7 +434,7 @@ export class RenovationService implements IRenovationService {
 
     const ecmParams = buildECMParams(
       renovationPackage.measureIds,
-      this.buildEcmContext(estimation),
+      estimation.simulated,
     );
     auditLog.debug(
       "renovation",
@@ -459,8 +453,7 @@ export class RenovationService implements IRenovationService {
     }
 
     const energy = this.extractEcmScenarioEnergy(renovatedScenario, {
-      userArea: building.floorArea || DEFAULT_FLOOR_AREA,
-      archetypeFloorArea: estimation.archetypeFloorArea,
+      simulated: estimation.simulated,
       allowHeatPump: renovationPackage.measureIds.includes(
         "air-water-heat-pump",
       ),
@@ -628,11 +621,10 @@ export class RenovationService implements IRenovationService {
   /**
    * Re-simulate the unchanged building through the ECM engine (baseline_only)
    * so the "current" scenario shares an engine with the renovated packages.
-   * Uses the same custom/archetype context resolution as the package
-   * scenarios, keeping the modified-BUI and default-archetype paths consistent.
+   * Sends the same simulated building as the package scenarios, keeping the
+   * adjusted-archetype and catalogue-archetype paths consistent.
    */
   private buildBaselineScenario(
-    building: BuildingInfo,
     estimation: EstimationResult,
     baselineScenario: ECMScenario,
     parentCtx?: AuditCtx,
@@ -647,8 +639,7 @@ export class RenovationService implements IRenovationService {
     );
 
     const energy = this.extractEcmScenarioEnergy(baselineScenario, {
-      userArea: building.floorArea || DEFAULT_FLOOR_AREA,
-      archetypeFloorArea: estimation.archetypeFloorArea,
+      simulated: estimation.simulated,
       allowHeatPump: false,
       hasPv: false,
       auditCtx,
@@ -687,61 +678,29 @@ export class RenovationService implements IRenovationService {
   }
 
   /**
-   * Resolve the ECM simulation context (custom modified BUI vs. archetype) from
-   * the estimation. Shared by the baseline and package paths so both run the
-   * same building through the ECM engine.
-   */
-  private buildEcmContext(estimation: EstimationResult): BuildECMParamsContext {
-    return estimation.modifiedBui
-      ? {
-          kind: "custom",
-          modifiedBui: estimation.modifiedBui,
-          modifiedSystem: estimation.modifiedSystem,
-          uni11300Config: estimation.uni11300Config,
-          roofArea: estimation.roofArea,
-        }
-      : {
-          kind: "archetype",
-          archetype: {
-            category: estimation.archetype!.category,
-            country: estimation.archetype!.country,
-            name: estimation.archetype!.name,
-          },
-          roofArea: estimation.roofArea,
-        };
-  }
-
-  /**
    * Extract and area-scale the energy figures from a single ECM scenario
    * result (baseline or renovated). Emits the `renovation.ecm.scaling` debug
-   * trace. Throws if the archetype floor area is unusable for scaling.
+   * trace.
    */
   private extractEcmScenarioEnergy(
     ecmScenario: ECMScenario,
     options: {
-      userArea: number;
-      archetypeFloorArea: number;
+      simulated: SimulatedBuilding;
       allowHeatPump: boolean;
       hasPv: boolean;
       auditCtx?: AuditCtx;
     },
   ): EcmScenarioEnergy {
-    const { userArea, archetypeFloorArea, allowHeatPump, hasPv, auditCtx } =
-      options;
-
-    if (archetypeFloorArea === undefined || archetypeFloorArea <= 0) {
-      throw new Error(
-        "Archetype floor area not available on estimation result. " +
-          `archetypeFloorArea=${archetypeFloorArea}`,
-      );
-    }
+    const { simulated, allowHeatPump, hasPv, auditCtx } = options;
+    const userArea = simulated.modeledFloorArea;
+    const archetypeFloorArea = simulatedFloorArea(simulated);
 
     const hourlyRecords = transformColumnarToRowFormat(
       ecmScenario.results.hourly_building,
     );
     const annualTotals = calculateAnnualTotals(hourlyRecords);
     const comfortBandIndex = computeComfortBandIndex(hourlyRecords);
-    const areaScaleFactor = userArea / archetypeFloorArea;
+    const areaScaleFactor = energyScaleFactor(simulated);
     const scaledHvac = annualTotals.Q_HC_total * areaScaleFactor;
 
     const pvAnnual = ecmScenario.results.pv_hp?.summary?.annual_kwh;

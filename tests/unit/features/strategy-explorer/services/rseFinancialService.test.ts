@@ -20,7 +20,7 @@ import {
   computeFinancials,
   computeFinancialsBatch,
 } from "../../../../../src/features/strategy-explorer/services/rseFinancialService";
-import type { ArchetypeDetails } from "../../../../../src/types/archetype";
+import type { SimulatedBuilding } from "../../../../../src/services/simulatedBuilding";
 import { APIError } from "../../../../../src/types/common";
 
 /**
@@ -28,6 +28,7 @@ import { APIError } from "../../../../../src/types/common";
  * 50 m² ground floor, 20 m² windows.
  */
 const FIXTURE_BUI = {
+  building: { net_floor_area: 100, exposed_perimeter: 40 },
   building_surface: [
     {
       name: "wall_south",
@@ -58,7 +59,7 @@ const FIXTURE_BUI = {
       sky_view_factor: 0.5,
     },
   ],
-} as unknown as ArchetypeDetails["bui"];
+} as unknown as SimulatedBuilding["bui"];
 
 /** Expected lookup actions for the envelope package with FIXTURE_BUI. */
 const ENVELOPE_ACTIONS = [
@@ -75,29 +76,18 @@ const COMBINED_ACTIONS = [
   { action: "PV", capacity_kw: 3 },
 ];
 
-function makeArchetypeDetails(floorArea: number): ArchetypeDetails {
+function makeSimulated(
+  modeledFloorArea = 100,
+  bui: SimulatedBuilding["bui"] = FIXTURE_BUI,
+): SimulatedBuilding {
   return {
-    country: "IT",
-    category: "Residential",
-    name: "Detached 1980",
-    floorArea,
-    numberOfFloors: 1,
-    floorHeight: 3,
-    totalWindowArea: 20,
-    thermalProperties: {
-      wallUValue: 0.8,
-      roofUValue: 0.6,
-      windowUValue: 2.8,
+    archetype: {
+      country: "IT",
+      category: "Residential",
+      name: "Detached 1980",
     },
-    setpoints: {
-      heatingSetpoint: 20,
-      heatingSetback: 16,
-      coolingSetpoint: 26,
-      coolingSetback: 28,
-    },
-    location: { lat: 41.9, lng: 12.5 },
-    bui: FIXTURE_BUI,
-    system: {} as unknown as ArchetypeDetails["system"],
+    bui,
+    modeledFloorArea,
   };
 }
 
@@ -120,8 +110,7 @@ function makeCarrierInput(overrides?: {
       name: "Detached 1980",
     },
     packageId: "envelope" as const,
-    details: makeArchetypeDetails(100),
-    modeledFloorArea: 100,
+    simulated: makeSimulated(),
     annualPrimaryEnergySavingsKwh: gasBaseline - gasRenovated,
     carrierSourceBreakdown: {
       baseline: {
@@ -229,20 +218,19 @@ describe("computeFinancials", () => {
     // A 100 m² dwelling inside a 400 m² reference building: envelope surfaces
     // and PV take a quarter share (PV after the whole-roof 3 kWp minimum, so it
     // matches the share of cached output); HVAC is sized from the dwelling.
-    const details = {
-      ...makeArchetypeDetails(400),
-      bui: {
-        ...FIXTURE_BUI,
-        building: { net_floor_area: 400, exposed_perimeter: 80 },
-      } as unknown as ArchetypeDetails["bui"],
-    };
+    const blockBui = {
+      ...FIXTURE_BUI,
+      building: { net_floor_area: 400, exposed_perimeter: 80 },
+    } as unknown as SimulatedBuilding["bui"];
     const base = {
       ...makeCarrierInput(),
       packageId: "combined" as const,
-      details,
     };
 
-    await computeFinancials({ ...base, modeledFloorArea: 100 });
+    await computeFinancials({
+      ...base,
+      simulated: makeSimulated(100, blockBui),
+    });
 
     const [dwellingLookup] = mockAssessRisk.mock.calls[0];
     expect(dwellingLookup.renovation_actions).toEqual([
@@ -261,11 +249,11 @@ describe("computeFinancials", () => {
     const envelope = { ...base, packageId: "envelope" as const };
     const dwellingCarbon = await computeFinancials({
       ...envelope,
-      modeledFloorArea: 100,
+      simulated: makeSimulated(100, blockBui),
     });
     const wholeCarbon = await computeFinancials({
       ...envelope,
-      modeledFloorArea: 400,
+      simulated: makeSimulated(400, blockBui),
     });
 
     const wholeLookup = mockAssessRisk.mock.calls.at(-2)![0];

@@ -15,7 +15,6 @@ import {
   type TechnicalSheet,
   type TechnicalSheetId,
 } from "../constants/technical-sheets";
-import type { BuildingPayload } from "../types/archetype";
 import type { RenovationMeasureId } from "../types/renovation";
 import {
   envelopeElementsFromBui,
@@ -24,10 +23,10 @@ import {
 } from "../utils/archetypeModifier";
 import { heatingCapacityKwFromFloorArea } from "./hvacSizing";
 import {
-  resolveArchetypeGeometry,
-  type PackageCostLookupDeps,
+  envelopeForPricing,
+  modeledPvKwp,
   type SimulatedBuilding,
-} from "./packageCostLookup";
+} from "./simulatedBuilding";
 import { U_VALUE_TARGETS } from "./renovationEcmParams";
 
 /**
@@ -332,15 +331,16 @@ function measureCarbon(
  * than a partial sum, which consumers cannot tell from a genuinely small total
  * (see the exclusion guard in `TechnicalMCDAService.ts`). Measures with no
  * sheet of their own are skipped rather than fatal, mirroring how
- * `lookupPackageCostsFromDetails` ignores measures it cannot price.
+ * `lookupPackageCosts` ignores measures it cannot price. Quantities come
+ * from the same simulated-building share as the cost lookup.
  */
-export function estimatePackageEmbodiedCarbonFromBui(params: {
-  bui: BuildingPayload;
-  floorArea: number | null;
-  pvKwp: number | null;
+export function estimatePackageEmbodiedCarbon(params: {
+  simulated: SimulatedBuilding;
   measureIds: RenovationMeasureId[];
 }): number | null {
-  const elements = envelopeElementsFromBui(params.bui);
+  const envelope = envelopeForPricing(params.simulated);
+  const elements = envelopeElementsFromBui(envelope.bui);
+  const pvKwp = modeledPvKwp(params.simulated);
 
   let total = 0;
   let counted = 0;
@@ -350,8 +350,8 @@ export function estimatePackageEmbodiedCarbonFromBui(params: {
     const kgCO2e = measureCarbon(
       measureId,
       elements,
-      params.floorArea,
-      params.pvKwp,
+      envelope.floorArea,
+      pvKwp,
     );
     if (kgCO2e === null) return null;
 
@@ -360,38 +360,4 @@ export function estimatePackageEmbodiedCarbonFromBui(params: {
   }
 
   return counted > 0 ? total : null;
-}
-
-/**
- * Same estimate for the simulated building. Shares `resolveArchetypeGeometry`
- * with the cost lookup so both work from identical surfaces, including the
- * apartment floor-area scaling.
- */
-export async function estimatePackageEmbodiedCarbon(
-  params: {
-    estimation: SimulatedBuilding | null;
-    floorArea: number | null;
-    pvKwp: number | null;
-    measureIds: RenovationMeasureId[];
-    scaleEnvelopeToFloorArea?: boolean;
-  },
-  deps: Pick<PackageCostLookupDeps, "building">,
-): Promise<number | null> {
-  if (!params.estimation?.archetype) return null;
-
-  const geometry = await resolveArchetypeGeometry(
-    {
-      estimation: params.estimation,
-      floorArea: params.floorArea,
-      scaleEnvelopeToFloorArea: params.scaleEnvelopeToFloorArea,
-    },
-    deps,
-  );
-
-  return estimatePackageEmbodiedCarbonFromBui({
-    bui: geometry.bui,
-    floorArea: geometry.floorArea,
-    pvKwp: params.pvKwp,
-    measureIds: params.measureIds,
-  });
 }

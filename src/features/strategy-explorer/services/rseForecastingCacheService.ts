@@ -16,6 +16,10 @@ import {
   PV_MEASURE_ID,
 } from "../../../services/renovationEcmParams";
 import { extractCarrierSourceBreakdown } from "../../../services/carrierSavingsService";
+import {
+  energyScaleFactor,
+  simulatedFloorArea,
+} from "../../../services/simulatedBuilding";
 import type { UNI11300Results } from "../../../types/forecasting";
 import type {
   RSEArchetypeRef,
@@ -27,7 +31,7 @@ import type {
 /** What `normalizeEntry` needs from a portfolio row to scale the entry. */
 export type RSENormalizationTarget = Pick<
   RSEExpandedPortfolioSelection,
-  "details" | "modeledFloorArea"
+  "simulated"
 >;
 
 type RSECacheApiClient = {
@@ -115,10 +119,10 @@ export function normalizeEntry(
   entry: RSEForecastingCacheEntry,
   target: RSENormalizationTarget,
 ): RSESimulationResult {
-  const { details } = target;
+  const { simulated } = target;
 
   assertPositiveFinite(
-    details.floorArea,
+    simulatedFloorArea(simulated),
     "Archetype floor area must be available to scale cached results.",
     RSE_UNAVAILABLE_REASONS.invalidFloorArea,
   );
@@ -145,7 +149,7 @@ export function normalizeEntry(
   const renovatedSystemEnergyKwh = extractSystemEnergyKwh(
     entry.renovated.primaryEnergyUni11300Summary,
   );
-  const areaScaleFactor = target.modeledFloorArea / details.floorArea;
+  const areaScaleFactor = energyScaleFactor(simulated);
   const systemEnergySavingsKwh =
     baselineSystemEnergyKwh !== undefined &&
     renovatedSystemEnergyKwh !== undefined

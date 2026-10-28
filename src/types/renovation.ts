@@ -119,42 +119,11 @@ export interface EstimationResult {
     primaryEnergy?: number;
   };
 
-  /**
-   * Floor area (m²) that the simulation was actually run with.
-   * - Unmodified path: the archetype's original floor area from archetypeDetails.
-   * - Modified path: the user-modified floor area (if floor area was modified),
-   *   or the original archetype area (if only other fields were modified).
-   *
-   * Stored here so RenovationService can use the same denominator as EnergyService
-   * when scaling simulated energy values to the user's building area.
-   * EnergyService throws if this value cannot be determined.
-   */
-  archetypeFloorArea: number;
+  /** The building Forecasting ran and the modeled home it stands for. */
+  simulated: import("../services/simulatedBuilding").SimulatedBuilding;
 
-  /** Roof area (m²) of the simulated building; sizes its PV array. */
-  roofArea: number;
-
-  /**
-   * Archetype used for the estimation.
-   * Persisted here so it can be reused for renovation simulations (Step 2),
-   * ensuring consistent baseline.
-   *
-   * `matchStrategy` records how EnergyService selected this archetype; it
-   * feeds the audit log and `validateEstimation` (src/services/estimationValidation.ts).
-   */
-  archetype?: {
-    category: string;
-    country: string;
-    name: string;
-    matchStrategy: import("../services/archetypeMatching").ArchetypeMatchStrategy;
-  };
-
-  /** Modified BUI/system payloads (only present when building.isModified = true).
-   * Stored here so RenovationService can apply ECM to the same custom building
-   * used for baseline simulation, ensuring savings are computed on comparable results. */
-  modifiedBui?: unknown;
-  modifiedSystem?: unknown;
-  uni11300Config?: unknown;
+  /** How EnergyService selected the archetype; feeds the audit log and `validateEstimation`. */
+  matchStrategy: import("../services/archetypeMatching").ArchetypeMatchStrategy;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -75,8 +75,11 @@ describe("archetypePortfolioService", () => {
       {
         archetype,
         buildingCount: 12,
-        details: makeDetails(),
-        modeledFloorArea: 100,
+        simulated: {
+          archetype,
+          bui: makeDetails().bui,
+          modeledFloorArea: 100,
+        },
       },
     ]);
   });
@@ -117,7 +120,7 @@ describe("archetypePortfolioService", () => {
       ],
     });
 
-    expect(expanded.map((s) => s.modeledFloorArea)).toEqual([
+    expect(expanded.map((s) => s.simulated.modeledFloorArea)).toEqual([
       // Default dwelling area, the cap when the building is smaller, and the
       // whole archetypes for SFH and MFH, even with an old MFH unit area.
       80, 50, 100, 1000,

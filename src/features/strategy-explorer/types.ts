@@ -4,7 +4,7 @@ import type {
   RiskAssessmentPercentiles,
 } from "../../types/renovation";
 import type { DeliveredEnergyCarrierBreakdown } from "../../types/energy";
-import type { ArchetypeDetails } from "../../types/archetype";
+import type { SimulatedBuilding } from "../../services/simulatedBuilding";
 import type {
   RSE_CACHE_PAYLOAD_SCHEMA_VERSION,
   RSE_MVP_THERMAL_EMISSION_SOURCE,
@@ -49,13 +49,11 @@ export interface RSEPortfolioDefinition {
 }
 
 export interface RSEExpandedPortfolioSelection extends RSEArchetypeSelection {
-  details: ArchetypeDetails;
   /**
-   * Floor area actually modeled: the dwelling for Apartments,
-   * the whole archetype otherwise. Cached whole-building results are scaled by
-   * `modeledFloorArea / details.floorArea`.
+   * The cached archetype and the floor area actually modeled: the dwelling for
+   * Apartments, the whole archetype otherwise.
    */
-  modeledFloorArea: number;
+  simulated: SimulatedBuilding;
 }
 
 export type RSERenovationGoal =

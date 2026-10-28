@@ -66,8 +66,11 @@ export function createArchetypePortfolioService(
 
           return {
             ...selection,
-            details,
-            modeledFloorArea: resolveModeledFloorArea(selection, details),
+            simulated: {
+              archetype: selection.archetype,
+              bui: details.bui,
+              modeledFloorArea: resolveModeledFloorArea(selection, details),
+            },
           };
         }),
       );

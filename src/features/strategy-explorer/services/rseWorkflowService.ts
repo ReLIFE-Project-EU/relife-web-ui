@@ -1,5 +1,6 @@
 import { mapWithConcurrencyLimit } from "../../../utils/concurrency";
 import { auditLog } from "../../../utils/auditLogger";
+import { simulatedFloorArea } from "../../../services/simulatedBuilding";
 import {
   RSE_FINANCIAL_CONCURRENCY_LIMIT,
   RSE_PACKAGE_IDS,
@@ -190,8 +191,8 @@ async function runWorkflowWithDependencies(
         combinationCount: normalized.simulations.length,
         modeledFloorAreas: portfolio.map((selection) => ({
           archetype: rseArchetypeKey(selection.archetype),
-          archetypeFloorArea: selection.details.floorArea,
-          modeledFloorArea: selection.modeledFloorArea,
+          archetypeFloorArea: simulatedFloorArea(selection.simulated),
+          modeledFloorArea: selection.simulated.modeledFloorArea,
         })),
       },
       auditCtx,
@@ -419,8 +420,7 @@ function buildFinancialInputs(
     return {
       archetype: simulation.archetype,
       packageId: simulation.packageId,
-      details: selection.details,
-      modeledFloorArea: selection.modeledFloorArea,
+      simulated: selection.simulated,
       annualPrimaryEnergySavingsKwh: simulation.annualEnergySavingsKwh,
       carrierSourceBreakdown: simulation.carrierSourceBreakdown,
       financialAssumptions,

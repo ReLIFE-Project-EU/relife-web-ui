@@ -5,7 +5,7 @@
 
 import { Alert, Box, Text, Title } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
-import { modeledPvKwp } from "../../../../services/pvConfig";
+import { modeledPvKwp } from "../../../../services/simulatedBuilding";
 import type { RenovationMeasureId } from "../../context/types";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
@@ -19,7 +19,7 @@ export function MeasureSelector() {
   const selectedMeasures = state.renovation.selectedMeasures;
   const hasPv = selectedMeasures.includes("pv");
   const pvKwp = state.estimation
-    ? modeledPvKwp(state.estimation, state.building.floorArea)
+    ? modeledPvKwp(state.estimation.simulated)
     : null;
 
   const handleToggleMeasure = (measureId: RenovationMeasureId) => {

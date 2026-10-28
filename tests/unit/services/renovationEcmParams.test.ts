@@ -2,16 +2,39 @@ import { describe, expect, test } from "vitest";
 
 import { buildECMParams } from "../../../src/services/renovationEcmParams";
 import { PV_DEFAULTS, pvKwpFromRoofArea } from "../../../src/services/pvConfig";
+import type { SimulatedBuilding } from "../../../src/services/simulatedBuilding";
+import type { BuildingPayload } from "../../../src/types/archetype";
 
-const archetypeContext = {
-  kind: "archetype",
+const ROOF_AREA = 100;
+
+function buiWithRoof(roofArea: number): BuildingPayload {
+  return {
+    building: { net_floor_area: 100 },
+    building_surface:
+      roofArea > 0
+        ? [
+            {
+              name: "Roof",
+              type: "opaque",
+              area: roofArea,
+              u_value: 1,
+              sky_view_factor: 1,
+              orientation: { azimuth: 0, tilt: 0 },
+            },
+          ]
+        : [],
+  } as unknown as BuildingPayload;
+}
+
+const archetypeContext: SimulatedBuilding = {
   archetype: {
     country: "Greece",
     category: "SFH",
     name: "GR_SFH_1961_1980",
   },
-  roofArea: 100,
-} as const;
+  bui: buiWithRoof(ROOF_AREA),
+  modeledFloorArea: 100,
+};
 
 describe("buildECMParams", () => {
   test("maps envelope measures to Forecasting scenario elements and U-values", () => {
@@ -63,7 +86,7 @@ describe("buildECMParams", () => {
     expect(params).toEqual(
       expect.objectContaining({
         use_pv: true,
-        pv_kwp: pvKwpFromRoofArea(archetypeContext.roofArea),
+        pv_kwp: pvKwpFromRoofArea(ROOF_AREA),
         pv_tilt_deg: PV_DEFAULTS.tiltDeg,
         pv_azimuth_deg: PV_DEFAULTS.azimuthDeg,
         pv_use_pvgis: PV_DEFAULTS.usePvgis,
@@ -88,27 +111,20 @@ describe("buildECMParams", () => {
         use_heat_pump: true,
         heat_pump_cop: 3.2,
         use_pv: true,
-        pv_kwp: pvKwpFromRoofArea(archetypeContext.roofArea),
+        pv_kwp: pvKwpFromRoofArea(ROOF_AREA),
       }),
     );
     expect(params).not.toHaveProperty("include_baseline");
   });
 
-  test("throws when PV requires a missing or invalid roof area", () => {
-    const invalidRoofAreas: Array<number | null> = [null, 0, Number.NaN, -1];
-
-    for (const roofArea of invalidRoofAreas) {
-      expect(() =>
-        buildECMParams(["pv"], {
-          ...archetypeContext,
-          roofArea,
-        }),
-      ).toThrow("PV measure requires a simulated roof area");
-    }
+  test("throws when PV is requested for a building without a roof", () => {
+    expect(() =>
+      buildECMParams(["pv"], { ...archetypeContext, bui: buiWithRoof(0) }),
+    ).toThrow("PV measure requires a simulated roof area");
   });
 
-  test("returns custom-building ECM params when a modified BUI is supplied", () => {
-    const modifiedBui = { building: { net_floor_area: 100 } };
+  test("returns custom-building ECM params for an adjusted archetype", () => {
+    const modifiedBui = buiWithRoof(ROOF_AREA);
     const modifiedSystem = { heating: "custom" };
     const uni11300Config = {
       input_unit: "Wh",
@@ -117,11 +133,9 @@ describe("buildECMParams", () => {
     };
 
     const params = buildECMParams(["wall-insulation"], {
-      kind: "custom",
-      modifiedBui,
-      modifiedSystem,
-      uni11300Config,
-      roofArea: 100,
+      ...archetypeContext,
+      bui: modifiedBui,
+      adjustment: { system: modifiedSystem, uni11300Config },
     });
 
     expect(params).toEqual(
@@ -141,14 +155,13 @@ describe("buildECMParams", () => {
   test("rejects a modified building without its UNI settings", () => {
     expect(() =>
       buildECMParams([], {
-        kind: "custom",
-        modifiedBui: {},
-        roofArea: 100,
+        ...archetypeContext,
+        adjustment: { system: {}, uni11300Config: undefined },
       }),
     ).toThrow("missing its archetype UNI/TS 11300 settings");
   });
 
-  test("returns archetype ECM params when archetype context is supplied", () => {
+  test("returns archetype ECM params for a catalogue archetype", () => {
     const params = buildECMParams(["wall-insulation"], archetypeContext);
 
     expect(params).toEqual(

@@ -12,6 +12,7 @@ import { ArchetypeMatchStrategy } from "./archetypeMatching";
 import { extractArchetypePeriod } from "../utils/archetypePeriod";
 import { isApartmentLikeCategory } from "../constants/buildingFormOptions";
 import type { BuildingInfo, EstimationResult } from "../types/renovation";
+import { energyScaleFactor, simulatedFloorArea } from "./simulatedBuilding";
 
 export type EstimationConfidence = "ok" | "low-confidence" | "unusable";
 
@@ -102,16 +103,15 @@ export function validateEstimation(
   estimation: EstimationResult,
   building: BuildingInfo,
 ): EstimationDiagnostic {
-  const archetype = estimation.archetype;
-  const strategy =
-    archetype?.matchStrategy ?? ArchetypeMatchStrategy.USER_SELECTED;
-  const chosenPeriod = archetype
-    ? (extractArchetypePeriod(archetype.name) ?? undefined)
-    : undefined;
+  const { archetype } = estimation.simulated;
+  const strategy = estimation.matchStrategy;
+  const chosenPeriod = extractArchetypePeriod(archetype.name) ?? undefined;
   const userArea = building.floorArea ?? 0;
-  const archetypeArea = estimation.archetypeFloorArea || 0;
+  const archetypeArea = simulatedFloorArea(estimation.simulated);
   const areaScaleFactor =
-    archetypeArea > 0 && userArea > 0 ? userArea / archetypeArea : 1;
+    archetypeArea > 0 && userArea > 0
+      ? energyScaleFactor(estimation.simulated)
+      : 1;
 
   const rule = STRATEGY_RULES[strategy];
   const reasons: EstimationDiagnosticReason[] = [];
@@ -175,10 +175,10 @@ export function validateEstimation(
     period: building.constructionPeriod || undefined,
   };
   const chosen = {
-    country: archetype?.country ?? building.country,
-    category: archetype?.category ?? building.buildingType,
+    country: archetype.country,
+    category: archetype.category,
     period: chosenPeriod,
-    name: archetype?.name ?? "(unknown)",
+    name: archetype.name,
   };
 
   const remediation =

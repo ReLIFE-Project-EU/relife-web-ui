@@ -28,6 +28,8 @@ import {
   EnergyService,
   ArchetypeNotAvailableError,
 } from "../../../src/services/EnergyService";
+import { simulatedFloorArea } from "../../../src/services/simulatedBuilding";
+import { surfaceAreasFromBui } from "../../../src/utils/archetypeModifier";
 
 // ── Mock building service ───────────────────────────────────────────────────
 
@@ -262,7 +264,7 @@ describe("EnergyService", () => {
         baseline_only: true,
       }),
     );
-    expect(estimation.uni11300Config).toEqual(
+    expect(estimation.simulated.adjustment?.uni11300Config).toEqual(
       stubArchetypeDetails.uni11300Config,
     );
   });
@@ -325,9 +327,11 @@ describe("EnergyService", () => {
         expect.objectContaining({ bui: submitted }),
       );
       expect(mockBuildingService.getArchetypeDetails).toHaveBeenCalledOnce();
-      expect(estimation.modifiedBui).toEqual(submitted);
-      expect(estimation.roofArea).toBeCloseTo(floorArea / numberOfFloors);
-      expect(estimation.archetypeFloorArea).toBe(floorArea);
+      expect(estimation.simulated.bui).toEqual(submitted);
+      expect(surfaceAreasFromBui(estimation.simulated.bui).roofM2).toBeCloseTo(
+        floorArea / numberOfFloors,
+      );
+      expect(simulatedFloorArea(estimation.simulated)).toBe(floorArea);
       expect(estimation.annualEnergyNeeds).toBe(1000);
       expect(estimation.referenceEstimation?.annualEnergyNeeds).toBe(2628);
       expect(estimation.deliveredTotal).toBe(1500);
@@ -350,7 +354,7 @@ describe("EnergyService", () => {
     expect(mockSimulateECM).toHaveBeenCalledOnce();
     expect(mockBuildingService.getArchetypeDetails).toHaveBeenCalledOnce();
     expect(result.baselineSimulation).toBe(stubSimulationResponse);
-    expect(result.estimation.modifiedBui).toBeUndefined();
+    expect(result.estimation.simulated.adjustment).toBeUndefined();
   });
 
   test("matching geometry preserves other modifications", async () => {

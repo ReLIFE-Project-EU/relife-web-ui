@@ -36,14 +36,22 @@ function makeDetails(floorArea = 100): ArchetypeDetails {
       coolingSetback: 28,
     },
     location: { lat: 41.9, lng: 12.5 },
-    bui: {} as ArchetypeDetails["bui"],
+    bui: {
+      building: { net_floor_area: floorArea },
+    } as ArchetypeDetails["bui"],
     system: {} as ArchetypeDetails["system"],
   };
 }
 
 /** A portfolio row modeling the whole reference building unless told otherwise. */
 function makeTarget(floorArea = 100, modeledFloorArea = floorArea) {
-  return { details: makeDetails(floorArea), modeledFloorArea };
+  return {
+    simulated: {
+      archetype,
+      bui: makeDetails(floorArea).bui,
+      modeledFloorArea,
+    },
+  };
 }
 
 function makeEntry(

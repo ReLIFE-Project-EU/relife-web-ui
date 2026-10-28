@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { ArchetypeMatchStrategy } from "../../../src/services/archetypeMatching";
 import { validateEstimation } from "../../../src/services/estimationValidation";
+import type { BuildingPayload } from "../../../src/types/archetype";
 import type {
   BuildingInfo,
   EstimationResult,
@@ -33,7 +34,7 @@ function makeBuilding(overrides: Partial<BuildingInfo> = {}): BuildingInfo {
 function makeEstimation(
   strategy: ArchetypeMatchStrategy,
   archetypeFloorArea: number,
-  overrides: Partial<EstimationResult["archetype"]> = {},
+  overrides: Partial<EstimationResult["simulated"]["archetype"]> = {},
 ): EstimationResult {
   return {
     annualEnergyNeeds: 0,
@@ -43,21 +44,39 @@ function makeEstimation(
     flexibilityIndex: 50,
     comfortIndex: 50,
     annualEnergyConsumption: 0,
-    archetypeFloorArea,
-    roofArea: 0,
-    archetype: {
-      category: "Single Family House",
-      country: "Greece",
-      name: "SFH_Greece_1946_1969",
-      matchStrategy: strategy,
-      ...overrides,
+    simulated: {
+      archetype: {
+        category: "Single Family House",
+        country: "Greece",
+        name: "SFH_Greece_1946_1969",
+        ...overrides,
+      },
+      bui: {
+        building: { net_floor_area: archetypeFloorArea },
+      } as unknown as BuildingPayload,
+      modeledFloorArea: archetypeFloorArea,
     },
+    matchStrategy: strategy,
   };
+}
+
+/** EnergyService models the building's stated floor area. */
+function validate(estimation: EstimationResult, building: BuildingInfo) {
+  return validateEstimation(
+    {
+      ...estimation,
+      simulated: {
+        ...estimation.simulated,
+        modeledFloorArea: building.floorArea ?? 0,
+      },
+    },
+    building,
+  );
 }
 
 describe("validateEstimation", () => {
   test("EXACT_FULL with a 1× scale factor is ok", () => {
-    const diagnostic = validateEstimation(
+    const diagnostic = validate(
       makeEstimation(ArchetypeMatchStrategy.EXACT_FULL, 4200),
       makeBuilding({ floorArea: 4200 }),
     );
@@ -67,7 +86,7 @@ describe("validateEstimation", () => {
   });
 
   test("COUNTRY_ANY_CATEGORY is always unusable", () => {
-    const diagnostic = validateEstimation(
+    const diagnostic = validate(
       makeEstimation(ArchetypeMatchStrategy.COUNTRY_ANY_CATEGORY, 4200),
       makeBuilding({ floorArea: 4200 }),
     );
@@ -78,7 +97,7 @@ describe("validateEstimation", () => {
   });
 
   test("Athens-shaped 33.6× scale factor is unusable on both axes", () => {
-    const diagnostic = validateEstimation(
+    const diagnostic = validate(
       makeEstimation(ArchetypeMatchStrategy.COUNTRY_ANY_CATEGORY, 125),
       makeBuilding({ floorArea: 4200 }),
     );
@@ -90,7 +109,7 @@ describe("validateEstimation", () => {
   });
 
   test("EXACT_CATEGORY_PERIOD_MISMATCH at 2× scale is low-confidence", () => {
-    const diagnostic = validateEstimation(
+    const diagnostic = validate(
       makeEstimation(
         ArchetypeMatchStrategy.EXACT_CATEGORY_PERIOD_MISMATCH,
         125,
@@ -103,7 +122,7 @@ describe("validateEstimation", () => {
 
   test("apartment flat share: a 28× downscale is ok, not an archetype mismatch", () => {
     // 80 m² flat inside a 2249 m² apartment-building archetype (IE_AB case).
-    const diagnostic = validateEstimation(
+    const diagnostic = validate(
       makeEstimation(ArchetypeMatchStrategy.EXACT_FULL, 2249),
       makeBuilding({ buildingType: "Apartment buildings", floorArea: 80 }),
     );
@@ -112,7 +131,7 @@ describe("validateEstimation", () => {
   });
 
   test("apartment flat share below the minimum area is unusable", () => {
-    const diagnostic = validateEstimation(
+    const diagnostic = validate(
       makeEstimation(ArchetypeMatchStrategy.EXACT_FULL, 2249),
       makeBuilding({ buildingType: "Apartment buildings", floorArea: 5 }),
     );
@@ -122,7 +141,7 @@ describe("validateEstimation", () => {
 
   test("non-apartment downscale keeps the regular scale penalty", () => {
     for (const buildingType of ["Single Family House", "Multi family House"]) {
-      const diagnostic = validateEstimation(
+      const diagnostic = validate(
         makeEstimation(ArchetypeMatchStrategy.EXACT_FULL, 2249),
         makeBuilding({ buildingType, floorArea: 80 }),
       );
@@ -132,7 +151,7 @@ describe("validateEstimation", () => {
   });
 
   test("scale factor 6× alone is low-confidence", () => {
-    const diagnostic = validateEstimation(
+    const diagnostic = validate(
       makeEstimation(ArchetypeMatchStrategy.EXACT_FULL, 100),
       makeBuilding({ floorArea: 600 }),
     );
@@ -141,7 +160,7 @@ describe("validateEstimation", () => {
   });
 
   test("scale factor 11× alone is unusable", () => {
-    const diagnostic = validateEstimation(
+    const diagnostic = validate(
       makeEstimation(ArchetypeMatchStrategy.EXACT_FULL, 100),
       makeBuilding({ floorArea: 1100 }),
     );
@@ -150,7 +169,7 @@ describe("validateEstimation", () => {
   });
 
   test("REGION_ANY_MATCH is unusable", () => {
-    const diagnostic = validateEstimation(
+    const diagnostic = validate(
       makeEstimation(ArchetypeMatchStrategy.REGION_ANY_MATCH, 4200),
       makeBuilding({ floorArea: 4200 }),
     );
@@ -158,27 +177,10 @@ describe("validateEstimation", () => {
   });
 
   test("REGION_CATEGORY_MATCH is low-confidence", () => {
-    const diagnostic = validateEstimation(
+    const diagnostic = validate(
       makeEstimation(ArchetypeMatchStrategy.REGION_CATEGORY_MATCH, 4200),
       makeBuilding({ floorArea: 4200 }),
     );
     expect(diagnostic.level).toBe("low-confidence");
-  });
-
-  test("missing archetype data degrades gracefully without crashing", () => {
-    const estimation: EstimationResult = {
-      annualEnergyNeeds: 0,
-      heatingCoolingNeeds: 0,
-      heatingDemand: 0,
-      coolingDemand: 0,
-      flexibilityIndex: 50,
-      comfortIndex: 50,
-      annualEnergyConsumption: 0,
-      archetypeFloorArea: 0,
-      roofArea: 0,
-    };
-    const diagnostic = validateEstimation(estimation, makeBuilding());
-    expect(diagnostic.level).toBe("ok");
-    expect(diagnostic.strategy).toBe(ArchetypeMatchStrategy.USER_SELECTED);
   });
 });

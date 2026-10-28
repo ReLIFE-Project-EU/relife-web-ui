@@ -11,6 +11,7 @@ import {
   runRSESeedCli,
   type RSEGeneratedSeed,
   type RSEForecastingSeedClient,
+  type RSESeedArchetype,
   type RSESeedRunState,
 } from "../../../../scripts/rse-cache/generate.ts";
 import { RSE_PACKAGE_IDS } from "../../../../src/features/strategy-explorer/constants.ts";
@@ -39,12 +40,11 @@ describe("generateRSECacheSeedSql", () => {
         description: "S3 fixture's seed",
         targets: [
           {
-            archetype: {
+            archetype: seedArchetype({
               country: "IT",
               category: "Residential",
               name: "Detached '1980'",
-              roofArea: 100,
-            },
+            }),
             packageId: "envelope",
           },
         ],
@@ -101,12 +101,11 @@ describe("generateRSECacheSeedSql", () => {
         generatedAt: "2026-05-12T10:04:00.000Z",
         targets: [
           {
-            archetype: {
+            archetype: seedArchetype({
               country: "IT",
               category: "Residential",
               name: "Detached 1980",
-              roofArea: 100,
-            },
+            }),
             packageId: "systems-heat-pump",
           },
         ],
@@ -144,12 +143,11 @@ describe("generateRSECacheSeedSql", () => {
           generatedAt: "2026-05-12T10:04:00.000Z",
           targets: [
             {
-              archetype: {
+              archetype: seedArchetype({
                 country: "IT",
                 category: "Residential",
                 name: "Detached 1980",
-                roofArea: 100,
-              },
+              }),
               packageId: "envelope",
             },
           ],
@@ -181,12 +179,11 @@ describe("generateRSECacheSeedSql", () => {
         generatedAt: "2026-05-12T10:04:00.000Z",
         targets: [
           {
-            archetype: {
+            archetype: seedArchetype({
               country: "IT",
               category: "Residential",
               name: "Detached 1980",
-              roofArea: 100,
-            },
+            }),
             packageId: "combined",
           },
         ],
@@ -244,12 +241,11 @@ describe("generateRSECacheSeedSql", () => {
         generatedAt: "2026-05-12T10:04:00.000Z",
         targets: [
           {
-            archetype: {
+            archetype: seedArchetype({
               country: "IT",
               category: "Residential",
               name: "Detached 1980",
-              roofArea: 100,
-            },
+            }),
             packageId: "envelope",
           },
         ],
@@ -266,12 +262,12 @@ describe("generateRSECacheSeedSql", () => {
 });
 
 describe("baseline reuse", () => {
-  const archetype = {
+  const ref = {
     country: "IT",
     category: "Residential",
     name: "Detached 1980",
-    roofArea: 100,
   };
+  const archetype = seedArchetype(ref);
   const options = {
     cacheVersion: "1.test.baseline-reuse",
     generatedAt: "2026-05-12T10:04:00.000Z",
@@ -317,7 +313,10 @@ describe("baseline reuse", () => {
         ...options,
         targets: [
           options.targets[0],
-          { archetype: { ...archetype, ...identity }, packageId: "envelope" },
+          {
+            archetype: seedArchetype({ ...ref, ...identity }),
+            packageId: "envelope",
+          },
         ],
       },
       client,
@@ -488,18 +487,15 @@ describe("resolveSeedArchetypes", () => {
     });
 
     await expect(resolveSeedArchetypes(undefined, client)).resolves.toEqual([
-      {
+      seedArchetype({
         country: "IT",
         category: "Residential",
         name: "Detached 1980",
-        roofArea: 100,
-      },
-      {
-        country: "GR",
-        category: "Residential",
-        name: "Apartment 2000",
-        roofArea: 85,
-      },
+      }),
+      seedArchetype(
+        { country: "GR", category: "Residential", name: "Apartment 2000" },
+        85,
+      ),
     ]);
     expect(listCalls).toHaveLength(1);
     expect(detailCalls.map((item) => item.name)).toEqual([
@@ -521,12 +517,11 @@ describe("resolveSeedArchetypes", () => {
         client,
       ),
     ).resolves.toEqual([
-      {
+      seedArchetype({
         country: "IT",
         category: "Residential",
         name: "Detached 1980",
-        roofArea: 100,
-      },
+      }),
     ]);
     expect(listCalls).toEqual([]);
     expect(detailCalls.map((item) => item.name)).toEqual(["Detached 1980"]);
@@ -1542,6 +1537,22 @@ function jsonResponse(body: unknown, status = 200): Response {
     status,
     headers: { "Content-Type": "application/json" },
   });
+}
+
+/** A whole-archetype seed whose PV is sized from `roofArea`. */
+function seedArchetype(
+  ref: { country: string; category: string; name: string },
+  roofArea = 100,
+): RSESeedArchetype {
+  const { bui } = makeArchetypeDetails(roofArea);
+  return {
+    ...ref,
+    simulated: {
+      archetype: ref,
+      bui: bui as RSESeedArchetype["simulated"]["bui"],
+      modeledFloorArea: 2 * roofArea,
+    },
+  };
 }
 
 function makeArchetypeDetails(

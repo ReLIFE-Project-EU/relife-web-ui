@@ -16,6 +16,7 @@ import type {
   RSESimulationResult,
   RSEWorkflowRequest,
 } from "../../../../../src/features/strategy-explorer/types";
+import type { SimulatedBuilding } from "../../../../../src/services/simulatedBuilding";
 
 type WorkflowDependencies = NonNullable<
   Parameters<typeof createRSEWorkflowService>[0]
@@ -49,14 +50,24 @@ function makePortfolio(): RSEExpandedPortfolioSelection[] {
     {
       archetype: archetypeA,
       buildingCount: 1,
-      details: { floorArea: 100 } as RSEExpandedPortfolioSelection["details"],
-      modeledFloorArea: 100,
+      simulated: {
+        archetype: archetypeA,
+        bui: {
+          building: { net_floor_area: 100 },
+        } as SimulatedBuilding["bui"],
+        modeledFloorArea: 100,
+      },
     },
     {
       archetype: archetypeB,
       buildingCount: 2,
-      details: { floorArea: 120 } as RSEExpandedPortfolioSelection["details"],
-      modeledFloorArea: 120,
+      simulated: {
+        archetype: archetypeB,
+        bui: {
+          building: { net_floor_area: 120 },
+        } as SimulatedBuilding["bui"],
+        modeledFloorArea: 120,
+      },
     },
   ];
 }

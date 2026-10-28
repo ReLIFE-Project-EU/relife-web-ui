@@ -7,8 +7,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { lookupPackageCosts } from "../../../services/packageCostLookup";
-import { modeledPvKwp } from "../../../services/pvConfig";
-import { isApartmentLikeCategory } from "../../../constants/buildingFormOptions";
 import { useHomeAssistant } from "./useHomeAssistant";
 import { useHomeAssistantServices } from "./useHomeAssistantServices";
 
@@ -23,7 +21,7 @@ export interface PackageCostEstimation {
 
 export function usePackageCostEstimation(): PackageCostEstimation {
   const { state, dispatch } = useHomeAssistant();
-  const { building, financial } = useHomeAssistantServices();
+  const { financial } = useHomeAssistantServices();
 
   const [estimatingIds, setEstimatingIds] = useState<Set<string>>(new Set());
   const [errorsById, setErrorsById] = useState<Record<string, string>>({});
@@ -40,13 +38,8 @@ export function usePackageCostEstimation(): PackageCostEstimation {
   // Narrow inputs the estimate actually consumes, so unrelated building edits
   // don't recreate the callback (and re-run the effect).
   const buildingCountry = state.building.country;
-  const buildingFloorArea = state.building.floorArea;
   const buildingProjectLifetime = state.building.projectLifetime;
-  // Apartments are modeled as a share of the reference building,
-  // so envelope measure costs must be scaled to the flat as well.
-  const isFlatShare = isApartmentLikeCategory(state.building.buildingType);
-  const estimation = state.estimation;
-  const pvKwp = estimation ? modeledPvKwp(estimation, buildingFloorArea) : null;
+  const simulated = state.estimation?.simulated ?? null;
 
   const clearError = useCallback((packageId: string) => {
     setErrorsById((prev) => {
@@ -72,14 +65,11 @@ export function usePackageCostEstimation(): PackageCostEstimation {
         const result = await lookupPackageCosts(
           {
             country: buildingCountry,
-            estimation,
+            simulated,
             measureIds: pkg.measureIds,
-            floorArea: buildingFloorArea,
-            pvKwp,
             projectLifetime: buildingProjectLifetime,
-            scaleEnvelopeToFloorArea: isFlatShare,
           },
-          { building, financial },
+          { financial },
         );
 
         dispatch({
@@ -106,17 +96,13 @@ export function usePackageCostEstimation(): PackageCostEstimation {
       }
     },
     [
-      building,
       financial,
       dispatch,
       clearError,
       suggestedPackages,
       buildingCountry,
-      buildingFloorArea,
       buildingProjectLifetime,
-      isFlatShare,
-      estimation,
-      pvKwp,
+      simulated,
     ],
   );
 

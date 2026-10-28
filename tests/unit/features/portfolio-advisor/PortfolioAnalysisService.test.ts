@@ -11,12 +11,12 @@ import type {
   PRABuilding,
 } from "../../../../src/features/portfolio-advisor/context/types";
 import type {
-  IBuildingService,
   IEnergyService,
   IFinancialService,
   IRenovationService,
 } from "../../../../src/services/types";
 import { ArchetypeMatchStrategy } from "../../../../src/services/archetypeMatching";
+import type { BuildingPayload } from "../../../../src/types/archetype";
 import type {
   EstimationResult,
   FinancialResults,
@@ -33,21 +33,22 @@ const estimation: EstimationResult = {
   flexibilityIndex: 50,
   comfortIndex: 70,
   annualEnergyConsumption: 15000,
-  archetypeFloorArea: 100,
-  roofArea: 50,
-  archetype: {
-    category: "Multi family House",
-    country: "Greece",
-    name: "MFH-1961-1980",
-    matchStrategy: ArchetypeMatchStrategy.USER_SELECTED,
+  // One wall surface, so the cost lookup has at least one priceable action.
+  simulated: {
+    archetype: {
+      category: "Multi family House",
+      country: "Greece",
+      name: "MFH-1961-1980",
+    },
+    bui: wallOnlyBui(100),
+    modeledFloorArea: 100,
   },
+  matchStrategy: ArchetypeMatchStrategy.USER_SELECTED,
 };
 
-// Minimal archetype details for the cost-lookup path: one wall surface so
-// `surfaceAreasFromBui` yields a positive wall area and `buildRenovationActions`
-// produces at least one priceable action.
-const archetypeDetails = {
-  bui: {
+function wallOnlyBui(netFloorArea: number): BuildingPayload {
+  return {
+    building: { net_floor_area: netFloorArea, exposed_perimeter: 100 },
     building_surface: [
       {
         name: "wall_s",
@@ -57,9 +58,8 @@ const archetypeDetails = {
         u_value: 1.2,
       },
     ],
-  },
-  floorArea: 100,
-} as unknown as import("../../../../src/types/archetype").ArchetypeDetails;
+  } as unknown as BuildingPayload;
+}
 
 const scenarios: RenovationScenario[] = [
   {
@@ -157,7 +157,6 @@ describe("PortfolioAnalysisService", () => {
   const mockEvaluateScenarios = vi.fn();
   const mockCalculateForAllScenarios = vi.fn();
   const mockEstimatePackageCosts = vi.fn();
-  const mockGetArchetypeDetails = vi.fn();
 
   let service: PortfolioAnalysisService;
 
@@ -168,7 +167,6 @@ describe("PortfolioAnalysisService", () => {
       estimation,
       baselineSimulation: { scenario_id: "baseline" },
     });
-    mockGetArchetypeDetails.mockResolvedValue(archetypeDetails);
     mockEstimatePackageCosts.mockResolvedValue({
       capex: 8000,
       annualMaintenanceCost: 150,
@@ -202,9 +200,6 @@ describe("PortfolioAnalysisService", () => {
         calculateForAllScenarios: mockCalculateForAllScenarios,
         estimatePackageCosts: mockEstimatePackageCosts,
       } as unknown as IFinancialService,
-      {
-        getArchetypeDetails: mockGetArchetypeDetails,
-      } as unknown as IBuildingService,
     );
   });
 
@@ -362,18 +357,17 @@ describe("PortfolioAnalysisService", () => {
       const flat = category === "Apartment buildings";
       const floorArea = flat ? 80 : 1000;
       const share = floorArea / 1000;
-      const ref = { ...estimation.archetype!, category };
+      const ref = { ...estimation.simulated.archetype, category };
       mockEstimateEPC.mockResolvedValue({
-        estimation: { ...estimation, archetype: ref, archetypeFloorArea: 1000 },
-        baselineSimulation: { scenario_id: "baseline" },
-      });
-      mockGetArchetypeDetails.mockResolvedValue({
-        ...archetypeDetails,
-        floorArea: 1000,
-        bui: {
-          ...archetypeDetails.bui,
-          building: { net_floor_area: 1000, exposed_perimeter: 100 },
+        estimation: {
+          ...estimation,
+          simulated: {
+            archetype: ref,
+            bui: wallOnlyBui(1000),
+            modeledFloorArea: floorArea,
+          },
         },
+        baselineSimulation: { scenario_id: "baseline" },
       });
       const runScenarios = scenarios.map((scenario) => ({ ...scenario }));
       mockEvaluateScenarios.mockResolvedValue(runScenarios);
@@ -397,11 +391,6 @@ describe("PortfolioAnalysisService", () => {
         expect.objectContaining({ floorArea, floorNumber: flat ? 1 : null }),
         expect.anything(),
       );
-      expect(mockGetArchetypeDetails).toHaveBeenLastCalledWith({
-        category,
-        country: "Greece",
-        name: ref.name,
-      });
       expect(mockEstimatePackageCosts).toHaveBeenLastCalledWith(
         expect.objectContaining({
           country: "Greece",

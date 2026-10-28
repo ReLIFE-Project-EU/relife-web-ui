@@ -5,6 +5,8 @@ import {
   initialState,
 } from "../../../src/features/home-assistant/context/homeAssistantReducer";
 import type { HomeAssistantState } from "../../../src/features/home-assistant/context/types";
+import { ArchetypeMatchStrategy } from "../../../src/services/archetypeMatching";
+import type { BuildingPayload } from "../../../src/types/archetype";
 import type {
   EstimationResult,
   RenovationPackage,
@@ -295,8 +297,12 @@ const mockEstimation: EstimationResult = {
   flexibilityIndex: 50,
   comfortIndex: 60,
   annualEnergyConsumption: 11_000,
-  archetypeFloorArea: 120,
-  roofArea: 60,
+  simulated: {
+    archetype: { category: "SFH", country: "Greece", name: "GR_SFH" },
+    bui: { building: { net_floor_area: 120 } } as unknown as BuildingPayload,
+    modeledFloorArea: 120,
+  },
+  matchStrategy: ArchetypeMatchStrategy.USER_SELECTED,
 };
 
 describe("homeAssistantReducer CLEAR_ACCEPTED_ARCHETYPE", () => {

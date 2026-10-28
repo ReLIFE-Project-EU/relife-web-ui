@@ -6,20 +6,31 @@ import type {
   RSEFinancialResult,
   RSESimulationResult,
 } from "../../../../../src/features/strategy-explorer/types";
+import type { SimulatedBuilding } from "../../../../../src/services/simulatedBuilding";
 
 function makePortfolio(): RSEExpandedPortfolioSelection[] {
   return [
     {
       archetype: { country: "IT", category: "Residential", name: "A" },
       buildingCount: 1,
-      details: { floorArea: 100 } as RSEExpandedPortfolioSelection["details"],
-      modeledFloorArea: 100,
+      simulated: {
+        archetype: { country: "IT", category: "Residential", name: "A" },
+        bui: {
+          building: { net_floor_area: 100 },
+        } as SimulatedBuilding["bui"],
+        modeledFloorArea: 100,
+      },
     },
     {
       archetype: { country: "IT", category: "Residential", name: "B" },
       buildingCount: 3,
-      details: { floorArea: 200 } as RSEExpandedPortfolioSelection["details"],
-      modeledFloorArea: 200,
+      simulated: {
+        archetype: { country: "IT", category: "Residential", name: "B" },
+        bui: {
+          building: { net_floor_area: 200 },
+        } as SimulatedBuilding["bui"],
+        modeledFloorArea: 200,
+      },
     },
   ];
 }

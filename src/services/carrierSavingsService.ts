@@ -159,7 +159,7 @@ export function computeOperationalEmissionsTonCo2e(
  *
  * Partial module boundary, HVAC end uses only, static emission factor; the
  * `whole-life-carbon` concept documents it for readers. Returns undefined on a
- * missing term rather than a partial sum, as `estimatePackageEmbodiedCarbonFromBui` does.
+ * missing term rather than a partial sum, as `estimatePackageEmbodiedCarbon` does.
  */
 export function computeLifetimeCarbonKgCo2e(params: {
   embodiedCarbonKgCo2e: number | undefined;

@@ -88,7 +88,7 @@ export function BuildingDrillDownModal({
   result,
   projectLifetime,
 }: BuildingDrillDownModalProps) {
-  const archetype = result?.estimation?.archetype;
+  const archetype = result?.estimation?.simulated.archetype;
   const renovated = result ? renovatedOf(result) : undefined;
   const baseline = result ? baselineScenarioOf(result) : undefined;
   const fr = result?.financialResults;

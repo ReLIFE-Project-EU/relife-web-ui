@@ -4,7 +4,8 @@ import type {
   ECMCustomBuildingParams,
 } from "../types/forecasting";
 import type { RenovationMeasureId } from "../types/renovation";
-import { PV_DEFAULTS, pvKwpFromRoofArea } from "./pvConfig.ts";
+import { PV_DEFAULTS } from "./pvConfig.ts";
+import { simulatedPvKwp, type SimulatedBuilding } from "./simulatedBuilding.ts";
 
 /**
  * Element U-values (W/m²K) the ECM engine is asked to reach. Exported because
@@ -30,29 +31,12 @@ export const PV_MEASURE_ID: RenovationMeasureId = "pv";
 
 const DEFAULT_HEAT_PUMP_COP = 3.2;
 
-export type BuildECMParamsContext =
-  | {
-      kind: "archetype";
-      archetype: {
-        country: string;
-        category: string;
-        name: string;
-      };
-      roofArea: number | null;
-    }
-  | {
-      kind: "custom";
-      modifiedBui: unknown;
-      modifiedSystem?: unknown;
-      uni11300Config?: unknown;
-      roofArea: number | null;
-    };
-
 export function buildECMParams(
   measureIds: readonly RenovationMeasureId[],
-  context: BuildECMParamsContext,
+  simulated: SimulatedBuilding,
 ): ECMApplicationParams {
-  if (context.kind === "custom" && !context.uni11300Config) {
+  const { adjustment } = simulated;
+  if (adjustment && !adjustment.uni11300Config) {
     throw new Error(
       "Modified building is missing its archetype UNI/TS 11300 settings",
     );
@@ -78,7 +62,7 @@ export function buildECMParams(
     measureIds.includes("air-water-heat-pump");
 
   if (hasPv) {
-    const pvKwp = pvKwpFromRoofArea(context.roofArea);
+    const pvKwp = simulatedPvKwp(simulated);
     if (pvKwp === null) {
       throw new Error(
         "PV measure requires a simulated roof area on the estimation",
@@ -125,17 +109,17 @@ export function buildECMParams(
     }
   }
 
-  return context.kind === "custom"
+  return adjustment
     ? ({
-        bui: context.modifiedBui,
-        system: context.modifiedSystem,
-        uni11300Config: context.uni11300Config,
+        bui: simulated.bui,
+        system: adjustment.system,
+        uni11300Config: adjustment.uni11300Config,
         ...commonParams,
       } as ECMCustomBuildingParams)
     : ({
-        category: context.archetype.category,
-        country: context.archetype.country,
-        name: context.archetype.name,
+        category: simulated.archetype.category,
+        country: simulated.archetype.country,
+        name: simulated.archetype.name,
         ...commonParams,
       } as ECMArchetypeParams);
 }

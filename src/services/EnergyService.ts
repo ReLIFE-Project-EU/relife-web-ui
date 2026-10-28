@@ -28,10 +28,12 @@ import {
   resolveEpcRatingIntensity,
   transformColumnarToRowFormat,
 } from "./energyUtils";
+import { buildECMParams } from "./renovationEcmParams";
 import {
-  buildECMParams,
-  type BuildECMParamsContext,
-} from "./renovationEcmParams";
+  energyScaleFactor,
+  simulatedFloorArea,
+  type SimulatedBuilding,
+} from "./simulatedBuilding";
 import {
   extractUniCarrierBreakdown,
   scaleCarrierBreakdown,
@@ -239,10 +241,10 @@ function getClimateRegion(country: string): string | null {
 
 /** Run an ECM simulation with no measures applied and return its baseline scenario. */
 async function simulateEcmBaseline(
-  context: BuildECMParamsContext,
+  simulated: SimulatedBuilding,
 ): Promise<ECMScenario> {
   const response = await forecasting.simulateECM({
-    ...buildECMParams([], context),
+    ...buildECMParams([], simulated),
     baseline_only: true,
   });
   const baseline =
@@ -308,31 +310,22 @@ export class EnergyService implements IEnergyService {
     return [params.category, params.country, params.name].join(":");
   }
 
-  private simulateArchetype(params: {
-    category: string;
-    country: string;
-    name: string;
-  }): Promise<ECMScenario> {
-    const cacheKey = this.getArchetypeSimulationCacheKey(params);
+  private simulateArchetype(
+    simulated: SimulatedBuilding,
+  ): Promise<ECMScenario> {
+    const cacheKey = this.getArchetypeSimulationCacheKey(simulated.archetype);
     const cachedPromise = this.archetypeSimulationCache.get(cacheKey);
 
     if (cachedPromise) {
       return cachedPromise;
     }
 
-    const simulationPromise = simulateEcmBaseline({
-      kind: "archetype",
-      archetype: {
-        category: params.category,
-        country: params.country,
-        name: params.name,
+    const simulationPromise = simulateEcmBaseline(simulated).catch(
+      (error: unknown) => {
+        this.archetypeSimulationCache.delete(cacheKey);
+        throw error;
       },
-      // Only read when a PV measure is applied, and a baseline run has none.
-      roofArea: null,
-    }).catch((error: unknown) => {
-      this.archetypeSimulationCache.delete(cacheKey);
-      throw error;
-    });
+    );
 
     this.archetypeSimulationCache.set(cacheKey, simulationPromise);
 
@@ -548,34 +541,25 @@ export class EnergyService implements IEnergyService {
 
   private buildEstimationFromSimulation(params: {
     simulationResponse: ECMScenario;
-    archetype: ArchetypeInfo;
+    simulated: SimulatedBuilding;
     matchStrategy: ArchetypeMatchStrategy;
     building: BuildingInfo;
-    archetypeArea: number;
-    roofArea: number;
-    userArea: number;
-    modifiedBui?: unknown;
-    modifiedSystem?: unknown;
-    uni11300Config?: unknown;
     validationNotes?: string[];
     referenceEstimation?: EstimationResult["referenceEstimation"];
     auditCtx?: AuditCtx;
   }): EstimationResult {
     const {
       simulationResponse,
-      archetype,
+      simulated,
       matchStrategy,
       building,
-      archetypeArea,
-      roofArea,
-      userArea,
-      modifiedBui,
-      modifiedSystem,
-      uni11300Config,
       validationNotes,
       referenceEstimation,
       auditCtx,
     } = params;
+    const { archetype } = simulated;
+    const archetypeArea = simulatedFloorArea(simulated);
+    const userArea = simulated.modeledFloorArea;
 
     // ECM returns hourly data columnar; the rest of this method works on rows.
     const hourlyData = transformColumnarToRowFormat(
@@ -600,7 +584,7 @@ export class EnergyService implements IEnergyService {
     const coolingTotal = annualData.Q_C_total;
     const hvacTotal = annualData.Q_HC_total || heatingTotal + coolingTotal;
 
-    const areaScaleFactor = userArea / archetypeArea;
+    const areaScaleFactor = energyScaleFactor(simulated);
     const scaledHvacTotal = hvacTotal * areaScaleFactor;
     const scaledHeating = heatingTotal * areaScaleFactor;
     const scaledCooling = coolingTotal * areaScaleFactor;
@@ -642,7 +626,7 @@ export class EnergyService implements IEnergyService {
       "energy",
       "energy.simulation.summary",
       {
-        basis: modifiedBui === undefined ? "archetype" : "custom",
+        basis: simulated.adjustment ? "custom" : "archetype",
         archetype: {
           name: archetype.name,
           category: archetype.category,
@@ -701,25 +685,12 @@ export class EnergyService implements IEnergyService {
       ...(scaledPrimaryEnergy !== undefined
         ? { primaryEnergy: Math.round(scaledPrimaryEnergy) }
         : {}),
-      archetypeFloorArea: archetypeArea,
-      roofArea,
-      archetype: {
-        category: archetype.category,
-        country: archetype.country,
-        name: archetype.name,
-        matchStrategy,
-      },
+      simulated,
+      matchStrategy,
       ...(validationNotes && validationNotes.length > 0
         ? { validationNotes }
         : {}),
       ...(referenceEstimation ? { referenceEstimation } : {}),
-      ...(modifiedBui !== undefined
-        ? {
-            modifiedBui,
-            modifiedSystem,
-            uni11300Config,
-          }
-        : {}),
     };
   }
 
@@ -790,6 +761,12 @@ export class EnergyService implements IEnergyService {
         country: archetype.country,
         name: archetype.name,
       });
+      const archetypeRef = {
+        category: archetype.category,
+        country: archetype.country,
+        name: archetype.name,
+      };
+      const modeledFloorArea = building.floorArea || DEFAULT_FLOOR_AREA;
       const modifications = building.modifications;
       const matchingGeometryOnly =
         modifications &&
@@ -835,38 +812,36 @@ export class EnergyService implements IEnergyService {
           auditCtx,
         );
 
-        const simulatedArea =
-          modifications.floorArea ?? archetypeDetails.floorArea;
-        const userArea = building.floorArea || DEFAULT_FLOOR_AREA;
-        const referenceArea =
-          archetypeDetails.floorArea * (userArea / simulatedArea);
+        const simulated: SimulatedBuilding = {
+          archetype: archetypeRef,
+          bui: validatedBui as BuildingPayload,
+          adjustment: {
+            system: validatedSystem,
+            uni11300Config: archetypeDetails.uni11300Config,
+          },
+          modeledFloorArea,
+        };
+        // The catalogue archetype scaled to the same share of the home.
+        const reference: SimulatedBuilding = {
+          archetype: archetypeRef,
+          bui: archetypeDetails.bui,
+          modeledFloorArea:
+            archetypeDetails.floorArea * energyScaleFactor(simulated),
+        };
 
         const [customSimulation, referenceSimulation] = await Promise.all([
-          simulateEcmBaseline({
-            kind: "custom",
-            modifiedBui: validatedBui,
-            modifiedSystem: validatedSystem,
-            uni11300Config: archetypeDetails.uni11300Config,
-            roofArea: null,
-          }),
-          this.simulateArchetype({
-            category: archetype.category,
-            country: archetype.country,
-            name: archetype.name,
-          }),
+          simulateEcmBaseline(simulated),
+          this.simulateArchetype(reference),
         ]);
 
         const referenceEstimation = this.buildEstimationFromSimulation({
           simulationResponse: referenceSimulation,
-          archetype,
+          simulated: reference,
           matchStrategy,
           building: {
             ...building,
-            floorArea: referenceArea,
+            floorArea: reference.modeledFloorArea,
           },
-          archetypeArea: archetypeDetails.floorArea,
-          roofArea: surfaceAreasFromBui(archetypeDetails.bui).roofM2,
-          userArea: referenceArea,
           auditCtx,
         });
 
@@ -877,15 +852,9 @@ export class EnergyService implements IEnergyService {
 
         const result = this.buildEstimationFromSimulation({
           simulationResponse: customSimulation,
-          archetype,
+          simulated,
           matchStrategy,
           building,
-          archetypeArea: simulatedArea,
-          roofArea: surfaceAreasFromBui(validatedBui as BuildingPayload).roofM2,
-          userArea,
-          modifiedBui: validatedBui,
-          modifiedSystem: validatedSystem,
-          uni11300Config: archetypeDetails.uni11300Config,
           validationNotes,
           referenceEstimation: {
             annualEnergyNeeds: referenceEstimation.annualEnergyNeeds,
@@ -905,8 +874,8 @@ export class EnergyService implements IEnergyService {
             heatingCoolingNeeds: result.heatingCoolingNeeds,
             deliveredTotal: result.deliveredTotal,
             primaryEnergy: result.primaryEnergy,
-            archetypeFloorArea: result.archetypeFloorArea,
-            roofArea: result.roofArea,
+            archetypeFloorArea: simulatedFloorArea(simulated),
+            roofArea: surfaceAreasFromBui(simulated.bui).roofM2,
             modified: true,
           },
           auditCtx,
@@ -925,20 +894,18 @@ export class EnergyService implements IEnergyService {
         auditCtx,
       );
 
-      const simulationResponse = await this.simulateArchetype({
-        category: archetype.category,
-        country: archetype.country,
-        name: archetype.name,
-      });
+      const simulated: SimulatedBuilding = {
+        archetype: archetypeRef,
+        bui: archetypeDetails.bui,
+        modeledFloorArea,
+      };
+      const simulationResponse = await this.simulateArchetype(simulated);
 
       const result = this.buildEstimationFromSimulation({
         simulationResponse,
-        archetype,
+        simulated,
         matchStrategy,
         building,
-        archetypeArea: archetypeDetails.floorArea,
-        roofArea: surfaceAreasFromBui(archetypeDetails.bui).roofM2,
-        userArea: building.floorArea || DEFAULT_FLOOR_AREA,
         auditCtx,
       });
       auditLog.info(
@@ -949,8 +916,8 @@ export class EnergyService implements IEnergyService {
           heatingCoolingNeeds: result.heatingCoolingNeeds,
           deliveredTotal: result.deliveredTotal,
           primaryEnergy: result.primaryEnergy,
-          archetypeFloorArea: result.archetypeFloorArea,
-          roofArea: result.roofArea,
+          archetypeFloorArea: simulatedFloorArea(simulated),
+          roofArea: surfaceAreasFromBui(simulated.bui).roofM2,
           modified: false,
         },
         auditCtx,

@@ -37,6 +37,10 @@ import type {
   RSEForecastingScenarioSnapshot,
 } from "../../src/features/strategy-explorer/types.ts";
 import { buildECMParams } from "../../src/services/renovationEcmParams.ts";
+import {
+  simulatedPvKwp,
+  type SimulatedBuilding,
+} from "../../src/services/simulatedBuilding.ts";
 import type { BuildingPayload } from "../../src/types/archetype.ts";
 import type { RenovationMeasureId } from "../../src/types/renovation.ts";
 import type {
@@ -45,7 +49,6 @@ import type {
   ECMApplicationResponse,
   ECMScenario,
 } from "../../src/types/forecasting.ts";
-import { surfaceAreasFromBui } from "../../src/utils/archetypeModifier.ts";
 import { resolveEmissionFactorCountry } from "../../src/utils/emissionFactorCountry.ts";
 
 const UNIT_SEPARATOR = "\u001f";
@@ -101,15 +104,31 @@ const createSilentSeedLogger = (): RSESeedLogger => {
   return logger;
 };
 
-/** Archetype reference plus the roof area that sizes its PV array. */
+/** Archetype reference plus the whole building it simulates. */
 export interface RSESeedArchetype extends RSEArchetypeRef {
-  roofArea: number;
+  simulated: SimulatedBuilding;
+}
+
+/** What checkpoints and failure records keep of an archetype: no BUI. */
+export interface RSESeedArchetypeSummary extends RSEArchetypeRef {
+  pvKwp: number | null;
 }
 
 /** One cell in the cache matrix: a single (archetype, package) combination. */
 export interface RSESeedTarget {
   archetype: RSESeedArchetype;
   packageId: RSEPackageId;
+}
+
+function summarizeSeedArchetype(
+  archetype: RSESeedArchetype,
+): RSESeedArchetypeSummary {
+  return {
+    country: archetype.country,
+    category: archetype.category,
+    name: archetype.name,
+    pvKwp: simulatedPvKwp(archetype.simulated),
+  };
 }
 
 /** Row shape for public.rse_cache_versions (snake_case to match the table). */
@@ -149,7 +168,7 @@ export interface RSEGeneratedSeed {
 }
 
 export interface RSESeedTargetFailure {
-  target: RSESeedTarget;
+  target: { archetype: RSESeedArchetypeSummary; packageId: RSEPackageId };
   targetKey: string;
   targetIndex: number;
   targetTotal: number;
@@ -178,7 +197,7 @@ export interface RSESeedRunMetadata {
   cacheVersion: string;
   targetFingerprint: string;
   packageIds: RSEPackageId[];
-  archetypes: RSESeedArchetype[];
+  archetypes: RSESeedArchetypeSummary[];
   forecastingBaseUrl: string | null;
   generatedAt: string;
   checkpointSchemaVersion: 1;
@@ -414,7 +433,10 @@ async function generateRSECacheSeedRun(params: {
     } catch (error) {
       const seedError = toSeedError(error);
       const failure: RSESeedTargetFailure = {
-        target,
+        target: {
+          archetype: summarizeSeedArchetype(target.archetype),
+          packageId: target.packageId,
+        },
         targetKey: key,
         targetIndex,
         targetTotal,
@@ -601,11 +623,7 @@ async function generateSeedEntryForTarget(params: {
     measureIds,
   });
   const ecmParams = {
-    ...buildECMParams(measureIds, {
-      kind: "archetype",
-      archetype: params.target.archetype,
-      roofArea: params.target.archetype.roofArea,
-    }),
+    ...buildECMParams(measureIds, params.target.archetype.simulated),
     include_baseline: false,
   };
   params.logger.debug(
@@ -615,7 +633,7 @@ async function generateSeedEntryForTarget(params: {
       measureIds,
       includeBaseline: false,
       source: "archetype",
-      roofArea: params.target.archetype.roofArea,
+      pvKwp: simulatedPvKwp(params.target.archetype.simulated),
     },
   );
   const baseline = await params.loadBaseline(params.target, params.logger);
@@ -675,7 +693,6 @@ function createBaselineLoader(
         {
           baselineOnly: true,
           source: "archetype",
-          roofArea: target.archetype.roofArea,
         },
       );
       const response = await forecastingClient.simulateECM(
@@ -1448,7 +1465,7 @@ function buildRunState(params: {
       cacheVersion: params.cacheVersion,
       targetFingerprint: targetFingerprint(params.targets),
       packageIds: params.packageIds,
-      archetypes: params.archetypes,
+      archetypes: params.archetypes.map(summarizeSeedArchetype),
       forecastingBaseUrl: sanitizeServiceUrl(params.forecastingBaseUrl ?? ""),
       generatedAt: params.generatedAt,
       checkpointSchemaVersion: 1,
@@ -1744,9 +1761,6 @@ export async function resolveSeedArchetypes(
 
       const details = await forecastingClient.getArchetypeDetails(archetype);
       const floorArea = readPath(details.bui, "building.net_floor_area");
-      const roofArea = Array.isArray(readPath(details.bui, "building_surface"))
-        ? surfaceAreasFromBui(details.bui as BuildingPayload).roofM2
-        : 0;
 
       // RSE scales cached output by this area, so it must be positive.
       if (
@@ -1758,7 +1772,20 @@ export async function resolveSeedArchetypes(
           `Forecasting archetype ${archetype.country}/${archetype.category}/${archetype.name} is missing a positive bui.building.net_floor_area`,
         );
       }
-      if (!(roofArea > 0)) {
+      // Whole archetype: the modeled area is its own, so the factor is 1.
+      const simulated: SimulatedBuilding = {
+        archetype: {
+          country: archetype.country,
+          category: archetype.category,
+          name: archetype.name,
+        },
+        bui: details.bui as BuildingPayload,
+        modeledFloorArea: floorArea,
+      };
+      const pvKwp = Array.isArray(readPath(details.bui, "building_surface"))
+        ? simulatedPvKwp(simulated)
+        : null;
+      if (pvKwp === null) {
         throw new Error(
           `Forecasting archetype ${archetype.country}/${archetype.category}/${archetype.name} has no roof surface in bui.building_surface`,
         );
@@ -1766,19 +1793,19 @@ export async function resolveSeedArchetypes(
 
       logger.debug(
         "archetypes.details.success",
-        "Resolved archetype roof area",
+        "Resolved archetype PV array",
         {
           country: archetype.country,
           category: archetype.category,
           name: archetype.name,
-          roofArea,
+          pvKwp,
           elapsedMs: Date.now() - startedAt,
         },
       );
 
       return {
         ...archetype,
-        roofArea,
+        simulated,
       };
     }),
   );

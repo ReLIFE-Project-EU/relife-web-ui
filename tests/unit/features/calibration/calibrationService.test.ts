@@ -1,6 +1,10 @@
 import { expect, test, vi } from "vitest";
 import type { ArchetypeInfo } from "../../../../src/types/forecasting";
-import type { ArchetypeDetails } from "../../../../src/types/archetype";
+import type {
+  ArchetypeDetails,
+  BuildingPayload,
+} from "../../../../src/types/archetype";
+import { ArchetypeMatchStrategy } from "../../../../src/services/archetypeMatching";
 import { BUILDING_CASES } from "../../../../src/features/calibration/referenceCases";
 import {
   runCalibration,
@@ -35,8 +39,14 @@ function services() {
           primaryEnergy: 15000,
           flexibilityIndex: 50,
           comfortIndex: 50,
-          archetypeFloorArea: 250,
-          roofArea: 125,
+          simulated: {
+            archetype: { category: "SFH", country: "Italy", name: "IT_SFH" },
+            bui: {
+              building: { net_floor_area: 250 },
+            } as unknown as BuildingPayload,
+            modeledFloorArea: 250,
+          },
+          matchStrategy: ArchetypeMatchStrategy.USER_SELECTED,
         },
         baselineSimulation: {
           scenario_id: "baseline",

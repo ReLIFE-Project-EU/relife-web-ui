@@ -7,9 +7,7 @@ import { useEffect } from "react";
 import { Alert, Box, Divider, Flex, Stack, Text, Title } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { EnergyTariffPanel } from "../../../../components/shared/EnergyTariffPanel";
-import { isApartmentLikeCategory } from "../../../../constants/buildingFormOptions";
 import { estimatePackageEmbodiedCarbon } from "../../../../services/embodiedCarbon";
-import { modeledPvKwp } from "../../../../services/pvConfig";
 import { auditLog } from "../../../../utils/auditLogger";
 import { errorMessage } from "../../../../utils/errorMessage";
 import { LineageLink } from "../../../lineage";
@@ -27,7 +25,7 @@ import { ErrorAlert, StepNavigation } from "../shared";
 
 export function EnergyRenovationStep() {
   const { state, dispatch } = useHomeAssistant();
-  const { building, financial, renovation } = useHomeAssistantServices();
+  const { financial, renovation } = useHomeAssistantServices();
 
   const selectedMeasures = state.renovation.selectedMeasures;
   const suggestedPackages = state.suggestedPackages;
@@ -95,25 +93,15 @@ export function EnergyRenovationStep() {
       );
 
       // Material carbon rides along with the scenarios so ranking eligibility
-      // sees it, from the same geometry and apartment scaling as the cost lookup.
-      const pvKwp = modeledPvKwp(state.estimation, state.building.floorArea);
-      const embodiedCarbon = await Promise.all(
-        evaluated.map((scenario) =>
-          scenario.measureIds.length === 0
-            ? null
-            : estimatePackageEmbodiedCarbon(
-                {
-                  estimation: state.estimation,
-                  floorArea: state.building.floorArea,
-                  pvKwp,
-                  measureIds: scenario.measureIds,
-                  scaleEnvelopeToFloorArea: isApartmentLikeCategory(
-                    state.building.buildingType,
-                  ),
-                },
-                { building },
-              ),
-        ),
+      // sees it, from the same simulated-building share as the cost lookup.
+      const simulated = state.estimation.simulated;
+      const embodiedCarbon = evaluated.map((scenario) =>
+        scenario.measureIds.length === 0
+          ? null
+          : estimatePackageEmbodiedCarbon({
+              simulated,
+              measureIds: scenario.measureIds,
+            }),
       );
 
       const scenarios = evaluated.map((scenario, index) => {

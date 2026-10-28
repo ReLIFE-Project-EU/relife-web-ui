@@ -72,8 +72,8 @@ vi.mock("../../../src/services/mock/data/renovationMeasures", () => ({
 
 import { RenovationService } from "../../../src/services/RenovationService";
 import { ArchetypeMatchStrategy } from "../../../src/services/archetypeMatching";
-import { buildECMParams } from "../../../src/services/renovationEcmParams";
 import { PV_DEFAULTS, pvKwpFromRoofArea } from "../../../src/services/pvConfig";
+import type { BuildingPayload } from "../../../src/types/archetype";
 import type {
   BuildingInfo,
   EstimationResult,
@@ -111,6 +111,8 @@ const mockBuilding: BuildingInfo = {
   floorNumber: null,
 };
 
+const ROOF_AREA = 80;
+
 const mockEstimation: EstimationResult = {
   annualEnergyNeeds: 15000,
   heatingCoolingNeeds: 15000,
@@ -122,14 +124,21 @@ const mockEstimation: EstimationResult = {
   deliveredTotal: 17000,
   carrierBreakdown: { naturalGasKwh: 15000, gridElectricityKwh: 2000 },
   primaryEnergy: 22000,
-  archetypeFloorArea: 100,
-  roofArea: 80,
-  archetype: {
-    category: "SFH",
-    country: "Greece",
-    name: "GR_SFH_1961_1980",
-    matchStrategy: ArchetypeMatchStrategy.EXACT_FULL,
+  simulated: {
+    archetype: {
+      category: "SFH",
+      country: "Greece",
+      name: "GR_SFH_1961_1980",
+    },
+    bui: {
+      building: { net_floor_area: 100 },
+      building_surface: [
+        { name: "Roof", type: "opaque", area: ROOF_AREA, sky_view_factor: 1 },
+      ],
+    } as unknown as BuildingPayload,
+    modeledFloorArea: 100,
   },
+  matchStrategy: ArchetypeMatchStrategy.EXACT_FULL,
 };
 
 /** The baseline now arrives from the energy estimate, not a second ECM call. */
@@ -822,7 +831,7 @@ describe("RenovationService", () => {
         name: "GR_SFH_1961_1980",
         use_pv: true,
         // Sized from the simulated roof, not the floor area.
-        pv_kwp: pvKwpFromRoofArea(mockEstimation.roofArea),
+        pv_kwp: pvKwpFromRoofArea(ROOF_AREA),
         pv_tilt_deg: PV_DEFAULTS.tiltDeg,
         pv_azimuth_deg: PV_DEFAULTS.azimuthDeg,
         pv_use_pvgis: PV_DEFAULTS.usePvgis,
@@ -895,20 +904,6 @@ describe("RenovationService", () => {
     expect(mockSimulateECM.mock.calls[2]?.[0]).not.toHaveProperty(
       "include_baseline",
     );
-  });
-
-  test("buildECMParams rejects PV without a simulated roof area", () => {
-    expect(() =>
-      buildECMParams(["pv"], {
-        kind: "archetype",
-        archetype: {
-          category: "SFH",
-          country: "Greece",
-          name: "GR_SFH_1961_1980",
-        },
-        roofArea: 0,
-      }),
-    ).toThrow("PV measure requires a simulated roof area");
   });
 
   test("evaluateScenarios credits PV self-consumption to delivered energy only", async () => {

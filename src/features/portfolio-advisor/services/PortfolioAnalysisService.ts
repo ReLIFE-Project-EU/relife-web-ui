@@ -6,7 +6,6 @@
  */
 
 import type {
-  IBuildingService,
   IEnergyService,
   IFinancialService,
   IRenovationService,
@@ -15,7 +14,6 @@ import { normalizeSystemSelection } from "../../../services/measureNormalization
 import { packageUsesHeatingStopgap } from "../../../services/renovationActions";
 import { estimatePackageEmbodiedCarbon } from "../../../services/embodiedCarbon";
 import { lookupPackageCosts } from "../../../services/packageCostLookup";
-import { modeledPvKwp } from "../../../services/pvConfig";
 import { isApartmentLikeCategory } from "../../../constants/buildingFormOptions";
 import type {
   BuildingInfo,
@@ -44,20 +42,15 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
   private readonly energy: IEnergyService;
   private readonly renovation: IRenovationService;
   private readonly financial: IFinancialService;
-  // Narrow dependency: only archetype details are needed (for the cost lookup's
-  // envelope surface areas), so we don't take the whole IBuildingService.
-  private readonly building: Pick<IBuildingService, "getArchetypeDetails">;
 
   constructor(
     energy: IEnergyService,
     renovation: IRenovationService,
     financial: IFinancialService,
-    building: Pick<IBuildingService, "getArchetypeDetails">,
   ) {
     this.energy = energy;
     this.renovation = renovation;
     this.financial = financial;
-    this.building = building;
   }
 
   async analyzePortfolio(
@@ -268,22 +261,14 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       auditCtx,
     );
 
-    // Material carbon, from the same geometry the cost lookup below uses.
+    // Material carbon, from the same simulated-building share as the cost lookup below.
     for (const scenario of scenarios) {
       if (scenario.measureIds.length === 0) continue;
       scenario.embodiedCarbonKgCo2e =
-        (await estimatePackageEmbodiedCarbon(
-          {
-            estimation,
-            floorArea: building.floorArea,
-            pvKwp: modeledPvKwp(estimation, building.floorArea),
-            scaleEnvelopeToFloorArea: isApartmentLikeCategory(
-              building.propertyType,
-            ),
-            measureIds: scenario.measureIds,
-          },
-          { building: this.building },
-        )) ?? undefined;
+        estimatePackageEmbodiedCarbon({
+          simulated: estimation.simulated,
+          measureIds: scenario.measureIds,
+        }) ?? undefined;
     }
 
     // Step 3: Calculate financial results.
@@ -422,7 +407,7 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       {
         buildingId: building.id,
         country: building.country,
-        archetype: estimation.archetype?.name,
+        archetype: estimation.simulated.archetype.name,
         measureIds,
         projectLifetime,
       },
@@ -432,16 +417,11 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     const result = await lookupPackageCosts(
       {
         country: building.country,
-        estimation,
+        simulated: estimation.simulated,
         measureIds,
-        floorArea: building.floorArea,
-        pvKwp: modeledPvKwp(estimation, building.floorArea),
-        scaleEnvelopeToFloorArea: isApartmentLikeCategory(
-          building.propertyType,
-        ),
         projectLifetime,
       },
-      { building: this.building, financial: this.financial },
+      { financial: this.financial },
     );
 
     auditLog.info(
