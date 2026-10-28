@@ -35,3 +35,43 @@ _Avoid_: slab, ground slab (Forecasting's word, used only in its requests)
 **Area scale factor**:
 The modeled home's floor area divided by the simulated building's floor area; it scales energy, envelope and PV alike.
 _Avoid_: area ratio, scale ratio
+
+## Scenarios
+
+**Baseline**:
+The modeled home as it is today, simulated on the same engine as the renovation packages so their savings compare like with like.
+_Avoid_: current status, reference (the reference is the unmodified archetype)
+
+**Scenario energy**:
+The annual energy of one simulated scenario (baseline or renovation package), scaled to the modeled home: thermal need, delivered energy by carrier, primary energy, PV generation and indoor comfort.
+_Avoid_: estimation energy, ECM scaling
+
+## Energy flows
+
+**Thermal need**:
+The heat the rooms need added or removed in a year to hold the setpoints, before any equipment.
+_Avoid_: energy needs, demand
+
+**System electricity**:
+The electricity the heating and cooling systems use in a year, whatever its source.
+_Avoid_: delivered electricity, electric load
+
+**PV generation**:
+All the electricity the building's panels make in a year.
+_Avoid_: PV output, PV production
+
+**PV self-consumption**:
+The part of system electricity that the building's own PV covers at the same hour.
+
+**Grid import**:
+The part of system electricity that the building buys from the grid.
+
+**Grid export**:
+PV generation that the systems do not use at that hour and that goes to the grid; it does not reduce delivered energy.
+
+**Delivered energy**:
+The energy the building buys for heating and cooling: natural gas plus grid import.
+_Avoid_: delivered electricity (ambiguous)
+
+**Carrier**:
+The form in which delivered energy arrives: natural gas or grid electricity. PV self-consumption is not a carrier, because nobody delivers it.
