@@ -81,7 +81,6 @@ export const initialState: HomeAssistantState = {
   packageFinancialInputs: {},
   scenarios: [],
   financialResults: {} as Record<string, never>,
-  selectedFundingOption: "none",
   selectedPersona: "cost-optimization",
   mcdaRanking: null,
   isEstimating: false,
@@ -169,17 +168,6 @@ export function homeAssistantReducer(
     // ─────────────────────────────────────────────────────────────────────────
     // Building Info Updates
     // ─────────────────────────────────────────────────────────────────────────
-    case "UPDATE_BUILDING":
-      return {
-        ...state,
-        building: {
-          ...state.building,
-          [action.field]: action.value,
-        },
-        // Clear estimation when building info changes.
-        estimation: null,
-      };
-
     case "SET_BUILDING":
       return {
         ...state,
@@ -195,21 +183,6 @@ export function homeAssistantReducer(
         ...state,
         building: initialBuilding,
         estimation: null,
-      };
-
-    case "CLEAR_ACCEPTED_ARCHETYPE":
-      return {
-        ...state,
-        building: {
-          ...state.building,
-          selectedArchetype: undefined,
-          isModified: false,
-          modifications: undefined,
-          floorArea: null,
-          numberOfFloors: null,
-          apartmentLocation: undefined,
-          floorNumber: null,
-        },
       };
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -257,20 +230,6 @@ export function homeAssistantReducer(
         selectedPackageIds: [],
         packageFinancialInputs: {},
         // Clear evaluation results when selections change
-        ...clearedEvaluationResults,
-      };
-    }
-
-    case "SET_MEASURES": {
-      return {
-        ...state,
-        renovation: {
-          ...state.renovation,
-          selectedMeasures: action.measures,
-        },
-        suggestedPackages: [],
-        selectedPackageIds: [],
-        packageFinancialInputs: {},
         ...clearedEvaluationResults,
       };
     }
@@ -411,12 +370,6 @@ export function homeAssistantReducer(
     // ─────────────────────────────────────────────────────────────────────────
     // Results Interaction
     // ─────────────────────────────────────────────────────────────────────────
-    case "SELECT_FUNDING_OPTION":
-      return {
-        ...state,
-        selectedFundingOption: action.option,
-      };
-
     case "SELECT_PERSONA":
       return {
         ...state,
@@ -454,12 +407,6 @@ export function homeAssistantReducer(
     // ─────────────────────────────────────────────────────────────────────────
     case "RESET":
       return initialState;
-
-    case "CLEAR_ERROR":
-      return {
-        ...state,
-        error: null,
-      };
 
     default:
       return state;

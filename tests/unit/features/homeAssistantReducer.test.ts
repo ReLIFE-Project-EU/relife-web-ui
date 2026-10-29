@@ -4,14 +4,7 @@ import {
   homeAssistantReducer,
   initialState,
 } from "../../../src/features/home-assistant/context/homeAssistantReducer";
-import type { HomeAssistantState } from "../../../src/features/home-assistant/context/types";
-import { ArchetypeMatchStrategy } from "../../../src/services/archetypeMatching";
-import type { BuildingPayload } from "../../../src/types/archetype";
-import type {
-  EstimationResult,
-  RenovationPackage,
-} from "../../../src/types/renovation";
-import type { ScenarioEnergy } from "../../../src/services/scenarioEnergy";
+import type { RenovationPackage } from "../../../src/types/renovation";
 
 const packages: RenovationPackage[] = [
   {
@@ -174,8 +167,8 @@ describe("homeAssistantReducer package financial inputs", () => {
     };
 
     state = homeAssistantReducer(state, {
-      type: "SET_MEASURES",
-      measures: ["windows"],
+      type: "TOGGLE_MEASURE",
+      measureId: "windows",
     });
 
     expect(state.selectedPackageIds).toEqual([]);
@@ -275,110 +268,5 @@ describe("homeAssistantReducer package financial inputs", () => {
     expect(state.gasTariffEurPerKwh).toBe(0.12);
     expect(state.financialResults).toEqual({});
     expect(state.mcdaRanking).toBeNull();
-  });
-});
-
-const mockEstimation: EstimationResult = {
-  baseline: {
-    thermalNeed: 10_000,
-    heatingNeed: 8000,
-    coolingNeed: 500,
-  } as ScenarioEnergy,
-  flexibilityIndex: 50,
-  comfortIndex: 60,
-  simulated: {
-    archetype: { category: "SFH", country: "Greece", name: "GR_SFH" },
-    bui: { building: { net_floor_area: 120 } } as unknown as BuildingPayload,
-    modeledFloorArea: 120,
-  },
-  matchStrategy: ArchetypeMatchStrategy.USER_SELECTED,
-};
-
-describe("homeAssistantReducer CLEAR_ACCEPTED_ARCHETYPE", () => {
-  test("clears selected archetype, modifications, overrides, and apartment context", () => {
-    const state: HomeAssistantState = {
-      ...initialState,
-      building: {
-        ...initialState.building,
-        lat: 48.8566,
-        lng: 2.3522,
-        country: "France",
-        buildingType: "Single Family House",
-        constructionPeriod: "1971-1990",
-        tentativeArchetype: {
-          name: "ref-a",
-          category: "Single Family House",
-          country: "France",
-        },
-        selectedArchetype: {
-          name: "ref-a",
-          category: "Single Family House",
-          country: "France",
-        },
-        isModified: true,
-        modifications: { floorArea: 130 },
-        floorArea: 130,
-        numberOfFloors: 3,
-        apartmentLocation: "middle",
-        floorNumber: 1,
-      },
-      estimation: mockEstimation,
-    };
-
-    const next = homeAssistantReducer(state, {
-      type: "CLEAR_ACCEPTED_ARCHETYPE",
-    });
-
-    expect(next.building.selectedArchetype).toBeUndefined();
-    expect(next.building.isModified).toBe(false);
-    expect(next.building.modifications).toBeUndefined();
-    expect(next.building.floorArea).toBeNull();
-    expect(next.building.numberOfFloors).toBeNull();
-    expect(next.building.apartmentLocation).toBeUndefined();
-    expect(next.building.floorNumber).toBeNull();
-  });
-
-  test("preserves coordinates, search fields, tentative archetype, and estimation", () => {
-    const state: HomeAssistantState = {
-      ...initialState,
-      building: {
-        ...initialState.building,
-        lat: 48.8566,
-        lng: 2.3522,
-        country: "France",
-        buildingType: "Single Family House",
-        constructionPeriod: "1971-1990",
-        tentativeArchetype: {
-          name: "ref-a",
-          category: "Single Family House",
-          country: "France",
-        },
-        selectedArchetype: {
-          name: "ref-a",
-          category: "Single Family House",
-          country: "France",
-        },
-        isModified: false,
-        floorArea: 100,
-        numberOfFloors: 2,
-      },
-      estimation: mockEstimation,
-    };
-
-    const next = homeAssistantReducer(state, {
-      type: "CLEAR_ACCEPTED_ARCHETYPE",
-    });
-
-    expect(next.building.lat).toBe(48.8566);
-    expect(next.building.lng).toBe(2.3522);
-    expect(next.building.country).toBe("France");
-    expect(next.building.buildingType).toBe("Single Family House");
-    expect(next.building.constructionPeriod).toBe("1971-1990");
-    expect(next.building.tentativeArchetype).toEqual(
-      state.building.tentativeArchetype,
-    );
-    expect(next.building.floorArea).toBeNull();
-    expect(next.building.numberOfFloors).toBeNull();
-    expect(next.estimation).toEqual(mockEstimation);
   });
 });

@@ -71,7 +71,6 @@ export interface HomeAssistantState {
   // Screen 3 results
   scenarios: RenovationScenario[];
   financialResults: Record<ScenarioId, FinancialResults>; // keyed by scenario ID
-  selectedFundingOption: string;
   selectedPersona: string;
   mcdaRanking: MCDARankingResult[] | null;
 
@@ -95,12 +94,9 @@ export type HomeAssistantAction =
   | { type: "PREV_STEP" }
 
   // Building info updates
-  | { type: "UPDATE_BUILDING"; field: keyof BuildingInfo; value: unknown }
   | { type: "SET_BUILDING"; building: Partial<BuildingInfo> }
   /** Reset building to its initial empty state. */
   | { type: "RESET_BUILDING" }
-  /** Clear accepted archetype only; preserves search inputs, tentative match, and estimation. */
-  | { type: "CLEAR_ACCEPTED_ARCHETYPE" }
 
   // Estimation
   | { type: "START_ESTIMATION" }
@@ -109,7 +105,6 @@ export type HomeAssistantAction =
 
   // Renovation measure selections
   | { type: "TOGGLE_MEASURE"; measureId: RenovationMeasureId }
-  | { type: "SET_MEASURES"; measures: RenovationMeasureId[] }
   | {
       type: "SET_SUGGESTED_PACKAGES";
       packages: RenovationPackage[];
@@ -144,7 +139,6 @@ export type HomeAssistantAction =
   | { type: "EVALUATION_ERROR"; error: string }
 
   // Results interaction
-  | { type: "SELECT_FUNDING_OPTION"; option: string }
   | { type: "SELECT_PERSONA"; persona: string }
 
   // MCDA ranking
@@ -153,5 +147,4 @@ export type HomeAssistantAction =
   | { type: "RANKING_ERROR"; error: string }
 
   // Reset
-  | { type: "RESET" }
-  | { type: "CLEAR_ERROR" };
+  | { type: "RESET" };
