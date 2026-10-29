@@ -70,34 +70,10 @@ export interface BuildingInfo {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface EstimationResult {
-  annualEnergyNeeds: number; // kWh/year (HVAC demand, API-derived)
-  heatingCoolingNeeds: number; // kWh/year (HVAC demand, API-derived)
-  /**
-   * Annual ideal heating thermal demand in kWh/year.
-   * Derived directly from Q_H_total in the Forecasting API simulation response.
-   * This is the ideal thermal load, NOT delivered energy — actual consumption
-   * depends on system efficiency (e.g. heat pump COP, boiler efficiency).
-   */
-  heatingDemand: number; // kWh/year (API-derived)
-  /**
-   * Annual ideal cooling thermal demand in kWh/year.
-   * Derived directly from Q_C_total in the Forecasting API simulation response.
-   * This is the ideal thermal load, NOT delivered energy.
-   */
-  coolingDemand: number; // kWh/year (API-derived)
+  /** The modeled home today; the "current" scenario reuses it. */
+  baseline: import("../services/scenarioEnergy").ScenarioEnergy;
   flexibilityIndex: number; // 0-100
   comfortIndex: number; // 0-100
-
-  // Total annual HVAC energy consumption of the building in its current (pre-renovation) state.
-  // Named "Consumption" to distinguish it from savings, which are computed in FinancialService
-  // by subtracting the renovated scenario's annualEnergyNeeds from this value.
-  annualEnergyConsumption: number; // kWh/year
-  /** UNI/TS 11300 combined HVAC delivered energy, when available. */
-  deliveredTotal?: number;
-  /** Carrier split for delivered energy, when available. */
-  carrierBreakdown?: DeliveredEnergyCarrierBreakdown;
-  /** UNI/TS 11300 total primary energy, when available. */
-  primaryEnergy?: number;
 
   /**
    * Notices returned during validation of a modified archetype.
@@ -105,19 +81,8 @@ export interface EstimationResult {
    */
   validationNotes?: string[];
 
-  /**
-   * Reference simulation for the original archetype.
-   * Present when the user estimated an adjusted archetype.
-   */
-  referenceEstimation?: {
-    annualEnergyNeeds: number;
-    heatingCoolingNeeds: number;
-    flexibilityIndex: number;
-    comfortIndex: number;
-    deliveredTotal?: number;
-    carrierBreakdown?: DeliveredEnergyCarrierBreakdown;
-    primaryEnergy?: number;
-  };
+  /** The unmodified archetype's baseline, present for an adjusted archetype. */
+  referenceBaseline?: import("../services/scenarioEnergy").ScenarioEnergy;
 
   /** The building Forecasting ran and the modeled home it stands for. */
   simulated: import("../services/simulatedBuilding").SimulatedBuilding;

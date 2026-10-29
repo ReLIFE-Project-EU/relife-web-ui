@@ -188,19 +188,7 @@ describe("extractUniTotals", () => {
     });
   });
 
-  test("rejects heat-pump-adjusted results by default", () => {
-    const uniResults: UNI11300Results = {
-      heat_pump_applied: true,
-      summary: {
-        E_delivered_electric_total_kWh: 900,
-        EP_total_kWh: 1800,
-      },
-    };
-
-    expect(extractUniTotals(uniResults)).toBeUndefined();
-  });
-
-  test("allows heat-pump-adjusted results when explicitly enabled", () => {
+  test("zeroes thermal delivery for heat-pump-adjusted results", () => {
     const uniResults: UNI11300Results = {
       heat_pump_applied: true,
       summary: {
@@ -211,7 +199,7 @@ describe("extractUniTotals", () => {
       },
     };
 
-    expect(extractUniTotals(uniResults, { allowHeatPump: true })).toEqual({
+    expect(extractUniTotals(uniResults)).toEqual({
       deliveredTotal: 900,
       primaryEnergy: 1800,
       heatPumpCop: 3.2,

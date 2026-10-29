@@ -141,13 +141,9 @@ export const RSE_RANKING_WEIGHTS = {
 } as const;
 
 export const RSE_FORECASTING_CO2_FIELD_PATHS = {
+  uniResults: "primary_energy_uni11300",
   thermalKwh: "primary_energy_uni11300.summary.E_delivered_thermal_kWh",
   electricTotalKwh:
     "primary_energy_uni11300.summary.E_delivered_electric_total_kWh",
-  electricHeatFallbackKwh:
-    "primary_energy_uni11300.summary.E_delivered_electric_heat_kWh",
-  electricCoolFallbackKwh:
-    "primary_energy_uni11300.summary.E_delivered_electric_cool_kWh",
   pvSelfConsumptionKwh: "pv_hp.summary.annual_kwh.self_consumption",
-  pvGridImportKwh: "pv_hp.summary.annual_kwh.grid_import",
 } as const;

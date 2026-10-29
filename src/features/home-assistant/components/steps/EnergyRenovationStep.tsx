@@ -74,7 +74,7 @@ export function EnergyRenovationStep() {
   };
 
   const handleEvaluate = async () => {
-    if (!state.estimation || !state.baselineSimulation) return;
+    if (!state.estimation) return;
 
     dispatch({ type: "START_EVALUATION" });
     const auditCtx = auditLog.current() ?? undefined;
@@ -87,7 +87,6 @@ export function EnergyRenovationStep() {
       const evaluated = await renovation.evaluateScenarios(
         state.building,
         state.estimation,
-        state.baselineSimulation,
         selectedPackages,
         auditCtx,
       );

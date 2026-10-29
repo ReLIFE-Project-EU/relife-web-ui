@@ -119,7 +119,7 @@ function buildRowVms(
       const renovated = renovatedOf(result);
       const fr = result.financialResults;
       const availability = resolveSavingsAvailability(renovated, fr);
-      const energyBefore = result.estimation?.annualEnergyNeeds;
+      const energyBefore = result.estimation?.baseline.thermalNeed;
       const energyAfter = renovated?.annualEnergyNeeds;
       const energyReduction = getEnergyReduction(energyBefore, energyAfter);
       // A skipped appraisal leaves placeholder zeros, which would sort as real.

@@ -73,7 +73,6 @@ export const initialState: HomeAssistantState = {
   currentStep: 0,
   building: initialBuilding,
   estimation: null,
-  baselineSimulation: null,
   renovation: initialRenovation,
   funding: initialFunding,
   gasTariffEurPerKwh: ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
@@ -177,10 +176,8 @@ export function homeAssistantReducer(
           ...state.building,
           [action.field]: action.value,
         },
-        // Clear estimation when building info changes. The baseline goes with
-        // it: the two come from one run and must never outlive each other.
+        // Clear estimation when building info changes.
         estimation: null,
-        baselineSimulation: null,
       };
 
     case "SET_BUILDING":
@@ -191,7 +188,6 @@ export function homeAssistantReducer(
           ...action.building,
         },
         estimation: null,
-        baselineSimulation: null,
       };
 
     case "RESET_BUILDING":
@@ -199,7 +195,6 @@ export function homeAssistantReducer(
         ...state,
         building: initialBuilding,
         estimation: null,
-        baselineSimulation: null,
       };
 
     case "CLEAR_ACCEPTED_ARCHETYPE":
@@ -231,7 +226,6 @@ export function homeAssistantReducer(
       return {
         ...state,
         estimation: action.result,
-        baselineSimulation: action.baselineSimulation,
         isEstimating: false,
         error: null,
       };

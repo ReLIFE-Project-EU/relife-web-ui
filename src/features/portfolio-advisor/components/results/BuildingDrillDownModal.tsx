@@ -98,7 +98,7 @@ export function BuildingDrillDownModal({
   const embodiedCarbonKg = renovated?.embodiedCarbonKgCo2e;
 
   const energyReduction = getEnergyReduction(
-    result?.estimation?.annualEnergyNeeds,
+    result?.estimation?.baseline.thermalNeed,
     renovated?.annualEnergyNeeds,
   );
 

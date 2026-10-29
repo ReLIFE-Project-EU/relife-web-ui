@@ -99,17 +99,18 @@ export function energyIntensities(
       throw new Error("Simulation returned a non-finite energy value.");
     return value / floorArea;
   };
+  const { baseline } = estimation;
   return {
-    heating: perArea(estimation.heatingDemand),
-    cooling: perArea(estimation.coolingDemand),
+    heating: perArea(baseline.heatingNeed),
+    cooling: perArea(baseline.coolingNeed),
     delivered:
-      estimation.deliveredTotal === undefined
+      baseline.deliveredTotal === undefined
         ? undefined
-        : perArea(estimation.deliveredTotal),
+        : perArea(baseline.deliveredTotal),
     primary:
-      estimation.primaryEnergy === undefined
+      baseline.primaryEnergy === undefined
         ? undefined
-        : perArea(estimation.primaryEnergy),
+        : perArea(baseline.primaryEnergy),
   };
 }
 
@@ -218,7 +219,7 @@ export async function runCalibration(
             "Reference floor area must be positive to run the simulation.",
           );
         }
-        const { estimation } = await services.energy.estimateEPC(
+        const estimation = await services.energy.estimateEPC(
           buildingInput(loadedDetails, reference.period),
         );
         return energyIntensities(estimation, loadedDetails.floorArea);

@@ -29,9 +29,9 @@ export function EnergyMixDisplay() {
     return null;
   }
 
-  const { heatingDemand, coolingDemand, heatingCoolingNeeds } = estimation;
+  const { heatingNeed, coolingNeed, thermalNeed } = estimation.baseline;
 
-  if (!Number.isFinite(heatingDemand) || !Number.isFinite(coolingDemand)) {
+  if (!Number.isFinite(heatingNeed) || !Number.isFinite(coolingNeed)) {
     return null;
   }
 
@@ -50,19 +50,19 @@ export function EnergyMixDisplay() {
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
           <DemandSection
             title="Heating Demand"
-            value={heatingDemand}
+            value={heatingNeed}
             icon={<IconFlame size={16} color="var(--mantine-color-orange-6)" />}
           />
           <DemandSection
             title="Cooling Demand"
-            value={coolingDemand}
+            value={coolingNeed}
             icon={
               <IconSnowflake size={16} color="var(--mantine-color-blue-5)" />
             }
           />
           <DemandSection
             title="Total HVAC Demand"
-            value={heatingCoolingNeeds}
+            value={thermalNeed}
             icon={<IconFlame size={16} color="var(--mantine-color-gray-6)" />}
           />
         </SimpleGrid>

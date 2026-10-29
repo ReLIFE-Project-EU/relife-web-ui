@@ -7,19 +7,14 @@ function makeScenarioResults(params: {
   electricTotalKwh?: number;
   electricHeatFallbackKwh?: number;
   electricCoolFallbackKwh?: number;
-  pvGridImportKwh?: number;
   pvSelfConsumptionKwh?: number;
 }): unknown {
   const pvHp =
-    params.pvGridImportKwh === undefined &&
     params.pvSelfConsumptionKwh === undefined
       ? undefined
       : {
           summary: {
-            annual_kwh: {
-              grid_import: params.pvGridImportKwh,
-              self_consumption: params.pvSelfConsumptionKwh,
-            },
+            annual_kwh: { self_consumption: params.pvSelfConsumptionKwh },
           },
         };
 
@@ -63,11 +58,10 @@ describe("mapForecastingEnergyToEmissionScenarios", () => {
     });
   });
 
-  test("PV present: thermal + grid_import + self_consumption + residual electric to grid", () => {
+  test("PV present: grid gets system electricity minus self-consumption", () => {
     const results = makeScenarioResults({
       thermalKwh: 500,
       electricTotalKwh: 400,
-      pvGridImportKwh: 250,
       pvSelfConsumptionKwh: 100,
     });
 
@@ -86,7 +80,6 @@ describe("mapForecastingEnergyToEmissionScenarios", () => {
     expect(inputs[1]).toEqual({
       name: "renovated:grid-electricity",
       energy_source: "grid_electricity",
-      // grid_import (250) + residual (400 - 100 - 250 = 50)
       annual_consumption_kwh: 300,
       country: "IT",
     });

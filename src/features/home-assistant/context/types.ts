@@ -11,7 +11,6 @@
  * - [ ] Technical API: MCDA pillar endpoint integration
  */
 
-import type { ECMScenario } from "../../../types/forecasting";
 import type {
   BuildingInfo,
   FinancialResults,
@@ -60,8 +59,6 @@ export interface HomeAssistantState {
 
   // Screen 1 -> 2 results
   estimation: EstimationResult | null;
-  /** Baseline from the same run as `estimation`; feeds the renovation comparison. */
-  baselineSimulation: ECMScenario | null;
 
   // Screen 2 selections
   renovation: RenovationSelections;
@@ -107,11 +104,7 @@ export type HomeAssistantAction =
 
   // Estimation
   | { type: "START_ESTIMATION" }
-  | {
-      type: "SET_ESTIMATION";
-      result: EstimationResult;
-      baselineSimulation: ECMScenario;
-    }
+  | { type: "SET_ESTIMATION"; result: EstimationResult }
   | { type: "ESTIMATION_ERROR"; error: string }
 
   // Renovation measure selections

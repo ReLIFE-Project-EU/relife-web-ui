@@ -11,6 +11,7 @@ import {
   type CalibrationServices,
   type CalibrationUpdate,
 } from "../../../../src/features/calibration/services/calibrationService";
+import type { ScenarioEnergy } from "../../../../src/services/scenarioEnergy";
 
 function services() {
   return {
@@ -29,32 +30,23 @@ function services() {
     },
     energy: {
       estimateEPC: vi.fn(async () => ({
-        estimation: {
-          annualEnergyNeeds: 11000,
-          heatingCoolingNeeds: 11000,
-          annualEnergyConsumption: 12000,
-          heatingDemand: 10000,
-          coolingDemand: 1000,
+        baseline: {
+          thermalNeed: 11000,
+          heatingNeed: 10000,
+          coolingNeed: 1000,
           deliveredTotal: 12000,
           primaryEnergy: 15000,
-          flexibilityIndex: 50,
-          comfortIndex: 50,
-          simulated: {
-            archetype: { category: "SFH", country: "Italy", name: "IT_SFH" },
-            bui: {
-              building: { net_floor_area: 250 },
-            } as unknown as BuildingPayload,
-            modeledFloorArea: 250,
-          },
-          matchStrategy: ArchetypeMatchStrategy.USER_SELECTED,
+        } as ScenarioEnergy,
+        flexibilityIndex: 50,
+        comfortIndex: 50,
+        simulated: {
+          archetype: { category: "SFH", country: "Italy", name: "IT_SFH" },
+          bui: {
+            building: { net_floor_area: 250 },
+          } as unknown as BuildingPayload,
+          modeledFloorArea: 250,
         },
-        baselineSimulation: {
-          scenario_id: "baseline",
-          description: "Baseline",
-          elements: [],
-          u_values: { wall: null, roof: null, window: null, slab: null },
-          results: { hourly_building: {}, annual_building: [] },
-        },
+        matchStrategy: ArchetypeMatchStrategy.USER_SELECTED,
       })),
     },
     financial: {

@@ -27,7 +27,6 @@ import type {
   RiskAssessmentPointForecasts,
   ScenarioId,
 } from "../types/renovation";
-import type { ECMScenario } from "../types/forecasting";
 import type { RenovationAction } from "../types/financial";
 import type { APIPropertyType, OutputLevel } from "../utils/apiMappings";
 import type { AuditCtx } from "../utils/auditLogger";
@@ -136,15 +135,6 @@ export interface IBuildingService {
 //   POST /project -> PUT /building -> PUT /plant -> POST /simulate -> GET /epc
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * One ECM baseline run, shaped two ways: the estimate for display and the raw
- * scenario so the renovation comparison does not have to simulate it again.
- */
-export interface EstimationOutcome {
-  estimation: EstimationResult;
-  baselineSimulation: ECMScenario;
-}
-
 export interface IEnergyService {
   /**
    * Estimate EPC and energy consumption based on building characteristics.
@@ -162,7 +152,7 @@ export interface IEnergyService {
   estimateEPC(
     building: BuildingInfo,
     auditCtx?: AuditCtx,
-  ): Promise<EstimationOutcome>;
+  ): Promise<EstimationResult>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -271,7 +261,6 @@ export interface IRenovationService {
   evaluateScenarios(
     building: BuildingInfo,
     estimation: EstimationResult,
-    baselineSimulation: ECMScenario,
     packages: RenovationPackage[],
     auditCtx?: AuditCtx,
   ): Promise<RenovationScenario[]>;

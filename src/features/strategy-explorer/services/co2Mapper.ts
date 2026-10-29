@@ -4,6 +4,8 @@ import {
   RSE_MVP_THERMAL_EMISSION_SOURCE,
 } from "../constants.ts";
 import type { RSEEmissionScenarioInput } from "../types";
+import type { UNI11300Results } from "../../../types/forecasting";
+import { splitCarriers } from "../../../services/scenarioEnergy.ts";
 import { resolveEmissionFactorCountry } from "../../../utils/emissionFactorCountry.ts";
 
 /**
@@ -65,7 +67,7 @@ function readRequiredNumber(source: unknown, path: string): number {
  *   `/calculate`.
  *
  * @throws When the required thermal UNI field is missing or not a finite
- *   number.
+ *   number, or the summary yields no carrier split.
  * @throws When an emitted `energy_source` is not in
  *   `RSE_EMISSION_ENERGY_SOURCES`.
  */
@@ -76,63 +78,43 @@ export function mapForecastingEnergyToEmissionScenarios(
   const country = resolveEmissionFactorCountry(options.archetypeCountry);
   const prefix = options.scenarioNamePrefix;
 
-  const thermalKwh = readRequiredNumber(
+  // The cache must record thermal energy, even as zero; the split reads a
+  // missing value as zero.
+  readRequiredNumber(
     scenarioResults,
     RSE_FORECASTING_CO2_FIELD_PATHS.thermalKwh,
   );
-
-  const electricHeatFallbackKwh =
+  const pvSelfConsumptionKwh =
     readOptionalNumber(
       scenarioResults,
-      RSE_FORECASTING_CO2_FIELD_PATHS.electricHeatFallbackKwh,
+      RSE_FORECASTING_CO2_FIELD_PATHS.pvSelfConsumptionKwh,
     ) ?? 0;
-
-  const electricCoolFallbackKwh =
-    readOptionalNumber(
-      scenarioResults,
-      RSE_FORECASTING_CO2_FIELD_PATHS.electricCoolFallbackKwh,
-    ) ?? 0;
-
-  const electricTotalKwh =
-    readOptionalNumber(
-      scenarioResults,
-      RSE_FORECASTING_CO2_FIELD_PATHS.electricTotalKwh,
-    ) ?? electricHeatFallbackKwh + electricCoolFallbackKwh;
-
-  const pvSelfConsumption = readOptionalNumber(
-    scenarioResults,
-    RSE_FORECASTING_CO2_FIELD_PATHS.pvSelfConsumptionKwh,
+  const carriers = splitCarriers(
+    readPath(scenarioResults, RSE_FORECASTING_CO2_FIELD_PATHS.uniResults) as
+      | UNI11300Results
+      | undefined,
+    pvSelfConsumptionKwh,
   );
-
-  const pvGridImport = readOptionalNumber(
-    scenarioResults,
-    RSE_FORECASTING_CO2_FIELD_PATHS.pvGridImportKwh,
-  );
-
-  const hasPvData =
-    pvSelfConsumption !== undefined || pvGridImport !== undefined;
-  const pvSelfConsumptionKwh = pvSelfConsumption ?? 0;
-  const pvGridImportKwh = hasPvData
-    ? (pvGridImport ?? 0) +
-      Math.max(0, electricTotalKwh - pvSelfConsumptionKwh - (pvGridImport ?? 0))
-    : electricTotalKwh;
+  if (!carriers) {
+    throw new Error("UNI 11300 summary has no usable carrier figures");
+  }
 
   const inputs: RSEEmissionScenarioInput[] = [];
 
-  if (thermalKwh > 0) {
+  if (carriers.naturalGasKwh > 0) {
     inputs.push({
       name: `${prefix}:thermal`,
       energy_source: RSE_MVP_THERMAL_EMISSION_SOURCE,
-      annual_consumption_kwh: thermalKwh,
+      annual_consumption_kwh: carriers.naturalGasKwh,
       country,
     });
   }
 
-  if (pvGridImportKwh > 0) {
+  if (carriers.gridElectricityKwh > 0) {
     inputs.push({
       name: `${prefix}:grid-electricity`,
       energy_source: "grid_electricity",
-      annual_consumption_kwh: pvGridImportKwh,
+      annual_consumption_kwh: carriers.gridElectricityKwh,
       country,
     });
   }

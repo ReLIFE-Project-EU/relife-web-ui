@@ -65,7 +65,7 @@ const buildingExportColumns: CsvColumn<BuildingExportRow>[] = [
   {
     key: "thermalBefore",
     header: "Annual thermal needs before (kWh/year)",
-    value: (r) => r.result.estimation?.annualEnergyNeeds,
+    value: (r) => r.result.estimation?.baseline.thermalNeed,
   },
   {
     key: "thermalAfter",
@@ -77,7 +77,7 @@ const buildingExportColumns: CsvColumn<BuildingExportRow>[] = [
     header: "Energy reduction (%)",
     value: (r) =>
       getEnergyReduction(
-        r.result.estimation?.annualEnergyNeeds,
+        r.result.estimation?.baseline.thermalNeed,
         renovatedOf(r.result)?.annualEnergyNeeds,
       ),
   },

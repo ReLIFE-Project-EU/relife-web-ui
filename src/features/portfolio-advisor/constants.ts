@@ -21,9 +21,8 @@ export const PRA_DEFAULT_PROJECT_LIFETIME = 20;
 export const PRA_PACKAGE_ID = "renovated";
 
 /**
- * Scenario id of the re-simulated, unrenovated building. This, not the step-1
- * estimation, is what the Financial service prices savings against; the two
- * disagree materially on delivered energy.
+ * Scenario id of the baseline in the evaluated scenarios. It carries the
+ * baseline's emissions and DALY, which the step-1 estimate does not.
  */
 export const PRA_BASELINE_SCENARIO_ID = "current";
 

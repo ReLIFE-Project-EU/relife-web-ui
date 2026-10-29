@@ -16,7 +16,7 @@ export function EPCDisplay() {
     return null;
   }
 
-  const hasDeliveredConsumption = estimation.deliveredTotal !== undefined;
+  const { thermalNeed, deliveredTotal } = estimation.baseline;
 
   return (
     <Stack gap="lg">
@@ -36,19 +36,19 @@ export function EPCDisplay() {
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             <ConceptMetricCard
               conceptId="annual-building-thermal-needs"
-              value={formatEnergyPerYear(estimation.annualEnergyNeeds)}
+              value={formatEnergyPerYear(thermalNeed)}
             />
             <ConceptMetricCard
               conceptId="system-energy-consumption"
               value={
-                hasDeliveredConsumption
-                  ? formatEnergyPerYear(estimation.deliveredTotal!)
+                deliveredTotal !== undefined
+                  ? formatEnergyPerYear(deliveredTotal)
                   : "Not available"
               }
             />
           </SimpleGrid>
 
-          {!hasDeliveredConsumption && (
+          {deliveredTotal === undefined && (
             <Text size="sm" c="dimmed">
               System energy consumption is not available for this simulation
               yet, so only the building thermal-needs result is shown.

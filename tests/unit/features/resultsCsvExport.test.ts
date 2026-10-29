@@ -29,14 +29,8 @@ function building(id: string, name: string): PRABuilding {
 const successResult = {
   buildingId: "b1",
   status: "success",
-  estimation: {
-    annualEnergyNeeds: 20000,
-    deliveredTotal: 18000,
-  },
+  estimation: { baseline: { thermalNeed: 20000 } },
   scenarios: [
-    // The baseline is a re-simulation of the unrenovated building, and
-    // deliberately disagrees with `estimation.deliveredTotal` above: the
-    // exporter must price "before" against this, not against the estimate.
     {
       id: "current",
       annualEnergyNeeds: 20000,
@@ -125,8 +119,7 @@ describe("buildBuildingsCsv", () => {
     expect(cell(row, "ARV uplift (% - Greek market model)")).toBe("12.5");
   });
 
-  test("takes system energy before from the baseline run, not the estimate", () => {
-    // estimation.deliveredTotal is 18000; the "current" scenario says 17000.
+  test("takes system energy before from the baseline scenario", () => {
     expect(cell(dataRows[0], "System energy before (kWh/year)")).toBe("17000");
   });
 

@@ -24,15 +24,16 @@ import type {
   RenovationMeasureId,
   RenovationScenario,
 } from "../../../../src/types/renovation";
+import type { ScenarioEnergy } from "../../../../src/services/scenarioEnergy";
 
 const estimation: EstimationResult = {
-  annualEnergyNeeds: 15000,
-  heatingCoolingNeeds: 15000,
-  heatingDemand: 10000,
-  coolingDemand: 5000,
+  baseline: {
+    thermalNeed: 15000,
+    heatingNeed: 10000,
+    coolingNeed: 5000,
+  } as ScenarioEnergy,
   flexibilityIndex: 50,
   comfortIndex: 70,
-  annualEnergyConsumption: 15000,
   // One wall surface, so the cost lookup has at least one priceable action.
   simulated: {
     archetype: {
@@ -164,10 +165,7 @@ describe("PortfolioAnalysisService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockEstimateEPC.mockResolvedValue({
-      estimation,
-      baselineSimulation: { scenario_id: "baseline" },
-    });
+    mockEstimateEPC.mockResolvedValue(estimation);
     mockEstimatePackageCosts.mockResolvedValue({
       capex: 8000,
       annualMaintenanceCost: 150,
@@ -274,7 +272,6 @@ describe("PortfolioAnalysisService", () => {
       expect(mockEvaluateScenarios).toHaveBeenCalledWith(
         expect.any(Object),
         estimation,
-        expect.any(Object),
         [
           {
             id: "renovated",
@@ -327,7 +324,6 @@ describe("PortfolioAnalysisService", () => {
     expect(mockEvaluateScenarios).toHaveBeenCalledWith(
       expect.any(Object),
       estimation,
-      expect.any(Object),
       [
         {
           id: "renovated",
@@ -360,15 +356,12 @@ describe("PortfolioAnalysisService", () => {
       const share = floorArea / 1000;
       const ref = { ...estimation.simulated.archetype, category };
       mockEstimateEPC.mockResolvedValue({
-        estimation: {
-          ...estimation,
-          simulated: {
-            archetype: ref,
-            bui: wallOnlyBui(1000),
-            modeledFloorArea: floorArea,
-          },
+        ...estimation,
+        simulated: {
+          archetype: ref,
+          bui: wallOnlyBui(1000),
+          modeledFloorArea: floorArea,
         },
-        baselineSimulation: { scenario_id: "baseline" },
       });
       const runScenarios = scenarios.map((scenario) => ({ ...scenario }));
       mockEvaluateScenarios.mockResolvedValue(runScenarios);

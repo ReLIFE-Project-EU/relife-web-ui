@@ -94,7 +94,6 @@ export function resolveEpcRatingIntensity(
  */
 export function extractUniTotals(
   uniResults: UNI11300Results | undefined,
-  options?: { allowHeatPump?: boolean },
 ): ExtractedUniTotals | undefined {
   if (!uniResults) {
     return undefined;
@@ -102,14 +101,6 @@ export function extractUniTotals(
 
   const summary = uniResults.summary;
   if (!summary) {
-    return undefined;
-  }
-
-  if (
-    !options?.allowHeatPump &&
-    (uniResults.heat_pump_applied === true ||
-      summary.heat_pump_cop !== undefined)
-  ) {
     return undefined;
   }
 

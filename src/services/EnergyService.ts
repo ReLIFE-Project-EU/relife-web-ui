@@ -23,26 +23,16 @@ import type { ArchetypeInfo, ECMScenario } from "../types/forecasting";
 import type { BuildingInfo, EstimationResult } from "../types/renovation";
 import {
   DEFAULT_FLOOR_AREA,
-  calculateAnnualTotals,
-  extractUniTotals,
-  resolveEpcRatingIntensity,
   transformColumnarToRowFormat,
 } from "./energyUtils";
 import { buildECMParams } from "./renovationEcmParams";
+import { reduceEcmRun, type ScenarioEnergy } from "./scenarioEnergy";
 import {
   energyScaleFactor,
   simulatedFloorArea,
   type SimulatedBuilding,
 } from "./simulatedBuilding";
-import {
-  extractUniCarrierBreakdown,
-  scaleCarrierBreakdown,
-} from "./carrierSavingsService";
-import type {
-  IEnergyService,
-  IBuildingService,
-  EstimationOutcome,
-} from "./types";
+import type { IEnergyService, IBuildingService } from "./types";
 import {
   applyAllModifications,
   surfaceAreasFromBui,
@@ -545,7 +535,7 @@ export class EnergyService implements IEnergyService {
     matchStrategy: ArchetypeMatchStrategy;
     building: BuildingInfo;
     validationNotes?: string[];
-    referenceEstimation?: EstimationResult["referenceEstimation"];
+    referenceBaseline?: ScenarioEnergy;
     auditCtx?: AuditCtx;
   }): EstimationResult {
     const {
@@ -554,24 +544,20 @@ export class EnergyService implements IEnergyService {
       matchStrategy,
       building,
       validationNotes,
-      referenceEstimation,
+      referenceBaseline,
       auditCtx,
     } = params;
     const { archetype } = simulated;
     const archetypeArea = simulatedFloorArea(simulated);
-    const userArea = simulated.modeledFloorArea;
 
-    // ECM returns hourly data columnar; the rest of this method works on rows.
-    const hourlyData = transformColumnarToRowFormat(
-      simulationResponse.results?.hourly_building,
-    );
-    if (hourlyData.length === 0) {
+    if (
+      transformColumnarToRowFormat(simulationResponse.results?.hourly_building)
+        .length === 0
+    ) {
       throw new APIResponseError(
         "Simulation response has empty hourly building data array",
       );
     }
-
-    const annualData = calculateAnnualTotals(hourlyData);
 
     if (archetypeArea <= 0) {
       throw new APIResponseError(
@@ -580,45 +566,8 @@ export class EnergyService implements IEnergyService {
       );
     }
 
-    const heatingTotal = annualData.Q_H_total;
-    const coolingTotal = annualData.Q_C_total;
-    const hvacTotal = annualData.Q_HC_total || heatingTotal + coolingTotal;
-
-    const areaScaleFactor = energyScaleFactor(simulated);
-    const scaledHvacTotal = hvacTotal * areaScaleFactor;
-    const scaledHeating = heatingTotal * areaScaleFactor;
-    const scaledCooling = coolingTotal * areaScaleFactor;
-    const annualEnergyNeeds = scaledHvacTotal;
-    const uniTotals = extractUniTotals(
-      simulationResponse.results.primary_energy_uni11300,
-    );
-    const carrierBreakdown = scaleCarrierBreakdown(
-      extractUniCarrierBreakdown(
-        simulationResponse.results.primary_energy_uni11300,
-      ),
-      areaScaleFactor,
-    );
-    const scaledDeliveredTotal =
-      uniTotals !== undefined
-        ? uniTotals.deliveredTotal * areaScaleFactor
-        : undefined;
-    const scaledPrimaryEnergy =
-      uniTotals !== undefined
-        ? uniTotals.primaryEnergy * areaScaleFactor
-        : undefined;
-    // Intensity on the EPC rating basis (primary energy, falling back to
-    // delivered then thermal demand), kept for audit plausibility checks.
-    // See resolveEpcRatingIntensity.
-    const epcRating = resolveEpcRatingIntensity(
-      {
-        primaryEnergy: scaledPrimaryEnergy,
-        deliveredTotal: scaledDeliveredTotal,
-        annualEnergyNeeds: scaledHvacTotal,
-      },
-      userArea,
-    );
-    const energyIntensity = epcRating.intensity;
-
+    const baseline = reduceEcmRun(simulationResponse, simulated);
+    const { raw, scaled } = baseline.trace;
     const comfortIndex = calculateComfortIndex(building);
     const flexibilityIndex = calculateFlexibilityIndex(building);
 
@@ -633,25 +582,25 @@ export class EnergyService implements IEnergyService {
           country: archetype.country,
         },
         archetypeArea,
-        userArea,
-        areaScaleFactor,
+        userArea: simulated.modeledFloorArea,
+        areaScaleFactor: baseline.trace.areaScaleFactor,
         annualTotalsRaw: {
-          Q_H_total: heatingTotal,
-          Q_C_total: coolingTotal,
-          Q_HC_total: hvacTotal,
-          deliveredTotal: uniTotals?.deliveredTotal,
+          Q_H_total: raw.heating,
+          Q_C_total: raw.cooling,
+          Q_HC_total: raw.hvac,
+          deliveredTotal: raw.deliveredTotal,
         },
         scaled: {
-          heatingDemand: scaledHeating,
-          coolingDemand: scaledCooling,
-          hvacTotal: scaledHvacTotal,
-          deliveredTotal: scaledDeliveredTotal,
-          carrierBreakdown,
-          primaryEnergy: scaledPrimaryEnergy,
+          heatingDemand: scaled.heating,
+          coolingDemand: scaled.cooling,
+          hvacTotal: scaled.hvac,
+          deliveredTotal: scaled.deliveredTotal,
+          carrierBreakdown: scaled.carrierBreakdown,
+          primaryEnergy: scaled.primaryEnergy,
         },
-        energyIntensity,
-        uniTotalsAvailable: uniTotals !== undefined,
-        uniSummary: simulationResponse.results.primary_energy_uni11300?.summary,
+        energyIntensity: baseline.trace.epcIntensity,
+        uniTotalsAvailable: raw.deliveredTotal !== undefined,
+        uniSummary: baseline.trace.uniSummary,
         comfortIndex,
         flexibilityIndex,
         validationNoteCount: validationNotes?.length ?? 0,
@@ -660,37 +609,15 @@ export class EnergyService implements IEnergyService {
     );
 
     return {
-      annualEnergyNeeds: Math.round(annualEnergyNeeds),
-      heatingCoolingNeeds: Math.round(scaledHvacTotal),
-      heatingDemand: Math.round(scaledHeating),
-      coolingDemand: Math.round(scaledCooling),
+      baseline,
       flexibilityIndex: Math.round(flexibilityIndex),
       comfortIndex: Math.round(comfortIndex),
-      annualEnergyConsumption: Math.round(annualEnergyNeeds),
-      ...(scaledDeliveredTotal !== undefined
-        ? {
-            deliveredTotal: Math.round(scaledDeliveredTotal),
-            ...(carrierBreakdown !== undefined
-              ? {
-                  carrierBreakdown: {
-                    naturalGasKwh: Math.round(carrierBreakdown.naturalGasKwh),
-                    gridElectricityKwh: Math.round(
-                      carrierBreakdown.gridElectricityKwh,
-                    ),
-                  },
-                }
-              : {}),
-          }
-        : {}),
-      ...(scaledPrimaryEnergy !== undefined
-        ? { primaryEnergy: Math.round(scaledPrimaryEnergy) }
-        : {}),
       simulated,
       matchStrategy,
       ...(validationNotes && validationNotes.length > 0
         ? { validationNotes }
         : {}),
-      ...(referenceEstimation ? { referenceEstimation } : {}),
+      ...(referenceBaseline ? { referenceBaseline } : {}),
     };
   }
 
@@ -708,7 +635,7 @@ export class EnergyService implements IEnergyService {
   async estimateEPC(
     building: BuildingInfo,
     auditCtx?: AuditCtx,
-  ): Promise<EstimationOutcome> {
+  ): Promise<EstimationResult> {
     auditLog.info(
       "energy",
       "energy.estimate.start",
@@ -834,16 +761,17 @@ export class EnergyService implements IEnergyService {
           this.simulateArchetype(reference),
         ]);
 
-        const referenceEstimation = this.buildEstimationFromSimulation({
-          simulationResponse: referenceSimulation,
-          simulated: reference,
-          matchStrategy,
-          building: {
-            ...building,
-            floorArea: reference.modeledFloorArea,
-          },
-          auditCtx,
-        });
+        const { baseline: referenceBaseline } =
+          this.buildEstimationFromSimulation({
+            simulationResponse: referenceSimulation,
+            simulated: reference,
+            matchStrategy,
+            building: {
+              ...building,
+              floorArea: reference.modeledFloorArea,
+            },
+            auditCtx,
+          });
 
         const validationNotes = [
           ...validationResponse.bui_issues,
@@ -856,31 +784,24 @@ export class EnergyService implements IEnergyService {
           matchStrategy,
           building,
           validationNotes,
-          referenceEstimation: {
-            annualEnergyNeeds: referenceEstimation.annualEnergyNeeds,
-            heatingCoolingNeeds: referenceEstimation.heatingCoolingNeeds,
-            flexibilityIndex: referenceEstimation.flexibilityIndex,
-            comfortIndex: referenceEstimation.comfortIndex,
-            deliveredTotal: referenceEstimation.deliveredTotal,
-            primaryEnergy: referenceEstimation.primaryEnergy,
-          },
+          referenceBaseline,
           auditCtx,
         });
         auditLog.info(
           "energy",
           "energy.estimate.end",
           {
-            annualEnergyNeeds: result.annualEnergyNeeds,
-            heatingCoolingNeeds: result.heatingCoolingNeeds,
-            deliveredTotal: result.deliveredTotal,
-            primaryEnergy: result.primaryEnergy,
+            annualEnergyNeeds: result.baseline.thermalNeed,
+            heatingCoolingNeeds: result.baseline.thermalNeed,
+            deliveredTotal: result.baseline.deliveredTotal,
+            primaryEnergy: result.baseline.primaryEnergy,
             archetypeFloorArea: simulatedFloorArea(simulated),
             roofArea: surfaceAreasFromBui(simulated.bui).roofM2,
             modified: true,
           },
           auditCtx,
         );
-        return { estimation: result, baselineSimulation: customSimulation };
+        return result;
       }
 
       auditLog.debug(
@@ -912,17 +833,17 @@ export class EnergyService implements IEnergyService {
         "energy",
         "energy.estimate.end",
         {
-          annualEnergyNeeds: result.annualEnergyNeeds,
-          heatingCoolingNeeds: result.heatingCoolingNeeds,
-          deliveredTotal: result.deliveredTotal,
-          primaryEnergy: result.primaryEnergy,
+          annualEnergyNeeds: result.baseline.thermalNeed,
+          heatingCoolingNeeds: result.baseline.thermalNeed,
+          deliveredTotal: result.baseline.deliveredTotal,
+          primaryEnergy: result.baseline.primaryEnergy,
           archetypeFloorArea: simulatedFloorArea(simulated),
           roofArea: surfaceAreasFromBui(simulated.bui).roofM2,
           modified: false,
         },
         auditCtx,
       );
-      return { estimation: result, baselineSimulation: simulationResponse };
+      return result;
     } catch (error) {
       this.handleSimulationError(error);
     }

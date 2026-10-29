@@ -7,6 +7,7 @@ import type {
   BuildingInfo,
   EstimationResult,
 } from "../../../src/types/renovation";
+import type { ScenarioEnergy } from "../../../src/services/scenarioEnergy";
 
 function makeBuilding(overrides: Partial<BuildingInfo> = {}): BuildingInfo {
   return {
@@ -37,13 +38,9 @@ function makeEstimation(
   overrides: Partial<EstimationResult["simulated"]["archetype"]> = {},
 ): EstimationResult {
   return {
-    annualEnergyNeeds: 0,
-    heatingCoolingNeeds: 0,
-    heatingDemand: 0,
-    coolingDemand: 0,
+    baseline: { thermalNeed: 0 } as ScenarioEnergy,
     flexibilityIndex: 50,
     comfortIndex: 50,
-    annualEnergyConsumption: 0,
     simulated: {
       archetype: {
         category: "Single Family House",

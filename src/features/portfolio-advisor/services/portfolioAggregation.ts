@@ -52,20 +52,15 @@ export interface PortfolioPackageAggregate {
 }
 
 /**
- * A building's pre-renovation figures.
- *
- * Delivered energy and emissions come from the re-simulated baseline scenario
- * because that is what FinancialService prices the savings against; the two
- * sources disagree materially (~15% on delivered energy in a plain run), so a
- * chart built on the estimation would contradict the money beside it. Thermal
- * needs stay on the estimation, where the rest of the screen reads them, and
- * where the two sources agree. Resolved here so the split can later
- * be unified in one place.
+ * A building's pre-renovation figures. The estimate's baseline and the
+ * "current" scenario are the same reduction; emissions exist only on the
+ * scenario, and thermal need is read from the estimate so rejected buildings
+ * still report it.
  */
 function baselineFiguresOf(result: BuildingAnalysisResult) {
   const scenario = baselineScenarioOf(result);
   return {
-    thermalKwh: result.estimation?.annualEnergyNeeds,
+    thermalKwh: result.estimation?.baseline.thermalNeed,
     deliveredKwh: scenario?.deliveredTotal,
     emissionsTon: scenario?.annualEmissionsTonCo2e,
   };

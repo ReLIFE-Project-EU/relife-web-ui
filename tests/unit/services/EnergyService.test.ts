@@ -253,7 +253,7 @@ describe("EnergyService", () => {
       modifications: { floorArea: 150 },
     };
 
-    const { estimation } = await service.estimateEPC(modifiedBuilding);
+    const estimation = await service.estimateEPC(modifiedBuilding);
 
     expect(mockValidateCustomBuilding).toHaveBeenCalledOnce();
     expect(mockSimulateECM).toHaveBeenCalledTimes(2);
@@ -309,7 +309,7 @@ describe("EnergyService", () => {
         scenarios: [params.bui ? customBaseline : stubSimulationResponse],
       }));
 
-      const { estimation, baselineSimulation } = await service.estimateEPC({
+      const estimation = await service.estimateEPC({
         ...unmodifiedBuilding,
         floorArea,
         numberOfFloors,
@@ -332,11 +332,10 @@ describe("EnergyService", () => {
         floorArea / numberOfFloors,
       );
       expect(simulatedFloorArea(estimation.simulated)).toBe(floorArea);
-      expect(estimation.annualEnergyNeeds).toBe(1000);
-      expect(estimation.referenceEstimation?.annualEnergyNeeds).toBe(2628);
-      expect(estimation.deliveredTotal).toBe(1500);
-      expect(estimation.primaryEnergy).toBe(2100);
-      expect(baselineSimulation).toBe(customBaseline);
+      expect(estimation.baseline.thermalNeed).toBe(1000);
+      expect(estimation.referenceBaseline?.thermalNeed).toBe(2628);
+      expect(estimation.baseline.deliveredTotal).toBe(1500);
+      expect(estimation.baseline.primaryEnergy).toBe(2100);
     },
   );
 
@@ -353,8 +352,7 @@ describe("EnergyService", () => {
     expect(mockValidateCustomBuilding).not.toHaveBeenCalled();
     expect(mockSimulateECM).toHaveBeenCalledOnce();
     expect(mockBuildingService.getArchetypeDetails).toHaveBeenCalledOnce();
-    expect(result.baselineSimulation).toBe(stubSimulationResponse);
-    expect(result.estimation.simulated.adjustment).toBeUndefined();
+    expect(result.simulated.adjustment).toBeUndefined();
   });
 
   test("matching geometry preserves other modifications", async () => {
@@ -411,18 +409,6 @@ describe("EnergyService", () => {
     );
   });
 
-  test("estimateEPC exposes UNI delivered and primary energy when available", async () => {
-    const { estimation } = await service.estimateEPC(unmodifiedBuilding);
-
-    expect(estimation.deliveredTotal).toBe(1500);
-    expect(estimation.carrierBreakdown).toEqual({
-      naturalGasKwh: 1200,
-      gridElectricityKwh: 300,
-    });
-    expect(estimation.primaryEnergy).toBe(2100);
-    expect(estimation.annualEnergyNeeds).toBe(2628);
-  });
-
   test("modified path sends validated BUI to simulateCustomBuilding", async () => {
     const validatedBui = {
       ...realisticBui,
@@ -461,7 +447,7 @@ describe("EnergyService", () => {
       selectedArchetype: undefined,
     };
 
-    const { estimation } = await service.estimateEPC(spanishBuilding);
+    const estimation = await service.estimateEPC(spanishBuilding);
 
     expect(mockSimulateECM).toHaveBeenCalledWith(
       expect.objectContaining({

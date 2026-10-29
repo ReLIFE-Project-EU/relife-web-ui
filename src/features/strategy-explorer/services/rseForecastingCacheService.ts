@@ -215,9 +215,7 @@ function percentageSavings(baseline: number, savings: number): number {
 function extractSystemEnergyKwh(
   summary: Record<string, unknown>,
 ): number | undefined {
-  return extractUniTotals({ summary } as UNI11300Results, {
-    allowHeatPump: true,
-  })?.deliveredTotal;
+  return extractUniTotals({ summary } as UNI11300Results)?.deliveredTotal;
 }
 
 function isSystemOnlyPackage(

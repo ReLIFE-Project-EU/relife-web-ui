@@ -15,21 +15,7 @@ import type {
   RenovationScenario,
   ScenarioId,
 } from "../types/renovation";
-import {
-  calculateAnnualTotals,
-  computeComfortBandIndex,
-  computeDailyMeanOperativeTemperatures,
-  extractUniTotals,
-  resolveEpcRatingIntensity,
-  transformColumnarToRowFormat,
-} from "./energyUtils";
-import {
-  computeOperationalEmissionsTonCo2e,
-  extractUniCarrierBreakdown,
-  scaleCarrierBreakdown,
-  totalCarrierEnergyKwh,
-  type DeliveredEnergyCarrierBreakdown,
-} from "./carrierSavingsService";
+import { computeOperationalEmissionsTonCo2e } from "./carrierSavingsService";
 import { getCountryCode } from "../utils/countries";
 import {
   MEASURE_CATEGORIES,
@@ -41,8 +27,8 @@ import {
   MEASURE_TO_ELEMENT,
   PV_MEASURE_ID,
 } from "./renovationEcmParams";
+import { reduceEcmRun, type ScenarioEnergy } from "./scenarioEnergy";
 import {
-  energyScaleFactor,
   simulatedFloorArea,
   type SimulatedBuilding,
 } from "./simulatedBuilding";
@@ -71,31 +57,6 @@ const FORECASTING_SCENARIO_CONCURRENCY_LIMIT = 2;
 const DALY_THRESHOLD_PAIR = "COMFORT_PAIR_26_20" as const;
 const DALY_POPULATION_PERSONS = 1;
 const DALY_EXPOSURE_DAYS = 365;
-
-/**
- * Area-scaled energy figures extracted from a single ECM scenario result.
- * Shared by the baseline ("current") and the renovated package scenarios so
- * both are derived through the same ECM engine and stay comparable.
- */
-interface EcmScenarioEnergy {
-  scaledHvac: number;
-  /**
-   * Share of simulated hours (0–100) with operative temperature in the comfort
-   * band. Undefined when the simulation returned no usable T_op series.
-   */
-  comfortBandIndex?: number;
-  deliveredTotal?: number;
-  carrierBreakdown?: DeliveredEnergyCarrierBreakdown;
-  primaryEnergy?: number;
-  heatingPrimaryEnergy?: number;
-  coolingPrimaryEnergy?: number;
-  heatPumpCop?: number;
-  pvGeneration?: number;
-  pvSelfConsumption?: number;
-  pvGridExport?: number;
-  pvSelfConsumptionRate?: number;
-  pvSelfSufficiencyRate?: number;
-}
 
 export class RenovationService implements IRenovationService {
   /**
@@ -221,7 +182,6 @@ export class RenovationService implements IRenovationService {
   async evaluateScenarios(
     building: BuildingInfo,
     estimation: EstimationResult,
-    baselineSimulation: ECMScenario,
     packages: RenovationPackage[],
     auditCtx?: AuditCtx,
   ): Promise<RenovationScenario[]> {
@@ -231,7 +191,7 @@ export class RenovationService implements IRenovationService {
       {
         packageCount: packages.length,
         packageIds: packages.map((p) => p.id),
-        baselineDeliveredTotal: estimation.deliveredTotal,
+        baselineDeliveredTotal: estimation.baseline.deliveredTotal,
         archetype: {
           ...estimation.simulated.archetype,
           matchStrategy: estimation.matchStrategy,
@@ -242,13 +202,9 @@ export class RenovationService implements IRenovationService {
 
     // The baseline and the packages must come from the same engine, or
     // low-impact measures produce spurious negative savings.
-    const baseline = this.buildBaselineScenario(
-      estimation,
-      baselineSimulation,
-      auditCtx,
-    );
+    const baseline = this.buildBaselineScenario(estimation, auditCtx);
     const baselineDaly = await this.tryCalculateAnnualThermalDaly(
-      baselineSimulation,
+      estimation.baseline.dailyMeanOperativeTemperatures,
       auditCtx?.child({ scenarioId: "current" }),
     );
     if (baselineDaly !== undefined) {
@@ -452,14 +408,8 @@ export class RenovationService implements IRenovationService {
       throw new Error("ECM API did not return a valid renovated scenario");
     }
 
-    const energy = this.extractEcmScenarioEnergy(renovatedScenario, {
-      simulated: estimation.simulated,
-      allowHeatPump: renovationPackage.measureIds.includes(
-        "air-water-heat-pump",
-      ),
-      hasPv: renovationPackage.measureIds.includes(PV_MEASURE_ID),
-      auditCtx,
-    });
+    const energy = reduceEcmRun(renovatedScenario, estimation.simulated);
+    this.logEcmScaling(energy, estimation.simulated, auditCtx);
 
     const scenario = this.assembleScenario(
       {
@@ -481,7 +431,7 @@ export class RenovationService implements IRenovationService {
 
     if (baselineDaly !== undefined) {
       const renovatedDaly = await this.tryCalculateAnnualThermalDaly(
-        renovatedScenario,
+        energy.dailyMeanOperativeTemperatures,
         auditCtx,
       );
       if (renovatedDaly !== undefined) {
@@ -515,7 +465,7 @@ export class RenovationService implements IRenovationService {
   }
 
   private async tryCalculateAnnualThermalDaly(
-    ecmScenario: ECMScenario,
+    temperatures: number[] | undefined,
     auditCtx?: AuditCtx,
   ): Promise<number | undefined> {
     auditLog.info(
@@ -529,20 +479,11 @@ export class RenovationService implements IRenovationService {
       auditCtx,
     );
 
-    let temperatures: number[];
-    try {
-      temperatures = computeDailyMeanOperativeTemperatures(
-        ecmScenario.results.hourly_building,
-        DALY_EXPOSURE_DAYS,
-      );
-    } catch (error) {
+    if (temperatures === undefined) {
       auditLog.warn(
         "renovation",
         "renovation.daly.unavailable",
-        {
-          reason: "invalid-temperature-profile",
-          error: error instanceof Error ? error.message : String(error),
-        },
+        { reason: "invalid-temperature-profile" },
         auditCtx,
       );
       auditLog.info(
@@ -619,14 +560,11 @@ export class RenovationService implements IRenovationService {
   }
 
   /**
-   * Re-simulate the unchanged building through the ECM engine (baseline_only)
-   * so the "current" scenario shares an engine with the renovated packages.
-   * Sends the same simulated building as the package scenarios, keeping the
-   * adjusted-archetype and catalogue-archetype paths consistent.
+   * The "current" scenario from the estimate's baseline, which came from the
+   * same ECM engine as the renovated packages.
    */
   private buildBaselineScenario(
     estimation: EstimationResult,
-    baselineScenario: ECMScenario,
     parentCtx?: AuditCtx,
   ): RenovationScenario {
     const auditCtx = parentCtx?.child({ scenarioId: "current" });
@@ -638,12 +576,8 @@ export class RenovationService implements IRenovationService {
       auditCtx,
     );
 
-    const energy = this.extractEcmScenarioEnergy(baselineScenario, {
-      simulated: estimation.simulated,
-      allowHeatPump: false,
-      hasPv: false,
-      auditCtx,
-    });
+    const energy = estimation.baseline;
+    this.logEcmScaling(energy, estimation.simulated, auditCtx);
 
     const scenario = this.assembleScenario(
       {
@@ -677,152 +611,49 @@ export class RenovationService implements IRenovationService {
     return scenario;
   }
 
-  /**
-   * Extract and area-scale the energy figures from a single ECM scenario
-   * result (baseline or renovated). Emits the `renovation.ecm.scaling` debug
-   * trace.
-   */
-  private extractEcmScenarioEnergy(
-    ecmScenario: ECMScenario,
-    options: {
-      simulated: SimulatedBuilding;
-      allowHeatPump: boolean;
-      hasPv: boolean;
-      auditCtx?: AuditCtx;
-    },
-  ): EcmScenarioEnergy {
-    const { simulated, allowHeatPump, hasPv, auditCtx } = options;
-    const userArea = simulated.modeledFloorArea;
-    const archetypeFloorArea = simulatedFloorArea(simulated);
-
-    const hourlyRecords = transformColumnarToRowFormat(
-      ecmScenario.results.hourly_building,
-    );
-    const annualTotals = calculateAnnualTotals(hourlyRecords);
-    const comfortBandIndex = computeComfortBandIndex(hourlyRecords);
-    const areaScaleFactor = energyScaleFactor(simulated);
-    const scaledHvac = annualTotals.Q_HC_total * areaScaleFactor;
-
-    const pvAnnual = ecmScenario.results.pv_hp?.summary?.annual_kwh;
-    const pvIndicators = ecmScenario.results.pv_hp?.summary?.indicators;
-    const uniTotals = extractUniTotals(
-      ecmScenario.results.primary_energy_uni11300,
-      { allowHeatPump },
-    );
-    const rawCarrierBreakdown = extractUniCarrierBreakdown(
-      ecmScenario.results.primary_energy_uni11300,
-      {
-        allowHeatPump,
-        pvSelfConsumptionKwh: hasPv ? pvAnnual?.self_consumption : undefined,
-      },
-    );
-    const carrierBreakdown = scaleCarrierBreakdown(
-      rawCarrierBreakdown,
-      areaScaleFactor,
-    );
-    let deliveredTotal =
-      totalCarrierEnergyKwh(carrierBreakdown) ??
-      (uniTotals !== undefined
-        ? uniTotals.deliveredTotal * areaScaleFactor
-        : undefined);
-    const primaryEnergy =
-      uniTotals !== undefined
-        ? uniTotals.primaryEnergy * areaScaleFactor
-        : undefined;
-    const heatingPrimaryEnergy =
-      uniTotals?.heatingPrimaryEnergy !== undefined
-        ? uniTotals.heatingPrimaryEnergy * areaScaleFactor
-        : undefined;
-    const coolingPrimaryEnergy =
-      uniTotals?.coolingPrimaryEnergy !== undefined
-        ? uniTotals.coolingPrimaryEnergy * areaScaleFactor
-        : undefined;
-    const pvGeneration =
-      pvAnnual?.pv_generation !== undefined
-        ? pvAnnual.pv_generation * areaScaleFactor
-        : undefined;
-    const pvSelfConsumption =
-      pvAnnual?.self_consumption !== undefined
-        ? pvAnnual.self_consumption * areaScaleFactor
-        : undefined;
-    const pvGridExport =
-      pvAnnual?.grid_export !== undefined
-        ? pvAnnual.grid_export * areaScaleFactor
-        : undefined;
-    if (
-      pvSelfConsumption !== undefined &&
-      hasPv &&
-      carrierBreakdown === undefined &&
-      deliveredTotal !== undefined
-    ) {
-      deliveredTotal = Math.max(0, deliveredTotal - pvSelfConsumption);
-      // TODO(pv-primary): apply electricity primary factor before reducing primary energy.
-    }
-
-    // Intensity on the ARV energy basis (primary, falling back to delivered,
-    // then thermal demand), kept for audit plausibility checks.
-    const epcRating = resolveEpcRatingIntensity(
-      {
-        primaryEnergy,
-        deliveredTotal,
-        annualEnergyNeeds: scaledHvac,
-      },
-      userArea,
-    );
-
+  /** Emits the `renovation.ecm.scaling` debug trace for one scenario. */
+  private logEcmScaling(
+    energy: ScenarioEnergy,
+    simulated: SimulatedBuilding,
+    auditCtx?: AuditCtx,
+  ): void {
+    const { raw, scaled } = energy.trace;
     auditLog.debug(
       "renovation",
       "renovation.ecm.scaling",
       {
-        userArea,
-        archetypeFloorArea,
-        areaScaleFactor,
+        userArea: simulated.modeledFloorArea,
+        archetypeFloorArea: simulatedFloorArea(simulated),
+        areaScaleFactor: energy.trace.areaScaleFactor,
         raw: {
-          hvacTotal: annualTotals.Q_HC_total,
-          deliveredTotal: uniTotals?.deliveredTotal,
-          carrierBreakdown: rawCarrierBreakdown,
-          primaryEnergy: uniTotals?.primaryEnergy,
-          pvGeneration: pvAnnual?.pv_generation,
-          pvSelfConsumption: pvAnnual?.self_consumption,
+          hvacTotal: raw.hvac,
+          deliveredTotal: raw.deliveredTotal,
+          carrierBreakdown: raw.carrierBreakdown,
+          primaryEnergy: raw.primaryEnergy,
+          pvGeneration: raw.pvGeneration,
+          pvSelfConsumption: raw.pvSelfConsumption,
         },
         scaled: {
-          hvacTotal: scaledHvac,
-          deliveredTotal,
-          carrierBreakdown,
-          primaryEnergy,
-          pvGeneration,
-          pvSelfConsumption,
-          pvGridExport,
+          hvacTotal: scaled.hvac,
+          deliveredTotal: scaled.deliveredTotal,
+          carrierBreakdown: scaled.carrierBreakdown,
+          primaryEnergy: scaled.primaryEnergy,
+          pvGeneration: scaled.pvGeneration,
+          pvSelfConsumption: scaled.pvSelfConsumption,
+          pvGridExport: scaled.pvGridExport,
         },
-        renovatedIntensity: epcRating.intensity,
-        uniTotalsAvailable: uniTotals !== undefined,
-        uniSummary: ecmScenario.results.primary_energy_uni11300?.summary,
-        pvSelfConsumptionApplied: pvSelfConsumption !== undefined && hasPv,
+        renovatedIntensity: energy.trace.epcIntensity,
+        uniTotalsAvailable: raw.deliveredTotal !== undefined,
+        uniSummary: energy.trace.uniSummary,
+        pvSelfConsumptionApplied: scaled.pvSelfConsumption !== undefined,
       },
       auditCtx,
     );
-
-    return {
-      scaledHvac,
-      comfortBandIndex,
-      deliveredTotal,
-      carrierBreakdown,
-      primaryEnergy,
-      heatingPrimaryEnergy,
-      coolingPrimaryEnergy,
-      heatPumpCop: uniTotals?.heatPumpCop,
-      pvGeneration,
-      pvSelfConsumption,
-      pvGridExport,
-      pvSelfConsumptionRate: pvIndicators?.self_consumption_rate,
-      pvSelfSufficiencyRate: pvIndicators?.self_sufficiency_rate,
-    };
   }
 
   /**
-   * Assemble a `RenovationScenario` from scenario metadata and area-scaled
-   * energy figures. Optional energy fields are omitted when undefined. Shared
-   * by the baseline and package paths.
+   * Assemble a `RenovationScenario` from scenario metadata and its scenario
+   * energy. Shared by the baseline and package paths.
    */
   private assembleScenario(
     meta: {
@@ -834,58 +665,25 @@ export class RenovationService implements IRenovationService {
       comfortIndex: number;
       flexibilityIndex: number;
     },
-    energy: EcmScenarioEnergy,
+    energy: ScenarioEnergy,
   ): RenovationScenario {
     return {
       id: meta.id,
       packageId: meta.packageId,
       label: meta.label,
-      annualEnergyNeeds: Math.round(energy.scaledHvac),
-      heatingCoolingNeeds: Math.round(energy.scaledHvac),
-      ...(energy.deliveredTotal !== undefined
-        ? {
-            deliveredTotal: Math.round(energy.deliveredTotal),
-            ...(energy.carrierBreakdown !== undefined
-              ? {
-                  carrierBreakdown: {
-                    naturalGasKwh: Math.round(
-                      energy.carrierBreakdown.naturalGasKwh,
-                    ),
-                    gridElectricityKwh: Math.round(
-                      energy.carrierBreakdown.gridElectricityKwh,
-                    ),
-                  },
-                }
-              : {}),
-          }
-        : {}),
-      ...(energy.primaryEnergy !== undefined
-        ? { primaryEnergy: Math.round(energy.primaryEnergy) }
-        : {}),
-      ...(energy.heatingPrimaryEnergy !== undefined
-        ? { heatingPrimaryEnergy: Math.round(energy.heatingPrimaryEnergy) }
-        : {}),
-      ...(energy.coolingPrimaryEnergy !== undefined
-        ? { coolingPrimaryEnergy: Math.round(energy.coolingPrimaryEnergy) }
-        : {}),
-      ...(energy.heatPumpCop !== undefined
-        ? { heatPumpCop: energy.heatPumpCop }
-        : {}),
-      ...(energy.pvGeneration !== undefined
-        ? { pvGeneration: Math.round(energy.pvGeneration) }
-        : {}),
-      ...(energy.pvSelfConsumption !== undefined
-        ? { pvSelfConsumption: Math.round(energy.pvSelfConsumption) }
-        : {}),
-      ...(energy.pvGridExport !== undefined
-        ? { pvGridExport: Math.round(energy.pvGridExport) }
-        : {}),
-      ...(energy.pvSelfConsumptionRate !== undefined
-        ? { pvSelfConsumptionRate: energy.pvSelfConsumptionRate }
-        : {}),
-      ...(energy.pvSelfSufficiencyRate !== undefined
-        ? { pvSelfSufficiencyRate: energy.pvSelfSufficiencyRate }
-        : {}),
+      annualEnergyNeeds: energy.thermalNeed,
+      heatingCoolingNeeds: energy.thermalNeed,
+      deliveredTotal: energy.deliveredTotal,
+      carrierBreakdown: energy.carrierBreakdown,
+      primaryEnergy: energy.primaryEnergy,
+      heatingPrimaryEnergy: energy.heatingPrimaryEnergy,
+      coolingPrimaryEnergy: energy.coolingPrimaryEnergy,
+      heatPumpCop: energy.heatPumpCop,
+      pvGeneration: energy.pvGeneration,
+      pvSelfConsumption: energy.pvSelfConsumption,
+      pvGridExport: energy.pvGridExport,
+      pvSelfConsumptionRate: energy.pvSelfConsumptionRate,
+      pvSelfSufficiencyRate: energy.pvSelfSufficiencyRate,
       comfortIndex: meta.comfortIndex,
       flexibilityIndex: meta.flexibilityIndex,
       measureIds: meta.measureIds,

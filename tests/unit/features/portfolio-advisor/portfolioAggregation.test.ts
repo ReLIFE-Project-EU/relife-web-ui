@@ -22,11 +22,7 @@ function successResult(options: {
   return {
     buildingId: options.id,
     status: "success",
-    // deliveredTotal deliberately disagrees with the "current" scenario below.
-    estimation: {
-      annualEnergyNeeds: 12_000,
-      deliveredTotal: 9_999,
-    },
+    estimation: { baseline: { thermalNeed: 12_000 } },
     scenarios: [
       {
         id: "current",
@@ -201,9 +197,7 @@ describe("aggregatePortfolioPackage", () => {
     expect(result.totalCapexEur).toBe(200_000);
   });
 
-  test("reads delivered energy from the re-simulated baseline, not the estimation", () => {
-    // The two disagree by ~15% in practice, and the financial savings are
-    // priced against the baseline scenario.
+  test("reads delivered energy from the baseline scenario", () => {
     const result = aggregate([
       successResult({ id: "a", capex: 100, roi: 0.1 }),
     ]);

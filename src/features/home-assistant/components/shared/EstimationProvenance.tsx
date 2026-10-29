@@ -12,7 +12,7 @@ export function ReferenceAdjustedComparisonCard({
 }: {
   estimation: EstimationResult;
 }) {
-  const reference = estimation.referenceEstimation;
+  const reference = estimation.referenceBaseline;
 
   if (!reference) {
     return null;
@@ -63,15 +63,15 @@ export function ReferenceAdjustedComparisonCard({
               </Table.Td>
               <Table.Td>
                 <Text size="sm" fw={500}>
-                  {formatEnergyPerYear(reference.annualEnergyNeeds)}
+                  {formatEnergyPerYear(reference.thermalNeed)}
                 </Text>
               </Table.Td>
               <Table.Td>
                 <DeltaValue
-                  value={estimation.annualEnergyNeeds}
+                  value={estimation.baseline.thermalNeed}
                   delta={calculatePercentChange(
-                    reference.annualEnergyNeeds,
-                    estimation.annualEnergyNeeds,
+                    reference.thermalNeed,
+                    estimation.baseline.thermalNeed,
                   )}
                   formatter={formatEnergyPerYear}
                   higherIsBetter={false}

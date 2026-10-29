@@ -11,6 +11,7 @@ import type {
   EstimationResult,
   RenovationPackage,
 } from "../../../src/types/renovation";
+import type { ScenarioEnergy } from "../../../src/services/scenarioEnergy";
 
 const packages: RenovationPackage[] = [
   {
@@ -290,13 +291,13 @@ describe("homeAssistantReducer package financial inputs", () => {
 });
 
 const mockEstimation: EstimationResult = {
-  annualEnergyNeeds: 10_000,
-  heatingCoolingNeeds: 10_000,
-  heatingDemand: 8000,
-  coolingDemand: 500,
+  baseline: {
+    thermalNeed: 10_000,
+    heatingNeed: 8000,
+    coolingNeed: 500,
+  } as ScenarioEnergy,
   flexibilityIndex: 50,
   comfortIndex: 60,
-  annualEnergyConsumption: 11_000,
   simulated: {
     archetype: { category: "SFH", country: "Greece", name: "GR_SFH" },
     bui: { building: { net_floor_area: 120 } } as unknown as BuildingPayload,
