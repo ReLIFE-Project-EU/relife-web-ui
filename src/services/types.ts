@@ -13,7 +13,6 @@
 import type {
   ARVResult,
   BuildingInfo,
-  CashFlowData,
   EstimationResult,
   FinancialResults,
   FundingOptions,
@@ -22,13 +21,10 @@ import type {
   RenovationPackage,
   RenovationMeasureId,
   RenovationScenario,
-  RiskAssessmentMetadata,
-  RiskAssessmentPercentiles,
-  RiskAssessmentPointForecasts,
   ScenarioId,
 } from "../types/renovation";
 import type { RenovationAction } from "../types/financial";
-import type { APIPropertyType, OutputLevel } from "../utils/apiMappings";
+import type { APIPropertyType } from "../utils/apiMappings";
 import type { AuditCtx } from "../utils/auditLogger";
 
 export type PeriodAvailabilityScope = "local" | "fallback";
@@ -289,23 +285,7 @@ export interface ARVRequest {
   renovated_last_5_years?: boolean; // Always sent; see ARV_RENOVATED_LAST_5_YEARS
 }
 
-/**
- * Service-layer (mapped) request for the risk assessment, distinct from the wire
- * `RiskAssessmentRequest` in `src/types/financial.ts`. FinancialService maps this
- * to the wire shape before calling the API.
- */
-export interface RiskAssessmentServiceRequest {
-  annual_energy_savings: number; // Electricity-equivalent kWh/year for current scalar Financial API
-  project_lifetime: number; // 1-30 years
-  output_level: OutputLevel; // "private" for HRA tool
-  indicators?: string[]; // Default: ["IRR", "NPV", "PBP", "DPP", "ROI"]
-  loan_amount?: number; // Default: 0 (drives equity vs bank_loan scheme)
-  loan_term?: number; // Default: 0 (years)
-  upfront_incentive_percentage?: number; // 0-100; folded into capex before the call
-  capex?: number;
-  annual_maintenance_cost?: number;
-}
-
+/** User-editable valuation inputs for the package appraisal. */
 export interface FinancialAssumptions {
   gasTariffEurPerKwh?: number;
 }
@@ -332,23 +312,6 @@ export interface EstimatePackageCostsResult {
   opexFromLookup: boolean;
 }
 
-/**
- * Internal (camelCase) risk-assessment result mapped from the per-scheme wire
- * response by `riskAssessmentAdapter.mapWireRiskResponse`. Shape is preserved
- * across the API migration so UI consumers stay unchanged.
- * - pointForecasts: P50 of each KPI (+ derived MonthlyAvgSavings/SuccessRate)
- * - percentiles: P10/P50/P90 per KPI
- * - probabilities: Pr(*) success metrics (dynamic, lifetime-aware keys)
- * - cashFlowData / chart metadata: derived from the scheme's distributions
- */
-export interface RiskAssessmentServiceResponse {
-  pointForecasts: RiskAssessmentPointForecasts;
-  metadata: RiskAssessmentMetadata;
-  probabilities?: Record<string, number>;
-  percentiles?: RiskAssessmentPercentiles;
-  cashFlowData?: CashFlowData;
-}
-
 export interface CalculateFinancialScenariosRequest {
   scenarios: RenovationScenario[];
   fundingOptions: FundingOptions;
@@ -367,14 +330,6 @@ export interface IFinancialService {
   calculateARV(request: ARVRequest): Promise<ARVResult>;
 
   /**
-   * Perform risk assessment with Monte Carlo simulation
-   * Maps to POST /risk-assessment endpoint
-   */
-  assessRisk(
-    request: RiskAssessmentServiceRequest,
-  ): Promise<RiskAssessmentServiceResponse>;
-
-  /**
    * Estimate a renovation package's CAPEX/OPEX from EU reference data via the
    * Financial lookup. Used as a pre-pass to pre-fill editable cost inputs; the
    * priced run still sends explicit post-incentive CAPEX.
@@ -384,8 +339,7 @@ export interface IFinancialService {
   ): Promise<EstimatePackageCostsResult>;
 
   /**
-   * Calculate financial results for all scenarios
-   * Uses calculateARV and assessRisk internally
+   * Calculate ARV and the package appraisal for each renovation package
    */
   calculateForAllScenarios(
     request: CalculateFinancialScenariosRequest,

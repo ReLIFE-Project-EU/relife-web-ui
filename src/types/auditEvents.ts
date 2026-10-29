@@ -9,7 +9,7 @@ import type { ArchetypeMatchStrategy } from "../services/archetypeMatching";
 import type { BuildingPayload } from "./archetype";
 import type { DeliveredEnergyCarrierBreakdown } from "./energy";
 import type { ECMApplicationParams, UNI11300Summary } from "./forecasting";
-import type { RiskSkippedReason } from "./renovation";
+import type { AppraisalSkipReason } from "./renovation";
 
 type Open<T> = T & Record<string, unknown>;
 
@@ -81,7 +81,7 @@ export type AuditPayloads = {
     loanAmount: number;
     loanTerm: number;
   }>;
-  "financial.risk.skipped": Open<{ reason: RiskSkippedReason | undefined }>;
+  "financial.risk.skipped": Open<{ reason: AppraisalSkipReason }>;
   "financial.scenario.end":
     | Open<{ kind: "current" }>
     | Open<{

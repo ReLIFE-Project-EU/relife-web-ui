@@ -50,17 +50,28 @@ const successResult = {
     annualMaintenanceCost: 600,
     afterRenovationValue: 250000,
     arv: { priceIncreasePct: 12.5 },
-    netPresentValue: 30000,
-    returnOnInvestment: 0.12,
-    paybackTime: 8.5,
-    riskAssessment: {
-      pointForecasts: { IRR: 0.07, DPP: 10.2 },
+    appraisal: {
+      kind: "appraised",
+      pointForecasts: { NPV: 30000, ROI: 0.12, PBP: 8.5, IRR: 0.07, DPP: 10.2 },
     },
     probabilities: {
       "Pr(NPV > 0)": 0.82,
       "Pr(PBP < 20y)": 0.71,
       "Pr(DPP < 20y)": 0.64,
     },
+  },
+} as unknown as BuildingAnalysisResult;
+
+/** A subsidy pays the whole cost, so the owner invests nothing. */
+const skippedResult = {
+  ...successResult,
+  buildingId: "b4",
+  financialResults: {
+    capitalExpenditure: 0,
+    annualMaintenanceCost: 600,
+    afterRenovationValue: null,
+    arv: null,
+    appraisal: { kind: "skipped", reason: "fully-subsidized" },
   },
 } as unknown as BuildingAnalysisResult;
 
@@ -80,11 +91,13 @@ describe("buildBuildingsCsv", () => {
     building("b1", "Alpha"),
     building("b2", "Beta"),
     building("b3", "Gamma"),
+    building("b4", "Delta"),
   ];
   const results: Record<string, BuildingAnalysisResult> = {
     b1: successResult,
     b2: errorResult,
     b3: rejectedResult,
+    b4: skippedResult,
   };
 
   const csv = buildBuildingsCsv(buildings, results, 20);
@@ -94,11 +107,12 @@ describe("buildBuildingsCsv", () => {
   const cell = (row: string[], col: string) => row[header.indexOf(col)];
 
   test("emits one row per building in input order", () => {
-    expect(dataRows).toHaveLength(3);
+    expect(dataRows).toHaveLength(4);
     expect(dataRows.map((r) => cell(r, "Building"))).toEqual([
       "Alpha",
       "Beta",
       "Gamma",
+      "Delta",
     ]);
   });
 
@@ -107,6 +121,7 @@ describe("buildBuildingsCsv", () => {
     expect(cell(row, "Status")).toBe("success");
     expect(cell(row, "NPV (EUR)")).toBe("30000");
     expect(cell(row, "ROI (ratio)")).toBe("0.12");
+    expect(cell(row, "Payback period (years)")).toBe("8.5");
     expect(cell(row, "IRR (ratio)")).toBe("0.07");
     expect(cell(row, "Discounted payback (years)")).toBe("10.2");
     expect(cell(row, "Pr(NPV > 0)")).toBe("0.82");
@@ -141,6 +156,15 @@ describe("buildBuildingsCsv", () => {
     const rejectedRow = dataRows[2];
     expect(cell(rejectedRow, "Status")).toBe("rejected");
     expect(cell(rejectedRow, "CAPEX (EUR)")).toBe("");
+  });
+
+  test("leaves appraisal cells empty for a skipped building", () => {
+    const row = dataRows[3];
+    expect(cell(row, "Status")).toBe("fully-funded");
+    expect(cell(row, "CAPEX (EUR)")).toBe("0");
+    expect(cell(row, "NPV (EUR)")).toBe("");
+    expect(cell(row, "ROI (ratio)")).toBe("");
+    expect(cell(row, "Payback period (years)")).toBe("");
   });
 });
 

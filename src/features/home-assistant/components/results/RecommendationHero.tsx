@@ -19,6 +19,7 @@ import {
 import type { ComponentType } from "react";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
 import {
+  appraisedFigures,
   resolveSavingsAvailability,
   type SavingsAvailability,
 } from "../../../../services/savingsState";
@@ -78,7 +79,8 @@ export function RecommendationHero({
 }: RecommendationHeroProps) {
   const winner = getWinner(renovationScenarios, ranking);
   const winnerResult = winner ? financialResults[winner.id] : undefined;
-  const winnerPbp = winnerResult?.riskAssessment?.pointForecasts.PBP;
+  const winnerAppraisal = appraisedFigures(winnerResult);
+  const winnerPbp = winnerAppraisal?.pointForecasts.PBP;
   const personaLabel =
     personas.find((p) => p.id === selectedPersona)?.name ?? "your priorities";
   const savings = resolveSavingsState(currentScenario, winner, winnerResult);
@@ -159,8 +161,7 @@ export function RecommendationHero({
                           // Under half a year stays unrounded: 0 means no
                           // upfront investment.
                           Math.round(winnerPbp) || winnerPbp,
-                          winnerResult?.riskAssessment?.metadata
-                            .project_lifetime,
+                          winnerAppraisal?.metadata.project_lifetime,
                         )
                       : "—"
                   }
@@ -350,10 +351,11 @@ function RecoSkeleton() {
 }
 
 function paybackRangeHint(result: FinancialResults | undefined): string {
-  const p10 = result?.riskAssessment?.percentiles?.PBP?.P10;
-  const p90 = result?.riskAssessment?.percentiles?.PBP?.P90;
+  const appraised = appraisedFigures(result);
+  const p10 = appraised?.percentiles?.PBP?.P10;
+  const p90 = appraised?.percentiles?.PBP?.P90;
   if (p10 === undefined || p90 === undefined) return "";
-  const lifetime = result?.riskAssessment?.metadata.project_lifetime;
+  const lifetime = appraised?.metadata.project_lifetime;
   const p90Label = isPaybackBeyondHorizon(p90, lifetime)
     ? `>${formatNumber(lifetime ?? p90)}`
     : formatNumber(p90);
@@ -373,9 +375,8 @@ type SavingsState =
 
 /**
  * A package can only be priced when both the baseline and the renovated
- * scenario carry a carrier breakdown; otherwise FinancialService submits zero
- * energy savings and every downstream figure collapses to zero for reasons the
- * user cannot see.
+ * scenario carry a carrier breakdown; otherwise its appraisal is skipped and
+ * there are no figures to show.
  */
 function resolveSavingsState(
   current: RenovationScenario | undefined,
@@ -387,7 +388,7 @@ function resolveSavingsState(
   const availability = resolveSavingsAvailability(winner, result);
   if (availability !== "appraised") return { kind: availability };
 
-  const monthlyEur = result?.riskAssessment?.pointForecasts.MonthlyAvgSavings;
+  const monthlyEur = appraisedFigures(result)?.pointForecasts.MonthlyAvgSavings;
   if (monthlyEur === undefined) return { kind: "unknown" };
   if (monthlyEur <= 0) return { kind: "unprofitable" };
 
@@ -441,7 +442,8 @@ function SavingsCopy({ current, winner, result, savings }: SavingsCopyProps) {
           current.annualEnergyNeeds) *
         100
       : null;
-  const pbp = result?.riskAssessment?.pointForecasts.PBP ?? result?.paybackTime;
+  const appraised = appraisedFigures(result);
+  const pbp = appraised?.pointForecasts.PBP;
 
   if (savings.kind === "not-priceable") {
     return (
@@ -453,8 +455,7 @@ function SavingsCopy({ current, winner, result, savings }: SavingsCopyProps) {
     );
   }
 
-  // These two never reach the appraisal, so `paybackTime` below is a
-  // placeholder zero and must not be rendered as "pays back in 0 years".
+  // These two never reach the appraisal, so there is no payback to render.
   if (savings.kind === "no-savings") {
     return (
       <Text size="sm" c="dark.6" mt={8} maw={560}>
@@ -482,10 +483,7 @@ function SavingsCopy({ current, winner, result, savings }: SavingsCopyProps) {
           , but <b>does not pay for itself</b> over the project horizon
         </>
       ) : pbp !== undefined && pbp !== 0 ? (
-        isPaybackBeyondHorizon(
-          pbp,
-          result?.riskAssessment?.metadata.project_lifetime,
-        ) ? (
+        isPaybackBeyondHorizon(pbp, appraised?.metadata.project_lifetime) ? (
           <>
             , does <b>not pay back within the project horizon</b>
           </>

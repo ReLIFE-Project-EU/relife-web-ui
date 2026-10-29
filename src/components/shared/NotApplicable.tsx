@@ -1,6 +1,7 @@
 /** "n/a" for a null IRR or ROI, with the cause (read from year 0) on hover. */
 
 import { Text, Tooltip } from "@mantine/core";
+import { appraisedFigures } from "../../services/savingsState";
 import type { FinancialResults } from "../../types/renovation";
 
 interface NotApplicableProps {
@@ -9,7 +10,7 @@ interface NotApplicableProps {
 
 export function NotApplicable({ result }: NotApplicableProps) {
   const noUpfront =
-    result?.riskAssessment?.cashFlowData?.initial_investment === 0;
+    appraisedFigures(result)?.cashFlowData?.initial_investment === 0;
 
   return (
     <Tooltip

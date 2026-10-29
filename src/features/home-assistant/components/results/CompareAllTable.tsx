@@ -10,6 +10,7 @@ import { IconCrown } from "@tabler/icons-react";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
 import { relifeConcepts } from "../../../../constants/relifeConcepts";
 import { computeLifetimeCarbonKgCo2e } from "../../../../services/carrierSavingsService";
+import { appraisedFigures } from "../../../../services/savingsState";
 import type {
   FinancialResults,
   MCDARankingResult,
@@ -133,12 +134,10 @@ export function CompareAllTable({
             const result = financialResults[scenario.id];
             const isSel = scenario.id === selectedScenarioId;
             const score = scoreById.get(scenario.id);
-            const npv =
-              result?.riskAssessment?.pointForecasts.NPV ??
-              result?.netPresentValue;
-            const pbp = result?.riskAssessment?.pointForecasts.PBP;
-            const monthly =
-              result?.riskAssessment?.pointForecasts.MonthlyAvgSavings;
+            const appraised = appraisedFigures(result);
+            const npv = appraised?.pointForecasts.NPV;
+            const pbp = appraised?.pointForecasts.PBP;
+            const monthly = appraised?.pointForecasts.MonthlyAvgSavings;
             const avoidedDays = toHealthyLifeDays(
               scenario.avoidedThermalDalyPerPerson,
             );
@@ -244,7 +243,7 @@ export function CompareAllTable({
                   {pbp !== undefined
                     ? formatPaybackYears(
                         pbp,
-                        result?.riskAssessment?.metadata.project_lifetime,
+                        appraised?.metadata.project_lifetime,
                       )
                     : "—"}
                 </td>

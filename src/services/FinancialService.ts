@@ -1,6 +1,7 @@
 /**
  * Real Financial Service Implementation
- * Calls the Financial API endpoints for ARV and risk assessment.
+ * Calls the Financial API for ARV and the CAPEX/OPEX lookup, and runs the
+ * package appraisal (see packageAppraisal.ts) for each renovation package.
  *
  * The output level is parameterized via constructor to support different tools:
  * - HRA (Home Renovation Assistant): uses "private" output level
@@ -15,7 +16,6 @@ import type {
   ArvUnavailableReason,
   BuildingInfo,
   FinancialResults,
-  RiskSkippedReason,
   ScenarioId,
 } from "../types/renovation";
 import {
@@ -25,28 +25,24 @@ import {
   type APIEnergyClass,
   type OutputLevel,
 } from "../utils/apiMappings";
-import { applyFundingReduction } from "../utils/financialCalculations";
 import { APIError } from "../types/common";
-import { buildSchemes, mapWireRiskResponse } from "./riskAssessmentAdapter";
+import { buildSchemes } from "./riskAssessmentAdapter";
 import type { RiskAssessmentRequest as RiskAssessmentWireRequest } from "../types/financial";
 import type {
   ARVRequest,
   CalculateFinancialScenariosRequest,
   EstimatePackageCostsRequest,
   EstimatePackageCostsResult,
-  FinancialAssumptions,
   IFinancialService,
-  RiskAssessmentServiceRequest,
-  RiskAssessmentServiceResponse,
 } from "./types";
 import { auditLog, type AuditCtx } from "../utils/auditLogger";
 import {
-  computeCarrierFinancialEnergySavings,
   ENERGY_TARIFF_DEFAULTS,
   FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
 } from "./carrierSavingsService";
 import { resolveEpcRatingIntensity } from "./energyUtils";
 import { normalizeArvFloorFields } from "../utils/buildingFloorNumbers";
+import { appraisePackage } from "./packageAppraisal";
 
 /**
  * The CAPEX/OPEX lookup lives inside the risk-assessment endpoint, which still
@@ -110,15 +106,6 @@ function resolveArvEnergyIntensity(
   floorArea: number,
 ): number {
   return resolveEpcRatingIntensity(source, floorArea).intensity;
-}
-
-function resolveFinancialAssumptions(
-  partial?: FinancialAssumptions,
-): Required<FinancialAssumptions> {
-  return {
-    gasTariffEurPerKwh:
-      partial?.gasTariffEurPerKwh ?? ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
-  };
 }
 
 function buildArvRequestBase(
@@ -241,57 +228,6 @@ export class FinancialService implements IFinancialService {
   }
 
   /**
-   * Perform risk assessment via POST /risk-assessment.
-   *
-   * Builds the single financing scheme from the resolved loan inputs (equity
-   * or bank_loan) and maps the per-scheme wire response back into the internal
-   * shape via the shared adapter. The upfront incentive is already folded into
-   * `request.capex` by `applyFundingReduction`.
-   */
-  async assessRisk(
-    request: RiskAssessmentServiceRequest,
-  ): Promise<RiskAssessmentServiceResponse> {
-    const { schemes, schemeType } = buildSchemes({
-      loanAmount: request.loan_amount ?? 0,
-      loanTerm: request.loan_term ?? 0,
-    });
-
-    const wire = await financial.assessRisk({
-      capex: request.capex ?? 0,
-      annual_energy_savings: request.annual_energy_savings,
-      annual_maintenance_cost: request.annual_maintenance_cost,
-      project_lifetime: request.project_lifetime,
-      output_level: this.outputLevel,
-      indicators: request.indicators,
-      schemes,
-    });
-
-    const mapped = mapWireRiskResponse(wire, {
-      schemeType,
-      projectLifetime: request.project_lifetime,
-      loanTerm: request.loan_term,
-    });
-
-    return {
-      pointForecasts: mapped.pointForecasts,
-      metadata: {
-        n_sims: mapped.metadata.n_sims,
-        project_lifetime: mapped.metadata.project_lifetime,
-        capex: mapped.metadata.capex || (request.capex ?? 0),
-        annual_maintenance_cost: request.annual_maintenance_cost,
-        output_level: this.outputLevel,
-        ...(mapped.cashFlowData ? { cash_flow_data: mapped.cashFlowData } : {}),
-        ...(mapped.chartMetadata
-          ? { chart_metadata: mapped.chartMetadata }
-          : {}),
-      },
-      probabilities: mapped.probabilities,
-      percentiles: mapped.percentiles,
-      cashFlowData: mapped.cashFlowData,
-    };
-  }
-
-  /**
    * Estimate a package's CAPEX/OPEX from EU reference data via the Financial
    * lookup. Calls /risk-assessment with the cost fields omitted (the server then
    * resolves them from `country` + `renovation_actions`) and reads the resolved
@@ -339,7 +275,8 @@ export class FinancialService implements IFinancialService {
   }
 
   /**
-   * Calculate financial results for all scenarios
+   * Calculate ARV and the package appraisal for every renovation package. The
+   * baseline is input only: it has no package appraisal.
    */
   async calculateForAllScenarios(
     request: CalculateFinancialScenariosRequest,
@@ -354,9 +291,9 @@ export class FinancialService implements IFinancialService {
       auditCtx: parentAuditCtx,
     } = request;
     const results: Record<string, FinancialResults> = {};
-    const assumptions = resolveFinancialAssumptions(
-      resolvedFinancialAssumptions,
-    );
+    const gasTariffEurPerKwh =
+      resolvedFinancialAssumptions?.gasTariffEurPerKwh ??
+      ENERGY_TARIFF_DEFAULTS.gasEurPerKwh;
 
     // The "current" scenario is re-simulated through the ECM engine by
     // RenovationService, so energy savings compare like-for-like against the
@@ -380,7 +317,7 @@ export class FinancialService implements IFinancialService {
         floorArea: resolvedFloorArea,
         projectLifetime: resolvedBuilding.projectLifetime,
         financingType: resolvedFundingOptions.financingType,
-        gasTariffEurPerKwh: assumptions.gasTariffEurPerKwh,
+        gasTariffEurPerKwh,
         electricityReferencePriceEurPerKwh:
           FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
       },
@@ -397,6 +334,7 @@ export class FinancialService implements IFinancialService {
     );
 
     for (const scenario of scenarios) {
+      if (scenario === baselineScenario) continue;
       const auditCtx = parentAuditCtx?.child({ scenarioId: scenario.id });
       auditLog.info(
         "financial",
@@ -407,48 +345,6 @@ export class FinancialService implements IFinancialService {
         },
         auditCtx,
       );
-      if (scenario.id === "current") {
-        // Current scenario: no renovation, just current ARV
-        const arvRequest: ARVRequest = {
-          ...buildArvRequestBase(resolvedBuilding, resolvedFloorArea),
-          energy_consumption_after: baselineEnergyIntensity,
-        };
-        auditLog.debug(
-          "financial",
-          "financial.arv.request",
-          { request: arvRequest as unknown as Record<string, unknown> },
-          auditCtx,
-        );
-        const arvAttempt = await this.tryCalculateARV(arvRequest, auditCtx);
-        const arvResult = arvAttempt.result;
-
-        results[scenario.id] = {
-          arv: arvResult,
-          ...(arvAttempt.unavailableReason
-            ? { arvUnavailableReason: arvAttempt.unavailableReason }
-            : {}),
-          riskAssessment: null,
-          capitalExpenditure: 0,
-          annualMaintenanceCost: 0,
-          returnOnInvestment: 0,
-          paybackTime: 0,
-          netPresentValue: 0,
-          afterRenovationValue: arvResult?.totalPrice ?? null,
-        };
-        auditLog.info(
-          "financial",
-          "financial.scenario.end",
-          {
-            scenarioId: scenario.id,
-            kind: "current",
-            afterRenovationValue: arvResult?.totalPrice ?? null,
-            arvPricePerSqm: arvResult?.pricePerSqm,
-            arvEnergyClass: arvResult?.energyClass,
-          },
-          auditCtx,
-        );
-        continue;
-      }
 
       const packageInput = resolvedPackageFinancialInputs[scenario.id];
       if (
@@ -467,17 +363,6 @@ export class FinancialService implements IFinancialService {
         );
       }
 
-      const renovationCost = packageInput.capex;
-      const annualMaintenanceCost = packageInput.annualMaintenanceCost;
-      const { effectiveCost, loanAmount, subsidyAmount } =
-        applyFundingReduction(renovationCost, resolvedFundingOptions);
-
-      // Calculate loan term based on financing type
-      const loanTerm =
-        resolvedFundingOptions.financingType === "loan"
-          ? resolvedFundingOptions.loan.duration
-          : 0;
-
       // ARV Request for renovated scenario
       const arvRequest: ARVRequest = {
         ...buildArvRequestBase(resolvedBuilding, resolvedFloorArea),
@@ -491,115 +376,26 @@ export class FinancialService implements IFinancialService {
           resolvedFloorArea,
         ),
       };
-
-      // Current Financial API accepts one scalar kWh value and prices it with
-      // the electricity curve. Preserve carrier economics by first valuing gas
-      // and grid-electricity deltas separately, then converting the net EUR
-      // savings into electricity-equivalent kWh at the backend reference price.
-      const canUseCarrierPricing =
-        baselineScenario.carrierBreakdown !== undefined &&
-        scenario.carrierBreakdown !== undefined;
-      const carrierSavings = canUseCarrierPricing
-        ? computeCarrierFinancialEnergySavings(
-            baselineScenario.carrierBreakdown!,
-            scenario.carrierBreakdown!,
-            {
-              gasTariffEurPerKwh: assumptions.gasTariffEurPerKwh,
-              electricityReferencePriceEurPerKwh:
-                FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
-            },
-          )
-        : { annualSavingsEur: 0, electricityEquivalentKwh: 0 };
-
-      auditLog.debug(
-        "financial",
-        "financial.savings.computed",
-        {
-          canUseCarrierPricing,
-          baselineCarrierBreakdown: baselineScenario.carrierBreakdown,
-          scenarioCarrierBreakdown: scenario.carrierBreakdown,
-          baselineDeliveredTotal: baselineScenario.deliveredTotal,
-          scenarioDeliveredTotal: scenario.deliveredTotal,
-          annualSavingsEur: carrierSavings.annualSavingsEur,
-          electricityEquivalentKwh: carrierSavings.electricityEquivalentKwh,
-          gasTariffEurPerKwh: assumptions.gasTariffEurPerKwh,
-          electricityReferencePriceEurPerKwh:
-            FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
-          renovationCost,
-          fundingFinancingType: resolvedFundingOptions.financingType,
-          effectiveCost,
-          loanAmount,
-          loanTerm,
-          subsidyAmount,
-          incentiveMode: resolvedFundingOptions.incentives.mode,
-        },
-        auditCtx,
-      );
-
-      const riskRequest: RiskAssessmentServiceRequest = {
-        annual_energy_savings: carrierSavings.electricityEquivalentKwh,
-        project_lifetime: resolvedBuilding.projectLifetime,
-        output_level: this.outputLevel,
-        capex: effectiveCost,
-        annual_maintenance_cost: annualMaintenanceCost,
-        loan_amount: loanAmount,
-        loan_term: loanTerm,
-      };
-
-      // The risk-assessment endpoint requires annual_energy_savings > 0 and
-      // capex > 0. Skip the call when the renovation produces no measurable
-      // savings, or when a subsidy covers the whole cost so there is no
-      // investment left to appraise.
-      const hasSavings = riskRequest.annual_energy_savings > 0;
-      const isFullySubsidized = effectiveCost <= 0;
-      const canAssessRisk = hasSavings && !isFullySubsidized;
-      // Reported on the result so the UI does not have to re-infer which of the
-      // three skips happened; the placeholder zeros below are indistinguishable
-      // from real figures without it.
-      const riskSkippedReason: RiskSkippedReason | undefined = canAssessRisk
-        ? undefined
-        : isFullySubsidized
-          ? "fully-subsidized"
-          : canUseCarrierPricing
-            ? "non-positive-savings"
-            : "missing-carrier-breakdown";
-
       auditLog.debug(
         "financial",
         "financial.arv.request",
         { request: arvRequest as unknown as Record<string, unknown> },
         auditCtx,
       );
-      if (canAssessRisk) {
-        auditLog.debug(
-          "financial",
-          "financial.risk.request",
-          {
-            request: riskRequest as unknown as Record<string, unknown>,
-          },
-          auditCtx,
-        );
-      } else {
-        auditLog.warn(
-          "financial",
-          "financial.risk.skipped",
-          {
-            scenarioId: scenario.id,
-            reason: riskSkippedReason,
-            annualSavingsEur: carrierSavings.annualSavingsEur,
-            electricityEquivalentKwh: carrierSavings.electricityEquivalentKwh,
-            renovationCost,
-            subsidyAmount,
-            effectiveCost,
-          },
-          auditCtx,
-        );
-      }
 
-      // Call APIs in parallel (risk assessment only when it can be computed)
-      const [arvAttempt, riskResult] = await Promise.all([
+      const [arvAttempt, { effectiveCapex, appraisal }] = await Promise.all([
         this.tryCalculateARV(arvRequest, auditCtx),
-        canAssessRisk ? this.assessRisk(riskRequest) : Promise.resolve(null),
+        appraisePackage({
+          capex: packageInput.capex,
+          annualMaintenanceCost: packageInput.annualMaintenanceCost,
+          funding: resolvedFundingOptions,
+          projectLifetime: resolvedBuilding.projectLifetime,
+          baselineCarriers: baselineScenario.carrierBreakdown,
+          packageCarriers: scenario.carrierBreakdown,
+          gasTariffEurPerKwh,
+          outputLevel: this.outputLevel,
+          auditCtx,
+        }),
       ]);
       const arvResult = arvAttempt.result;
 
@@ -608,21 +404,14 @@ export class FinancialService implements IFinancialService {
         ...(arvAttempt.unavailableReason
           ? { arvUnavailableReason: arvAttempt.unavailableReason }
           : {}),
-        riskAssessment: riskResult,
-        ...(riskSkippedReason ? { riskSkippedReason } : {}),
-        capitalExpenditure: riskResult
-          ? Math.round(riskResult.metadata.capex)
-          : Math.round(effectiveCost),
-        annualMaintenanceCost:
-          riskResult?.metadata.annual_maintenance_cost ?? annualMaintenanceCost,
-        returnOnInvestment: riskResult ? riskResult.pointForecasts.ROI : 0,
-        paybackTime: riskResult?.pointForecasts.PBP ?? 0,
-        netPresentValue: riskResult?.pointForecasts.NPV ?? 0,
+        appraisal,
+        capitalExpenditure: Math.round(effectiveCapex),
+        annualMaintenanceCost: packageInput.annualMaintenanceCost,
         afterRenovationValue: arvResult?.totalPrice ?? null,
-        // NOTE: npvRange and paybackTimeRange removed - use actual percentiles from API instead
       };
       results[scenario.id] = scenarioResults;
 
+      const appraised = appraisal.kind === "appraised" ? appraisal : undefined;
       auditLog.info(
         "financial",
         "financial.scenario.end",
@@ -630,16 +419,16 @@ export class FinancialService implements IFinancialService {
           scenarioId: scenario.id,
           capitalExpenditure: scenarioResults.capitalExpenditure,
           annualMaintenanceCost: scenarioResults.annualMaintenanceCost,
-          monthlyAvgSavings: riskResult?.pointForecasts.MonthlyAvgSavings,
-          netPresentValue: scenarioResults.netPresentValue,
-          returnOnInvestment: scenarioResults.returnOnInvestment,
-          paybackTime: scenarioResults.paybackTime,
+          monthlyAvgSavings: appraised?.pointForecasts.MonthlyAvgSavings,
+          netPresentValue: appraised?.pointForecasts.NPV,
+          returnOnInvestment: appraised?.pointForecasts.ROI,
+          paybackTime: appraised?.pointForecasts.PBP,
           afterRenovationValue: scenarioResults.afterRenovationValue,
           arvEnergyClass: arvResult?.energyClass,
-          riskComputed: riskResult !== null,
-          cashFlowTimeline: riskResult?.cashFlowData !== undefined,
-          probabilityKeys: riskResult?.probabilities
-            ? Object.keys(riskResult.probabilities)
+          riskComputed: appraised !== undefined,
+          cashFlowTimeline: appraised?.cashFlowData !== undefined,
+          probabilityKeys: appraised?.probabilities
+            ? Object.keys(appraised.probabilities)
             : undefined,
         },
         auditCtx,

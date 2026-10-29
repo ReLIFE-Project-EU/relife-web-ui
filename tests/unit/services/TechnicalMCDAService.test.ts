@@ -8,6 +8,7 @@ vi.mock("../../../src/api", () => ({
   technical: { runTopsis: mockRunTopsis },
 }));
 import type {
+  AppraisedPackage,
   FinancialResults,
   RenovationScenario,
 } from "../../../src/types/renovation";
@@ -66,29 +67,29 @@ const windowScenario: RenovationScenario = {
   measures: ["Window Replacement"],
 };
 
+const wallAppraisal: AppraisedPackage = {
+  kind: "appraised",
+  pointForecasts: {
+    NPV: 5000,
+    IRR: 0.08,
+    ROI: 0.2,
+    PBP: 10,
+    DPP: 12,
+    MonthlyAvgSavings: 45,
+    SuccessRate: 0.8,
+  },
+  metadata: {
+    project_lifetime: 20,
+    capex: 12000,
+    output_level: "private",
+  },
+};
+
 const wallFinancial: FinancialResults = {
   arv: null,
-  riskAssessment: {
-    pointForecasts: {
-      NPV: 5000,
-      IRR: 0.08,
-      ROI: 0.2,
-      PBP: 10,
-      DPP: 12,
-      MonthlyAvgSavings: 45,
-      SuccessRate: 0.8,
-    },
-    metadata: {
-      project_lifetime: 20,
-      capex: 12000,
-      output_level: "private",
-    },
-  },
+  appraisal: wallAppraisal,
   capitalExpenditure: 12000,
   annualMaintenanceCost: 300,
-  returnOnInvestment: 0.2,
-  paybackTime: 10,
-  netPresentValue: 5000,
   afterRenovationValue: 220000,
 };
 
@@ -96,19 +97,17 @@ const windowFinancial: FinancialResults = {
   ...wallFinancial,
   capitalExpenditure: 9000,
   annualMaintenanceCost: 250,
-  paybackTime: 8,
-  netPresentValue: 7000,
   afterRenovationValue: 225000,
-  riskAssessment: {
-    ...wallFinancial.riskAssessment!,
+  appraisal: {
+    ...wallAppraisal,
     pointForecasts: {
-      ...wallFinancial.riskAssessment!.pointForecasts,
+      ...wallAppraisal.pointForecasts,
       NPV: 7000,
       IRR: 0.1,
       PBP: 8,
     },
     metadata: {
-      ...wallFinancial.riskAssessment!.metadata,
+      ...wallAppraisal.metadata,
       capex: 9000,
     },
   },
@@ -200,13 +199,13 @@ describe("TechnicalMCDAService helpers", () => {
     );
   });
 
-  test("buildMcdaTopsisRequest excludes scenarios without risk assessment", () => {
+  test("buildMcdaTopsisRequest excludes scenarios with a skipped appraisal", () => {
     const request = buildMcdaTopsisRequest(
       [baselineScenario, wallScenario, windowScenario],
       {
         [wallScenario.id]: {
           ...wallFinancial,
-          riskAssessment: null,
+          appraisal: { kind: "skipped", reason: "non-positive-savings" },
         },
         [windowScenario.id]: windowFinancial,
       },
@@ -283,7 +282,7 @@ describe("TechnicalMCDAService helpers", () => {
         [pvScenario.id]: wallFinancial,
         [windowScenario.id]: {
           ...windowFinancial,
-          riskAssessment: null,
+          appraisal: { kind: "skipped", reason: "non-positive-savings" },
         },
       },
     );

@@ -16,7 +16,7 @@ function successResult(options: {
   npv?: number;
   netByYear?: number[];
   embodiedCarbonKgCo2e?: number;
-  /** Omit the risk result the way FinancialService does when it skips the call. */
+  /** Skip the appraisal, as a full subsidy does. */
   unappraised?: boolean;
 }): BuildingAnalysisResult {
   return {
@@ -40,13 +40,15 @@ function successResult(options: {
     ],
     financialResults: {
       capitalExpenditure: options.capex,
-      returnOnInvestment: options.roi,
-      paybackTime: 10,
-      netPresentValue: options.npv ?? 1_000,
-      riskAssessment: options.unappraised
-        ? null
+      appraisal: options.unappraised
+        ? { kind: "skipped", reason: "fully-subsidized" }
         : {
-            pointForecasts: {},
+            kind: "appraised",
+            pointForecasts: {
+              ROI: options.roi,
+              PBP: 10,
+              NPV: options.npv ?? 1_000,
+            },
             metadata: {},
             ...(options.netByYear
               ? {
@@ -178,9 +180,9 @@ describe("aggregatePortfolioPackage", () => {
     expect(result.totalNpvEur).toBe(500);
   });
 
-  test("does not let a skipped risk assessment read as zero return", () => {
-    // FinancialService substitutes NPV/ROI zeros when it skips the call, so
-    // summing them would understate both the total and the ratio.
+  test("does not let a skipped appraisal read as zero return", () => {
+    // Counting the skipped building's return as zero would understate both the
+    // total and the ratio.
     const result = aggregate([
       successResult({ id: "appraised", capex: 100_000, roi: 2, npv: 200_000 }),
       successResult({

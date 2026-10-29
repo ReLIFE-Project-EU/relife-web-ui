@@ -13,9 +13,9 @@ vi.mock("../../../../../src/api/financial", () => ({
 import { DEFAULT_FUNDING_OPTIONS } from "../../../../../src/constants/funding";
 import {
   RSE_ENERGY_TARIFF_DEFAULTS,
-  RSE_FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
   RSE_UNAVAILABLE_REASONS,
 } from "../../../../../src/features/strategy-explorer/constants";
+import { FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH } from "../../../../../src/services/carrierSavingsService";
 import {
   computeFinancials,
   computeFinancialsBatch,
@@ -147,8 +147,8 @@ function expectedEquivalentKwh(
     input.carrierSourceBreakdown.renovated.gridElectricityKwh;
   const savingsEur =
     gasDelta * input.financialAssumptions!.gasTariffEurPerKwh +
-    gridDelta * RSE_FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH;
-  return savingsEur / RSE_FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH;
+    gridDelta * FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH;
+  return savingsEur / FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH;
 }
 
 /** New multi-scheme wire response with a single equity scheme. */
@@ -317,7 +317,6 @@ describe("computeFinancials", () => {
     expect(request.output_level).toBe("professional");
     expect(request.project_lifetime).toBe(20);
     expect(request.schemes).toEqual([{ scheme_type: "equity" }]);
-    expect(request.indicators).toEqual(["IRR", "NPV", "PBP", "DPP", "ROI"]);
     expect(request.annual_energy_savings).toBeCloseTo(
       expectedEquivalentKwh(input),
       5,

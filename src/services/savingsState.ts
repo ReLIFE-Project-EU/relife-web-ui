@@ -1,11 +1,10 @@
 /**
  * Why a renovation package's financial figures can or cannot be trusted.
  *
- * When the Financial API's risk assessment is skipped, `FinancialResults` still
- * carries NPV, ROI and payback — as zeros that are indistinguishable from real
- * results. Classifying the reason is what keeps the UI from reporting a
- * fully-funded renovation as a failure, or telling a building that could not be
- * priced that it already meets its targets.
+ * A skipped package appraisal has no figures. Classifying the reason is what
+ * keeps the UI from reporting a fully-funded renovation as a failure, or
+ * telling a building that could not be priced that it already meets its
+ * targets.
  *
  * This deliberately stops short of judging profitability. HRA asks whether
  * running costs fall (monthly savings) and PRA asks whether the investment pays
@@ -13,10 +12,14 @@
  * top of an `appraised` result.
  */
 
-import type { FinancialResults, RenovationScenario } from "../types/renovation";
+import type {
+  AppraisedPackage,
+  FinancialResults,
+  RenovationScenario,
+} from "../types/renovation";
 
 export type SavingsAvailability =
-  /** The risk assessment ran; the financial figures are real. */
+  /** The Financial service appraised the package; the figures are real. */
   | "appraised"
   /** Skipped: no measurable energy saving left to appraise. */
   | "no-savings"
@@ -34,21 +37,27 @@ export function resolveSavingsAvailability(
   if (!renovated || !financials) {
     return "unknown";
   }
-  if (financials.riskAssessment !== null) {
+  if (financials.appraisal.kind === "appraised") {
     return "appraised";
   }
 
-  switch (financials.riskSkippedReason) {
+  switch (financials.appraisal.reason) {
     case "fully-subsidized":
       return "fully-funded";
     case "missing-carrier-breakdown":
       return "not-priceable";
     case "non-positive-savings":
       return "no-savings";
-    default:
-      // A result predating the reason field, or one built by a mock.
-      return "unknown";
   }
+}
+
+/** The appraised figures, or undefined when the appraisal was skipped. */
+export function appraisedFigures(
+  financials: FinancialResults | undefined,
+): AppraisedPackage | undefined {
+  return financials?.appraisal.kind === "appraised"
+    ? financials.appraisal
+    : undefined;
 }
 
 /** Short label for the state, used on badges and in exports. */

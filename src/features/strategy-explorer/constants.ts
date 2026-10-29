@@ -5,10 +5,7 @@ import {
   PV_SELF_CONSUMPTION_EMISSION_SOURCE,
 } from "../../constants/emissionSources.ts";
 import { DEFAULT_FUNDING_OPTIONS } from "../../constants/funding.ts";
-import {
-  ENERGY_TARIFF_DEFAULTS,
-  FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
-} from "../../services/carrierSavingsService.ts";
+import { ENERGY_TARIFF_DEFAULTS } from "../../services/carrierSavingsService.ts";
 
 export const RSE_CACHE_PAYLOAD_SCHEMA_VERSION = 1;
 
@@ -97,6 +94,7 @@ export const RSE_UNAVAILABLE_REASONS = {
   costLookupFailed: "cost-lookup-failed",
   nonPositiveEnergySavings: "non-positive-energy-savings",
   fullySubsidized: "fully-subsidized",
+  missingCarrierBreakdown: "missing-carrier-breakdown",
 } as const;
 export type RSEUnavailableReason =
   (typeof RSE_UNAVAILABLE_REASONS)[keyof typeof RSE_UNAVAILABLE_REASONS];
@@ -109,19 +107,11 @@ export const RSE_FINANCIAL_DEFAULTS = {
 /**
  * Planning tariffs for the interim carrier-aware financial translation.
  * Gas is user-editable; electricity is read-only and must match
- * `RSE_FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH` (backend calibration).
+ * `FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH` (backend calibration).
  */
 export const RSE_ENERGY_TARIFF_DEFAULTS = {
   ...ENERGY_TARIFF_DEFAULTS,
 } as const;
-
-/**
- * Year-1 moderate electricity price from relife-financial-service
- * `simulation_engine.py` (`electricity_prices_data.moderate[0]`).
- * Used to calibrate the electricity-equivalent kWh sent to the Financial API.
- */
-export const RSE_FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH =
-  FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH;
 
 export const RSE_RANKING_WEIGHTS = {
   energy: {

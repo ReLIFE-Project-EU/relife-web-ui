@@ -342,41 +342,40 @@ export type ArvUnavailableReason =
   | "api-error";
 
 /**
- * Why the Financial API's risk assessment was not run. The endpoint requires
- * positive energy savings and positive capex, so it is skipped rather than
- * called in these three cases. Present only when `riskAssessment` is null, and
- * needed because the numeric fields below then carry placeholder zeros.
+ * Why a package appraisal was not requested. The Financial endpoint requires
+ * positive energy savings and positive capex, so these cases never reach it.
  */
-export type RiskSkippedReason =
+export type AppraisalSkipReason =
   | "fully-subsidized"
   | "non-positive-savings"
   | "missing-carrier-breakdown";
 
+/** A package appraisal the Financial service calculated (POST /risk-assessment). */
+export interface AppraisedPackage {
+  kind: "appraised";
+  pointForecasts: RiskAssessmentPointForecasts;
+  metadata: RiskAssessmentMetadata;
+  probabilities?: Record<string, number>; // Pr(*) success metrics (professional+ output levels)
+  percentiles?: RiskAssessmentPercentiles; // Available when output_level > "private"
+  cashFlowData?: CashFlowData;
+}
+
+/** A skipped appraisal carries its reason and no figures. */
+export type PackageAppraisal =
+  | AppraisedPackage
+  | { kind: "skipped"; reason: AppraisalSkipReason };
+
+/** Financial results for one renovation package; the baseline has none. */
 export interface FinancialResults {
   // From POST /arv
   arv: ARVResult | null;
   arvUnavailableReason?: ArvUnavailableReason;
 
-  /** Set when `riskAssessment` is null; explains which skip occurred. */
-  riskSkippedReason?: RiskSkippedReason;
+  appraisal: PackageAppraisal;
 
-  // From POST /risk-assessment with output_level: "private"
-  riskAssessment: {
-    pointForecasts: RiskAssessmentPointForecasts;
-    metadata: RiskAssessmentMetadata;
-    probabilities?: Record<string, number>; // Pr(*) success metrics (professional+ output levels)
-    percentiles?: RiskAssessmentPercentiles; // Available when output_level > "private"
-    cashFlowData?: CashFlowData;
-  } | null;
-
-  // Derived/cached values from API responses for convenience
-  capitalExpenditure: number; // From metadata.capex
+  capitalExpenditure: number; // Post-subsidy CAPEX, EUR
   annualMaintenanceCost?: number; // EUR/year, from request or Financial API metadata
-  returnOnInvestment: number | null; // From pointForecasts.ROI
-  paybackTime: number; // From pointForecasts.PBP
-  netPresentValue: number; // From pointForecasts.NPV
   afterRenovationValue: number | null; // From arv.totalPrice; null when ARV is unavailable (e.g. unsupported country)
-  // NOTE: For ranges, use riskAssessment.percentiles (actual API data) instead of fake calculations
 }
 
 export type FinancialScenario = "baseline" | "optimistic" | "pessimistic";

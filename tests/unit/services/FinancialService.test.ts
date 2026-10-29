@@ -201,30 +201,19 @@ describe("FinancialService", () => {
     );
   });
 
-  test("current ARV request uses current energy intensity without before value", async () => {
+  test("the baseline is input only: no result entry and no ARV call", async () => {
     const service = new FinancialService();
 
-    await service.calculateForAllScenarios({
-      scenarios: [currentScenario],
+    const results = await service.calculateForAllScenarios({
+      scenarios: [currentScenario, renovatedScenario],
       fundingOptions: selfFundedOptions,
       floorArea: 100,
       packageFinancialInputs,
       building: mockBuilding,
     });
 
-    expect(mockCalculateARV).toHaveBeenCalledWith(
-      expect.objectContaining({
-        target_country: "Greece",
-        // Primary-energy intensity (EP_total / floor area): 16500/100.
-        energy_consumption_after: 165,
-        renovated_last_5_years: false,
-      }),
-    );
-    expect(mockCalculateARV).toHaveBeenCalledWith(
-      expect.not.objectContaining({
-        energy_consumption_before: expect.anything(),
-      }),
-    );
+    expect(Object.keys(results)).toEqual(["renovated"]);
+    expect(mockCalculateARV).toHaveBeenCalledTimes(1);
   });
 
   test("ARV request includes location and area", async () => {
@@ -265,15 +254,7 @@ describe("FinancialService", () => {
       building: apartmentBuilding,
     });
 
-    expect(mockCalculateARV).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        number_of_floors: 5,
-        floor_number: 4,
-      }),
-    );
-    expect(mockCalculateARV).toHaveBeenNthCalledWith(
-      2,
+    expect(mockCalculateARV).toHaveBeenCalledWith(
       expect.objectContaining({
         number_of_floors: 5,
         floor_number: 4,
@@ -408,54 +389,6 @@ describe("FinancialService", () => {
     );
   });
 
-  test("negative delivered-energy savings are clamped to 0 and risk assessment is skipped", async () => {
-    const service = new FinancialService();
-
-    const highEnergyScenario: RenovationScenario = {
-      ...renovatedScenario,
-      deliveredTotal: 12000,
-      carrierBreakdown: { naturalGasKwh: 13000, gridElectricityKwh: 1000 },
-    };
-
-    const results = await service.calculateForAllScenarios({
-      scenarios: [currentScenario, highEnergyScenario],
-      fundingOptions: selfFundedOptions,
-      floorArea: 100,
-      packageFinancialInputs: {
-        renovated: {
-          capex: 10000,
-          annualMaintenanceCost: 300,
-        },
-      },
-      building: mockBuilding,
-    });
-
-    expect(mockAssessRisk).not.toHaveBeenCalled();
-    expect(results["renovated"].riskAssessment).toBeNull();
-  });
-
-  test("missing carrier totals skip detailed finance instead of falling back to thermal needs", async () => {
-    const service = new FinancialService();
-
-    const scenarioWithoutDelivered: RenovationScenario = {
-      ...renovatedScenario,
-      deliveredTotal: undefined,
-      carrierBreakdown: undefined,
-      primaryEnergy: undefined,
-    };
-
-    const results = await service.calculateForAllScenarios({
-      scenarios: [currentScenario, scenarioWithoutDelivered],
-      fundingOptions: selfFundedOptions,
-      floorArea: 100,
-      packageFinancialInputs,
-      building: mockBuilding,
-    });
-
-    expect(mockAssessRisk).not.toHaveBeenCalled();
-    expect(results["renovated"].riskAssessment).toBeNull();
-  });
-
   test("output level matches constructor argument with a single call", async () => {
     const service = new FinancialService("professional");
 
@@ -472,26 +405,6 @@ describe("FinancialService", () => {
     expect(mockAssessRisk).toHaveBeenCalledWith(
       expect.objectContaining({ output_level: "professional" }),
     );
-  });
-
-  test("maps point forecasts, cash flow, and chart metadata from the scheme result", async () => {
-    const service = new FinancialService("professional");
-
-    const result = await service.assessRisk({
-      annual_energy_savings: 4000,
-      project_lifetime: 20,
-      output_level: "professional",
-      capex: 10000,
-      annual_maintenance_cost: 300,
-    });
-
-    expect(result.pointForecasts.NPV).toBe(5000);
-    expect(result.pointForecasts.SuccessRate).toBe(0.85);
-    expect(result.cashFlowData?.cumulative_cash_flow).toEqual([
-      -10000, -9700, -9400,
-    ]);
-    expect(result.metadata.chart_metadata?.NPV?.bins.centers).toEqual([0]);
-    expect(result.probabilities?.["Pr(PBP < 20y)"]).toBe(0.9);
   });
 
   test("uses package-specific CAPEX and maintenance values for each scenario", async () => {
@@ -612,10 +525,7 @@ describe("FinancialService", () => {
       building: { ...mockBuilding, country: "Poland" },
     });
 
-    // ARV is absent for every scenario, but the run resolved.
-    expect(results["current"].arv).toBeNull();
-    expect(results["current"].arvUnavailableReason).toBe("unsupported-country");
-    expect(results["current"].afterRenovationValue).toBeNull();
+    // ARV is absent, but the run resolved.
     expect(results["renovated"].arv).toBeNull();
     expect(results["renovated"].arvUnavailableReason).toBe(
       "unsupported-country",
@@ -624,10 +534,10 @@ describe("FinancialService", () => {
 
     // Risk-derived metrics are still computed from the (working) risk endpoint.
     expect(mockAssessRisk).toHaveBeenCalledTimes(1);
-    expect(results["renovated"].riskAssessment).not.toBeNull();
-    expect(results["renovated"].netPresentValue).toBe(5000);
-    expect(results["renovated"].returnOnInvestment).toBe(0.25);
-    expect(results["renovated"].paybackTime).toBe(8);
+    expect(results["renovated"].appraisal).toMatchObject({
+      kind: "appraised",
+      pointForecasts: { NPV: 5000, ROI: 0.25, PBP: 8 },
+    });
     expect(results["renovated"].capitalExpenditure).toBe(10000);
   });
 });

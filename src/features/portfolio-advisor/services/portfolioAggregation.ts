@@ -14,6 +14,7 @@
 import type { BuildingAnalysisResult } from "../context/types";
 import { baselineScenarioOf } from "./scenarioLookup";
 import { computeLifetimeCarbonKgCo2e } from "../../../services/carrierSavingsService";
+import { appraisedFigures } from "../../../services/savingsState";
 import { computePooledPaybackYears } from "../../../utils/financialCalculations";
 
 const KG_PER_TONNE = 1000;
@@ -156,24 +157,20 @@ export function aggregatePortfolioPackage(input: {
     totalCapexEur += financials.capitalExpenditure;
     addOptional(maintenance, financials.annualMaintenanceCost);
 
-    // FinancialService substitutes zeros for NPV/ROI when it skips the risk
-    // assessment (no savings, no carrier split, or a subsidy covering the whole
-    // cost). Those buildings still carry real CAPEX, so counting their return as
-    // zero understates the portfolio rather than admitting it is unknown.
-    const appraised = financials.riskAssessment !== null;
-    addOptional(npv, appraised ? financials.netPresentValue : undefined);
+    // A skipped appraisal (no savings, no carrier split, or a subsidy covering
+    // the whole cost) has no return, but the building still carries real CAPEX,
+    // so the portfolio return is unknown rather than zero.
+    const appraised = appraisedFigures(financials);
+    addOptional(npv, appraised?.pointForecasts.NPV);
     // ROI is reported against the upfront share of the post-subsidy CAPEX;
     // every building has the same loan share, so CAPEX weights it correctly.
-    const roi = financials.returnOnInvestment;
+    const roi = appraised?.pointForecasts.ROI;
     addOptional(
       netProfit,
-      appraised && roi !== null
-        ? roi * financials.capitalExpenditure
-        : undefined,
+      roi != null ? roi * financials.capitalExpenditure : undefined,
     );
 
-    const netByYear =
-      financials.riskAssessment?.cashFlowData?.annual_net_cash_flow;
+    const netByYear = appraised?.cashFlowData?.annual_net_cash_flow;
     cashFlowContributions.push(netByYear ? { netByYear, count: 1 } : null);
 
     totalThermalNeedsBeforeKwh += baseline.thermalKwh ?? 0;

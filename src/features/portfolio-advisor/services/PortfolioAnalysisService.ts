@@ -14,6 +14,7 @@ import { normalizeSystemSelection } from "../../../services/measureNormalization
 import { packageUsesHeatingStopgap } from "../../../services/renovationActions";
 import { estimatePackageEmbodiedCarbon } from "../../../services/embodiedCarbon";
 import { lookupPackageCosts } from "../../../services/packageCostLookup";
+import { appraisedFigures } from "../../../services/savingsState";
 import { isApartmentLikeCategory } from "../../../constants/buildingFormOptions";
 import type {
   BuildingInfo,
@@ -329,20 +330,19 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       praFinancialResults = { ...renovatedResults };
 
       // Prefer the dedicated probabilities field mapped by FinancialService
-      const riskAssessment = renovatedResults.riskAssessment;
-      if (riskAssessment?.metadata.chart_metadata) {
-        praFinancialResults.chartMetadata =
-          riskAssessment.metadata.chart_metadata;
+      const appraised = appraisedFigures(renovatedResults);
+      if (appraised?.metadata.chart_metadata) {
+        praFinancialResults.chartMetadata = appraised.metadata.chart_metadata;
       }
 
       if (
-        riskAssessment?.probabilities &&
-        Object.keys(riskAssessment.probabilities).length > 0
+        appraised?.probabilities &&
+        Object.keys(appraised.probabilities).length > 0
       ) {
-        praFinancialResults.probabilities = riskAssessment.probabilities;
+        praFinancialResults.probabilities = appraised.probabilities;
       } else {
         // Fallback: mine Pr(*) keys from metadata for backward compatibility
-        const metadata = riskAssessment?.metadata;
+        const metadata = appraised?.metadata;
         if (metadata) {
           const probabilities: Record<string, number> = {};
           for (const [key, value] of Object.entries(metadata)) {
@@ -357,15 +357,17 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       }
     }
 
+    const renovatedForecasts =
+      appraisedFigures(praFinancialResults)?.pointForecasts;
     auditLog.info(
       "portfolio",
       "portfolio.building.end",
       {
         buildingId: building.id,
         scenarioCount: scenarios.length,
-        renovatedNPV: praFinancialResults?.netPresentValue,
-        renovatedROI: praFinancialResults?.returnOnInvestment,
-        renovatedPaybackTime: praFinancialResults?.paybackTime,
+        renovatedNPV: renovatedForecasts?.NPV,
+        renovatedROI: renovatedForecasts?.ROI,
+        renovatedPaybackTime: renovatedForecasts?.PBP,
         renovatedCapex: praFinancialResults?.capitalExpenditure,
         renovatedARV: praFinancialResults?.afterRenovationValue,
         probabilityKeys: praFinancialResults?.probabilities

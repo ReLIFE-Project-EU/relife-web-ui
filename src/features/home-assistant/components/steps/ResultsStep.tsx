@@ -25,6 +25,7 @@ import {
   getRankingScenarioStatuses,
   hasCompleteHealthImpactData,
 } from "../../../../services/TechnicalMCDAService";
+import { appraisedFigures } from "../../../../services/savingsState";
 import { CashFlowChart } from "../results/CashFlowChart";
 import { CompareAllTable } from "../results/CompareAllTable";
 import { EnergyCostChart } from "../results/EnergyCostChart";
@@ -151,6 +152,7 @@ export function ResultsStep() {
   const selectedResult = selectedScenario
     ? financialResults[selectedScenario.id]
     : undefined;
+  const selectedAppraisal = appraisedFigures(selectedResult);
   const handlePrevious = () => {
     dispatch({ type: "PREV_STEP" });
   };
@@ -337,9 +339,9 @@ export function ResultsStep() {
                   </section>
                 </Stack>
 
-                {selectedResult?.riskAssessment?.cashFlowData ? (
+                {selectedAppraisal?.cashFlowData ? (
                   <CashFlowChart
-                    data={selectedResult.riskAssessment.cashFlowData}
+                    data={selectedAppraisal.cashFlowData}
                     projectLifetime={
                       state.building.projectLifetime ?? undefined
                     }

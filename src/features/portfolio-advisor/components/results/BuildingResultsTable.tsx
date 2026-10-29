@@ -41,6 +41,7 @@ import {
 } from "../../../../utils/formatters";
 import type { PRABuilding, BuildingAnalysisResult } from "../../context/types";
 import {
+  appraisedFigures,
   resolveSavingsAvailability,
   savingsAvailabilityExplanation,
   savingsAvailabilityLabel,
@@ -122,18 +123,18 @@ function buildRowVms(
       const energyBefore = result.estimation?.baseline.thermalNeed;
       const energyAfter = renovated?.annualEnergyNeeds;
       const energyReduction = getEnergyReduction(energyBefore, energyAfter);
-      // A skipped appraisal leaves placeholder zeros, which would sort as real.
-      const appraisedFr =
-        isSuccess && availability === "appraised" ? fr : undefined;
+      const forecasts = isSuccess
+        ? appraisedFigures(fr)?.pointForecasts
+        : undefined;
       return {
         building,
         result,
         isSuccess,
         availability,
         energyReduction,
-        npv: appraisedFr?.netPresentValue,
-        roi: appraisedFr?.returnOnInvestment,
-        pbp: appraisedFr?.paybackTime,
+        npv: forecasts?.NPV,
+        roi: forecasts?.ROI,
+        pbp: forecasts?.PBP,
       } satisfies RowVm;
     })
     .filter((v): v is RowVm => v !== null);
@@ -142,8 +143,7 @@ function buildRowVms(
 function applyStatusFilter(rows: RowVm[], filter: StatusFilter): RowVm[] {
   if (filter === "all") return rows;
   if (filter === "unprofitable") {
-    // Requires an appraisal: a skipped one leaves a placeholder zero that would
-    // otherwise be read as a genuine non-positive NPV, as would a missing one.
+    // Requires an appraisal: a skipped or missing one has no NPV to judge.
     return rows.filter(
       (r) =>
         r.isSuccess &&
@@ -386,11 +386,11 @@ function ResultsRow({
     isSuccess,
     availability,
     energyReduction,
+    npv,
     roi,
     pbp,
   } = row;
-  // A skipped appraisal leaves placeholder zeros on the result; showing them
-  // dimmed still shows a number, so render them as unavailable instead.
+  // A skipped appraisal has no figures; its cells render dimmed as unavailable.
   const appraised = availability === "appraised";
   const fr = result.financialResults;
   const renovated = renovatedOf(result);
@@ -497,8 +497,8 @@ function ResultsRow({
         ta="right"
         style={{ borderLeft: GROUP_BORDER, verticalAlign: "middle" }}
       >
-        {isSuccess && fr && appraised ? (
-          <NpvCell value={fr.netPresentValue} maxAbs={maxAbsNpv} />
+        {npv !== undefined ? (
+          <NpvCell value={npv} maxAbs={maxAbsNpv} />
         ) : result.status === "error" ? (
           <Text size="xs" c="red">
             {(result.error ?? "").substring(0, 40)}
@@ -538,7 +538,7 @@ function ResultsRow({
               ? IMMEDIATE_PAYBACK_LABEL
               : isPaybackBeyondHorizon(
                     pbp,
-                    fr?.riskAssessment?.metadata.project_lifetime,
+                    appraisedFigures(fr)?.metadata.project_lifetime,
                   )
                 ? "No payback"
                 : formatDecimal(pbp)}

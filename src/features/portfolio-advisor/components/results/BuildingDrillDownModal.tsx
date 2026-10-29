@@ -25,6 +25,7 @@ import { ConceptMetricCard } from "../../../../components/shared/ConceptMetricCa
 import { ErrorAlert } from "../../../../components/shared/ErrorAlert";
 import { MetricEyebrow } from "../../../../components/shared/MetricEyebrow";
 import {
+  appraisedFigures,
   resolveSavingsAvailability,
   savingsAvailabilityExplanation,
   savingsAvailabilityLabel,
@@ -102,11 +103,11 @@ export function BuildingDrillDownModal({
     renovated?.annualEnergyNeeds,
   );
 
-  const cashFlowData = fr?.riskAssessment?.cashFlowData;
+  const figures = appraisedFigures(fr);
+  const cashFlowData = figures?.cashFlowData;
   const availability = resolveSavingsAvailability(renovated, fr);
   const appraised = availability === "appraised";
-  const horizonYears =
-    projectLifetime ?? fr?.riskAssessment?.metadata.project_lifetime;
+  const horizonYears = projectLifetime ?? figures?.metadata.project_lifetime;
   const lifetimeCarbonKg = computeLifetimeCarbonKgCo2e({
     embodiedCarbonKgCo2e: embodiedCarbonKg,
     annualOperationalEmissionsTonCo2e: co2After,
@@ -119,9 +120,6 @@ export function BuildingDrillDownModal({
 
   const isError = result.status === "error";
   const wasAutoMatched = !building.archetypeName && !!archetype;
-  // A skipped appraisal leaves placeholder zeros on the result, so these read
-  // as a real €0 and a real payback unless gated.
-  const showVerdict = !isError && fr && appraised;
 
   return (
     <Modal
@@ -178,16 +176,18 @@ export function BuildingDrillDownModal({
               <>
                 <VerdictStat
                   label="Lifetime NPV"
-                  value={showVerdict ? formatCurrency(fr.netPresentValue) : "—"}
+                  value={
+                    figures ? formatCurrency(figures.pointForecasts.NPV) : "—"
+                  }
                   color="relife.7"
                 />
                 <VerdictStat
                   label="Payback"
                   value={
-                    showVerdict
+                    figures
                       ? formatPaybackYears(
-                          fr.paybackTime,
-                          fr.riskAssessment?.metadata.project_lifetime,
+                          figures.pointForecasts.PBP,
+                          figures.metadata.project_lifetime,
                         )
                       : "—"
                   }

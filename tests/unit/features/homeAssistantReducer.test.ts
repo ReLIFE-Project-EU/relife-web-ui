@@ -166,11 +166,8 @@ describe("homeAssistantReducer package financial inputs", () => {
       financialResults: {
         "package-wall-insulation": {
           arv: null,
-          riskAssessment: null,
+          appraisal: { kind: "skipped", reason: "non-positive-savings" },
           capitalExpenditure: 10_000,
-          returnOnInvestment: 0,
-          paybackTime: 0,
-          netPresentValue: 0,
           afterRenovationValue: 0,
         },
       },
@@ -198,11 +195,8 @@ describe("homeAssistantReducer package financial inputs", () => {
       financialResults: {
         "package-wall-insulation": {
           arv: null,
-          riskAssessment: null,
+          appraisal: { kind: "skipped", reason: "non-positive-savings" },
           capitalExpenditure: 10_000,
-          returnOnInvestment: 0,
-          paybackTime: 0,
-          netPresentValue: 0,
           afterRenovationValue: 0,
         },
       },
@@ -229,11 +223,8 @@ describe("homeAssistantReducer package financial inputs", () => {
         financialResults: {
           "package-wall-insulation": {
             arv: null,
-            riskAssessment: null,
+            appraisal: { kind: "skipped", reason: "non-positive-savings" },
             capitalExpenditure: 10_000,
-            returnOnInvestment: 0,
-            paybackTime: 0,
-            netPresentValue: 0,
             afterRenovationValue: 0,
           },
         },
@@ -266,11 +257,8 @@ describe("homeAssistantReducer package financial inputs", () => {
         financialResults: {
           "package-wall-insulation": {
             arv: null,
-            riskAssessment: null,
+            appraisal: { kind: "skipped", reason: "non-positive-savings" },
             capitalExpenditure: 10_000,
-            returnOnInvestment: 0,
-            paybackTime: 0,
-            netPresentValue: 0,
             afterRenovationValue: 0,
           },
         },

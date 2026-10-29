@@ -6,6 +6,7 @@
 
 import { Text } from "@mantine/core";
 import { FundingPills, NotApplicable } from "../../../../components/shared";
+import { appraisedFigures } from "../../../../services/savingsState";
 import type {
   FinancialResults,
   FundingOptions,
@@ -33,8 +34,9 @@ export function FinancialDeepDive({
   result,
   funding,
 }: FinancialDeepDiveProps) {
-  const paybackPercentiles = result?.riskAssessment?.percentiles?.PBP;
-  const projectLifetime = result?.riskAssessment?.metadata.project_lifetime;
+  const appraised = appraisedFigures(result);
+  const paybackPercentiles = appraised?.percentiles?.PBP;
+  const projectLifetime = appraised?.metadata.project_lifetime;
   const noPaybackWithinRange =
     paybackPercentiles != null &&
     isPaybackBeyondHorizon(paybackPercentiles.P10, projectLifetime) &&
@@ -59,23 +61,22 @@ export function FinancialDeepDive({
       ) : (
         <>
           <div className={classes.finGrid} style={{ marginTop: 12 }}>
-            <FinancialMetricCard
-              conceptId="npv"
-              metricType="NPV"
-              value={
-                result.riskAssessment?.pointForecasts.NPV ??
-                result.netPresentValue
-              }
-              formatter={formatCurrency}
-              percentiles={result.riskAssessment?.percentiles?.NPV}
-              color="green"
-              highlighted
-            />
-            {result.riskAssessment ? (
+            {appraised ? (
+              <FinancialMetricCard
+                conceptId="npv"
+                metricType="NPV"
+                value={appraised.pointForecasts.NPV}
+                formatter={formatCurrency}
+                percentiles={appraised.percentiles?.NPV}
+                color="green"
+                highlighted
+              />
+            ) : null}
+            {appraised ? (
               <FinancialMetricCard
                 conceptId="payback-period"
                 metricType="PBP"
-                value={result.riskAssessment.pointForecasts.PBP}
+                value={appraised.pointForecasts.PBP}
                 formatter={(v) => formatPaybackYears(v, projectLifetime)}
                 percentiles={
                   noPaybackWithinRange ? undefined : paybackPercentiles
@@ -85,12 +86,11 @@ export function FinancialDeepDive({
                 highlighted
               />
             ) : null}
-            {result.riskAssessment?.pointForecasts.MonthlyAvgSavings !==
-            undefined ? (
+            {appraised?.pointForecasts.MonthlyAvgSavings !== undefined ? (
               <FinancialMetricCard
                 conceptId="monthly-cash-benefit"
                 metricType="MonthlyAvgSavings"
-                value={result.riskAssessment.pointForecasts.MonthlyAvgSavings}
+                value={appraised.pointForecasts.MonthlyAvgSavings}
                 formatter={formatCurrency}
                 color="orange"
                 highlighted
@@ -105,11 +105,9 @@ export function FinancialDeepDive({
             />
           </div>
 
-          {result.riskAssessment?.pointForecasts.SuccessRate !== undefined ? (
+          {appraised?.pointForecasts.SuccessRate !== undefined ? (
             <div style={{ marginTop: 12 }}>
-              <RiskGauge
-                successRate={result.riskAssessment.pointForecasts.SuccessRate}
-              />
+              <RiskGauge successRate={appraised.pointForecasts.SuccessRate} />
             </div>
           ) : null}
 
@@ -121,10 +119,10 @@ export function FinancialDeepDive({
 }
 
 function SecondaryMetrics({ result }: { result: FinancialResults }) {
-  const irr = result.riskAssessment?.pointForecasts.IRR;
-  const roi =
-    result.riskAssessment?.pointForecasts.ROI ?? result.returnOnInvestment;
-  const dpp = result.riskAssessment?.pointForecasts.DPP;
+  const appraised = appraisedFigures(result);
+  const irr = appraised?.pointForecasts.IRR;
+  const roi = appraised?.pointForecasts.ROI;
+  const dpp = appraised?.pointForecasts.DPP;
   const ratio = (value: number | null) =>
     value === null ? (
       <NotApplicable result={result} />
@@ -147,10 +145,7 @@ function SecondaryMetrics({ result }: { result: FinancialResults }) {
       {dpp !== undefined ? (
         <span>
           <b>DPP</b>{" "}
-          {formatPaybackYears(
-            dpp,
-            result.riskAssessment?.metadata.project_lifetime,
-          )}
+          {formatPaybackYears(dpp, appraised?.metadata.project_lifetime)}
         </span>
       ) : null}
     </div>

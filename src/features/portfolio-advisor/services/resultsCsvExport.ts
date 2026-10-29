@@ -11,7 +11,10 @@ import { serializeCsv, type CsvColumn } from "../../../utils/csvExport";
 import { getEnergyReduction } from "../../../utils/formatters";
 import { getCountryCode } from "../../../utils/countries";
 import { computeLifetimeCarbonKgCo2e } from "../../../services/carrierSavingsService";
-import { resolveSavingsAvailability } from "../../../services/savingsState";
+import {
+  appraisedFigures,
+  resolveSavingsAvailability,
+} from "../../../services/savingsState";
 import type { PortfolioPackageAggregate } from "./portfolioAggregation";
 import { baselineScenarioOf, renovatedOf } from "./scenarioLookup";
 import type { BuildingAnalysisResult, PRABuilding } from "../context/types";
@@ -22,6 +25,10 @@ interface BuildingExportRow {
   /** Configured horizon, always supplied by the caller. */
   projectLifetimeYears: number;
 }
+
+/** Point forecasts of an appraised package; undefined writes an empty cell. */
+const forecastsOf = (r: BuildingExportRow) =>
+  appraisedFigures(r.result.financialResults)?.pointForecasts;
 
 /**
  * Look up a success-probability by indicator prefix. The Financial API emits
@@ -132,27 +139,27 @@ const buildingExportColumns: CsvColumn<BuildingExportRow>[] = [
   {
     key: "npv",
     header: "NPV (EUR)",
-    value: (r) => r.result.financialResults?.netPresentValue,
+    value: (r) => forecastsOf(r)?.NPV,
   },
   {
     key: "roi",
     header: "ROI (ratio)",
-    value: (r) => r.result.financialResults?.returnOnInvestment,
+    value: (r) => forecastsOf(r)?.ROI,
   },
   {
     key: "irr",
     header: "IRR (ratio)",
-    value: (r) => r.result.financialResults?.riskAssessment?.pointForecasts.IRR,
+    value: (r) => forecastsOf(r)?.IRR,
   },
   {
     key: "pbp",
     header: "Payback period (years)",
-    value: (r) => r.result.financialResults?.paybackTime,
+    value: (r) => forecastsOf(r)?.PBP,
   },
   {
     key: "dpp",
     header: "Discounted payback (years)",
-    value: (r) => r.result.financialResults?.riskAssessment?.pointForecasts.DPP,
+    value: (r) => forecastsOf(r)?.DPP,
   },
   {
     key: "annualMaintenance",

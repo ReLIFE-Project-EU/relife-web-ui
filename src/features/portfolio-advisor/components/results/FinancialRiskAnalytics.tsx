@@ -28,6 +28,7 @@ import {
   formatPaybackYears,
   formatPercent,
 } from "../../../../utils/formatters";
+import { appraisedFigures } from "../../../../services/savingsState";
 import type {
   FinancialChartMetadata,
   FinancialRiskIndicator,
@@ -102,12 +103,15 @@ const INDICATOR_CONFIGS: IndicatorConfig[] = [
 export function FinancialRiskAnalytics({
   financialResults,
 }: FinancialRiskAnalyticsProps) {
-  const riskAssessment = financialResults?.riskAssessment;
+  // Narrowed inline (not via appraisedFigures) so the React Compiler can keep
+  // the memoization below.
+  const appraisal = financialResults?.appraisal;
+  const appraised = appraisal?.kind === "appraised" ? appraisal : undefined;
   const probabilities =
-    financialResults?.probabilities ?? riskAssessment?.probabilities;
+    financialResults?.probabilities ?? appraised?.probabilities;
   const chartMetadata =
-    financialResults?.chartMetadata ?? riskAssessment?.metadata.chart_metadata;
-  const percentiles = riskAssessment?.percentiles;
+    financialResults?.chartMetadata ?? appraised?.metadata.chart_metadata;
+  const percentiles = appraised?.percentiles;
 
   const availableIndicators = useMemo(
     () =>
@@ -137,7 +141,7 @@ export function FinancialRiskAnalytics({
       ? selectedIndicator
       : histogramIndicators[0]?.indicator;
 
-  if (!riskAssessment) {
+  if (!appraised) {
     return (
       <Alert color="gray" variant="light" icon={<IconInfoCircle size={16} />}>
         Professional risk analytics are not available for this building.
@@ -438,7 +442,7 @@ function getPointForecastValue(
   financialResults: PRAFinancialResults | undefined,
   indicator: FinancialRiskIndicator,
 ): number | null | undefined {
-  const pointForecasts = financialResults?.riskAssessment?.pointForecasts;
+  const pointForecasts = appraisedFigures(financialResults)?.pointForecasts;
   if (!pointForecasts) {
     return undefined;
   }

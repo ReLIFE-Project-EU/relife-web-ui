@@ -53,7 +53,8 @@ function renderAnalytics(financialResults?: PRAFinancialResults) {
 
 const riskResults = {
   arv: null,
-  riskAssessment: {
+  appraisal: {
+    kind: "appraised",
     pointForecasts: {
       NPV: 5000,
       IRR: 0.06,
@@ -118,9 +119,6 @@ const riskResults = {
     },
   },
   capitalExpenditure: 10000,
-  returnOnInvestment: 0.22,
-  paybackTime: 8,
-  netPresentValue: 5000,
   afterRenovationValue: 200000,
   probabilities: {
     "Pr(NPV > 0)": 0.8,

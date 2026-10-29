@@ -14,6 +14,7 @@ import type {
 } from "../types/technical";
 import type { IMCDAService, MCDAPersona } from "./types";
 import { computeLifetimeCarbonKgCo2e } from "./carrierSavingsService";
+import { appraisedFigures } from "./savingsState";
 import { MCDA_PERSONAS } from "./mock/data/personas";
 import { auditLog, type AuditCtx } from "../utils/auditLogger";
 
@@ -270,6 +271,7 @@ export function deriveTechnologyKpis(
   financial: FinancialResults | undefined,
 ): McdaTechnology {
   const annualMaintenanceCost = getAnnualMaintenanceCost(financial);
+  const forecasts = appraisedFigures(financial)?.pointForecasts;
 
   return {
     name: scenario.id,
@@ -287,9 +289,9 @@ export function deriveTechnologyKpis(
     daly_kpi: scenario.avoidedThermalDalyPerPerson ?? 0,
     ii_kpi: financial?.capitalExpenditure ?? 0,
     aoc_kpi: annualMaintenanceCost ?? 0,
-    irr_kpi: financial?.riskAssessment?.pointForecasts.IRR ?? 0,
-    npv_kpi: financial?.riskAssessment?.pointForecasts.NPV ?? 0,
-    pp_kpi: financial?.riskAssessment?.pointForecasts.PBP ?? 0,
+    irr_kpi: forecasts?.IRR ?? 0,
+    npv_kpi: forecasts?.NPV ?? 0,
+    pp_kpi: forecasts?.PBP ?? 0,
     arv_kpi: financial?.afterRenovationValue ?? 0,
   };
 }
@@ -326,7 +328,7 @@ export function resolveNeutralizedKpiKeys(
   if (
     !everyFinite(
       (scenario) =>
-        financialResults[scenario.id]?.riskAssessment?.pointForecasts.IRR,
+        appraisedFigures(financialResults[scenario.id])?.pointForecasts.IRR,
     )
   ) {
     keys.push("irr_kpi");
@@ -428,7 +430,7 @@ function getRankingExclusionReason(
     return "Financial data is missing";
   }
 
-  if (!financial.riskAssessment) {
+  if (financial.appraisal.kind === "skipped") {
     return "No energy savings calculated";
   }
 
@@ -477,7 +479,7 @@ function getRankingExclusionReason(
 
 /**
  * Derived here rather than stored on the scenario so a caller cannot leave it
- * unpopulated. Eligibility already requires `riskAssessment`, whose metadata
+ * unpopulated. Eligibility already requires an appraised package, whose metadata
  * echoes the building's project lifetime.
  */
 function getLifetimeCarbonKgCo2e(
@@ -487,7 +489,8 @@ function getLifetimeCarbonKgCo2e(
   return computeLifetimeCarbonKgCo2e({
     embodiedCarbonKgCo2e: scenario.embodiedCarbonKgCo2e,
     annualOperationalEmissionsTonCo2e: scenario.annualEmissionsTonCo2e,
-    projectLifetimeYears: financial?.riskAssessment?.metadata.project_lifetime,
+    projectLifetimeYears:
+      appraisedFigures(financial)?.metadata.project_lifetime,
   });
 }
 
@@ -495,7 +498,7 @@ function getAnnualMaintenanceCost(
   financial: FinancialResults | undefined,
 ): number | undefined {
   const metadataValue =
-    financial?.riskAssessment?.metadata.annual_maintenance_cost;
+    appraisedFigures(financial)?.metadata.annual_maintenance_cost;
 
   return financial?.annualMaintenanceCost ?? metadataValue;
 }

@@ -95,11 +95,8 @@ const scenarios: RenovationScenario[] = [
 const financialResults: Record<string, FinancialResults> = {
   renovated: {
     arv: null,
-    riskAssessment: null,
+    appraisal: { kind: "skipped", reason: "non-positive-savings" },
     capitalExpenditure: 10000,
-    returnOnInvestment: 0,
-    paybackTime: 0,
-    netPresentValue: 0,
     afterRenovationValue: 200000,
   },
 };
@@ -122,12 +119,9 @@ const stateWithResults: PortfolioAdvisorState = {
       status: "success",
       financialResults: {
         arv: null,
-        riskAssessment: null,
+        appraisal: { kind: "skipped", reason: "non-positive-savings" },
         capitalExpenditure: 10_000,
         annualMaintenanceCost: 300,
-        returnOnInvestment: 0.1,
-        paybackTime: 10,
-        netPresentValue: 1000,
         afterRenovationValue: null,
       },
     },
@@ -471,7 +465,8 @@ describe("PortfolioAnalysisService", () => {
     mockCalculateForAllScenarios.mockResolvedValue({
       renovated: {
         ...financialResults.renovated,
-        riskAssessment: {
+        appraisal: {
+          kind: "appraised",
           pointForecasts: {
             NPV: 5000,
             IRR: 0.05,

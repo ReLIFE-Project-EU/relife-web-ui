@@ -2,44 +2,38 @@ import { describe, expect, test } from "vitest";
 
 import { resolveSavingsAvailability } from "../../../src/services/savingsState";
 import type {
+  AppraisalSkipReason,
+  AppraisedPackage,
   FinancialResults,
+  PackageAppraisal,
   RenovationScenario,
 } from "../../../src/types/renovation";
 
 const scenario = {} as RenovationScenario;
 
-function financials(
-  overrides: Partial<FinancialResults> = {},
-): FinancialResults {
+function financials(appraisal: PackageAppraisal): FinancialResults {
   return {
     arv: null,
-    riskAssessment: null,
+    appraisal,
     capitalExpenditure: 10_000,
-    returnOnInvestment: 0,
-    paybackTime: 0,
-    netPresentValue: 0,
     afterRenovationValue: null,
-    ...overrides,
   };
 }
 
-describe("resolveSavingsAvailability", () => {
-  test("reports appraised when the risk assessment ran", () => {
-    const state = resolveSavingsAvailability(
-      scenario,
-      financials({
-        riskAssessment: {} as FinancialResults["riskAssessment"],
-      }),
-    );
+const appraised = { kind: "appraised" } as AppraisedPackage;
 
-    expect(state).toBe("appraised");
+describe("resolveSavingsAvailability", () => {
+  test("reports appraised when the Financial service calculated it", () => {
+    expect(resolveSavingsAvailability(scenario, financials(appraised))).toBe(
+      "appraised",
+    );
   });
 
-  test("distinguishes each reason the assessment was skipped", () => {
-    const availabilityFor = (reason: FinancialResults["riskSkippedReason"]) =>
+  test("distinguishes each reason the appraisal was skipped", () => {
+    const availabilityFor = (reason: AppraisalSkipReason) =>
       resolveSavingsAvailability(
         scenario,
-        financials({ riskSkippedReason: reason }),
+        financials({ kind: "skipped", reason }),
       );
 
     expect(availabilityFor("fully-subsidized")).toBe("fully-funded");
@@ -49,8 +43,8 @@ describe("resolveSavingsAvailability", () => {
 
   test("reports unknown without financials or scenarios", () => {
     expect(resolveSavingsAvailability(scenario, undefined)).toBe("unknown");
-    expect(resolveSavingsAvailability(undefined, financials())).toBe("unknown");
-    // A skipped assessment carrying no reason cannot be classified either.
-    expect(resolveSavingsAvailability(scenario, financials())).toBe("unknown");
+    expect(resolveSavingsAvailability(undefined, financials(appraised))).toBe(
+      "unknown",
+    );
   });
 });
