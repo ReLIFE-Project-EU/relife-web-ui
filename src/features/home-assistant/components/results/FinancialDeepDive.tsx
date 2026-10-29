@@ -4,9 +4,15 @@
  * probability gauge, and a row of secondary IRR / ROI / DPP indicators.
  */
 
-import { Text } from "@mantine/core";
+import { Alert, Text } from "@mantine/core";
+import { IconInfoCircle } from "@tabler/icons-react";
 import { FundingPills, NotApplicable } from "../../../../components/shared";
-import { appraisedFigures } from "../../../../services/savingsState";
+import {
+  appraisedFigures,
+  resolveSavingsAvailability,
+  savingsAvailabilityExplanation,
+  savingsAvailabilityLabel,
+} from "../../../../services/savingsState";
 import type {
   FinancialResults,
   FundingOptions,
@@ -35,6 +41,7 @@ export function FinancialDeepDive({
   funding,
 }: FinancialDeepDiveProps) {
   const appraised = appraisedFigures(result);
+  const availability = resolveSavingsAvailability(selected, result);
   const paybackPercentiles = appraised?.percentiles?.PBP;
   const projectLifetime = appraised?.metadata.project_lifetime;
   const noPaybackWithinRange =
@@ -104,6 +111,18 @@ export function FinancialDeepDive({
               color="gray"
             />
           </div>
+
+          {!appraised && (
+            <Alert
+              mt="md"
+              color={availability === "fully-funded" ? "teal" : "yellow"}
+              variant="light"
+              icon={<IconInfoCircle size={16} />}
+              title={savingsAvailabilityLabel[availability]}
+            >
+              {savingsAvailabilityExplanation[availability]}
+            </Alert>
+          )}
 
           {appraised?.pointForecasts.SuccessRate !== undefined ? (
             <div style={{ marginTop: 12 }}>

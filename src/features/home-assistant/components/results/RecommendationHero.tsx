@@ -21,6 +21,8 @@ import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer
 import {
   appraisedFigures,
   resolveSavingsAvailability,
+  savingsAvailabilityExplanation,
+  savingsAvailabilityLabel,
   type SavingsAvailability,
 } from "../../../../services/savingsState";
 import type {
@@ -418,7 +420,7 @@ function savingsTileHint(savings: SavingsState): string {
     case "unprofitable":
       return "costs more to run and repay than it saves";
     case "no-savings":
-      return "your home already meets what these measures would deliver";
+      return savingsAvailabilityLabel["no-savings"];
     case "fully-funded":
       return "a grant covers the whole cost, so there is nothing to pay back";
     case "not-priceable":
@@ -459,9 +461,8 @@ function SavingsCopy({ current, winner, result, savings }: SavingsCopyProps) {
   if (savings.kind === "no-savings") {
     return (
       <Text size="sm" c="dark.6" mt={8} maw={560}>
-        {formatThermalNeedsChange(thermalNeedsChangePct)}. Your home already
-        meets what these measures would deliver, so there is nothing here to
-        save or pay back.
+        {formatThermalNeedsChange(thermalNeedsChangePct)}.{" "}
+        {savingsAvailabilityExplanation["no-savings"]}
       </Text>
     );
   }

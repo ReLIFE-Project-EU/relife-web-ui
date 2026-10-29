@@ -21,7 +21,7 @@ import type {
 export type SavingsAvailability =
   /** The Financial service appraised the package; the figures are real. */
   | "appraised"
-  /** Skipped: no measurable energy saving left to appraise. */
+  /** Skipped: the package does not reduce modeled energy costs. */
   | "no-savings"
   /** Skipped: a subsidy covers the whole cost, so there is no investment. */
   | "fully-funded"
@@ -63,7 +63,7 @@ export function appraisedFigures(
 /** Short label for the state, used on badges and in exports. */
 export const savingsAvailabilityLabel: Record<SavingsAvailability, string> = {
   appraised: "Analysed",
-  "no-savings": "Already at renovation target",
+  "no-savings": "No energy cost savings",
   "fully-funded": "Fully covered by subsidy",
   "not-priceable": "Could not be priced",
   unknown: "Not analysed",
@@ -76,9 +76,9 @@ export const savingsAvailabilityExplanation: Record<
 > = {
   appraised: "Financial indicators come from the full risk simulation.",
   "no-savings":
-    "This building already meets the targets for the selected measures, so there were no savings to appraise and the financial indicators are not meaningful.",
+    "This package does not reduce modeled energy costs, so its financial appraisal was skipped.",
   "fully-funded":
-    "A subsidy covers the whole cost, so there is no investment left to appraise. The renovation still delivers its energy savings.",
+    "A subsidy covers the whole cost, so there is no investment left to appraise.",
   "not-priceable":
     "The simulation did not return the fuel breakdown needed to price energy, so no financial appraisal could be run.",
   unknown: "No financial results are available for this building.",
