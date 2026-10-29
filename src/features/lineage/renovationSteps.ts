@@ -160,9 +160,7 @@ export function appraisalStep(
   events: AuditEvent[],
 ): LineageStep | null {
   const savings = perScenario(scenarios, "financial.savings.computed");
-  const ends = perScenario(scenarios, "financial.scenario.end").map((end) =>
-    end?.kind === "current" ? undefined : end,
-  );
+  const ends = perScenario(scenarios, "financial.scenario.end");
   if (ends.every((end) => end === undefined)) return null;
 
   const lifetime = latest(events, "financial.run.start")?.projectLifetime;

@@ -82,12 +82,9 @@ export type AuditPayloads = {
     loanTerm: number;
   }>;
   "financial.risk.skipped": Open<{ reason: AppraisalSkipReason }>;
-  "financial.scenario.end":
-    | Open<{ kind: "current" }>
-    | Open<{
-        kind?: undefined;
-        capitalExpenditure: number;
-        annualMaintenanceCost: number | undefined;
-        monthlyAvgSavings: number | undefined;
-      }>;
+  "financial.scenario.end": Open<{
+    capitalExpenditure: number;
+    annualMaintenanceCost: number | undefined;
+    monthlyAvgSavings: number | undefined;
+  }>;
 };
