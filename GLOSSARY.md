@@ -75,3 +75,24 @@ _Avoid_: delivered electricity (ambiguous)
 
 **Carrier**:
 The form in which delivered energy arrives: natural gas or grid electricity. PV self-consumption is not a carrier, because nobody delivers it.
+
+## Money
+
+**Package appraisal**:
+The Financial service's verdict on whether a renovation package pays back: NPV, IRR, ROI and payback. The baseline has none, because it is not a package.
+_Avoid_: financial results, risk assessment (the Financial endpoint's name)
+
+**Appraised**:
+A package appraisal that the Financial service calculated.
+
+**Skipped**:
+A package appraisal that was never requested, together with the reason; it has no figures.
+_Avoid_: unavailable, not applicable, zero
+
+**Funding**:
+How a renovation package's cost is paid: subsidy, loan and the owner's own money.
+_Avoid_: financing options
+
+**Electricity equivalent**:
+A package's carrier savings in euros, expressed as the grid electricity that would cost the same at the Financial service's reference price.
+_Avoid_: annual energy savings (ambiguous)
