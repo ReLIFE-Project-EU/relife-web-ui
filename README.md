@@ -2,25 +2,45 @@
 
 Web interface for ReLIFE’s building-renovation tools, built with Vite, React, TypeScript, and Mantine UI.
 
-## Development
+```mermaid
+flowchart LR
+    UI["Web UI in the browser<br/>HRA, PRA, RSE"]
+    PROXY[Caddy API proxy]
 
-```bash
-# Install dependencies
-npm install
+    subgraph APIs[Backend services]
+      FIN["Financial API<br/>Costs, property values, returns and risk"]
+      FCAST["Forecasting API<br/>Archetypes, energy and thermal health"]
+      TECH["Technical API<br/>Multi-criteria ranking"]
+    end
 
-# Start development server (with API proxy)
-npm run dev
+    subgraph SB[Supabase backend]
+      AUTH[Authentication]
+      DB[(Database)]
+    end
 
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
+    UI -->|API requests, session token when signed in| PROXY
+    PROXY -->|/api/financial| FIN
+    PROXY -->|/api/forecasting| FCAST
+    PROXY -->|/api/technical| TECH
+    UI -->|Sign-in and session management| AUTH
+    UI -->|Saved portfolios and RSE simulation cache| DB
+    FIN & FCAST & TECH -.->|Validate Supabase tokens| AUTH
 ```
 
-### Backend service sources and API contracts
+## Development
 
-For local backend builds, `task fetch-sources` clones the financial, forecasting, and technical services into `external-services/`.
+The requirements are Node.js 22, Task, and Docker Compose.
+
+Copy `.env.default` to `.env.local` and fill in the credentials.
+
+```bash
+npm ci           # Install dependencies
+task dev         # Start Docker services and Vite with the API proxy
+npm run build    # Build for production
+npm run preview  # Preview the build
+```
+
+For local backend builds, `task fetch-sources` clones the three services into `external-services/`; `task dev-local` starts them with Vite.
 
 ### Testing
 
@@ -42,11 +62,7 @@ task release -- patch
 
 The [release script](./scripts/release.sh) requires `main`, a clean working tree, and passing `task format-lint` checks. Pushing the release tag triggers the [Docker publish workflow](.github/workflows/docker-publish.yml) to publish the image to GHCR.
 
-## Renovation Tools Architecture
-
-Each tool runs in the browser and calls the services below.
-
-Single-Family and Multi-Family Houses represent whole buildings. An Apartment represents one flat, with energy, envelope costs, and material carbon scaled to its share of the reference building’s floor area.
+## Renovation Tool Workflows
 
 ### Home Renovation Assistant
 
@@ -78,11 +94,14 @@ sequenceDiagram
     FCAST-->>UI: Renovation energy and health impacts
     UI->>FCAST: Load emission factors
     FCAST-->>UI: Factors for local emissions calculations
-    UI->>FIN: Appraise scenario property values
-    FIN-->>UI: Valuations where available
-    opt Renovations with savings and remaining investment
-      UI->>FIN: Assess returns and risk with selected funding
-      FIN-->>UI: Financial indicators
+    par Property valuation
+      UI->>FIN: Appraise renovated property values
+      FIN-->>UI: Valuations where available
+    and Financial appraisal
+      opt Positive bill savings and remaining investment
+        UI->>FIN: Assess returns and risk with selected funding
+        FIN-->>UI: Financial indicators
+      end
     end
     opt At least two eligible packages and health data available
       UI->>TECH: Rank packages by selected priorities
@@ -110,11 +129,14 @@ sequenceDiagram
         UI->>FIN: Look up reference costs
         FIN-->>UI: Renovation and maintenance costs
       end
-      UI->>FIN: Appraise scenario property values
-      FIN-->>UI: Valuations where available
-      opt Renovation has savings and remaining investment
-        UI->>FIN: Assess returns and risk with selected funding
-        FIN-->>UI: Financial indicators
+      par Property valuation
+        UI->>FIN: Appraise renovated property values
+        FIN-->>UI: Valuations where available
+      and Financial appraisal
+        opt Positive bill savings and remaining investment
+          UI->>FIN: Assess returns and risk with selected funding
+          FIN-->>UI: Financial indicators
+        end
       end
       UI->>UI: Update progress after batch completes
     end
@@ -137,7 +159,7 @@ sequenceDiagram
     loop Each available archetype and package
       UI->>FIN: Look up renovation and maintenance costs
       FIN-->>UI: Reference costs
-      opt Costs available, savings and remaining investment positive
+      opt Costs available, positive bill savings and remaining investment
         UI->>FIN: Assess returns and risk with selected funding
         FIN-->>UI: Financial indicators
       end
