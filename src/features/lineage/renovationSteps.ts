@@ -1,4 +1,7 @@
-import { computeCarrierAnnualCostEur } from "../../services/carrierSavingsService";
+import {
+  NATURAL_GAS_NET_PER_GROSS_KWH,
+  computeCarrierAnnualCostEur,
+} from "../../services/carrierSavingsService";
 import type { AuditPayloads } from "../../types/auditEvents";
 import type { DeliveredEnergyCarrierBreakdown } from "../../types/energy";
 import type { AuditEvent } from "../../utils/auditLogger";
@@ -131,7 +134,7 @@ export function energyCostStep(
         scenarios.map((s) => s.label),
         [
           quantityRow(
-            `Annual cost, gas × ${price(gas)} + grid × ${price(reference)}`,
+            `Annual cost, gas ÷ ${NATURAL_GAS_NET_PER_GROSS_KWH} × ${price(gas)} + grid × ${price(reference)}`,
             QUANTITY.moneyPerYear,
             scenarios.map((s, i) =>
               s.isBaseline

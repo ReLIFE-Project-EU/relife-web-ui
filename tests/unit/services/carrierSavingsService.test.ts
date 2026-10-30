@@ -24,7 +24,7 @@ describe("carrierSavingsService", () => {
       electricityReferencePriceEurPerKwh: elecRef,
     });
 
-    expect(savingsEur).toBeCloseTo(690 - 4_000 * elecRef, 5);
+    expect(savingsEur).toBeCloseTo(766.67 - 4_000 * elecRef, 2);
 
     // Savings are defined as the difference of two annual costs, so the HRA
     // running-cost chart and the Financial API request cannot disagree about
@@ -42,6 +42,16 @@ describe("carrierSavingsService", () => {
     );
   });
 
+  // Forecasting reports net gas kWh but the gas tariff is per gross kWh.
+  test("prices net gas kWh as gross kWh at the gas tariff", () => {
+    expect(
+      computeCarrierAnnualCostEur(
+        { naturalGasKwh: 9_000, gridElectricityKwh: 1_000 },
+        { gasTariffEurPerKwh: 0.1, electricityReferencePriceEurPerKwh: 0.2 },
+      ),
+    ).toBeCloseTo(1_000 + 200, 5);
+  });
+
   test("round-trips carrier savings to electricity-equivalent kWh", () => {
     const result = computeCarrierFinancialEnergySavings(
       { naturalGasKwh: 12_000, gridElectricityKwh: 0 },
@@ -52,7 +62,7 @@ describe("carrierSavingsService", () => {
       },
     );
 
-    expect(result.annualSavingsEur).toBeCloseTo(4_000 * gasTariff, 5);
+    expect(result.annualSavingsEur).toBeCloseTo(511.11, 2);
     expect(result.electricityEquivalentKwh).toBeCloseTo(
       result.annualSavingsEur / elecRef,
       5,

@@ -179,7 +179,7 @@ export function scaledStep(
           energy.map((e) => e?.scaled.hvacTotal),
         ),
         quantityRow(
-          "Gas",
+          "Gas (net)",
           QUANTITY.energy,
           energy.map((e) => e?.scaled.carrierBreakdown?.naturalGasKwh),
         ),

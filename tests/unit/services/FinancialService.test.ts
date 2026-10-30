@@ -320,7 +320,7 @@ describe("FinancialService", () => {
 
     expect(mockAssessRisk).toHaveBeenCalledWith(
       expect.objectContaining({
-        annual_energy_savings: (4000 * 0.115) / 0.246,
+        annual_energy_savings: ((4000 / 0.9) * 0.115) / 0.246,
       }),
     );
   });
@@ -373,9 +373,12 @@ describe("FinancialService", () => {
 
     expect(mockAssessRisk).toHaveBeenCalledWith(
       expect.objectContaining({
-        annual_energy_savings:
-          (1000 * 0.115 + 1000 * FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH) /
-          FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
+        annual_energy_savings: expect.closeTo(
+          ((1000 / 0.9) * 0.115 +
+            1000 * FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH) /
+            FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
+          6,
+        ),
       }),
     );
     // The priced run keeps the global overlay (no skipGlobalLoading flag).

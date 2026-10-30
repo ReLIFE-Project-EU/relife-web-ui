@@ -15,7 +15,10 @@ import {
   RSE_ENERGY_TARIFF_DEFAULTS,
   RSE_UNAVAILABLE_REASONS,
 } from "../../../../../src/features/strategy-explorer/constants";
-import { FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH } from "../../../../../src/services/carrierSavingsService";
+import {
+  FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
+  NATURAL_GAS_NET_PER_GROSS_KWH,
+} from "../../../../../src/services/carrierSavingsService";
 import {
   computeFinancials,
   computeFinancialsBatch,
@@ -146,7 +149,8 @@ function expectedEquivalentKwh(
     input.carrierSourceBreakdown.baseline.gridElectricityKwh -
     input.carrierSourceBreakdown.renovated.gridElectricityKwh;
   const savingsEur =
-    gasDelta * input.financialAssumptions!.gasTariffEurPerKwh +
+    (gasDelta / NATURAL_GAS_NET_PER_GROSS_KWH) *
+      input.financialAssumptions!.gasTariffEurPerKwh +
     gridDelta * FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH;
   return savingsEur / FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH;
 }

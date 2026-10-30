@@ -13,6 +13,7 @@ vi.mock("../../../src/api", () => ({
 import {
   ENERGY_TARIFF_DEFAULTS,
   FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
+  NATURAL_GAS_NET_PER_GROSS_KWH,
 } from "../../../src/services/carrierSavingsService";
 import {
   appraisePackage,
@@ -92,7 +93,8 @@ describe("appraisePackage", () => {
       capex: 10000,
       annual_maintenance_cost: 300,
       annual_energy_savings:
-        (4000 * ENERGY_TARIFF_DEFAULTS.gasEurPerKwh) /
+        ((4000 / NATURAL_GAS_NET_PER_GROSS_KWH) *
+          ENERGY_TARIFF_DEFAULTS.gasEurPerKwh) /
         FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
       project_lifetime: 20,
       output_level: "private",

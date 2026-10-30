@@ -22,6 +22,9 @@ export const ENERGY_TARIFF_DEFAULTS = {
   gasSourceNote: "Planning default based on EU household natural-gas prices.",
 } as const;
 
+/** Net kWh per gross kWh of natural gas (Eurostat energy balances convention). */
+export const NATURAL_GAS_NET_PER_GROSS_KWH = 0.9;
+
 /**
  * Year-1 moderate electricity price from relife-financial-service
  * `simulation_engine.py` (`electricity_prices_data.moderate[0]`).
@@ -128,13 +131,16 @@ function isFiniteNumber(value: number | undefined): value is number {
  * Covers HVAC end uses only, because the breakdown derives from delivered
  * energy. Domestic hot water, lighting and appliances are not included, so
  * this is not a household energy bill.
+ *
+ * Gas kWh are net; the gas tariff is per gross kWh.
  */
 export function computeCarrierAnnualCostEur(
   breakdown: DeliveredEnergyCarrierBreakdown,
   tariffs: CarrierSavingsTariffs,
 ): number {
   return (
-    breakdown.naturalGasKwh * tariffs.gasTariffEurPerKwh +
+    (breakdown.naturalGasKwh / NATURAL_GAS_NET_PER_GROSS_KWH) *
+      tariffs.gasTariffEurPerKwh +
     breakdown.gridElectricityKwh * tariffs.electricityReferencePriceEurPerKwh
   );
 }
