@@ -76,6 +76,10 @@ _Avoid_: delivered electricity (ambiguous)
 **Carrier**:
 The form in which delivered energy arrives: natural gas or grid electricity. PV self-consumption is not a carrier, because nobody delivers it.
 
+**Gross kWh / net kWh**:
+Two ways to count the energy in natural gas: gross includes the heat in the water vapour that burning it produces, net leaves it out. Forecasting counts delivered gas in net kWh; Eurostat prices gas per gross kWh.
+_Avoid_: GCV, NCV, higher/lower heating value
+
 ## Money
 
 **Package appraisal**:
@@ -96,3 +100,11 @@ _Avoid_: financing options
 **Electricity equivalent**:
 A package's carrier savings in euros, expressed as the grid electricity that would cost the same at the Financial service's reference price.
 _Avoid_: annual energy savings (ambiguous)
+
+**Gas tariff**:
+The price per gross kWh of natural gas used to value carrier savings; the user can edit it.
+_Avoid_: gas price (that is the reference gas price)
+
+**Reference gas price**:
+Eurostat's household natural-gas price for one country, or the EU average, that seeds the gas tariff.
+_Avoid_: default tariff, planning default
