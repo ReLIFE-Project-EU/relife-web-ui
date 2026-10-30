@@ -1,15 +1,12 @@
 import { useCallback } from "react";
-import {
-  RSE_ENERGY_TARIFF_DEFAULTS,
-  RSE_FINANCIAL_DEFAULTS,
-} from "../constants";
+import { RSE_FINANCIAL_DEFAULTS } from "../constants";
 import { runWorkflow } from "../services/rseWorkflowService";
 import type { FundingOptions } from "../../../types/renovation";
 import type { RSEWorkflowRequest } from "../types";
 import { useStrategyExplorer } from "./useStrategyExplorer";
 
 export function useRSEWorkflow() {
-  const { state, dispatch } = useStrategyExplorer();
+  const { state, dispatch, gasTariff } = useStrategyExplorer();
 
   const run = useCallback(
     async (options?: {
@@ -17,6 +14,7 @@ export function useRSEWorkflow() {
       funding?: FundingOptions;
     }) => {
       if (
+        gasTariff.isLoading ||
         !state.goal ||
         state.portfolio.selections.length === 0 ||
         state.packageIds.length === 0
@@ -38,9 +36,8 @@ export function useRSEWorkflow() {
               state.funding ??
               RSE_FINANCIAL_DEFAULTS.funding,
             gasTariffEurPerKwh:
-              options?.gasTariffEurPerKwh ??
-              state.gasTariffEurPerKwh ??
-              RSE_ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
+              options?.gasTariffEurPerKwh ?? gasTariff.eurPerKwh,
+            gasTariffReference: gasTariff.reference,
           },
         };
 
@@ -58,11 +55,15 @@ export function useRSEWorkflow() {
       state.goal,
       state.portfolio,
       state.packageIds,
-      state.gasTariffEurPerKwh,
+      gasTariff,
       state.funding,
       dispatch,
     ],
   );
 
-  return { run, isRunning: state.isRunningWorkflow };
+  return {
+    run,
+    isRunning: state.isRunningWorkflow,
+    isGasTariffLoading: gasTariff.isLoading,
+  };
 }

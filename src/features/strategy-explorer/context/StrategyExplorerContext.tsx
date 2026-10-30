@@ -1,4 +1,5 @@
 import { useEffect, useReducer, type ReactNode } from "react";
+import { useGasTariff } from "../../../hooks/useGasTariff";
 import { archetypePortfolioService } from "../services/archetypePortfolioService";
 import {
   strategyExplorerReducer,
@@ -14,6 +15,10 @@ export function StrategyExplorerProvider({
   children,
 }: StrategyExplorerProviderProps) {
   const [state, dispatch] = useReducer(strategyExplorerReducer, initialState);
+  const gasTariff = useGasTariff(
+    state.portfolio.selections.map((selection) => selection.archetype.country),
+    state.gasTariffOverrideEurPerKwh,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -36,7 +41,7 @@ export function StrategyExplorerProvider({
   }, []);
 
   return (
-    <StrategyExplorerContext.Provider value={{ state, dispatch }}>
+    <StrategyExplorerContext.Provider value={{ state, dispatch, gasTariff }}>
       {children}
     </StrategyExplorerContext.Provider>
   );

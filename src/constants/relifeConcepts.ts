@@ -4,6 +4,7 @@ export const HEATING_SYSTEM_CONFLICT_MESSAGE =
   "Choose only one heating system.";
 
 export type ConceptId =
+  | "gas-tariff"
   | "modeled-property"
   | "total-floor-area"
   | "apartment-floor-area"
@@ -83,6 +84,13 @@ const STOCK_SCALING_CAVEAT =
   "Estimated by multiplying representative building results by the number of properties. Apartment results are first scaled to one flat by floor area; Single-Family and Multi-Family Houses use whole-building results.";
 
 export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
+  "gas-tariff": {
+    id: "gas-tariff",
+    label: "Gas tariff",
+    description:
+      "Price per gross kWh of natural gas used to value carrier savings.",
+    unit: "€/kWh",
+  },
   "modeled-property": {
     id: "modeled-property",
     label: "Properties",

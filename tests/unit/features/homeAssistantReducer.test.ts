@@ -265,7 +265,7 @@ describe("homeAssistantReducer package financial inputs", () => {
       },
     );
 
-    expect(state.gasTariffEurPerKwh).toBe(0.12);
+    expect(state.gasTariffOverrideEurPerKwh).toBe(0.12);
     expect(state.financialResults).toEqual({});
     expect(state.mcdaRanking).toBeNull();
   });

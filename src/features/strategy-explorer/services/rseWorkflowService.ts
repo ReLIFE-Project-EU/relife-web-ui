@@ -1,5 +1,6 @@
 import { mapWithConcurrencyLimit } from "../../../utils/concurrency";
 import { auditLog } from "../../../utils/auditLogger";
+import { logGasTariff } from "../../../services/gasTariffService";
 import { simulatedFloorArea } from "../../../services/simulatedBuilding";
 import {
   RSE_FINANCIAL_CONCURRENCY_LIMIT,
@@ -117,6 +118,11 @@ async function runWorkflowWithDependencies(
   },
 ): Promise<RSEWorkflowResult> {
   const auditCtx = auditLog.startRun("rse");
+  logGasTariff(
+    request.financialAssumptions.gasTariffEurPerKwh,
+    request.financialAssumptions.gasTariffReference,
+    auditCtx,
+  );
 
   try {
     const packageIds = dedupeAndValidatePackageIds(request.packageIds);

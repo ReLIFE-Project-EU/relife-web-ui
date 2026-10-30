@@ -27,6 +27,8 @@ import { deriveConstructionYear } from "../../../utils/apiMappings";
 import { auditLog, type AuditCtx } from "../../../utils/auditLogger";
 import { errorMessage } from "../../../utils/errorMessage";
 import { validateEstimation } from "../../../services/estimationValidation";
+import { logGasTariff } from "../../../services/gasTariffService";
+import { ENERGY_TARIFF_DEFAULTS } from "../../../services/carrierSavingsService";
 import { PRA_CONCURRENCY_LIMIT } from "../constants";
 import type {
   BuildingAnalysisResult,
@@ -71,6 +73,12 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     let completed = 0;
 
     const parentCtx = auditLog.startRun("pra");
+    logGasTariff(
+      financialAssumptions?.gasTariffEurPerKwh ??
+        ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
+      financialAssumptions?.gasTariffReference,
+      parentCtx,
+    );
     auditLog.info(
       "portfolio",
       "portfolio.run.start",

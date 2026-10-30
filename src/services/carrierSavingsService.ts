@@ -19,7 +19,6 @@ export interface CarrierSavingsResult {
 
 export const ENERGY_TARIFF_DEFAULTS = {
   gasEurPerKwh: 0.115,
-  gasSourceNote: "Planning default based on EU household natural-gas prices.",
 } as const;
 
 /** Net kWh per gross kWh of natural gas (Eurostat energy balances convention). */

@@ -25,7 +25,7 @@ import classes from "./StrategySteps.module.css";
 export function PackagesStep() {
   const { state, dispatch } = useStrategyExplorer();
   const selectedPackages = useRSEPackages();
-  const { run, isRunning } = useRSEWorkflow();
+  const { run, isRunning, isGasTariffLoading } = useRSEWorkflow();
 
   const togglePackage = (packageId: RSEPackageId) => {
     const ids = selectedPackages.includes(packageId)
@@ -111,7 +111,7 @@ export function PackagesStep() {
         onPrimaryAction={handleRunAnalysis}
         primaryActionLabel="Run Analysis"
         isLoading={isRunning}
-        primaryDisabled={selectedPackages.length === 0}
+        primaryDisabled={selectedPackages.length === 0 || isGasTariffLoading}
       />
     </Stack>
   );

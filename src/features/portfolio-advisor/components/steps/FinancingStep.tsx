@@ -19,7 +19,7 @@ import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
 import { usePortfolioAdvisorServices } from "../../hooks/usePortfolioAdvisorServices";
 
 export function FinancingStep() {
-  const { state, dispatch } = usePortfolioAdvisor();
+  const { state, dispatch, gasTariff } = usePortfolioAdvisor();
   const services = usePortfolioAdvisorServices();
 
   const handlePrevious = () => {
@@ -27,6 +27,7 @@ export function FinancingStep() {
   };
 
   const handleAnalyze = async () => {
+    if (gasTariff.isLoading) return;
     dispatch({ type: "START_ANALYSIS" });
 
     try {
@@ -46,7 +47,8 @@ export function FinancingStep() {
         globalCapex: state.renovation.estimatedCapex,
         globalMaintenanceCost: state.renovation.estimatedMaintenanceCost,
         financialAssumptions: {
-          gasTariffEurPerKwh: state.gasTariffEurPerKwh,
+          gasTariffEurPerKwh: gasTariff.eurPerKwh,
+          gasTariffReference: gasTariff.reference,
         },
       });
 
@@ -171,10 +173,11 @@ export function FinancingStep() {
       </Card>
 
       <EnergyTariffPanel
-        appliedGasTariff={state.gasTariffEurPerKwh}
+        gasTariff={gasTariff}
         onApplyGasTariff={(gasTariffEurPerKwh) =>
           dispatch({ type: "SET_GAS_TARIFF", gasTariffEurPerKwh })
         }
+        onResetGasTariff={() => dispatch({ type: "RESET_GAS_TARIFF" })}
         isApplying={state.isEvaluating}
       />
 
@@ -192,7 +195,7 @@ export function FinancingStep() {
         onPrimaryAction={handleAnalyze}
         primaryActionLabel="Analyse portfolio"
         isLoading={state.isEvaluating}
-        primaryDisabled={state.buildings.length === 0}
+        primaryDisabled={state.buildings.length === 0 || gasTariff.isLoading}
         disabled={state.isEvaluating}
       />
     </Stack>

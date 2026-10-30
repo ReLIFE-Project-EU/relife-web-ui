@@ -26,6 +26,7 @@ import type {
 import type { RenovationAction } from "../types/financial";
 import type { APIPropertyType } from "../utils/apiMappings";
 import type { AuditCtx } from "../utils/auditLogger";
+import type { GasReference } from "./gasTariffService";
 
 export type PeriodAvailabilityScope = "local" | "fallback";
 
@@ -288,6 +289,7 @@ export interface ARVRequest {
 /** User-editable valuation inputs for the package appraisal. */
 export interface FinancialAssumptions {
   gasTariffEurPerKwh?: number;
+  gasTariffReference?: GasReference;
 }
 
 /**

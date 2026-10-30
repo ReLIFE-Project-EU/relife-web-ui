@@ -8,6 +8,7 @@ import { Alert, Box, Divider, Flex, Stack, Text, Title } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { EnergyTariffPanel } from "../../../../components/shared/EnergyTariffPanel";
 import { estimatePackageEmbodiedCarbon } from "../../../../services/embodiedCarbon";
+import { logGasTariff } from "../../../../services/gasTariffService";
 import { auditLog } from "../../../../utils/auditLogger";
 import { errorMessage } from "../../../../utils/errorMessage";
 import { LineageLink } from "../../../lineage";
@@ -24,7 +25,7 @@ import {
 import { ErrorAlert, StepNavigation } from "../shared";
 
 export function EnergyRenovationStep() {
-  const { state, dispatch } = useHomeAssistant();
+  const { state, dispatch, gasTariff } = useHomeAssistant();
   const { financial, renovation } = useHomeAssistantServices();
 
   const selectedMeasures = state.renovation.selectedMeasures;
@@ -74,10 +75,11 @@ export function EnergyRenovationStep() {
   };
 
   const handleEvaluate = async () => {
-    if (!state.estimation) return;
+    if (!state.estimation || gasTariff.isLoading) return;
 
     dispatch({ type: "START_EVALUATION" });
     const auditCtx = auditLog.current() ?? undefined;
+    logGasTariff(gasTariff.eurPerKwh, gasTariff.reference, auditCtx);
 
     try {
       const selectedPackages = suggestedPackages.filter((pkg) =>
@@ -118,7 +120,7 @@ export function EnergyRenovationStep() {
         packageFinancialInputs: state.packageFinancialInputs,
         building: state.building,
         financialAssumptions: {
-          gasTariffEurPerKwh: state.gasTariffEurPerKwh,
+          gasTariffEurPerKwh: gasTariff.eurPerKwh,
         },
         auditCtx,
       });
@@ -228,10 +230,12 @@ export function EnergyRenovationStep() {
       <FundingOptions />
 
       <EnergyTariffPanel
-        appliedGasTariff={state.gasTariffEurPerKwh}
+        gasTariff={gasTariff}
         onApplyGasTariff={(gasTariffEurPerKwh) =>
           dispatch({ type: "SET_GAS_TARIFF", gasTariffEurPerKwh })
         }
+        onResetGasTariff={() => dispatch({ type: "RESET_GAS_TARIFF" })}
+        isApplying={state.isEvaluating}
       />
 
       {/* Error display */}
@@ -246,7 +250,7 @@ export function EnergyRenovationStep() {
         onPrimaryAction={handleEvaluate}
         primaryActionLabel="Compare renovation options"
         isLoading={state.isEvaluating}
-        primaryDisabled={!canEvaluate}
+        primaryDisabled={!canEvaluate || gasTariff.isLoading}
         disabled={isEstimatingCosts}
       />
     </Stack>

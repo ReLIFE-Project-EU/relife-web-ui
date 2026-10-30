@@ -118,7 +118,7 @@ export interface PortfolioAdvisorState {
   renovation: RenovationSelections;
   projectLifetime: number;
   funding: FundingOptions;
-  gasTariffEurPerKwh: number;
+  gasTariffOverrideEurPerKwh: number | null;
   buildingResults: Record<string, BuildingAnalysisResult>;
   analysisProgress: {
     completed: number;
@@ -154,6 +154,7 @@ export type PortfolioAdvisorAction =
   | { type: "SET_LOAN"; loan: LoanDetails }
   | { type: "SET_INCENTIVES"; incentives: IncentiveDetails }
   | { type: "SET_GAS_TARIFF"; gasTariffEurPerKwh: number }
+  | { type: "RESET_GAS_TARIFF" }
   | { type: "START_ANALYSIS" }
   | {
       type: "UPDATE_ANALYSIS_PROGRESS";

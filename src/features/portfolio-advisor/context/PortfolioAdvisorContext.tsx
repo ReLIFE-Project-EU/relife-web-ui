@@ -4,6 +4,7 @@
  */
 
 import { useReducer, type ReactNode } from "react";
+import { useGasTariff } from "../../../hooks/useGasTariff";
 import {
   portfolioAdvisorReducer,
   initialState,
@@ -22,9 +23,13 @@ export function PortfolioAdvisorProvider({
   children,
 }: PortfolioAdvisorProviderProps) {
   const [state, dispatch] = useReducer(portfolioAdvisorReducer, initialState);
+  const gasTariff = useGasTariff(
+    state.buildings.map((building) => building.country),
+    state.gasTariffOverrideEurPerKwh,
+  );
 
   return (
-    <PortfolioAdvisorContext.Provider value={{ state, dispatch }}>
+    <PortfolioAdvisorContext.Provider value={{ state, dispatch, gasTariff }}>
       {children}
     </PortfolioAdvisorContext.Provider>
   );

@@ -4,7 +4,6 @@
 
 import { PACKAGE_SELECTION_MAX, PROJECT_LIFETIME_DEFAULT } from "../constants";
 import { DEFAULT_FUNDING_OPTIONS } from "../../../constants/funding";
-import { ENERGY_TARIFF_DEFAULTS } from "../../../services/carrierSavingsService";
 import type {
   BuildingInfo,
   FundingOptions,
@@ -75,7 +74,7 @@ export const initialState: HomeAssistantState = {
   estimation: null,
   renovation: initialRenovation,
   funding: initialFunding,
-  gasTariffEurPerKwh: ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
+  gasTariffOverrideEurPerKwh: null,
   suggestedPackages: [],
   selectedPackageIds: [],
   packageFinancialInputs: {},
@@ -333,10 +332,17 @@ export function homeAssistantReducer(
       };
     }
 
+    case "RESET_GAS_TARIFF":
+      return {
+        ...state,
+        gasTariffOverrideEurPerKwh: null,
+        ...clearedFinancialResults,
+      };
+
     case "SET_GAS_TARIFF": {
       return {
         ...state,
-        gasTariffEurPerKwh: action.gasTariffEurPerKwh,
+        gasTariffOverrideEurPerKwh: action.gasTariffEurPerKwh,
         ...clearedFinancialResults,
       };
     }

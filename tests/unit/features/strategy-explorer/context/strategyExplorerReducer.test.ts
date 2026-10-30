@@ -34,9 +34,7 @@ describe("strategyExplorerReducer", () => {
     expect(initialState.portfolio.selections).toEqual([]);
     expect(initialState.goal).toBeNull();
     expect(initialState.packageIds).toEqual([...RSE_PACKAGE_IDS]);
-    expect(initialState.gasTariffEurPerKwh).toBe(
-      RSE_ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
-    );
+    expect(initialState.gasTariffOverrideEurPerKwh).toBeNull();
     expect(initialState.availableArchetypes).toEqual([]);
     expect(initialState.workflowResult).toBeNull();
     expect(initialState.isRunningWorkflow).toBe(false);
@@ -91,7 +89,7 @@ describe("strategyExplorerReducer", () => {
       { ...initialState, workflowResult: mockWorkflowResult },
       { type: "SET_GAS_TARIFF", gasTariffEurPerKwh: 0.12 },
     );
-    expect(state.gasTariffEurPerKwh).toBe(0.12);
+    expect(state.gasTariffOverrideEurPerKwh).toBe(0.12);
     expect(state.workflowResult).toBeNull();
   });
 

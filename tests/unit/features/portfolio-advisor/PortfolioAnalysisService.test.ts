@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { PortfolioAnalysisService } from "../../../../src/features/portfolio-advisor/services/PortfolioAnalysisService";
-import { ENERGY_TARIFF_DEFAULTS } from "../../../../src/services/carrierSavingsService";
 import {
   initialState,
   portfolioAdvisorReducer,
@@ -572,10 +571,8 @@ describe("PortfolioAnalysisService", () => {
 });
 
 describe("portfolioAdvisorReducer", () => {
-  test("initial state uses shared gas tariff default", () => {
-    expect(initialState.gasTariffEurPerKwh).toBe(
-      ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
-    );
+  test("initial state follows the reference gas price", () => {
+    expect(initialState.gasTariffOverrideEurPerKwh).toBeNull();
   });
 
   test("SET_GAS_TARIFF updates tariff and clears stale analysis results", () => {
@@ -584,7 +581,7 @@ describe("portfolioAdvisorReducer", () => {
       gasTariffEurPerKwh: 0.12,
     });
 
-    expect(state.gasTariffEurPerKwh).toBe(0.12);
+    expect(state.gasTariffOverrideEurPerKwh).toBe(0.12);
     expect(state.buildingResults).toEqual({});
     expect(state.analysisProgress).toBeNull();
   });
