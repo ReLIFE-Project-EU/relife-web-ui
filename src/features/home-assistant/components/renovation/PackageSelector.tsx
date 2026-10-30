@@ -244,9 +244,7 @@ export function PackageSelector({
                       icon={<IconInfoCircle size={16} />}
                       title="Heating cost is a rough estimate"
                     >
-                      The heating system&apos;s size isn&apos;t available yet,
-                      so its cost is approximated. Adjust the values if you have
-                      a quote.
+                      Adjust these costs if you have a quote.
                     </Alert>
                   )}
 

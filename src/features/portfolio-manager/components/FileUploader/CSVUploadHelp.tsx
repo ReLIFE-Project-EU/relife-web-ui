@@ -71,34 +71,32 @@ const CSV_COLUMN_DETAILS: Record<
   },
   construction_year: {
     description:
-      "Alternative to construction_period. Provide a single year between 1800 and 2030 and omit construction_period. The example CSV uses construction_period instead.",
+      "Alternative to construction_period. Provide a single year between 1800 and 2030 and omit construction_period.",
   },
   number_of_floors: {
     description: "Integer value between 1 and 100.",
     example: "12",
   },
   archetype_name: {
-    description:
-      "Optional exact archetype name. If provided, the app uses it directly instead of heuristic matching. The example CSV leaves this blank.",
+    description: "Exact archetype name, used instead of automatic matching.",
   },
   floor_number: {
     description:
-      "Optional integer floor number for Apartments only. Use 0 for ground floor if needed. Ignored for whole houses and buildings.",
+      "Integer floor number for Apartments only. Use 0 for ground floor. Ignored for whole houses and buildings.",
     example: "4",
   },
   capex: {
-    description:
-      "Optional CAPEX in EUR. If provided, it overrides the global CAPEX for this building.",
+    description: "CAPEX in EUR. Overrides the global CAPEX for this building.",
     example: "1450000",
   },
   annual_maintenance_cost: {
     description:
-      "Optional annual maintenance cost in EUR/year. If provided, it overrides the global maintenance cost for this building.",
+      "Annual maintenance cost in EUR/year. Overrides the global maintenance cost for this building.",
     example: "52000",
   },
   measures: {
     description:
-      "Optional semicolon-separated renovation measure IDs. Only accepted IDs are allowed. Some accepted IDs are imported but not analyzed in PRA scenarios.",
+      "Semicolon-separated IDs from the accepted list. Some are imported but excluded from PRA analysis.",
     example: "wall-insulation;roof-insulation;windows",
   },
 };

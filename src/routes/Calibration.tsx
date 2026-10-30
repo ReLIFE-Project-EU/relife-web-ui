@@ -88,10 +88,7 @@ export function Calibration() {
         >
           A simulation can run without errors and still produce unrealistic
           results. These selected examples let you check renovation prices,
-          building assumptions, and energy estimates against your experience. In
-          other words, this is a small, representative sample of data you can
-          use to spot anything clearly wrong that requires further
-          investigation.
+          building assumptions, and energy estimates against your experience.
         </Alert>
         <Text size="sm" role="status" aria-live="polite">
           {calibration.running

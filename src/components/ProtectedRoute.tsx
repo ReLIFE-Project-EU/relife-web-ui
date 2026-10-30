@@ -42,8 +42,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
                 Authentication Required
               </Title>
               <Text c="dimmed" ta="center" size="sm" maw={400}>
-                You need to sign in to access this section of the application.
-                Please authenticate to continue.
+                Sign in to continue.
               </Text>
             </Stack>
 

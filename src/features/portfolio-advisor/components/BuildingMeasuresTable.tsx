@@ -69,7 +69,6 @@ export function BuildingMeasuresTable() {
           <div>
             <Title order={4}>Per-Building Measures</Title>
             <Text size="sm" c="dimmed" mt={4}>
-              Optionally customize renovation measures for individual buildings.
               Buildings without overrides use the portfolio selection above.
             </Text>
           </div>

@@ -54,9 +54,8 @@ export function FinancingPanel() {
             <div>
               <Title order={4}>Financing scenario</Title>
               <Text size="sm" c="dimmed">
-                Applied to every archetype and package in the comparison. A
-                subsidy lowers the investment behind NPV, ROI and payback, so it
-                can change how the packages rank.
+                Applies to every archetype and package. Subsidies can change the
+                ranking.
               </Text>
             </div>
           </Group>

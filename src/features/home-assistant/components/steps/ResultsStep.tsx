@@ -246,9 +246,7 @@ export function ResultsStep() {
             Your renovation results
           </Title>
           <Text c="dimmed" size="sm">
-            Your best option based on what matters most to you. Change the
-            profile to see a different recommendation, or open a section below
-            for the full numbers.
+            Your best option based on what matters most to you.
           </Text>
         </Box>
         <LineageLink scope="hra" />

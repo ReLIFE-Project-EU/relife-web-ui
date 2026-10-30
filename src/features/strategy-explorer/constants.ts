@@ -48,10 +48,10 @@ export const RSE_MVP_PACKAGE_MEASURE_IDS = {
 } as const satisfies Record<RSEPackageId, readonly RenovationMeasureId[]>;
 
 export const RSE_REFERENCE_DATA_COST_NOTE =
-  "Investment and maintenance figures are estimated from EU reference data via the ReLIFE Financial service, based on each archetype's envelope geometry and floor area. Apartment archetypes are priced for one dwelling: its share of that geometry, by floor area.";
+  "Investment and maintenance estimates use EU reference data, envelope geometry and floor area. For apartments, the geometry is scaled to one dwelling by floor area.";
 
 export const RSE_HEATING_STOPGAP_NOTE =
-  "Heat pump and boiler capacities are sized from floor area with a temporary heuristic, so their costs are rough estimates.";
+  "Heat pump and boiler costs are approximate, with capacity estimated from floor area.";
 
 export const RSE_MVP_THERMAL_EMISSION_SOURCE = MVP_THERMAL_EMISSION_SOURCE;
 export const RSE_GRID_ELECTRICITY_EMISSION_SOURCE =

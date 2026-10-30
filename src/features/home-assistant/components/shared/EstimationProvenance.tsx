@@ -80,12 +80,6 @@ export function ReferenceAdjustedComparisonCard({
             </Table.Tr>
           </Table.Tbody>
         </Table>
-
-        <Text size="sm" c="dimmed">
-          We started from a standard building profile similar to yours, applied
-          your specific details, ran an energy simulation, and calculated the
-          results shown above.
-        </Text>
       </Stack>
     </Card>
   );

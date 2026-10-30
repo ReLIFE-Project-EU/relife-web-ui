@@ -59,8 +59,8 @@ export function ScoreCompositionChart({
         <ConceptExplainer conceptId="ranking-score" />
       </div>
       <Text size="xs" c="dimmed" mb="md">
-        Weighted score contributions (0–100) per package for your selected goal.
-        Segments sum to each package's total score.
+        Segments show how each criterion contributes to a package's score
+        (0–100).
       </Text>
       <Accordion
         chevronPosition="right"

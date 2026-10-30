@@ -183,13 +183,13 @@ export function EnergyRenovationStep() {
           icon={<IconInfoCircle size={16} />}
           title="Limited Simulation Support"
         >
-          The following measures are not yet supported for simulation:{" "}
+          Excluded from analysis:{" "}
           <Text span fw={700}>
             {unsupportedSelected
               .map((m) => renovation.getMeasure(m)?.name)
               .join(", ")}
           </Text>
-          . These measures are currently excluded from portfolio analysis.
+          .
         </Alert>
       )}
 
@@ -199,10 +199,7 @@ export function EnergyRenovationStep() {
           icon={<IconInfoCircle size={16} />}
           title="At least one analyzable measure is required"
         >
-          The current portfolio analysis flow cannot proceed until each building
-          has at least one analyzable measure in its effective selection.
-          Supported measures are wall, roof, floor, windows, condensing boiler,
-          air-water heat pump, and photovoltaic panels. Affected buildings:{" "}
+          Select at least one supported renovation measure for:{" "}
           <Text span fw={700}>
             {buildingsWithoutAnalysisEligibleMeasures
               .slice(0, 5)
@@ -220,8 +217,7 @@ export function EnergyRenovationStep() {
           icon={<IconInfoCircle size={16} />}
           title="Each building needs a measure selection"
         >
-          The current portfolio analysis flow cannot proceed while some
-          buildings have no effective renovation measures. Affected buildings:{" "}
+          Select renovation measures for:{" "}
           <Text span fw={700}>
             {buildingsWithoutMeasures
               .slice(0, 5)
@@ -294,9 +290,7 @@ export function EnergyRenovationStep() {
           icon={<IconInfoCircle size={16} />}
           mb="md"
         >
-          Leave these blank to estimate each building&apos;s CAPEX/OPEX
-          automatically from EU reference data during analysis. Enter a value to
-          override the estimate for all buildings without a per-building cost.
+          Automatic cost estimates use EU reference data.
         </Alert>
         <Grid>
           <Grid.Col span={{ base: 12, sm: 6 }}>

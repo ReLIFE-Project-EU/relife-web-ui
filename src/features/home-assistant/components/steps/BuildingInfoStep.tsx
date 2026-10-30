@@ -189,9 +189,7 @@ export function BuildingInfoStep() {
     <Text size="xs" c="dimmed">
       <Text component="span" fw={600} c="var(--mantine-color-text)">
         Energy figures come next.
-      </Text>{" "}
-      Once you continue, we'll combine this archetype with your bills to
-      estimate today's energy use.
+      </Text>
     </Text>
   ) : (
     <Text size="xs" c="dimmed">
@@ -225,7 +223,6 @@ export function BuildingInfoStep() {
           <Text size="sm">
             We match buildings to archetypes based on country, type, and
             construction period. Closer matches produce more reliable estimates.
-            You can review the match before continuing.
           </Text>
         </Alert>
       ) : (

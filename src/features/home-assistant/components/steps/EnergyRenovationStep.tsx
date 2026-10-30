@@ -199,14 +199,13 @@ export function EnergyRenovationStep() {
           icon={<IconInfoCircle size={16} />}
           title="Limited Simulation Support"
         >
-          The following measures are not yet supported for simulation:{" "}
+          Excluded from analysis:{" "}
           <Text span fw={700}>
             {unsupportedSelected
               .map((m) => renovation.getMeasure(m)?.name)
               .join(", ")}
           </Text>
-          . These measures are currently excluded from evaluation in the
-          comparison workflow.
+          .
         </Alert>
       )}
 

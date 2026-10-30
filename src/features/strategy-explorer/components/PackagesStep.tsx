@@ -52,8 +52,7 @@ export function PackagesStep() {
           Renovation Packages
         </Title>
         <Text c="dimmed" size="sm">
-          Select the packages to compare across your portfolio. They are
-          compared head-to-head in the results.
+          Select the packages to compare across your portfolio.
         </Text>
       </Box>
 

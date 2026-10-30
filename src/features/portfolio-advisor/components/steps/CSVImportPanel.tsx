@@ -60,11 +60,11 @@ export function CSVImportPanel({
 
   const portfolioUploadGuidance = !selectedPortfolioId
     ? portfolios.length === 0
-      ? "No portfolios are available yet. Create one and upload a CSV in My Portfolios, then return here to import it."
-      : "CSV files are uploaded and documented in My Portfolios. After uploading there, return here and choose a portfolio and file to import."
+      ? "Create a portfolio and upload a CSV in My Portfolios, then import it here."
+      : "Upload a CSV in My Portfolios, then select it here to import."
     : files.length === 0
-      ? "This portfolio does not have any uploaded files yet. Add a CSV in My Portfolios, then return here to import it."
-      : "Need a different file or CSV format guidance? Use My Portfolios, then come back here to import.";
+      ? "Upload a CSV to this portfolio in My Portfolios, then import it here."
+      : "Manage files and find CSV guidance in My Portfolios.";
 
   useEffect(() => {
     if (isSessionLoading) {

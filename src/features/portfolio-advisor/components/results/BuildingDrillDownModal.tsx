@@ -306,17 +306,15 @@ export function BuildingDrillDownModal({
                 >
                   {result.costSource.capexFromLookup &&
                   result.costSource.opexFromLookup
-                    ? "CAPEX and annual maintenance cost were estimated from EU reference data"
+                    ? "CAPEX and annual maintenance cost were estimated from EU reference data."
                     : result.costSource.capexFromLookup
-                      ? "CAPEX was estimated from EU reference data"
-                      : "Annual maintenance cost was estimated from EU reference data"}{" "}
-                  (no cost override was set for this building).
+                      ? "CAPEX was estimated from EU reference data."
+                      : "Annual maintenance cost was estimated from EU reference data."}
                   {result.costSource.usesHeatingStopgap && (
                     <>
                       {" "}
-                      The heating-system capacity was sized from floor area as a
-                      temporary heuristic, so the heating portion of CAPEX is
-                      preliminary.
+                      Heating CAPEX is approximate, with system capacity
+                      estimated from floor area.
                     </>
                   )}
                 </Alert>

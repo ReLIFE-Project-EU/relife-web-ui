@@ -55,22 +55,19 @@ export function MeasureSelector() {
         >
           {pvKwp !== null && state.building.floorArea !== null ? (
             <>
-              We estimate solar production from the building's roof area,
-              assuming a typical south-facing setup.{" "}
+              Estimated PV size from roof area:{" "}
               {/* The API uses archetype-basis sizing; this shows the user-equivalent size. */}
-              For your home, this is roughly{" "}
               <Text span inherit fw={700}>
                 {formatDecimal(pvKwp)} kWp
               </Text>
-              . Real output depends on roof direction, shade, and available
-              space. The cost comparison currently counts self-consumed
-              electricity only.
+              , assuming south-facing panels. Output varies with orientation,
+              shade and space. Savings count only solar electricity used on
+              site.
             </>
           ) : (
             <>
-              We estimate solar production from the building's roof area,
-              assuming a typical south-facing setup. Enter a valid floor area to
-              include PV in the comparison.
+              PV estimates use roof area and assume south-facing panels. Enter a
+              valid floor area to include PV.
             </>
           )}
         </Alert>

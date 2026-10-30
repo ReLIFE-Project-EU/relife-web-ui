@@ -380,9 +380,7 @@ function DataTransparencyContent() {
           </Text>{" "}
           — Money is summed across buildings, portfolio ROI is total profit over
           total investment, and payback comes from the summed yearly cash flows.
-          These are not averages of per-building figures, which would weight
-          buildings equally regardless of size. A total that some building
-          cannot supply is shown as unavailable rather than as a smaller number.
+          Totals with missing building data are shown as unavailable.
         </Text>
       </List.Item>
       <List.Item>
@@ -454,9 +452,7 @@ export function ResultsStep() {
           Portfolio Analysis Results
         </Title>
         <Text c="dimmed" size="sm">
-          Estimated portfolio impact, per-building results, and a methodology
-          summary. Thermal-needs reduction remains separate from system-energy
-          savings, which drive the financial analysis when available.
+          Estimated portfolio totals and results for each building.
         </Text>
       </Box>
 

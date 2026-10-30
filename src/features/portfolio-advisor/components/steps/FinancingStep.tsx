@@ -163,9 +163,8 @@ export function FinancingStep() {
             </SimpleGrid>
             {hasAutoEstimated && (
               <Text size="xs" c="dimmed" mt="xs">
-                Figures cover only buildings with a set CAPEX. Buildings without
-                a cost override are auto-estimated from EU reference data during
-                analysis and are not included here.
+                Excludes buildings whose costs will be estimated during
+                analysis.
               </Text>
             )}
           </div>

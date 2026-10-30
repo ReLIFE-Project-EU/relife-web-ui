@@ -47,13 +47,6 @@ export function EPCDisplay() {
               }
             />
           </SimpleGrid>
-
-          {deliveredTotal === undefined && (
-            <Text size="sm" c="dimmed">
-              System energy consumption is not available for this simulation
-              yet, so only the building thermal-needs result is shown.
-            </Text>
-          )}
         </Stack>
       </Card>
     </Stack>

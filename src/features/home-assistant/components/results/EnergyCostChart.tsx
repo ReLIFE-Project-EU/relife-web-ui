@@ -81,10 +81,7 @@ export function EnergyCostChart({
             withTooltip
           />
           <Text size="xs" c="dimmed" mt="sm">
-            These figures cover heating and cooling only, and they are rounded.
-            They leave out hot water, lighting and appliances, so your full
-            energy bill will be higher. We priced them using your gas tariff and
-            a reference electricity price.
+            Rounded heating and cooling costs only (not a full energy bill).
           </Text>
         </>
       )}
