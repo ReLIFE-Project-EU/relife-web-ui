@@ -1,225 +1,55 @@
 # AGENTS.md
 
-Guidance for AI agents working in this repository.
+ReLIFE Web UI: front end of the EU LIFE ReLIFE building-renovation project.
 
-## Pre-Task Checklist
+## Domain
 
-Before starting work:
+| Tool                               | Audience                                    | Code                              |
+| ---------------------------------- | ------------------------------------------- | --------------------------------- |
+| Renovation Strategy Explorer (RSE) | policy makers, researchers                  | `src/features/strategy-explorer/` |
+| Portfolio Renovation Advisor (PRA) | financial institutions, ESCOs, large owners | `src/features/portfolio-advisor/` |
+| Home Renovation Assistant (HRA)    | homeowners, tenants, small owners           | `src/features/home-assistant/`    |
 
-1. **Versions**: use only the documented dependency versions below and those already present in `package.json` / lockfile.
-2. **Scope**: solve the stated problem with the smallest direct change.
-3. **Conflict**: if the request conflicts with current architecture or an adjacent requirement, stop and ask.
-4. **Ambiguity**: if multiple valid interpretations remain after repo inspection, ask before coding.
-5. **API/client types**: if changing `src/api/` or service-related types, verify request/response shapes from service source, running stack, or integration tests. Ask if contracts cannot be verified.
+User-facing terminology (labels, descriptions, caveats, metric names, measure effects) comes from `src/constants/relifeConcepts.ts`; reuse its entries and add one only when no existing entry fits. Repeated labels, dense tables, and secondary metrics get the shared label plus a tooltip or popover for detail.
 
-Stop and ask when:
+## Ask first
 
-- Adding a dependency is being considered.
-- The change would touch more than about 3 files in ways not directly requested.
-- A user-visible assumption has not been stated explicitly.
-- A new architecture pattern, layer, or abstraction would be needed.
-- Accurate service request/response shape matters and cannot be verified.
+Stop and ask before:
 
-## ReLIFE Context
+- adding a dependency;
+- introducing a new layer, pattern, or abstraction;
+- touching more than ~3 files beyond what was requested;
+- coding against a service request/response shape you could not verify;
+- picking between interpretations that repo inspection leaves open.
 
-This repository implements the **ReLIFE Web UI**, part of the EU LIFE ReLIFE project for building energy renovation in Europe.
+Otherwise make the smallest change that solves the stated problem, in the style of the surrounding code. Flag unrelated dead code; delete only dead code your change created.
 
-The current application includes:
+## Backend services
 
-- **Three tools**: Renovation Strategy Explorer (policy/research), Portfolio Renovation Advisor (financial institutions/ESCOs/large owners), Home Renovation Assistant (homeowners/tenants/small owners).
-- **Three backend services**: Financial, Forecasting, Technical.
-- **Key domains**: funding options, NPV/IRR/ROI/PP/DPP/ARV, risk assessment, building simulation, climate scenarios, technical sheets, five-pillar MCDA, building stock analysis, GDPR, RBAC, data minimization.
+Three services: Financial, Forecasting, Technical. Their authoritative contracts are the service sources in `external-services/relife-<service>-service` (fetch with `task fetch-sources`, upstream at `github.com/ReLIFE-Project-EU`). FastAPI `/openapi.json` is often stale; read the route handlers, models, and validation instead, and cross-check against a running stack (`task up`) when unsure.
 
-Shared user-facing terminology lives in `src/constants/relifeConcepts.ts`. Reuse entries for labels, descriptions, caveats, professional details, metric names, and measure effects. Do not redefine shared concept copy inline. Add concepts only when necessary.
+Two layers:
 
-Use visible explanations sparingly. Prefer shared concept labels plus tooltip/popover detail for repeated labels, dense tables, and secondary metrics.
+- `src/api/`: one thin typed HTTP wrapper per service (auth, `APIError`). Endpoint changes land here.
+- `src/features/<tool>/services/` and shared `src/services/`: orchestration, transformations, calculations, mocks.
 
-## Development Process
+## Code
 
-This project values transparency, restraint, and verifiability over speed or broad rewrites.
+Versions live in `package.json`. Write for React 19, Mantine 8, react-router 7, Vite 7, and Vitest 4 APIs.
 
-Think before coding:
+- Named exports; `React.FC` only where it types `children`.
+- Presentational components stay free of API calls; fetching and orchestration live in hooks, containers, or services.
+- Mantine components and `src/theme.ts` tokens for layout and color; style with `style`, `className`, or `classNames`. Icons from `@tabler/icons-react`.
+- Boundary errors (API, user input) surface in the UI as a typed error rendered with `Alert`, a loader, or disabled controls. Internal code trusts the type system.
+- State stays local or in small hooks. Config and URLs come from `import.meta.env`.
+- Split a component when it grows past one concern.
 
-- State assumptions explicitly.
-- Surface multiple interpretations instead of choosing silently.
-- Ask when requirements conflict or remain ambiguous after repo inspection.
+## Audit logging
 
-Simplicity first:
+`src/utils/auditLogger.ts` emits the structured trace the `renovation-result-validator` skill reads; enable with `VITE_RELIFE_AUDIT_LOG=info|debug`. Pipeline service interfaces (`estimateEPC`, `evaluateScenarios`, `calculateForAllScenarios`, `rank`) take an optional `auditCtx`; keep it when extending them. HRA uses the ambient context; PRA (concurrent buildings) and RSE thread it explicitly. Levels: `info` for stage start/end with summaries, `debug` for full payloads, `warn` for fallbacks, `error` for API failures. Auth headers and secrets stay out of the log.
 
-- Implement exactly what was requested.
-- Prefer the smaller change when it solves the problem.
-- Validate at system boundaries; avoid defensive checks for impossible internal states.
+## Verification
 
-Surgical changes:
-
-- Preserve surrounding style and architecture.
-- Do not refactor working code as a side effect.
-- Do not remove dependencies unless your change created the dependency.
-- Flag unrelated dead code instead of deleting it silently.
-
-Goal-driven execution:
-
-- Turn vague requests into measurable success criteria.
-- For multi-step work, define a brief verification plan.
-- Test before and after when you need to establish causality.
-
-## Backend API Contracts
-
-This repo does not ship authoritative OpenAPI/spec snapshots. FastAPI `/openapi.json` may be incomplete or stale.
-
-Authoritative contract sources:
-
-| Service     | Local source when present                      | Upstream                                                        |
-| ----------- | ---------------------------------------------- | --------------------------------------------------------------- |
-| Financial   | `external-services/relife-financial-service`   | https://github.com/ReLIFE-Project-EU/relife-financial-service   |
-| Forecasting | `external-services/relife-forecasting-service` | https://github.com/ReLIFE-Project-EU/relife-forecasting-service |
-| Technical   | `external-services/relife-technical-service`   | https://github.com/ReLIFE-Project-EU/relife-technical-service   |
-
-Workflow:
-
-- Prefer route handlers, request/response models, serializers, and validation in `external-services/<repo>`.
-- If local clones are missing, use upstream GitHub source or a running stack (`task up` / Docker Compose).
-- Cross-check HTTP behavior when in doubt.
-- If still uncertain, ask whether to fetch service sources, inspect a specific handler, or confirm observed behavior.
-
-## API Integration Architecture
-
-Use the existing two-layer boundary.
-
-### Layer 1: API Wrappers (`src/api/`)
-
-Thin HTTP adapters only:
-
-- `client.ts`: core request utilities with auth handling (`request`, `uploadRequest`, `downloadRequest`).
-- `financial.ts`, `forecasting.ts`, `technical.ts`: endpoint wrappers.
-- `index.ts`: service client re-exports.
-
-API wrappers handle Supabase auth tokens, typed request/response interfaces, and `APIError`. They should not contain business logic.
-
-### Layer 2: Feature/Domain Services
-
-Feature services under `src/features/<tool>/services/` and shared services under `src/services/` consume API wrappers and add orchestration, transformations, calculations, interfaces, and mocks.
-
-| Task                                    | Edit                       |
-| --------------------------------------- | -------------------------- |
-| Backend endpoint changed                | `src/api/<service>.ts`     |
-| New backend endpoint                    | `src/api/<service>.ts`     |
-| Feature business logic or orchestration | Feature/shared service     |
-| Feature-specific transformations        | Feature/shared service     |
-| Test/dev fake behavior                  | Existing mock service area |
-
-## Tech Stack Versions
-
-Do not use APIs or patterns from incompatible versions.
-
-Core:
-
-- React `^19.2.0`
-- React DOM `^19.2.0`
-- TypeScript `~5.9.3`
-- Vite `^7.2.4`
-- react-router-dom `^7.9.6`
-- `@supabase/supabase-js` `^2.84.0`
-
-UI:
-
-- `@mantine/core` `^8.3.8`
-- `@mantine/hooks` `^8.3.8`
-- `@mantine/form` `^8.3.12`
-- `@mantine/charts` `^8.3.12`
-- `@mantine/dropzone` `^8.3.12`
-- `@tabler/icons-react` `^3.35.0`
-- `react-leaflet` `^5.0.0`
-- `leaflet` `^1.9.4`
-
-Tooling:
-
-- `@vitejs/plugin-react` `^5.1.1`
-- ESLint `^9.39.1`
-- TypeScript ESLint `^8.46.4`
-- Prettier `^3.6.2`
-- Vitest `^4.0.18`
-
-TypeScript config: target `ES2022`, module `ESNext`, JSX `react-jsx`, strict mode enabled, module resolution `bundler`.
-
-## Project Structure
-
-- `src/api/`: API wrappers.
-- `src/auth.ts`: Supabase auth setup.
-- `src/components/`: shared reusable UI.
-- `src/config.ts`: app-wide env/config constants.
-- `src/constants/`: shared domain constants and concept ontology.
-- `src/contexts/`: React contexts.
-- `src/features/`: domain-specific feature areas.
-- `src/hooks/`: shared hooks.
-- `src/routes/`: route definitions.
-- `src/services/`: shared business services.
-- `src/theme.ts`: central Mantine theme.
-- `src/types/`: shared TypeScript types.
-- `src/utils/`: shared utilities.
-
-Keep files short and focused. Split large components rather than expanding them indefinitely.
-
-## Coding Rules
-
-General:
-
-- Write minimal code that solves the requested problem only.
-- Match existing patterns in the touched file/feature.
-- Prefer built-in Vite, React, Mantine, and browser APIs over new libraries.
-- Avoid speculative features, unused abstractions, unrelated refactors, mutable globals, and commented-out code.
-- Delete dead code introduced by your change. Flag pre-existing dead code instead of silently removing it.
-- Use TypeScript strict typing; avoid `any` unless unavoidable and explained.
-- Use modern ES modules and syntax: `const`/`let`, no `var`.
-- Use consistent names: components `PascalCase`; functions, variables, and hooks `camelCase`; hooks start with `use`.
-- Keep imports grouped: external, internal, relative.
-
-React:
-
-- Use function components and hooks; no class components.
-- Prefer named exports.
-- Use `React.FC` only when it materially helps, such as explicit `children` typing.
-- Keep presentational components free of direct API calls; put fetching/effects/state orchestration in containers/hooks/services.
-
-Mantine and styling:
-
-- Prefer Mantine components and layout primitives.
-- Reuse `src/theme.ts`; do not create a second theme.
-- Use `style`, `className`, or `classNames`. Do not use Mantine `sx`.
-- Use Mantine hooks, such as `useDisclosure` or `useMantineTheme`, where they fit.
-- Prefer theme tokens/CSS variables over hard-coded colors and magic numbers.
-- Prefer `@tabler/icons-react` over emojis in UI.
-- Add custom CSS files only when Mantine props/styles cannot handle the case cleanly.
-
-Error handling and state:
-
-- At API and user-input boundaries, handle errors explicitly and visibly with typed errors and Mantine UI states such as `Alert`, disabled controls, loaders, or skeletons.
-- Do not swallow boundary errors or rely on `console.error` alone.
-- Inside pure/internal code, avoid defensive checks for states TypeScript/framework guarantees impossible.
-- Prefer local state and small custom hooks over global state. Do not add data/state libraries without a clear need.
-
-Configuration:
-
-- Use Vite env variables (`import.meta.env`) for API base URLs and feature flags.
-- Do not hardcode environment-specific URLs, production domains, tokens, or secrets in components.
-- Keep dev proxy/config in Vite or compose/task config.
-
-## Audit Logging (HRA / PRA / RSE pipelines)
-
-Structured trace consumed by the `renovation-result-validator` skill. Off by default; enable with `VITE_RELIFE_AUDIT_LOG=info|debug`.
-
-- Single utility: `src/utils/auditLogger.ts` (ring buffer, severity × category, sanitizer, `window.__relifeAudit.dump()/download()`).
-- Correlation via `AuditCtx` (`runId`, `buildingId`, `scenarioId`). HRA uses ambient ctx (sequential flow); PRA threads explicit ctx through `PortfolioAnalysisService` because buildings run concurrently; RSE threads explicit ctx through `rseWorkflowService`.
-- Service interfaces (`IEnergyService.estimateEPC`, `IRenovationService.evaluateScenarios`, `IFinancialService.calculateForAllScenarios`, `IMCDAService.rank`) accept an optional `auditCtx?: AuditCtx`. Add it when extending these contracts.
-- When instrumenting new pipeline code: emit `info` for stage start/end with summary outputs, `debug` for full request/response payloads and intermediate transformations, `warn` for fallbacks, `error` for API failures. Do not log auth headers or other secrets.
-
-## Testing and Verification
-
-- Search for existing patterns before implementing new ones.
-- For non-trivial changes, define success criteria and a verification plan.
-- Test before and after changes when causality matters.
-- Write focused tests for changed API clients, critical hooks/components, and domain logic.
-- Use Vitest + React Testing Library for unit/component tests; do not add other test frameworks.
-- Browser E2E journeys live in `tests/e2e/` (Playwright, `task test-e2e`): HRA and PRA specs drive the real UI against the Docker stack, with RSE coverage deferred until the planned UX refactor. Each run captures audit artifacts under `.work/e2e/artifacts/` for the `renovation-result-validator` skill. See `tests/e2e/README.md`.
-- Run lint and build before completion when feasible.
-- Keep `README.md` current for non-obvious operational or architecture changes.
+- Vitest + React Testing Library for unit tests (`task test-unit`); focus on API clients, critical hooks, and domain logic.
+- Playwright E2E for HRA and PRA against the Docker stack (`task test-e2e`); see `tests/e2e/README.md`.
+- Finish with `npm run lint` and `npm run build`.
