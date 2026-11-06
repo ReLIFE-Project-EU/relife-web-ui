@@ -147,8 +147,8 @@ describe("TechnicalMCDAService helpers", () => {
   });
 
   test("createMcdaMinsMaxes neutralizes unavailable KPI ranges", () => {
-    // These scenarios carry no operational emissions, so lifetime carbon is
-    // unavailable and gwp_kpi is neutralized for the run.
+    // These scenarios carry no operational emissions, so gwp_kpi is
+    // neutralized for the run.
     const scenarios = [wallScenario, windowScenario];
     const minsMaxes = createMcdaMinsMaxes(
       [
@@ -404,8 +404,7 @@ describe("TechnicalMCDAService helpers", () => {
     ]);
   });
 
-  // The audited HRA run (Italy SFH 1946-1969, 125 m², 20-year lifetime) whose
-  // ranking the shared carbon scale was verified against.
+  // Carbon figures from an audited HRA run (Italy SFH 1946-1969, 125 m²).
   const auditedPackages = [
     { id: "package-windows", embodied: 3405.6, annualTon: 15.218166 },
     { id: "package-floor-insulation", embodied: 864, annualTon: 15.088818 },
@@ -428,23 +427,24 @@ describe("TechnicalMCDAService helpers", () => {
   const auditedFinancials: Record<string, FinancialResults> =
     Object.fromEntries(auditedPackages.map((pkg) => [pkg.id, wallFinancial]));
 
-  test("buildMcdaTopsisRequest shares one carbon scale between material and lifetime carbon", () => {
+  test("buildMcdaTopsisRequest sends annual emissions as gwp_kpi, apart from material carbon", () => {
     const request = buildMcdaTopsisRequest(
       [baselineScenario, ...auditedScenarios()],
       auditedFinancials,
       "environmentally-conscious",
     );
 
+    // Material carbon has its own KPI; folding it into gwp_kpi counts it twice.
     expect(
       request.technologies.map((technology) => technology.gwp_kpi),
-    ).toEqual([307768.92, 302640.36, 106308.21680672267]);
-    // Material carbon is a component of lifetime carbon, so normalizing them
-    // independently would hide that it is a few percent of the total.
-    expect(request.mins_maxes.gwp_kpi).toEqual([0, 307768.92]);
-    expect(request.mins_maxes.embodied_carbon_kpi).toEqual([0, 307768.92]);
+    ).toEqual([15.218166, 15.088818, 4.973622]);
+    expect(request.mins_maxes.gwp_kpi).toEqual([4.973622, 15.218166]);
+    expect(request.mins_maxes.embodied_carbon_kpi).toEqual([
+      864, 6835.77680672269,
+    ]);
   });
 
-  test("missing operational emissions neutralize lifetime carbon rather than emptying the ranking", () => {
+  test("missing operational emissions neutralize gwp_kpi rather than emptying the ranking", () => {
     const scenarios = auditedScenarios();
     delete scenarios[1].annualEmissionsTonCo2e;
 

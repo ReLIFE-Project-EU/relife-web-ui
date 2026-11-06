@@ -381,7 +381,7 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     description:
       "Multi-Criteria Decision Analysis compares renovation packages across several outcomes using your selected priorities.",
     caveat:
-      "The environmental assessment includes both material emissions and heating and cooling emissions over the analysis period.",
+      "The environmental score looks at two things separately: the carbon in the materials, and the yearly emissions from heating and cooling.",
     professionalDetail:
       "The comparison combines energy, renewable energy, environmental, health and financial results. Scores depend on the packages being compared. If heating and cooling emissions are unavailable, they are left out of the score.",
   },
