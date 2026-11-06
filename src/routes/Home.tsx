@@ -12,43 +12,9 @@ import {
   Title,
   rem,
 } from "@mantine/core";
-import {
-  IconArrowRight,
-  IconBriefcase,
-  IconBuildingEstate,
-  IconHomeHeart,
-} from "@tabler/icons-react";
+import { IconArrowRight } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
-
-const tools = [
-  {
-    title: "Renovation Strategy Explorer",
-    badge: "Policymakers & Researchers",
-    description:
-      "Compare renovation packages for representative building stock against budget, energy, or emissions goals.",
-    icon: IconBuildingEstate,
-    link: "/strategy-explorer",
-    color: "blue",
-  },
-  {
-    title: "Portfolio Renovation Advisor",
-    badge: "Financial Institutions & ESCOs",
-    description:
-      "Estimate renovation costs, energy savings, and financial returns across your buildings.",
-    icon: IconBriefcase,
-    link: "/portfolio-advisor",
-    color: "teal",
-  },
-  {
-    title: "Home Renovation Assistant",
-    badge: "Homeowners",
-    description:
-      "Compare renovation options and estimate costs and energy savings for your home.",
-    icon: IconHomeHeart,
-    link: "/home-assistant",
-    color: "orange",
-  },
-];
+import { RELIFE_TOOLS } from "../constants/tools";
 
 export const Home = () => {
   return (
@@ -109,7 +75,7 @@ export const Home = () => {
       {/* Tool Selection Section */}
       <Container size="lg" mt={-40}>
         <SimpleGrid cols={{ base: 1, md: 3 }} spacing="xl">
-          {tools.map((tool) => (
+          {RELIFE_TOOLS.map((tool) => (
             <Card
               key={tool.title}
               component={Link}
@@ -146,7 +112,7 @@ export const Home = () => {
                 <tool.icon size={32} stroke={1.5} />
               </ThemeIcon>
               <Badge color={tool.color} variant="light" mb="sm">
-                {tool.badge}
+                {tool.audience}
               </Badge>
               <Title order={3} mb="sm">
                 {tool.title}
