@@ -1,4 +1,7 @@
+import { relifeConcepts } from "../../constants/relifeConcepts";
 import type { ConceptId } from "../../constants/relifeConcepts";
+import type { ArchetypeMatchStrategy } from "../../services/archetypeMatching";
+import type { BuildingModifications } from "../../types/archetype";
 import type { AuditPayloads } from "../../types/auditEvents";
 import type { DeliveredEnergyCarrierBreakdown } from "../../types/energy";
 import type { UNI11300Summary } from "../../types/forecasting";
@@ -14,15 +17,52 @@ import {
   quantityRow,
   table,
 } from "./lineageModel";
-import type { LineageStep } from "./lineageModel";
+import type { LineageRow, LineageStep, LineageValue } from "./lineageModel";
 
+const INPUTS_CAPTION =
+  "What you entered. Country, building type and construction period pick the reference building.";
+const CATALOGUE_CAPTION =
+  "The catalogue building that matches your inputs. The simulation runs on this building.";
+const SIMULATED_COLUMN = "As simulated";
+const MODIFIED_CAPTION = `The catalogue building that matches your inputs, next to the same building with your changes. The simulation runs on the ${SIMULATED_COLUMN} column.`;
 const SIMULATED_CAPTION =
-  "ISO 52016 hourly simulation with UNI/TS 11300 system losses.";
+  "Hourly simulation over one year (ISO 52016), plus heating and cooling system losses (UNI/TS 11300). Results are for the simulated floor area. The next step scales them to yours.";
+const SIMULATED_PACKAGES_NOTE =
+  "Current Status comes from the same simulation as the energy profile.";
 const SCALED_CAPTION =
-  "Factor = floor area ÷ simulated floor area. With PV, grid electricity and delivered energy are net of PV self-consumption.";
-const CATALOGUE_CAPTION = "Declared catalogue values.";
-const MODIFIED_CAPTION =
-  "Declared catalogue values next to the modified building that was simulated.";
+  "Multiplies every simulated result by the scale factor. These are the energy figures shown in the results.";
+const SCALED_PV_NOTE =
+  "Grid electricity and system energy consumption exclude the PV electricity the building uses itself.";
+const SCALE_FACTOR_CALCULATION =
+  "Scale factor = Floor area ÷ Simulated floor area";
+
+const MATCH_STRATEGY_LABELS: Record<ArchetypeMatchStrategy, string> = {
+  "user-selected": "You picked it",
+  "exact-full": "Same country, type and construction period",
+  "exact-category-period-mismatch":
+    "Same country and type, different construction period",
+  "country-any-category": "Same country, different building type",
+  "region-category-match": "Same climate region in another country, same type",
+  "region-any-match": "Same climate region in another country, any type",
+  "selected-not-found": "Your pick is not in the catalogue",
+};
+
+const MODIFICATION_LABELS: Record<keyof BuildingModifications, string> = {
+  floorArea: "Floor area",
+  numberOfFloors: "Floors",
+  floorHeight: "Floor height",
+  totalWindowArea: "Window area",
+  windowDistribution: "Window distribution",
+  wallUValue: "Wall U-value",
+  roofUValue: "Roof U-value",
+  windowUValue: "Window U-value",
+  heatingSetpoint: "Heating setpoint",
+  coolingSetpoint: "Cooling setpoint",
+  numberOfOccupants: "Occupants",
+};
+
+/** Profile: the building as it is; packages: one column per renovation package. */
+export type EnergyStepContext = "profile" | "packages";
 
 function field(source: unknown, key: string): unknown {
   return typeof source === "object" && source !== null
@@ -40,6 +80,18 @@ function perArea(
   area: number | undefined,
 ): number | undefined {
   return value === undefined || area === undefined ? undefined : value / area;
+}
+
+/** Concept row per m² of simulated floor area, keeping the concept tooltip. */
+function perAreaRow(conceptId: ConceptId, values: LineageValue[]): LineageRow {
+  return {
+    ...quantityRow(
+      `${relifeConcepts[conceptId].label} per m²`,
+      QUANTITY.intensity,
+      values,
+    ),
+    conceptId,
+  };
 }
 
 // ── Energy steps shared by the energy profile and the renovation table ──────
@@ -94,11 +146,15 @@ type EnergyColumns = (EnergyColumn | undefined)[];
 export function simulatedStep(
   columns: string[],
   energy: EnergyColumns,
+  context: EnergyStepContext,
 ): LineageStep {
   return {
     title: "Simulated building",
     actor: "forecasting",
-    caption: SIMULATED_CAPTION,
+    caption:
+      context === "packages"
+        ? `${SIMULATED_CAPTION} ${SIMULATED_PACKAGES_NOTE}`
+        : SIMULATED_CAPTION,
     tables: [
       table(columns, [
         quantityRow(
@@ -134,15 +190,13 @@ export function simulatedStep(
           "system-energy-consumption",
           energy.map((e) => e?.delivered),
         ),
-        conceptRow(
+        perAreaRow(
           "annual-building-thermal-needs",
           energy.map((e) => perArea(e?.thermalNeed, e?.simulatedArea)),
-          QUANTITY.intensity,
         ),
-        conceptRow(
+        perAreaRow(
           "system-energy-consumption",
           energy.map((e) => perArea(e?.delivered, e?.simulatedArea)),
-          QUANTITY.intensity,
         ),
       ]),
     ],
@@ -152,11 +206,16 @@ export function simulatedStep(
 export function scaledStep(
   columns: string[],
   energy: EnergyColumns,
+  context: EnergyStepContext,
 ): LineageStep {
+  const hasPv = energy.some((e) => e?.scaled.pvSelfConsumption !== undefined);
+  // Only the package costs read the carrier split; the profile ends here.
+  const feedsCost = context === "packages";
   return {
-    title: "Scaled to floor area",
+    title: "Scaled to your floor area",
     actor: "web-ui",
-    caption: SCALED_CAPTION,
+    caption: hasPv ? `${SCALED_CAPTION} ${SCALED_PV_NOTE}` : SCALED_CAPTION,
+    calculations: [SCALE_FACTOR_CALCULATION],
     tables: [
       table(columns, [
         quantityRow(
@@ -170,7 +229,7 @@ export function scaledStep(
           energy.map((e) => e?.userArea),
         ),
         quantityRow(
-          "Factor",
+          "Scale factor",
           QUANTITY.factor,
           energy.map((e) => e?.areaScaleFactor),
         ),
@@ -178,16 +237,22 @@ export function scaledStep(
           "annual-building-thermal-needs",
           energy.map((e) => e?.scaled.hvacTotal),
         ),
-        quantityRow(
-          "Gas (net)",
-          QUANTITY.energy,
-          energy.map((e) => e?.scaled.carrierBreakdown?.naturalGasKwh),
-        ),
-        quantityRow(
-          "Grid electricity",
-          QUANTITY.energy,
-          energy.map((e) => e?.scaled.carrierBreakdown?.gridElectricityKwh),
-        ),
+        {
+          ...quantityRow(
+            "Gas",
+            QUANTITY.energy,
+            energy.map((e) => e?.scaled.carrierBreakdown?.naturalGasKwh),
+          ),
+          emphasis: feedsCost,
+        },
+        {
+          ...quantityRow(
+            "Grid electricity",
+            QUANTITY.energy,
+            energy.map((e) => e?.scaled.carrierBreakdown?.gridElectricityKwh),
+          ),
+          emphasis: feedsCost,
+        },
         conceptRow(
           "pv-self-consumption",
           energy.map((e) => e?.scaled.pvSelfConsumption),
@@ -207,8 +272,9 @@ export function inputsStep(events: AuditEvent[]): LineageStep | null {
   const inputs = latest(events, "energy.estimate.start");
   if (!inputs) return null;
   return {
-    title: "Inputs",
+    title: "Your inputs",
     actor: "input",
+    caption: INPUTS_CAPTION,
     tables: [
       table(
         [],
@@ -219,8 +285,12 @@ export function inputsStep(events: AuditEvent[]): LineageStep | null {
           quantityRow("Floor area", QUANTITY.area, [inputs.floorArea]),
           { label: "Floors", values: [inputs.numberOfFloors] },
           {
-            label: "Changed fields",
-            values: [inputs.modificationKeys.join(", ") || "None"],
+            label: "Fields you changed",
+            values: [
+              inputs.modificationKeys
+                .map((key) => MODIFICATION_LABELS[key])
+                .join(", ") || "None",
+            ],
           },
         ],
       ),
@@ -276,7 +346,10 @@ export function referenceStep(events: AuditEvent[]): LineageStep | null {
         [],
         [
           { label: "Archetype", values: [resolved.archetype.name] },
-          { label: "Match", values: [resolved.matchStrategy] },
+          {
+            label: "How the archetype was chosen",
+            values: [MATCH_STRATEGY_LABELS[resolved.matchStrategy]],
+          },
           {
             label: "Location (lat, lon)",
             values: [
@@ -284,32 +357,41 @@ export function referenceStep(events: AuditEvent[]): LineageStep | null {
             ],
           },
         ],
+        "Archetype",
       ),
-      table(modifiedBui ? ["Catalogue", "As simulated"] : [], [
-        quantityRow(
-          "Floor area",
-          QUANTITY.area,
-          buildings.map((bui) => bui.building.net_floor_area),
-        ),
-        {
-          label: "Floors",
-          values: buildings.map((bui) => bui.building.n_floors),
-        },
-        quantityRow(
-          "Heating setpoint / setback",
-          QUANTITY.temperature,
-          setpoints.map((s) => `${s.heating_setpoint} / ${s.heating_setback}`),
-        ),
-        quantityRow(
-          "Cooling setpoint / setback",
-          QUANTITY.temperature,
-          setpoints.map((s) => `${s.cooling_setpoint} / ${s.cooling_setback}`),
-        ),
-        ...envelopeRows("Walls", "wall"),
-        ...envelopeRows("Roof", "roof"),
-        ...envelopeRows("Ground floor", "floor"),
-        ...envelopeRows("Windows", "window"),
-      ]),
+      table(
+        modifiedBui ? ["Catalogue", SIMULATED_COLUMN] : [],
+        [
+          quantityRow(
+            "Floor area",
+            QUANTITY.area,
+            buildings.map((bui) => bui.building.net_floor_area),
+          ),
+          {
+            label: "Floors",
+            values: buildings.map((bui) => bui.building.n_floors),
+          },
+          quantityRow(
+            "Heating setpoint / setback",
+            QUANTITY.temperature,
+            setpoints.map(
+              (s) => `${s.heating_setpoint} / ${s.heating_setback}`,
+            ),
+          ),
+          quantityRow(
+            "Cooling setpoint / setback",
+            QUANTITY.temperature,
+            setpoints.map(
+              (s) => `${s.cooling_setpoint} / ${s.cooling_setback}`,
+            ),
+          ),
+          ...envelopeRows("Walls", "wall"),
+          ...envelopeRows("Roof", "roof"),
+          ...envelopeRows("Ground floor", "floor"),
+          ...envelopeRows("Windows", "window"),
+        ],
+        "Geometry and envelope",
+      ),
       table(
         ["Heating", "Cooling"],
         [
@@ -345,6 +427,7 @@ export function referenceStep(events: AuditEvent[]): LineageStep | null {
             "aux_generation_fraction",
           ),
         ],
+        "Heating and cooling systems",
       ),
     ],
   };

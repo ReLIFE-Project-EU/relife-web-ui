@@ -13,6 +13,7 @@
  */
 
 import type {
+  AppraisalSkipReason,
   AppraisedPackage,
   FinancialResults,
   RenovationScenario,
@@ -41,7 +42,13 @@ export function resolveSavingsAvailability(
     return "appraised";
   }
 
-  switch (financials.appraisal.reason) {
+  return skipReasonAvailability(financials.appraisal.reason);
+}
+
+export function skipReasonAvailability(
+  reason: AppraisalSkipReason,
+): SavingsAvailability {
+  switch (reason) {
     case "fully-subsidized":
       return "fully-funded";
     case "missing-carrier-breakdown":

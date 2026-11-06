@@ -24,42 +24,49 @@ function formatValue(value: LineageValue, row: LineageRow): string {
 
 function StepTable({ table }: { table: LineageTable }) {
   return (
-    <Table.ScrollContainer minWidth="max-content">
-      <Table striped withTableBorder verticalSpacing="xs">
-        {table.columns.length > 0 && (
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th />
-              {table.columns.map((column) => (
-                <Table.Th key={column} ta="right">
-                  {column}
-                </Table.Th>
-              ))}
-            </Table.Tr>
-          </Table.Thead>
-        )}
-        <Table.Tbody>
-          {table.rows.map((row) => (
-            <Table.Tr key={row.label}>
-              <Table.Td>
-                {row.label}
-                {row.conceptId && (
-                  <>
-                    {" "}
-                    <ConceptExplainer conceptId={row.conceptId} />
-                  </>
-                )}
-              </Table.Td>
-              {row.values.map((value, index) => (
-                <Table.Td key={index} ta="right">
-                  {formatValue(value, row)}
+    <Stack gap={4}>
+      {table.title && (
+        <Text size="sm" fw={600}>
+          {table.title}
+        </Text>
+      )}
+      <Table.ScrollContainer minWidth="max-content">
+        <Table striped withTableBorder verticalSpacing="xs">
+          {table.columns.length > 0 && (
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th />
+                {table.columns.map((column) => (
+                  <Table.Th key={column} ta="right">
+                    {column}
+                  </Table.Th>
+                ))}
+              </Table.Tr>
+            </Table.Thead>
+          )}
+          <Table.Tbody>
+            {table.rows.map((row) => (
+              <Table.Tr key={row.label} fw={row.emphasis ? 600 : undefined}>
+                <Table.Td>
+                  {row.label}
+                  {row.conceptId && (
+                    <>
+                      {" "}
+                      <ConceptExplainer conceptId={row.conceptId} />
+                    </>
+                  )}
                 </Table.Td>
-              ))}
-            </Table.Tr>
-          ))}
-        </Table.Tbody>
-      </Table>
-    </Table.ScrollContainer>
+                {row.values.map((value, index) => (
+                  <Table.Td key={index} ta="right">
+                    {formatValue(value, row)}
+                  </Table.Td>
+                ))}
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      </Table.ScrollContainer>
+    </Stack>
   );
 }
 
@@ -84,6 +91,11 @@ export function LineageTimeline({ steps }: { steps: LineageStep[] }) {
                 {step.caption}
               </Text>
             )}
+            {step.calculations?.map((calculation) => (
+              <Text key={calculation} size="sm" c="dimmed">
+                Calculation: {calculation}
+              </Text>
+            ))}
             {step.tables.map((table, index) => (
               <StepTable key={index} table={table} />
             ))}

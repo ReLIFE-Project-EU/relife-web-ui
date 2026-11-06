@@ -6,7 +6,7 @@
  */
 
 import type { ArchetypeMatchStrategy } from "../services/archetypeMatching";
-import type { BuildingPayload } from "./archetype";
+import type { BuildingModifications, BuildingPayload } from "./archetype";
 import type { DeliveredEnergyCarrierBreakdown } from "./energy";
 import type { ECMApplicationParams, UNI11300Summary } from "./forecasting";
 import type { AppraisalSkipReason } from "./renovation";
@@ -20,7 +20,7 @@ export type AuditPayloads = {
     constructionPeriod: string;
     floorArea: number | null;
     numberOfFloors: number | null;
-    modificationKeys: string[];
+    modificationKeys: (keyof BuildingModifications)[];
   }>;
   "energy.archetype.resolved": Open<{
     archetype: { name: string; category: string; country: string };
@@ -83,7 +83,6 @@ export type AuditPayloads = {
   }>;
   "financial.risk.skipped": Open<{ reason: AppraisalSkipReason }>;
   "financial.scenario.end": Open<{
-    capitalExpenditure: number;
     annualMaintenanceCost: number | undefined;
     monthlyAvgSavings: number | undefined;
   }>;

@@ -1,7 +1,12 @@
+import { relifeConcepts } from "../../constants/relifeConcepts";
 import {
   NATURAL_GAS_NET_PER_GROSS_KWH,
   computeCarrierAnnualCostEur,
 } from "../../services/carrierSavingsService";
+import {
+  savingsAvailabilityLabel,
+  skipReasonAvailability,
+} from "../../services/savingsState";
 import type { AuditPayloads } from "../../types/auditEvents";
 import type { DeliveredEnergyCarrierBreakdown } from "../../types/energy";
 import type { AuditEvent } from "../../utils/auditLogger";
@@ -16,6 +21,13 @@ import {
 import type { LineageStep } from "./lineageModel";
 
 const MONTHS_PER_YEAR = 12;
+
+const PACKAGES_CAPTION =
+  "Targets each package sets. A dash means the package leaves that part as it is.";
+const ANNUAL_COST_LABEL = "Annual energy cost";
+const RENOVATION_COST_LABEL = "Renovation cost";
+const YEARLY_SAVINGS_LABEL = "Yearly savings";
+const ELECTRICITY_SAVINGS_LABEL = "Savings as electricity";
 
 export interface ScenarioEvents {
   label: string;
@@ -103,7 +115,12 @@ export function packagesStep(scenarios: ScenarioEvents[]): LineageStep | null {
   );
   return step.rows.length === 0
     ? null
-    : { title: "Packages", actor: "web-ui", tables: [step] };
+    : {
+        title: "Packages",
+        actor: "web-ui",
+        caption: PACKAGES_CAPTION,
+        tables: [step],
+      };
 }
 
 export function energyCostStep(
@@ -125,16 +142,24 @@ export function energyCostStep(
     `${formatFixed(value, QUANTITY.tariff.decimals)} ${QUANTITY.tariff.unit}`;
   // Without a carrier split the service logs placeholder zeros, not results.
   const priced = savings.map((s) => (s?.canUseCarrierPricing ? s : undefined));
+  const current =
+    scenarios.find((s) => s.isBaseline)?.label ?? "the current building";
+  const saving = `Saving vs ${current}`;
 
   return {
     title: "Energy cost",
     actor: "web-ui",
+    caption: `Prices gas and grid electricity at your tariffs and compares each package with ${current}.`,
+    calculations: [
+      `${ANNUAL_COST_LABEL} = Gas ÷ ${NATURAL_GAS_NET_PER_GROSS_KWH} × ${price(gas)} + Grid electricity × ${price(reference)}. The simulation gives gas in net kWh, gas is billed per gross kWh, and one gross kWh holds ${NATURAL_GAS_NET_PER_GROSS_KWH} net kWh.`,
+      `${ELECTRICITY_SAVINGS_LABEL} = ${saving} ÷ ${price(reference)}. The financial model takes savings as kWh of electricity at a single price.`,
+    ],
     tables: [
       table(
         scenarios.map((s) => s.label),
         [
           quantityRow(
-            `Annual cost, gas ÷ ${NATURAL_GAS_NET_PER_GROSS_KWH} × ${price(gas)} + grid × ${price(reference)}`,
+            ANNUAL_COST_LABEL,
             QUANTITY.moneyPerYear,
             scenarios.map((s, i) =>
               s.isBaseline
@@ -143,15 +168,18 @@ export function energyCostStep(
             ),
           ),
           quantityRow(
-            "Saving vs current",
+            saving,
             QUANTITY.moneyPerYear,
             priced.map((s) => s?.annualSavingsEur),
           ),
-          quantityRow(
-            `Sent as electricity, saving ÷ ${price(reference)}`,
-            QUANTITY.energy,
-            priced.map((s) => s?.electricityEquivalentKwh),
-          ),
+          {
+            ...quantityRow(
+              `${ELECTRICITY_SAVINGS_LABEL} for the financial model`,
+              QUANTITY.energy,
+              priced.map((s) => s?.electricityEquivalentKwh),
+            ),
+            emphasis: true,
+          },
         ],
       ),
     ],
@@ -169,17 +197,23 @@ export function appraisalStep(
   const lifetime = latest(events, "financial.run.start")?.projectLifetime;
   const loan = (s: (typeof savings)[number]) =>
     s && s.loanTerm > 0 ? s : undefined;
+  const cashBenefit = relifeConcepts["monthly-cash-benefit"].label;
 
   return {
     title: "Financial appraisal",
     actor: "financial",
-    caption: `P50 net cash flow averaged over years 1 to ${lifetime}, after maintenance and loan payments.`,
+    caption: `The Financial service simulates cash flows over ${lifetime} years and reports the median (P50) outcome.`,
+    calculations: [
+      `${relifeConcepts.investment.label} = ${RENOVATION_COST_LABEL} − ${relifeConcepts["upfront-subsidy"].label}`,
+      `${cashBenefit} = net cash flow after maintenance and loan payments, averaged over years 1 to ${lifetime}`,
+      `${YEARLY_SAVINGS_LABEL} = ${cashBenefit} × ${MONTHS_PER_YEAR}`,
+    ],
     tables: [
       table(
         scenarios.map((s) => s.label),
         [
           quantityRow(
-            "Renovation cost",
+            RENOVATION_COST_LABEL,
             QUANTITY.money,
             savings.map((s) => s?.renovationCost),
           ),
@@ -191,11 +225,6 @@ export function appraisalStep(
           conceptRow(
             "investment",
             savings.map((s) => s?.effectiveCost),
-          ),
-          quantityRow(
-            "Investment shown in results",
-            QUANTITY.money,
-            ends.map((end) => end?.capitalExpenditure),
           ),
           conceptRow(
             "annual-maintenance-cost",
@@ -217,7 +246,7 @@ export function appraisalStep(
             QUANTITY.cents,
           ),
           quantityRow(
-            `Yearly savings, monthly × ${MONTHS_PER_YEAR}`,
+            YEARLY_SAVINGS_LABEL,
             { ...QUANTITY.moneyPerYear, ...QUANTITY.cents },
             ends.map((end) =>
               end?.monthlyAvgSavings === undefined
@@ -226,9 +255,13 @@ export function appraisalStep(
             ),
           ),
           {
-            label: "Not appraised",
+            label: "Why not appraised",
             values: perScenario(scenarios, "financial.risk.skipped").map(
-              (skipped) => skipped?.reason,
+              (skipped) =>
+                skipped &&
+                savingsAvailabilityLabel[
+                  skipReasonAvailability(skipped.reason)
+                ],
             ),
           },
         ],

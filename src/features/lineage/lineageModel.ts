@@ -13,9 +13,12 @@ export interface LineageRow {
   values: LineageValue[];
   conceptId?: ConceptId;
   decimals?: number;
+  /** Bold: the next step uses this row. */
+  emphasis?: boolean;
 }
 
 export interface LineageTable {
+  title?: string;
   /** Empty for single-value tables, which render without a header. */
   columns: string[];
   rows: LineageRow[];
@@ -25,6 +28,8 @@ export interface LineageStep {
   title: string;
   actor: LineageActor;
   caption?: string;
+  /** How the step's figures are calculated, one formula per line. */
+  calculations?: string[];
   tables: LineageTable[];
 }
 
@@ -95,8 +100,13 @@ export function latest<E extends keyof AuditPayloads>(
 }
 
 /** Drops rows with no value in any column. */
-export function table(columns: string[], rows: LineageRow[]): LineageTable {
+export function table(
+  columns: string[],
+  rows: LineageRow[],
+  title?: string,
+): LineageTable {
   return {
+    title,
     columns,
     rows: rows.filter((row) =>
       row.values.some((value) => value !== null && value !== undefined),

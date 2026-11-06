@@ -18,7 +18,10 @@
 
 import { forecasting } from "../api";
 import { APIError } from "../types/common";
-import type { BuildingPayload } from "../types/archetype";
+import type {
+  BuildingModifications,
+  BuildingPayload,
+} from "../types/archetype";
 import type { ArchetypeInfo, ECMScenario } from "../types/forecasting";
 import type { BuildingInfo, EstimationResult } from "../types/renovation";
 import {
@@ -650,7 +653,9 @@ export class EnergyService implements IEnergyService {
         lng: building.lng,
         isModified: building.isModified === true,
         modificationKeys: building.modifications
-          ? Object.keys(building.modifications)
+          ? (Object.keys(
+              building.modifications,
+            ) as (keyof BuildingModifications)[])
           : [],
         selectedArchetype: building.selectedArchetype,
       },

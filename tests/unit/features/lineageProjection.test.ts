@@ -47,7 +47,7 @@ describe("projectLineage", () => {
     ]);
 
     const areaRow = energyProfile
-      .find((step) => step.title === "Scaled to floor area")
+      .find((step) => step.title === "Scaled to your floor area")
       ?.tables[0].rows.find((row) => row.label === "Simulated floor area (m²)");
     expect(areaRow?.values).toEqual([120]);
   });

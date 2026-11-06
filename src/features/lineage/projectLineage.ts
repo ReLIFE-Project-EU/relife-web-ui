@@ -39,13 +39,17 @@ export function projectLineage(events: AuditEvent[]): BuildingLineage {
     energyProfile: compact([
       inputsStep(events),
       referenceStep(events),
-      profile ? simulatedStep([], [profile]) : null,
-      profile ? scaledStep([], [profile]) : null,
+      profile ? simulatedStep([], [profile], "profile") : null,
+      profile ? scaledStep([], [profile], "profile") : null,
     ]),
     renovation: compact([
       packagesStep(scenarios),
-      hasRenovationEnergy ? simulatedStep(labels, renovationEnergy) : null,
-      hasRenovationEnergy ? scaledStep(labels, renovationEnergy) : null,
+      hasRenovationEnergy
+        ? simulatedStep(labels, renovationEnergy, "packages")
+        : null,
+      hasRenovationEnergy
+        ? scaledStep(labels, renovationEnergy, "packages")
+        : null,
       energyCostStep(scenarios),
       appraisalStep(scenarios, events),
     ]),
