@@ -93,6 +93,18 @@ A package appraisal that the Financial service calculated.
 A package appraisal that was never requested, together with the reason; it has no figures.
 _Avoid_: unavailable, not applicable, zero
 
+**Project lifetime**:
+The number of years a package appraisal covers; cash flows after it do not count.
+_Avoid_: horizon, project horizon
+
+**Over the lifetime**:
+A payback that the package does not reach within the project lifetime. The Financial service reports it as the lifetime plus one year, which is not a real year count.
+_Avoid_: censored, no payback, no payback within horizon
+
+**Immediate payback**:
+A payback of zero years, because the owner pays nothing up front (for example, with a full loan).
+_Avoid_: zero payback
+
 **Funding**:
 How a renovation package's cost is paid: subsidy, loan and the owner's own money.
 _Avoid_: financing options
