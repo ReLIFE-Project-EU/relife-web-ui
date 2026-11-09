@@ -14,6 +14,7 @@
 import { buildRenovationActions } from "./renovationActions";
 import {
   envelopeForPricing,
+  modeledHeatingCapacityKw,
   modeledPvKwp,
   type SimulatedBuilding,
 } from "./simulatedBuilding";
@@ -43,7 +44,7 @@ export interface PackageCostLookupDeps {
  * or lookup failure so callers can surface it in their own way.
  *
  * Quantities come from the simulated building at the modeled home's share:
- * envelope surfaces, floor area for HVAC capacity, and the PV array.
+ * envelope surfaces, heating capacity, and the PV array.
  */
 export async function lookupPackageCosts(
   params: PackageCostLookupParams,
@@ -56,11 +57,10 @@ export async function lookupPackageCosts(
     );
   }
 
-  const envelope = envelopeForPricing(params.simulated);
   const renovationActions = buildRenovationActions({
     measureIds: params.measureIds,
-    surfaceAreas: surfaceAreasFromBui(envelope.bui),
-    floorArea: envelope.floorArea,
+    surfaceAreas: surfaceAreasFromBui(envelopeForPricing(params.simulated)),
+    heatingKw: modeledHeatingCapacityKw(params.simulated),
     pvKwp: modeledPvKwp(params.simulated),
   });
   if (renovationActions.length === 0) {

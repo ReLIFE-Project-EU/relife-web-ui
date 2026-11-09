@@ -9,7 +9,7 @@ export interface CostProbe {
   action: RenovationAction;
 }
 
-// Explicit quantities bypass the UI's building-dependent capacity heuristics.
+// Explicit quantities bypass the UI's building-dependent capacity sizing.
 export const COST_PROBES: readonly CostProbe[] = [
   {
     measureId: "wall-insulation",

@@ -28,10 +28,11 @@ import { APIError } from "../../../../../src/types/common";
 
 /**
  * Envelope geometry consumed by the CAPEX/OPEX lookup: 80 m² wall, 60 m² roof,
- * 50 m² ground floor, 20 m² windows.
+ * 50 m² ground floor, 20 m² windows, and 8 kW of configured heating.
  */
 const FIXTURE_BUI = {
   building: { net_floor_area: 100, exposed_perimeter: 40 },
+  building_parameters: { system_capacities: { heating_capacity: 8_000 } },
   building_surface: [
     {
       name: "wall_south",
@@ -76,10 +77,10 @@ const ENVELOPE_ACTIONS = [
   { action: "Windows", area_m2: 20 },
 ];
 
-/** Heating 100 m² × 0.05 = 5 kW; PV on the 60 m² roof hits the 3 kWp minimum. */
+/** PV on the 60 m² roof hits the 3 kWp minimum. */
 const COMBINED_ACTIONS = [
   ...ENVELOPE_ACTIONS,
-  { action: "Air-water Heat Pump", capacity_kw: 5 },
+  { action: "Air-water Heat Pump", capacity_kw: 8 },
   { action: "PV", capacity_kw: 3 },
 ];
 
@@ -224,8 +225,8 @@ describe("computeFinancials", () => {
 
   test("prices an Apartment share and whole-building envelope quantities consistently", async () => {
     // A 100 m² dwelling inside a 400 m² reference building: envelope surfaces
-    // and PV take a quarter share (PV after the whole-roof 3 kWp minimum, so it
-    // matches the share of cached output); HVAC is sized from the dwelling.
+    // heating and PV take a quarter share (PV after the whole-roof 3 kWp
+    // minimum, so it matches the share of cached output).
     const blockBui = {
       ...FIXTURE_BUI,
       building: { net_floor_area: 400, exposed_perimeter: 80 },
@@ -246,7 +247,7 @@ describe("computeFinancials", () => {
       { action: "Roof insulation - Accessible", area_m2: 15 },
       { action: "Floor insulation", area_m2: 12.5 },
       { action: "Windows", area_m2: 5 },
-      { action: "Air-water Heat Pump", capacity_kw: 5 },
+      { action: "Air-water Heat Pump", capacity_kw: 2 },
       { action: "PV", capacity_kw: 0.75 },
     ]);
 
@@ -567,8 +568,8 @@ describe("computeFinancialsBatch", () => {
     expect(results[0].packageId).toBe("envelope");
     expect(results[1].packageId).toBe("combined");
 
-    // The combined package's lookup includes the stopgap-sized HVAC and PV
-    // capacities alongside the envelope surface areas.
+    // The combined package's lookup includes the heating and PV capacities
+    // alongside the envelope surface areas.
     const combinedLookup = mockAssessRisk.mock.calls
       .map(([request]) => request)
       .find(

@@ -77,12 +77,6 @@ export interface PRAFinancialResults extends FinancialResults {
 export interface CostSource {
   capexFromLookup: boolean;
   opexFromLookup: boolean;
-  /**
-   * CAPEX came from the lookup and the package includes a heating-system
-   * measure whose capacity was sized by the floor-area stopgap heuristic, so
-   * the heating portion of CAPEX is preliminary.
-   */
-  usesHeatingStopgap?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -21,9 +21,9 @@ import {
   type EnvelopeElement,
   type EnvelopeElementGeometry,
 } from "../utils/archetypeModifier";
-import { heatingCapacityKwFromFloorArea } from "./hvacSizing";
 import {
   envelopeForPricing,
+  modeledHeatingCapacityKw,
   modeledPvKwp,
   type SimulatedBuilding,
 } from "./simulatedBuilding";
@@ -293,7 +293,7 @@ function pvCarbon(sheet: TechnicalSheet, kwp: number): number | null {
 function measureCarbon(
   measureId: RenovationMeasureId,
   elements: Record<EnvelopeElement, EnvelopeElementGeometry>,
-  floorArea: number | null,
+  heatingKw: number | null,
   pvKwp: number | null,
 ): number | null {
   const sheet = sheetFor(measureId);
@@ -319,8 +319,7 @@ function measureCarbon(
     return pvKwp === null ? null : pvCarbon(sheet, pvKwp);
   }
 
-  const capacityKw = heatingCapacityKwFromFloorArea(floorArea);
-  return capacityKw === null ? null : heatingUnitCarbon(sheet, capacityKw);
+  return heatingKw === null ? null : heatingUnitCarbon(sheet, heatingKw);
 }
 
 /**
@@ -338,8 +337,10 @@ export function estimatePackageEmbodiedCarbon(params: {
   simulated: SimulatedBuilding;
   measureIds: RenovationMeasureId[];
 }): number | null {
-  const envelope = envelopeForPricing(params.simulated);
-  const elements = envelopeElementsFromBui(envelope.bui);
+  const elements = envelopeElementsFromBui(
+    envelopeForPricing(params.simulated),
+  );
+  const heatingKw = modeledHeatingCapacityKw(params.simulated);
   const pvKwp = modeledPvKwp(params.simulated);
 
   let total = 0;
@@ -347,12 +348,7 @@ export function estimatePackageEmbodiedCarbon(params: {
   for (const measureId of params.measureIds) {
     if (!DEFAULT_SHEET_BY_MEASURE[measureId]) continue;
 
-    const kgCO2e = measureCarbon(
-      measureId,
-      elements,
-      envelope.floorArea,
-      pvKwp,
-    );
+    const kgCO2e = measureCarbon(measureId, elements, heatingKw, pvKwp);
     if (kgCO2e === null) return null;
 
     total += kgCO2e;

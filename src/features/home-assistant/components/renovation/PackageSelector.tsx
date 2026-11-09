@@ -12,17 +12,12 @@ import {
   Title,
   Tooltip,
 } from "@mantine/core";
-import {
-  IconAlertTriangle,
-  IconCurrencyEuro,
-  IconInfoCircle,
-} from "@tabler/icons-react";
+import { IconAlertTriangle, IconCurrencyEuro } from "@tabler/icons-react";
 import type { ConceptId } from "../../../../constants/relifeConcepts";
 import { PACKAGE_SELECTION_MAX } from "../../constants";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { useHomeAssistantServices } from "../../hooks/useHomeAssistantServices";
 import { checkCapexPerSqm } from "../../../../utils/inputSanityChecks";
-import { packageUsesHeatingStopgap } from "../../../../services/renovationActions";
 import { ConceptLabel, ErrorAlert } from "../../../../components/shared";
 import { browserNumberSeparators } from "../../../../utils/formatters";
 
@@ -124,10 +119,6 @@ export function PackageSelector({
         const opexAutoEstimated = packageInput?.opexAutoEstimated ?? false;
         const isEstimating = estimatingIds.has(pkg.id);
         const estimateError = errorsById[pkg.id];
-        // The heating cost lives in CAPEX, so the stopgap notice tracks the
-        // CAPEX provenance specifically.
-        const showHeatingNotice =
-          capexAutoEstimated && packageUsesHeatingStopgap(pkg.measureIds);
         const capexWarning =
           isSelected &&
           capex !== null &&
@@ -236,17 +227,6 @@ export function PackageSelector({
                       }
                     />
                   </Group>
-
-                  {showHeatingNotice && (
-                    <Alert
-                      color="blue"
-                      variant="light"
-                      icon={<IconInfoCircle size={16} />}
-                      title="Heating cost is a rough estimate"
-                    >
-                      Adjust these costs if you have a quote.
-                    </Alert>
-                  )}
 
                   {estimateError && (
                     <ErrorAlert

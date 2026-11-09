@@ -11,7 +11,6 @@ import type {
   IRenovationService,
 } from "../../../services/types";
 import { normalizeSystemSelection } from "../../../services/measureNormalization";
-import { packageUsesHeatingStopgap } from "../../../services/renovationActions";
 import { estimatePackageEmbodiedCarbon } from "../../../services/embodiedCarbon";
 import { lookupPackageCosts } from "../../../services/packageCostLookup";
 import { appraisedFigures } from "../../../services/savingsState";
@@ -304,14 +303,6 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       if (maintenanceCost === null) {
         maintenanceCost = lookup.annualMaintenanceCost;
         costSource.opexFromLookup = true;
-      }
-      // The heating cost lives in CAPEX, so the stopgap caveat only applies when
-      // CAPEX itself came from the lookup.
-      if (
-        costSource.capexFromLookup &&
-        packageUsesHeatingStopgap(normalizedRenovatedMeasures)
-      ) {
-        costSource.usesHeatingStopgap = true;
       }
     }
 

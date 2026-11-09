@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import {
   energyScaleFactor,
   envelopeForPricing,
+  modeledHeatingCapacityKw,
   modeledPvKwp,
   simulatedFloorArea,
   simulatedPvKwp,
@@ -16,11 +17,15 @@ function building(params: {
   netFloorArea: number;
   modeledFloorArea: number;
   roofArea: number;
+  heatingCapacityW?: number;
 }): SimulatedBuilding {
   return {
     archetype: { category: params.category, country: "Greece", name: "GR" },
     bui: {
       building: { net_floor_area: params.netFloorArea, exposed_perimeter: 40 },
+      building_parameters: {
+        system_capacities: { heating_capacity: params.heatingCapacityW },
+      },
       building_surface: [
         {
           name: "Roof",
@@ -72,6 +77,27 @@ describe("simulatedBuilding", () => {
     ).toBeNull();
   });
 
+  test("prices the configured heating capacity at the home's share", () => {
+    const shell = {
+      category: "Apartment buildings",
+      netFloorArea: 1000,
+      roofArea: 50,
+      heatingCapacityW: 12_500,
+    };
+
+    expect(
+      modeledHeatingCapacityKw(building({ ...shell, modeledFloorArea: 1000 })),
+    ).toBeCloseTo(12.5, 6);
+    expect(
+      modeledHeatingCapacityKw(building({ ...shell, modeledFloorArea: 100 })),
+    ).toBeCloseTo(1.25, 6);
+    expect(
+      modeledHeatingCapacityKw(
+        building({ ...shell, modeledFloorArea: 100, heatingCapacityW: 0 }),
+      ),
+    ).toBeNull();
+  });
+
   test("prices the envelope as simulated when the factor is 1", () => {
     const house = building({
       category: "Single Family House",
@@ -80,9 +106,7 @@ describe("simulatedBuilding", () => {
       roofArea: 80,
     });
 
-    const envelope = envelopeForPricing(house);
-    expect(envelope.bui).toBe(house.bui);
-    expect(envelope.floorArea).toBe(150);
+    expect(envelopeForPricing(house)).toBe(house.bui);
   });
 
   test("scales the envelope like the energy results for any category", () => {
@@ -94,12 +118,10 @@ describe("simulatedBuilding", () => {
         roofArea: 80,
       });
 
-      const envelope = envelopeForPricing(share);
-      expect(surfaceAreasFromBui(envelope.bui)).toMatchObject({
+      expect(surfaceAreasFromBui(envelopeForPricing(share))).toMatchObject({
         roofM2: 40,
         wallM2: 50,
       });
-      expect(envelope.floorArea).toBe(100);
     }
   });
 });

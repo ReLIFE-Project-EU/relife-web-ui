@@ -4,7 +4,7 @@
  * CAPEX/OPEX lookup: a surface `area_m2` for envelope measures, or a
  * `capacity_kw` for PV and heating systems.
  *
- * Pure: callers supply the building's surface areas, floor area and PV size.
+ * Pure: callers supply the building's surface areas, heating capacity and PV size.
  * Actions whose quantity cannot be resolved are skipped, so the caller can
  * decide whether the remaining list is enough to request a lookup.
  */
@@ -14,7 +14,6 @@ import type {
   RenovationActionName,
 } from "../types/financial";
 import type { RenovationMeasureId } from "../types/renovation";
-import { heatingCapacityKwFromFloorArea } from "./hvacSizing";
 
 /** Per-element surface areas (m²); shape matches `surfaceAreasFromBui`. */
 export interface SurfaceAreas {
@@ -72,37 +71,13 @@ const MEASURE_ACTION_MAP: Partial<
 };
 
 /**
- * Measures whose `capacity_kw` is sized by the temporary HVAC stopgap heuristic
- * (see `hvacSizing.ts`). The UI surfaces a notice when a package uses these, so
- * the source of truth stays here alongside the mapping.
- */
-export const HEATING_STOPGAP_MEASURE_IDS: ReadonlySet<RenovationMeasureId> =
-  new Set(
-    (
-      Object.entries(MEASURE_ACTION_MAP) as [
-        RenovationMeasureId,
-        { quantity: QuantitySource },
-      ][]
-    )
-      .filter(([, mapping]) => mapping.quantity.kind === "heatingCapacity")
-      .map(([measureId]) => measureId),
-  );
-
-/** True when a package contains a measure sized by the HVAC stopgap heuristic. */
-export function packageUsesHeatingStopgap(
-  measureIds: RenovationMeasureId[],
-): boolean {
-  return measureIds.some((id) => HEATING_STOPGAP_MEASURE_IDS.has(id));
-}
-
-/**
  * Build the `renovation_actions` list for the CAPEX/OPEX lookup from a package's
  * measures. Skips any action whose quantity is missing or non-positive.
  */
 export function buildRenovationActions(params: {
   measureIds: RenovationMeasureId[];
   surfaceAreas: SurfaceAreas;
-  floorArea: number | null;
+  heatingKw: number | null;
   pvKwp: number | null;
 }): RenovationAction[] {
   const actions: RenovationAction[] = [];
@@ -120,9 +95,7 @@ export function buildRenovationActions(params: {
     }
 
     const capacityKw =
-      quantity.kind === "pvCapacity"
-        ? params.pvKwp
-        : heatingCapacityKwFromFloorArea(params.floorArea);
+      quantity.kind === "pvCapacity" ? params.pvKwp : params.heatingKw;
     if (capacityKw !== null) actions.push({ action, capacity_kw: capacityKw });
   }
 

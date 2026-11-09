@@ -33,12 +33,16 @@ function bui(surfaces: BuildingSurface[]): BuildingPayload {
 function simulated(
   payload: BuildingPayload,
   floorArea: number,
+  heatingCapacityW = 6_000,
 ): SimulatedBuilding {
   return {
     archetype: { category: "SFH", country: "Greece", name: "GR_SFH" },
     bui: {
       ...payload,
       building: { net_floor_area: floorArea },
+      building_parameters: {
+        system_capacities: { heating_capacity: heatingCapacityW },
+      },
     } as BuildingPayload,
     modeledFloorArea: floorArea,
   };
@@ -133,21 +137,21 @@ describe("estimatePackageEmbodiedCarbon", () => {
 
   test("keeps scaling heat pumps past the sheet's largest band", () => {
     const envelope = bui([surface("Wall", "opaque", 100, 0.8)]);
-    const hp = (floorArea: number) =>
+    const hp = (heatingKw: number) =>
       estimatePackageEmbodiedCarbon({
-        simulated: simulated(envelope, floorArea),
+        simulated: simulated(envelope, 120, heatingKw * 1000),
         measureIds: ["air-water-heat-pump"],
       })!;
 
-    // The heat pump table stops at a 14-15 kW band while capacity keeps rising
-    // to the 50 kW sizing clamp. Pinning larger buildings to the top band would
-    // make the heat pump look free of scale next to the boiler, whose numeric
-    // rows extrapolate — and RSE shows the two side by side.
-    expect(hp(600)).toBeGreaterThan(hp(300));
-    expect(hp(1200)).toBeGreaterThan(hp(600));
+    // The heat pump table stops at a 14-15 kW band while building capacities
+    // keep rising. Pinning larger buildings to the top band would make the
+    // heat pump look free of scale next to the boiler, whose numeric rows
+    // extrapolate — and RSE shows the two side by side.
+    expect(hp(30)).toBeGreaterThan(hp(15));
+    expect(hp(60)).toBeGreaterThan(hp(30));
 
     // Inside the table the banded figure still applies verbatim.
-    expect(hp(300)).toBe(1730);
+    expect(hp(15)).toBe(1730);
   });
 
   test("never reports a partial total", () => {

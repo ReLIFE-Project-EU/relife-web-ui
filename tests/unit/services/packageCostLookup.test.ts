@@ -3,6 +3,7 @@ import { describe, expect, test, vi } from "vitest";
 import { estimatePackageEmbodiedCarbon } from "../../../src/services/embodiedCarbon";
 import { lookupPackageCosts } from "../../../src/services/packageCostLookup";
 import {
+  modeledHeatingCapacityKw,
   modeledPvKwp,
   type SimulatedBuilding,
 } from "../../../src/services/simulatedBuilding";
@@ -237,12 +238,16 @@ describe("lookupPackageCosts", () => {
     expect(roofCarbon(modifiedBui)).toBeCloseTo(2 * roofCarbon(house));
   });
 
-  test("cost and carbon price the same PV share of a flat", async () => {
+  test("cost and carbon price the same PV and heating share of a flat", async () => {
     // A 400 m² roof sizes 18 kWp for the block; a 100 m² flat of 1,200 m² gets 1.5 kWp.
+    // The block's 120 kW heating gives the same flat 10 kW.
     const flat: SimulatedBuilding = {
       archetype,
       bui: {
         building: { net_floor_area: 1200, exposed_perimeter: 140 },
+        building_parameters: {
+          system_capacities: { heating_capacity: 120_000 },
+        },
         building_surface: [
           {
             name: "Roof",
@@ -273,5 +278,28 @@ describe("lookupPackageCosts", () => {
     );
     // Modules only, at 0.597 kgCO₂e/Wp (see embodiedCarbon.test.ts).
     expect(carbon).toBeCloseTo(1.5 * 1000 * 0.597, 0);
+
+    const heating = makeDeps();
+    await lookupPackageCosts(
+      {
+        country: "Greece",
+        simulated: flat,
+        measureIds: ["air-water-heat-pump"],
+      },
+      heating.deps,
+    );
+
+    expect(modeledHeatingCapacityKw(flat)).toBeCloseTo(10, 6);
+    expect(pricedActions(heating.estimatePackageCosts)[0]).toEqual({
+      action: "Air-water Heat Pump",
+      capacity_kw: 10,
+    });
+    // 10 kW sits in the heat pump sheet's 8-11 kW band.
+    expect(
+      estimatePackageEmbodiedCarbon({
+        simulated: flat,
+        measureIds: ["air-water-heat-pump"],
+      }),
+    ).toBe(1400);
   });
 });

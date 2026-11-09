@@ -4,13 +4,8 @@ import { IconInfoCircle } from "@tabler/icons-react";
 import { relifeConcepts } from "../../../constants/relifeConcepts";
 import { ErrorAlert } from "../../../components/shared/ErrorAlert";
 import { formatNumber } from "../../../utils/formatters";
-import { packageUsesHeatingStopgap } from "../../../services/renovationActions";
-import {
-  RSE_HEATING_STOPGAP_NOTE,
-  RSE_REFERENCE_DATA_COST_NOTE,
-} from "../constants";
+import { RSE_REFERENCE_DATA_COST_NOTE } from "../constants";
 import { useStrategyExplorer } from "../hooks/useStrategyExplorer";
-import { RSE_PACKAGES } from "../services/rsePackageCatalog";
 import type { RSEPackageId } from "../types";
 import {
   CompareStrategiesTable,
@@ -149,9 +144,6 @@ export function ResultsStep() {
             title="Cost estimates"
           >
             {RSE_REFERENCE_DATA_COST_NOTE}
-            {request.packageIds.some((packageId) =>
-              packageUsesHeatingStopgap(RSE_PACKAGES[packageId].measureIds),
-            ) && <> {RSE_HEATING_STOPGAP_NOTE}</>}
           </Alert>
         </>
       )}

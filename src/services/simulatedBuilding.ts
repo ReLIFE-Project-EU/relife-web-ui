@@ -44,19 +44,26 @@ export function modeledPvKwp(building: SimulatedBuilding): number | null {
   return kwp === null ? null : kwp * energyScaleFactor(building);
 }
 
+/** The modeled home's share of the heating capacity Forecasting ran (W → kW). */
+export function modeledHeatingCapacityKw(
+  building: SimulatedBuilding,
+): number | null {
+  const watts =
+    building.bui.building_parameters?.system_capacities?.heating_capacity;
+  if (typeof watts !== "number" || !Number.isFinite(watts) || watts <= 0) {
+    return null;
+  }
+  return (watts / 1000) * energyScaleFactor(building);
+}
+
 /**
- * Envelope and floor area that cost and carbon quantities come from, scaled by
- * the same factor as the energy results so all three describe the same home.
+ * Envelope that cost and carbon quantities come from, scaled by the same
+ * factor as the energy results so all three describe the same home.
  */
-export function envelopeForPricing(building: SimulatedBuilding): {
-  bui: BuildingPayload;
-  floorArea: number;
-} {
-  return {
-    bui:
-      energyScaleFactor(building) === 1
-        ? building.bui
-        : applyFloorAreaModification(building.bui, building.modeledFloorArea),
-    floorArea: building.modeledFloorArea,
-  };
+export function envelopeForPricing(
+  building: SimulatedBuilding,
+): BuildingPayload {
+  return energyScaleFactor(building) === 1
+    ? building.bui
+    : applyFloorAreaModification(building.bui, building.modeledFloorArea);
 }
