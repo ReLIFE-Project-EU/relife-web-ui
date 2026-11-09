@@ -134,7 +134,7 @@ export function CashFlowChart({
             <Text fw={600}>{title}</Text>
             <Text size="sm" c="dimmed">
               Annual inflows, outflows, and cumulative position across the
-              project horizon.
+              project lifetime.
             </Text>
             {scenarioLabel ? (
               <Text size="xs" c="dimmed" mt={4}>
@@ -220,8 +220,8 @@ export function CashFlowChart({
           </Group>
           {loanOutlastsHorizon ? (
             <Text size="xs" c="dimmed" mt="xs">
-              The loan runs past the {projectLifetime}-year horizon, so the
-              remaining balance is repaid in year {projectLifetime}.
+              The loan runs past the {projectLifetime}-year project lifetime, so
+              the remaining balance is repaid in year {projectLifetime}.
             </Text>
           ) : null}
         </Box>

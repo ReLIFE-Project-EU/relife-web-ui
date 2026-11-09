@@ -1,11 +1,13 @@
 /**
  * FinancialMetricCard Component
  * Displays a financial metric with optional percentile range visualization.
- * Gracefully degrades to show only point value when percentiles unavailable.
+ * Gracefully degrades to show only point value when no range is available.
  */
 
 import { Card, Group, Stack, Text } from "@mantine/core";
 import type { MantineColor } from "@mantine/core";
+import type { ReactNode } from "react";
+import type { MetricRange } from "../../../../services/appraisalReadout";
 import type { ConceptId } from "../../../../constants/relifeConcepts";
 import {
   financialMetricConceptIds,
@@ -16,18 +18,15 @@ import {
   RangeIndicator,
   type FinancialMetricType,
 } from "../shared";
-import type { PercentileData } from "../../context/types";
 
 export interface FinancialMetricCardProps {
   conceptId?: ConceptId;
   /** The metric type for explanations */
   metricType: FinancialMetricType;
-  /** Point forecast value (P50/median) */
-  value: number;
-  /** Formatter function for display */
-  formatter: (value: number) => string;
-  /** Optional percentile data for range display */
-  percentiles?: PercentileData;
+  /** Point forecast (P50/median), already rendered */
+  value: ReactNode;
+  /** P10–P90 range, when the appraisal has a meaningful one */
+  range?: MetricRange;
   /** Color scheme */
   color?: MantineColor;
   /** Whether lower values are better (e.g., payback period) */
@@ -40,17 +39,13 @@ export function FinancialMetricCard({
   conceptId,
   metricType,
   value,
-  formatter,
-  percentiles,
+  range,
   color = "blue",
   lowerIsBetter = false,
   highlighted = false,
 }: FinancialMetricCardProps) {
   const concept =
     relifeConcepts[conceptId ?? financialMetricConceptIds[metricType]];
-  // != null also rejects nulls that slip past the adapter's sanitization.
-  const hasPercentiles =
-    percentiles != null && percentiles.P10 != null && percentiles.P90 != null;
 
   return (
     <Card
@@ -70,16 +65,15 @@ export function FinancialMetricCard({
 
         {/* Main value */}
         <Text size="xl" fw={700} c={highlighted ? `${color}.7` : undefined}>
-          {formatter(value)}
+          {value}
         </Text>
 
-        {/* Range indicator (only if percentiles available) */}
-        {hasPercentiles && (
+        {range && (
           <RangeIndicator
-            min={percentiles.P10}
-            median={percentiles.P50}
-            max={percentiles.P90}
-            formatter={formatter}
+            min={range.low}
+            median={range.median}
+            max={range.high}
+            formatter={range.format}
             color={color}
             lowerIsBetter={lowerIsBetter}
             size="sm"

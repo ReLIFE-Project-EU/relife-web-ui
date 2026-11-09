@@ -15,7 +15,10 @@ import type { BuildingAnalysisResult } from "../context/types";
 import { baselineScenarioOf } from "./scenarioLookup";
 import { computeLifetimeCarbonKgCo2e } from "../../../services/carrierSavingsService";
 import { appraisedFigures } from "../../../services/savingsState";
-import { computePooledPaybackYears } from "../../../utils/financialCalculations";
+import {
+  computePooledPayback,
+  type PooledPayback,
+} from "../../../utils/financialCalculations";
 
 const KG_PER_TONNE = 1000;
 
@@ -49,7 +52,7 @@ export interface PortfolioPackageAggregate {
   totalWholeLifeCarbonTon: number | undefined;
 
   portfolioRoi: number | undefined;
-  portfolioPaybackYears: number | undefined;
+  portfolioPayback: PooledPayback | undefined;
 }
 
 /**
@@ -223,6 +226,6 @@ export function aggregatePortfolioPackage(input: {
       netProfitEur !== undefined && totalCapexEur > 0
         ? netProfitEur / totalCapexEur
         : undefined,
-    portfolioPaybackYears: computePooledPaybackYears(cashFlowContributions),
+    portfolioPayback: computePooledPayback(cashFlowContributions),
   };
 }

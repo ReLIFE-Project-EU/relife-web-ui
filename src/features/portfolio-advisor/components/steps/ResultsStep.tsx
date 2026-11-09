@@ -31,6 +31,11 @@ import { memo, useMemo, useState, type ReactNode } from "react";
 import { ConceptMetricCard } from "../../../../components/shared/ConceptMetricCard";
 import { ErrorAlert } from "../../../../components/shared/ErrorAlert";
 import { MetricEyebrow } from "../../../../components/shared/MetricEyebrow";
+import { ReadingText } from "../../../../components/shared/ReadingText";
+import {
+  formatMetricValue,
+  readPooledPayback,
+} from "../../../../services/appraisalReadout";
 import {
   relifeConcepts,
   type ConceptId,
@@ -38,7 +43,6 @@ import {
 import {
   formatCurrency,
   formatDecimal,
-  formatPaybackYears,
   formatPercent,
   formatTonnageCo2,
   getEnergyReduction,
@@ -214,23 +218,26 @@ const PortfolioSummary = memo(function PortfolioSummary({
             <ConceptMetricCard
               conceptId="npv"
               prefix="Total"
-              value={orDash(aggregate.totalNpvEur, formatCurrency)}
+              value={orDash(aggregate.totalNpvEur, (v) =>
+                formatMetricValue("NPV", v),
+              )}
               variant="highlight"
             />
             <ConceptMetricCard
               conceptId="roi"
               prefix="Portfolio"
               value={orDash(aggregate.portfolioRoi, (v) =>
-                formatPercent(v * 100),
+                formatMetricValue("ROI", v),
               )}
             />
             <ConceptMetricCard
               conceptId="payback-period"
               prefix="Portfolio"
-              value={orDash(
-                aggregate.portfolioPaybackYears,
-                formatPaybackYears,
-              )}
+              value={
+                <ReadingText
+                  reading={readPooledPayback(aggregate.portfolioPayback)}
+                />
+              }
             />
             <ConceptMetricCard
               conceptId="annual-maintenance-cost"

@@ -12,6 +12,7 @@ import type {
   FinancialResults,
   RenovationScenario,
 } from "../../../src/types/renovation";
+import { savingsAvailabilityLabel } from "../../../src/services/savingsState";
 import {
   buildMcdaTopsisRequest,
   createMcdaMinsMaxes,
@@ -305,7 +306,7 @@ describe("TechnicalMCDAService helpers", () => {
       expect.objectContaining({
         scenario: windowScenario,
         eligible: false,
-        reason: "No energy savings calculated",
+        reason: savingsAvailabilityLabel["no-savings"],
       }),
     ]);
   });

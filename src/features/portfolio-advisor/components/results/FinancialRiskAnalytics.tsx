@@ -15,21 +15,22 @@ import {
   ConceptExplainer,
   ConceptLabel,
   MetricEyebrow,
-  NotApplicable,
   RangeIndicator,
+  ReadingText,
 } from "../../../../components/shared";
+import {
+  metricFormatter,
+  readMetric,
+  readRange,
+  readingHint,
+} from "../../../../services/appraisalReadout";
 import {
   financialMetricConceptIds,
   relifeConcepts,
 } from "../../../../constants/relifeConcepts";
-import {
-  formatCurrency,
-  formatDecimal,
-  formatPaybackYears,
-  formatPercent,
-} from "../../../../utils/formatters";
-import { appraisedFigures } from "../../../../services/savingsState";
+import { formatDecimal, formatPercent } from "../../../../utils/formatters";
 import type {
+  AppraisedPackage,
   FinancialChartMetadata,
   FinancialRiskIndicator,
   PercentileData,
@@ -40,14 +41,11 @@ interface FinancialRiskAnalyticsProps {
   financialResults?: PRAFinancialResults;
 }
 
-type MetricFormatter = (value: number) => string;
-
 interface IndicatorConfig {
   indicator: FinancialRiskIndicator;
   conceptId: (typeof financialMetricConceptIds)[FinancialRiskIndicator];
   color: MantineColor;
   lowerIsBetter?: boolean;
-  formatter: MetricFormatter;
 }
 
 const RISK_CHART_HEIGHT = 260;
@@ -70,33 +68,28 @@ const INDICATOR_CONFIGS: IndicatorConfig[] = [
     indicator: "NPV",
     conceptId: financialMetricConceptIds.NPV,
     color: "relife",
-    formatter: formatCurrency,
   },
   {
     indicator: "IRR",
     conceptId: financialMetricConceptIds.IRR,
     color: "teal",
-    formatter: (value) => formatPercent(value * PROBABILITY_PERCENT_FACTOR),
   },
   {
     indicator: "ROI",
     conceptId: financialMetricConceptIds.ROI,
     color: "green",
-    formatter: (value) => formatPercent(value * PROBABILITY_PERCENT_FACTOR),
   },
   {
     indicator: "PBP",
     conceptId: financialMetricConceptIds.PBP,
     color: "orange",
     lowerIsBetter: true,
-    formatter: formatPaybackYears,
   },
   {
     indicator: "DPP",
     conceptId: financialMetricConceptIds.DPP,
     color: "yellow",
     lowerIsBetter: true,
-    formatter: formatPaybackYears,
   },
 ];
 
@@ -119,9 +112,10 @@ export function FinancialRiskAnalytics({
         ({ indicator }) =>
           hasPercentileData(percentiles?.[indicator]) ||
           chartMetadata?.[indicator] ||
-          getPointForecastValue(financialResults, indicator) === null,
+          (appraised !== undefined &&
+            readMetric(appraised, indicator).kind === "not-applicable"),
       ),
-    [chartMetadata, percentiles, financialResults],
+    [chartMetadata, percentiles, appraised],
   );
 
   const histogramIndicators = useMemo(
@@ -172,7 +166,7 @@ export function FinancialRiskAnalytics({
         <RiskRangeTable
           configs={availableIndicators}
           percentiles={percentiles}
-          financialResults={financialResults}
+          appraisal={appraised}
         />
       ) : null}
 
@@ -205,6 +199,7 @@ export function FinancialRiskAnalytics({
               )!
             }
             chartMetadata={chartMetadata?.[activeHistogramIndicator]}
+            appraisal={appraised}
             histogramIndicators={histogramIndicators}
             activeHistogramIndicator={activeHistogramIndicator}
             onSelectIndicator={setSelectedIndicator}
@@ -223,11 +218,11 @@ export function FinancialRiskAnalytics({
 function RiskRangeTable({
   configs,
   percentiles,
-  financialResults,
+  appraisal,
 }: {
   configs: IndicatorConfig[];
   percentiles?: Partial<Record<FinancialRiskIndicator, PercentileData>>;
-  financialResults?: PRAFinancialResults;
+  appraisal: AppraisedPackage;
 }) {
   return (
     <Box
@@ -256,8 +251,7 @@ function RiskRangeTable({
           key={config.indicator}
           config={config}
           percentiles={percentiles?.[config.indicator]}
-          pointValue={getPointForecastValue(financialResults, config.indicator)}
-          financialResults={financialResults}
+          appraisal={appraisal}
           last={index === configs.length - 1}
         />
       ))}
@@ -268,18 +262,17 @@ function RiskRangeTable({
 function RiskRangeRow({
   config,
   percentiles,
-  pointValue,
-  financialResults,
+  appraisal,
   last,
 }: {
   config: IndicatorConfig;
   percentiles?: PercentileData;
-  pointValue?: number | null;
-  financialResults?: PRAFinancialResults;
+  appraisal: AppraisedPackage;
   last: boolean;
 }) {
   const concept = relifeConcepts[config.conceptId];
-  const hasRange = hasPercentileData(percentiles);
+  const reading = readMetric(appraisal, config.indicator);
+  const range = readRange(appraisal, config.indicator);
 
   return (
     <Box
@@ -308,33 +301,29 @@ function RiskRangeRow({
           c={`${config.color}.7`}
           style={{ fontVariantNumeric: "tabular-nums" }}
         >
-          {pointValue === null ? (
-            <NotApplicable result={financialResults} />
-          ) : pointValue !== undefined ? (
-            config.formatter(pointValue)
-          ) : (
-            config.formatter(percentiles?.P50 ?? 0)
-          )}
+          <ReadingText reading={reading} />
         </Text>
       </Stack>
-      {hasRange ? (
+      {range ? (
         <>
           <RangeIndicator
-            min={percentiles.P10}
-            median={percentiles.P50}
-            max={percentiles.P90}
-            formatter={config.formatter}
+            min={range.low}
+            median={range.median}
+            max={range.high}
+            formatter={range.format}
             color={config.color}
             lowerIsBetter={config.lowerIsBetter}
             size="sm"
             showLabels={false}
           />
-          <BoundCell value={config.formatter(percentiles.P10)} />
-          <BoundCell value={config.formatter(percentiles.P90)} />
+          <BoundCell value={range.format(range.low)} />
+          <BoundCell value={range.format(range.high)} />
         </>
       ) : (
         <Text size="xs" c="dimmed" style={{ gridColumn: "2 / -1" }}>
-          {concept.label} range was not returned.
+          {hasPercentileData(percentiles)
+            ? readingHint(reading)
+            : `${concept.label} range was not returned.`}
         </Text>
       )}
     </Box>
@@ -378,12 +367,14 @@ function ProbabilityRow({ label, value }: { label: string; value: number }) {
 function HistogramPanel({
   config,
   chartMetadata,
+  appraisal,
   histogramIndicators,
   activeHistogramIndicator,
   onSelectIndicator,
 }: {
   config: IndicatorConfig;
   chartMetadata?: FinancialChartMetadata;
+  appraisal: AppraisedPackage;
   histogramIndicators: IndicatorConfig[];
   activeHistogramIndicator: FinancialRiskIndicator;
   onSelectIndicator: (value: FinancialRiskIndicator | null) => void;
@@ -392,8 +383,9 @@ function HistogramPanel({
     return null;
   }
 
+  const formatBin = metricFormatter(appraisal, config.indicator);
   const chartData = chartMetadata.bins.centers.map((center, index) => ({
-    bin: config.formatter(center),
+    bin: formatBin(center),
     frequency: chartMetadata.bins.counts[index] ?? 0,
   }));
   const chartTitle =
@@ -436,18 +428,6 @@ function HistogramPanel({
       />
     </Stack>
   );
-}
-
-function getPointForecastValue(
-  financialResults: PRAFinancialResults | undefined,
-  indicator: FinancialRiskIndicator,
-): number | null | undefined {
-  const pointForecasts = appraisedFigures(financialResults)?.pointForecasts;
-  if (!pointForecasts) {
-    return undefined;
-  }
-
-  return pointForecasts[indicator];
 }
 
 function hasPercentileData(

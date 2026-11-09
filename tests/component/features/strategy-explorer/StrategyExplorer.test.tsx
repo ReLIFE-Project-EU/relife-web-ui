@@ -13,6 +13,7 @@ import {
   type RSEPublishedCacheVersion,
 } from "../../../../src/features/strategy-explorer/api/rseCacheApi";
 import { rseForecastingCacheService } from "../../../../src/features/strategy-explorer/services/rseForecastingCacheService";
+import { relifeConcepts } from "../../../../src/constants/relifeConcepts";
 
 // jsdom does not implement matchMedia, ResizeObserver, or scrollIntoView.
 Object.defineProperty(window, "matchMedia", {
@@ -382,7 +383,9 @@ describe("StrategyExplorer integration", () => {
       const rankingTable = screen.getByTestId("rse-ranking-table");
       expect(rankingTable.textContent).toContain("1");
       expect(rankingTable.textContent).toContain("2");
-      expect(rankingTable.textContent).toContain("kg CO₂ reduced / €");
+      expect(rankingTable.textContent).toContain(
+        relifeConcepts["rse-co2-reduced-per-eur"].label,
+      );
       expect(rankingTable.textContent).toContain("1.3 kg/€");
       expect(rankingTable.textContent).toContain("0.7 kg/€");
       expect(rankingTable.textContent).not.toContain("0.0 t/€");

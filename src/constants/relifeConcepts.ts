@@ -49,6 +49,8 @@ export type ConceptId =
 export interface ReLifeConcept {
   id: ConceptId;
   label: string;
+  /** Standard abbreviation, used in table headers and compact rows. */
+  shortLabel?: string;
   description: string;
   unit?: string;
   caveat?: string;
@@ -82,6 +84,36 @@ export interface MeasureEffectProfile {
 
 const STOCK_SCALING_CAVEAT =
   "Estimated by multiplying representative building results by the number of properties. Apartment results are first scaled to one flat by floor area; Single-Family and Multi-Family Houses use whole-building results.";
+
+/** Qualifier word for a figure calculated from a concept, e.g. a sum. */
+export type ConceptPrefix =
+  | "Total"
+  | "Portfolio"
+  | "Annual"
+  | "Reduction in"
+  | "Total reduction in"
+  | "Uplift in";
+
+/** One-line label for a calculated figure, e.g. "Total net present value". */
+export function prefixedConceptLabel(
+  conceptId: ConceptId,
+  prefix?: ConceptPrefix,
+): string {
+  const label = relifeConcepts[conceptId].label;
+  if (!prefix) return label;
+  // Lowercase the leading word, but keep acronyms such as "CO₂" as written.
+  const lead =
+    label.charAt(1) === label.charAt(1).toLowerCase()
+      ? label.charAt(0).toLowerCase() + label.slice(1)
+      : label;
+  return `${prefix} ${lead}`;
+}
+
+/** The label for table headers and compact rows: the abbreviation when there is one. */
+export function compactConceptLabel(conceptId: ConceptId): string {
+  const concept = relifeConcepts[conceptId];
+  return concept.shortLabel ?? concept.label;
+}
 
 export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
   "gas-tariff": {
@@ -276,7 +308,8 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
   },
   npv: {
     id: "npv",
-    label: "Net Present Value",
+    label: "Net present value",
+    shortLabel: "NPV",
     description:
       "Expected savings and income minus costs, including the initial payment, expressed in today's money.",
     unit: "EUR",
@@ -285,21 +318,23 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
   },
   irr: {
     id: "irr",
-    label: "Internal Rate of Return",
+    label: "Internal rate of return",
+    shortLabel: "IRR",
     description:
       "Estimated yearly percentage return on the money invested, based on when money is paid and received.",
     unit: "%",
   },
   roi: {
     id: "roi",
-    label: "Return on Investment",
+    label: "Return on investment",
+    shortLabel: "ROI",
     description:
       "Profit over the years included in the calculation, after subtracting costs, as a percentage of the money invested.",
     unit: "%",
   },
   "payback-period": {
     id: "payback-period",
-    label: "Payback Period",
+    label: "Payback period",
     description:
       "Estimated years until savings and income, after ongoing costs, cover the money paid at the start.",
     unit: "years",
@@ -308,7 +343,8 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
   },
   "discounted-payback-period": {
     id: "discounted-payback-period",
-    label: "Discounted Payback Period",
+    label: "Discounted payback period",
+    shortLabel: "DPP",
     description:
       "Estimated years until savings and income, after ongoing costs and adjusted to today's money, cover the money paid at the start.",
     unit: "years",
@@ -317,13 +353,13 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
   },
   arv: {
     id: "arv",
-    label: "After Renovation Value",
+    label: "After renovation value",
     description: "Estimated market value of the property after renovation.",
     unit: "EUR",
   },
   "monthly-cash-benefit": {
     id: "monthly-cash-benefit",
-    label: "Monthly Cash Benefit",
+    label: "Monthly cash benefit",
     description:
       "Average money saved or earned each month after maintenance and loan payments, over the years included in the calculation. The money paid at the start is not included.",
     unit: "EUR/month",
@@ -332,9 +368,9 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
   },
   "success-probability": {
     id: "success-probability",
-    label: "Success Probability",
+    label: "Success probability",
     description:
-      "Percentage of simulated results where savings and income are worth more than the costs in today's money. This means a positive Net Present Value.",
+      "Percentage of simulated results where savings and income are worth more than the costs in today's money. This means a positive net present value.",
     unit: "%",
     caveat:
       "The result depends on the simulation assumptions and does not guarantee a profit.",
@@ -343,7 +379,7 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
   },
   "break-even-year": {
     id: "break-even-year",
-    label: "Break-even Year",
+    label: "Break-even year",
     description:
       "First year when total savings and income so far cover total costs so far.",
     unit: "year",

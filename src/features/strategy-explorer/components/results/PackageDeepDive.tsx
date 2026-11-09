@@ -14,17 +14,25 @@ import {
   IconTrendingUp,
 } from "@tabler/icons-react";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
+import { MetricEyebrow } from "../../../../components/shared/MetricEyebrow";
 import {
+  compactConceptLabel,
   relifeConcepts,
   type ConceptId,
+  type ConceptPrefix,
 } from "../../../../constants/relifeConcepts";
 import { getArchetypeSelectionLabel } from "../../../../utils/archetypeLabels";
+import { ReadingText } from "../../../../components/shared/ReadingText";
+import {
+  formatMetricValue,
+  readMetric,
+  readPooledPayback,
+} from "../../../../services/appraisalReadout";
 import {
   formatCurrency,
   formatDecimal,
   formatEnergy,
   formatNumber,
-  formatPaybackYears,
   formatTonnageCo2,
 } from "../../../../utils/formatters";
 import { RSE_PACKAGES } from "../../services/rsePackageCatalog";
@@ -40,17 +48,12 @@ import shared from "../../../../components/shared/ResultsLayout.module.css";
 interface PackageDeepDiveProps {
   aggregate: RSEPackageAggregate;
   goal: RSERenovationGoal;
-  projectLifetimeYears: number;
 }
 
-export function PackageDeepDive({
-  aggregate,
-  goal,
-  projectLifetimeYears,
-}: PackageDeepDiveProps) {
+export function PackageDeepDive({ aggregate, goal }: PackageDeepDiveProps) {
   const pkg = RSE_PACKAGES[aggregate.packageId];
   const color = PACKAGE_COLORS[aggregate.packageId];
-  const { aggregateNPV, aggregateROI, aggregatePaybackYears } =
+  const { aggregateNPV, aggregateROI, aggregatePayback } =
     aggregate.financialIndicators;
   const hasIncentive =
     aggregate.totalEffectiveCapexEur !== aggregate.totalCapexEur;
@@ -65,48 +68,40 @@ export function PackageDeepDive({
           <div className={shared.miniGrid}>
             <MiniMetric
               icon={<IconBuildingCommunity size={14} />}
-              label={relifeConcepts["modeled-property"].label}
+              conceptId="modeled-property"
               value={formatNumber(aggregate.totalBuildings)}
             />
             {goal.kind === "financial" &&
             aggregate.renovatableBuildingsWithinBudget !== undefined ? (
               <MiniMetric
                 icon={<IconBuildingCommunity size={14} />}
-                label="Within budget"
                 conceptId="rse-renovatable-buildings"
                 value={formatNumber(aggregate.renovatableBuildingsWithinBudget)}
-                hint="renovatable with this package"
               />
             ) : null}
             <MiniMetric
               icon={<IconBolt size={14} />}
-              label="Energy savings"
               conceptId="rse-total-energy-savings"
               value={formatEnergy(aggregate.totalAnnualEnergySavingsKwh)}
-              hint="per year"
             />
             <MiniMetric
               icon={<IconLeaf size={14} />}
-              label="CO₂ reduction"
               conceptId="rse-total-co2-reduction"
               value={formatTonnageCo2(aggregate.totalAnnualCo2ReductionTon)}
-              hint="per year"
             />
             <MiniMetric
               icon={<IconBolt size={14} />}
-              label="Energy saved / €"
               conceptId="rse-energy-saved-per-eur"
               value={`${formatDecimal(aggregate.energySavedPerEur)} kWh/€`}
             />
             <MiniMetric
               icon={<IconLeaf size={14} />}
-              label="CO₂ reduced / €"
               conceptId="rse-co2-reduced-per-eur"
               value={`${formatDecimal(aggregate.co2ReducedTonPerEur * 1000)} kg/€`}
             />
             <MiniMetric
               icon={<IconLeaf size={14} />}
-              label="Material carbon"
+              prefix="Total"
               conceptId="embodied-carbon"
               value={
                 aggregate.totalEmbodiedCarbonTon !== undefined
@@ -116,7 +111,7 @@ export function PackageDeepDive({
             />
             <MiniMetric
               icon={<IconLeaf size={14} />}
-              label="Lifetime carbon"
+              prefix="Total"
               conceptId="whole-life-carbon"
               value={
                 aggregate.totalWholeLifeCarbonTon !== undefined
@@ -135,7 +130,7 @@ export function PackageDeepDive({
           <div className={shared.miniGrid}>
             <MiniMetric
               icon={<IconCash size={14} />}
-              label="Investment"
+              prefix="Total"
               conceptId="investment"
               value={formatCurrency(aggregate.totalCapexEur)}
               hint={
@@ -146,16 +141,18 @@ export function PackageDeepDive({
             />
             <MiniMetric
               icon={<IconTool size={14} />}
-              label="Annual maintenance"
+              prefix="Total"
+              conceptId="annual-maintenance-cost"
               value={formatCurrency(aggregate.totalAnnualMaintenanceEur)}
-              hint="per year"
             />
             <MiniMetric
               icon={<IconCash size={14} />}
-              label="Aggregate NPV"
+              prefix="Total"
               conceptId="npv"
               value={
-                aggregateNPV !== undefined ? formatCurrency(aggregateNPV) : "—"
+                aggregateNPV !== undefined
+                  ? formatMetricValue("NPV", aggregateNPV)
+                  : "—"
               }
               valueColor={
                 aggregateNPV !== undefined && aggregateNPV < 0
@@ -165,25 +162,20 @@ export function PackageDeepDive({
             />
             <MiniMetric
               icon={<IconTrendingUp size={14} />}
-              label="Aggregate ROI"
+              prefix="Portfolio"
               conceptId="roi"
               value={
                 aggregateROI !== undefined
-                  ? `${formatDecimal(aggregateROI * 100)}%`
+                  ? formatMetricValue("ROI", aggregateROI)
                   : "—"
               }
             />
             <MiniMetric
               icon={<IconTrendingUp size={14} />}
-              label="Aggregate payback"
+              prefix="Portfolio"
               conceptId="payback-period"
               value={
-                aggregatePaybackYears !== undefined
-                  ? formatPaybackYears(
-                      aggregatePaybackYears,
-                      projectLifetimeYears,
-                    )
-                  : "—"
+                <ReadingText reading={readPooledPayback(aggregatePayback)} />
               }
             />
           </div>
@@ -216,33 +208,16 @@ export function PackageDeepDive({
         </div>
       </div>
 
-      <PerArchetypeTable
-        aggregate={aggregate}
-        projectLifetimeYears={projectLifetimeYears}
-      />
+      <PerArchetypeTable aggregate={aggregate} />
     </div>
   );
 }
 
-function PerArchetypeTable({
-  aggregate,
-  projectLifetimeYears,
-}: {
-  aggregate: RSEPackageAggregate;
-  projectLifetimeYears: number;
-}) {
-  const perArchetype = aggregate.financialIndicators.perArchetypeOnly;
-  const archetypeKeys = perArchetype
-    ? Array.from(
-        new Set([
-          ...Object.keys(perArchetype.IRR ?? {}),
-          ...Object.keys(perArchetype.PBP ?? {}),
-          ...Object.keys(perArchetype.DPP ?? {}),
-        ]),
-      ).sort()
-    : [];
+function PerArchetypeTable({ aggregate }: { aggregate: RSEPackageAggregate }) {
+  const appraisals = aggregate.financialIndicators.perArchetypeAppraisals;
+  const archetypeKeys = Object.keys(appraisals ?? {}).sort();
 
-  if (archetypeKeys.length === 0) {
+  if (!appraisals || archetypeKeys.length === 0) {
     return null;
   }
 
@@ -256,17 +231,17 @@ function PerArchetypeTable({
           <Table.Tr>
             <Table.Th>Archetype</Table.Th>
             <Table.Th>Category</Table.Th>
-            <Table.Th>IRR</Table.Th>
-            <Table.Th>Payback</Table.Th>
-            <Table.Th>Discounted payback</Table.Th>
+            <Table.Th>{compactConceptLabel("irr")}</Table.Th>
+            <Table.Th>{relifeConcepts["payback-period"].label}</Table.Th>
+            <Table.Th>
+              {compactConceptLabel("discounted-payback-period")}
+            </Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
           {archetypeKeys.map((key) => {
             const archetype = decodeArchetypeKey(key);
-            const irr = perArchetype?.IRR?.[key];
-            const pbp = perArchetype?.PBP?.[key];
-            const dpp = perArchetype?.DPP?.[key];
+            const appraisal = appraisals[key];
             return (
               <Table.Tr key={key}>
                 <Table.Td>{getArchetypeSelectionLabel(archetype)}</Table.Td>
@@ -276,17 +251,13 @@ function PerArchetypeTable({
                   </Text>
                 </Table.Td>
                 <Table.Td>
-                  {irr !== undefined ? `${formatDecimal(irr * 100)}%` : "—"}
+                  <ReadingText reading={readMetric(appraisal, "IRR")} />
                 </Table.Td>
                 <Table.Td>
-                  {pbp !== undefined
-                    ? formatPaybackYears(pbp, projectLifetimeYears)
-                    : "—"}
+                  <ReadingText reading={readMetric(appraisal, "PBP")} />
                 </Table.Td>
                 <Table.Td>
-                  {dpp !== undefined
-                    ? formatPaybackYears(dpp, projectLifetimeYears)
-                    : "—"}
+                  <ReadingText reading={readMetric(appraisal, "DPP")} />
                 </Table.Td>
               </Table.Tr>
             );
@@ -299,28 +270,29 @@ function PerArchetypeTable({
 
 interface MiniMetricProps {
   icon: React.ReactNode;
-  label: string;
-  value: string;
-  /** Concept backing this metric; renders the info-icon explainer. */
-  conceptId?: ConceptId;
+  /** The shared concept the figure reports; it supplies the name and explainer. */
+  conceptId: ConceptId;
+  prefix?: ConceptPrefix;
+  value: React.ReactNode;
   hint?: string;
   valueColor?: string;
 }
 
 function MiniMetric({
   icon,
-  label,
-  value,
   conceptId,
+  prefix,
+  value,
   hint,
   valueColor,
 }: MiniMetricProps) {
   return (
     <div className={shared.miniCard}>
+      {prefix ? <MetricEyebrow>{prefix}</MetricEyebrow> : null}
       <div className={shared.miniLabel}>
         {icon}
-        {label}
-        {conceptId ? <ConceptExplainer conceptId={conceptId} /> : null}
+        {relifeConcepts[conceptId].label}
+        <ConceptExplainer conceptId={conceptId} />
       </div>
       <div className={shared.miniValue} style={{ color: valueColor }}>
         {value}

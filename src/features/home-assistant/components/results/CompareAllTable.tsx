@@ -8,8 +8,13 @@
 import { Text } from "@mantine/core";
 import { IconCrown } from "@tabler/icons-react";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
-import { relifeConcepts } from "../../../../constants/relifeConcepts";
+import {
+  compactConceptLabel,
+  relifeConcepts,
+} from "../../../../constants/relifeConcepts";
 import { computeLifetimeCarbonKgCo2e } from "../../../../services/carrierSavingsService";
+import { ReadingText } from "../../../../components/shared/ReadingText";
+import { readMetric } from "../../../../services/appraisalReadout";
 import { appraisedFigures } from "../../../../services/savingsState";
 import type {
   FinancialResults,
@@ -22,7 +27,6 @@ import {
   formatEnergyPerYear,
   formatHealthyLifeDays,
   formatHealthChange,
-  formatPaybackYears,
   formatTonnageCo2,
   getHealthChange,
   toHealthyLifeDays,
@@ -69,25 +73,28 @@ export function CompareAllTable({
         <thead>
           <tr>
             <th>Package</th>
-            <th>Thermal needs</th>
+            <th>{relifeConcepts["annual-building-thermal-needs"].label}</th>
             <th>
               {relifeConcepts["thermal-health-impact"].label}{" "}
               <ConceptExplainer conceptId="thermal-health-impact" />
             </th>
             <th>
-              CO₂ <ConceptExplainer conceptId="operational-co2-emissions" />
+              {relifeConcepts["operational-co2-emissions"].label}{" "}
+              <ConceptExplainer conceptId="operational-co2-emissions" />
             </th>
             <th>
-              Material carbon <ConceptExplainer conceptId="embodied-carbon" />
+              {relifeConcepts["embodied-carbon"].label}{" "}
+              <ConceptExplainer conceptId="embodied-carbon" />
             </th>
             <th>
-              Lifetime carbon <ConceptExplainer conceptId="whole-life-carbon" />
+              {relifeConcepts["whole-life-carbon"].label}{" "}
+              <ConceptExplainer conceptId="whole-life-carbon" />
             </th>
-            <th>Investment</th>
-            <th>NPV</th>
-            <th>Payback</th>
-            <th>Monthly cash benefit</th>
-            <th>Score</th>
+            <th>{relifeConcepts.investment.label}</th>
+            <th>{compactConceptLabel("npv")}</th>
+            <th>{relifeConcepts["payback-period"].label}</th>
+            <th>{relifeConcepts["monthly-cash-benefit"].label}</th>
+            <th>{relifeConcepts["ranking-score"].label}</th>
           </tr>
         </thead>
         <tbody>
@@ -136,8 +143,6 @@ export function CompareAllTable({
             const score = scoreById.get(scenario.id);
             const appraised = appraisedFigures(result);
             const npv = appraised?.pointForecasts.NPV;
-            const pbp = appraised?.pointForecasts.PBP;
-            const monthly = appraised?.pointForecasts.MonthlyAvgSavings;
             const avoidedDays = toHealthyLifeDays(
               scenario.avoidedThermalDalyPerPerson,
             );
@@ -237,20 +242,15 @@ export function CompareAllTable({
                     fontWeight: 600,
                   }}
                 >
-                  {npv !== undefined ? formatCurrency(npv) : "—"}
+                  <ReadingText reading={readMetric(result?.appraisal, "NPV")} />
                 </td>
                 <td>
-                  {pbp !== undefined
-                    ? formatPaybackYears(
-                        pbp,
-                        appraised?.metadata.project_lifetime,
-                      )
-                    : "—"}
+                  <ReadingText reading={readMetric(result?.appraisal, "PBP")} />
                 </td>
                 <td>
-                  {monthly !== undefined
-                    ? `${formatCurrency(monthly)}/mo`
-                    : "—"}
+                  <ReadingText
+                    reading={readMetric(result?.appraisal, "MonthlyAvgSavings")}
+                  />
                 </td>
                 <td>
                   {score !== undefined ? (

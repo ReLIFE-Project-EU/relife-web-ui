@@ -1,8 +1,9 @@
 import type {
+  AppraisedPackage,
   FundingOptions,
   RenovationMeasureId,
-  RiskAssessmentPercentiles,
 } from "../../types/renovation";
+import type { PooledPayback } from "../../utils/financialCalculations";
 import type { DeliveredEnergyCarrierBreakdown } from "../../types/energy";
 import type { SimulatedBuilding } from "../../services/simulatedBuilding";
 import type { GasReference } from "../../services/gasTariffService";
@@ -215,25 +216,8 @@ export interface RSEFinancialResult {
   embodiedCarbonKgCo2e?: number;
   status: "available" | "unavailable";
   unavailableReason?: RSEUnavailableReason;
-  unavailableMessage?: string;
-  pointForecasts: {
-    NPV?: number;
-    IRR?: number;
-    ROI?: number;
-    PBP?: number;
-    DPP?: number;
-  };
-  percentiles?: RiskAssessmentPercentiles;
-  probabilities?: Record<string, number>;
-  /**
-   * P50 per-building net cash flow by year; index 0 is the negative effective
-   * CAPEX. Used to build the pooled package cash-flow series for aggregate
-   * payback.
-   */
-  cashFlow?: {
-    years: number[];
-    annualNetCashFlowEur: number[];
-  };
+  /** The per-building package appraisal; present when status is "available". */
+  appraisal?: AppraisedPackage;
 }
 
 export interface RSEPackageAggregate {
@@ -265,12 +249,9 @@ export interface RSEPackageAggregate {
   financialIndicators: {
     aggregateNPV?: number;
     aggregateROI?: number;
-    aggregatePaybackYears?: number;
-    perArchetypeOnly?: {
-      IRR?: Record<string, number>;
-      PBP?: Record<string, number>;
-      DPP?: Record<string, number>;
-    };
+    aggregatePayback?: PooledPayback;
+    /** Each archetype's own appraisal, keyed by `rseArchetypeKey`. */
+    perArchetypeAppraisals?: Record<string, AppraisedPackage>;
   };
 }
 

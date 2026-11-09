@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { aggregatePortfolioPackage } from "../../../../src/features/portfolio-advisor/services/portfolioAggregation";
 import type { BuildingAnalysisResult } from "../../../../src/features/portfolio-advisor/context/types";
+import { pooledPaybackYears } from "../../../../src/utils/financialCalculations";
 
 const PACKAGE_ID = "renovated";
 
@@ -107,7 +108,7 @@ describe("aggregatePortfolioPackage", () => {
       }),
     ]);
 
-    expect(result.portfolioPaybackYears).toBeCloseTo(4, 5);
+    expect(pooledPaybackYears(result.portfolioPayback)).toBeCloseTo(4, 5);
   });
 
   test("one building without material carbon makes the total unavailable", () => {

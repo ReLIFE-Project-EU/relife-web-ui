@@ -1,3 +1,4 @@
+import { pooledPaybackYears } from "../../../utils/financialCalculations";
 import {
   RSE_INVALID_PAYBACK_YEAR_OFFSET,
   RSE_PACKAGE_IDS,
@@ -126,8 +127,8 @@ function buildMetrics(
     ];
   }
 
-  const paybackValues = aggregates.map(
-    (aggregate) => aggregate.financialIndicators.aggregatePaybackYears,
+  const paybackValues = aggregates.map((aggregate) =>
+    pooledPaybackYears(aggregate.financialIndicators.aggregatePayback),
   );
   const worstPayback =
     options.projectLifetimeYears + RSE_INVALID_PAYBACK_YEAR_OFFSET;

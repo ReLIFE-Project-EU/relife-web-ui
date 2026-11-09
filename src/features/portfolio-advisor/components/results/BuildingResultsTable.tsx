@@ -28,16 +28,17 @@ import {
 import { useMemo, useState, type ReactNode } from "react";
 import { DeltaBadge } from "../../../../components/shared/DeltaValue";
 import { MetricEyebrow } from "../../../../components/shared/MetricEyebrow";
-import { NotApplicable } from "../../../../components/shared/NotApplicable";
+import { ReadingText } from "../../../../components/shared/ReadingText";
+import {
+  readMetric,
+  type AppraisalMetric,
+  type Reading,
+} from "../../../../services/appraisalReadout";
 import {
   formatCurrency,
-  formatDecimal,
   formatEnergyPerYear,
   formatFixed,
-  formatPercent,
   getEnergyReduction,
-  IMMEDIATE_PAYBACK_LABEL,
-  isPaybackBeyondHorizon,
 } from "../../../../utils/formatters";
 import type { PRABuilding, BuildingAnalysisResult } from "../../context/types";
 import {
@@ -48,6 +49,12 @@ import {
   type SavingsAvailability,
 } from "../../../../services/savingsState";
 import { baselineScenarioOf, renovatedOf } from "../../services/scenarioLookup";
+import { UNFINISHED_BUILDING_STATUS_LABEL } from "../../constants";
+import {
+  compactConceptLabel,
+  relifeConcepts,
+  type ConceptPrefix,
+} from "../../../../constants/relifeConcepts";
 
 type StatusFilter =
   | "all"
@@ -254,10 +261,12 @@ export function BuildingResultsTable({
               label: "Analysed — does not pay off (NPV ≤ 0)",
             },
             { value: "not-appraised", label: "Not appraised" },
-            { value: "rejected", label: "Rejected" },
-            { value: "error", label: "Errored" },
-            { value: "pending", label: "Pending" },
-            { value: "running", label: "Running" },
+            ...(["rejected", "error", "pending", "running"] as const).map(
+              (status) => ({
+                value: status,
+                label: UNFINISHED_BUILDING_STATUS_LABEL[status],
+              }),
+            ),
           ]}
           value={filter}
           onChange={(v) => setFilter((v as StatusFilter | null) ?? "all")}
@@ -298,8 +307,9 @@ export function BuildingResultsTable({
                 onSort={toggleSort}
               />
               <SortableTh
-                label="Energy reduction"
-                unit="thermal needs"
+                prefix="Reduction in"
+                label={relifeConcepts["annual-building-thermal-needs"].label}
+                unit="%"
                 sortKey="energyReduction"
                 sort={sort}
                 onSort={toggleSort}
@@ -307,13 +317,16 @@ export function BuildingResultsTable({
                 groupStart
               />
               {showDeliveredEnergyColumn && (
-                <PlainTh unit="kWh delivered/year" numeric>
-                  System energy consumption
+                <PlainTh
+                  unit={relifeConcepts["system-energy-consumption"].unit}
+                  numeric
+                >
+                  {relifeConcepts["system-energy-consumption"].label}
                 </PlainTh>
               )}
               <SortableTh
-                label="NPV"
-                unit="EUR"
+                label={compactConceptLabel("npv")}
+                unit={relifeConcepts.npv.unit}
                 sortKey="npv"
                 sort={sort}
                 onSort={toggleSort}
@@ -321,16 +334,16 @@ export function BuildingResultsTable({
                 groupStart
               />
               <SortableTh
-                label="ROI"
-                unit="%"
+                label={compactConceptLabel("roi")}
+                unit={relifeConcepts.roi.unit}
                 sortKey="roi"
                 sort={sort}
                 onSort={toggleSort}
                 numeric
               />
               <SortableTh
-                label="Payback"
-                unit="years"
+                label={relifeConcepts["payback-period"].label}
+                unit={relifeConcepts["payback-period"].unit}
                 sortKey="pbp"
                 sort={sort}
                 onSort={toggleSort}
@@ -380,19 +393,13 @@ function ResultsRow({
   showDeliveredEnergyColumn: boolean;
   onClick?: (vm: RowVm) => void;
 }) {
-  const {
-    building,
-    result,
-    isSuccess,
-    availability,
-    energyReduction,
-    npv,
-    roi,
-    pbp,
-  } = row;
+  const { building, result, isSuccess, availability, energyReduction, npv } =
+    row;
   // A skipped appraisal has no figures; its cells render dimmed as unavailable.
   const appraised = availability === "appraised";
   const fr = result.financialResults;
+  const read = (metric: AppraisalMetric): Reading =>
+    isSuccess ? readMetric(fr?.appraisal, metric) : { kind: "unavailable" };
   const renovated = renovatedOf(result);
   // Baseline scenario, not the step-1 estimation: this is the figure the
   // Financial service prices savings against, and what the portfolio summary
@@ -505,7 +512,7 @@ function ResultsRow({
           </Text>
         ) : isSuccess || result.status === "rejected" ? (
           <Text size="sm" c="dimmed">
-            —
+            <ReadingText reading={read("NPV")} />
           </Text>
         ) : (
           "-"
@@ -517,13 +524,7 @@ function ResultsRow({
           c={appraised ? undefined : "dimmed"}
           style={{ fontVariantNumeric: "tabular-nums" }}
         >
-          {roi === undefined ? (
-            "—"
-          ) : roi === null ? (
-            <NotApplicable result={fr} />
-          ) : (
-            formatPercent(roi * 100)
-          )}
+          <ReadingText reading={read("ROI")} />
         </Text>
       </Table.Td>
       <Table.Td ta="right" style={{ verticalAlign: "middle" }}>
@@ -532,16 +533,7 @@ function ResultsRow({
           c={appraised ? undefined : "dimmed"}
           style={{ fontVariantNumeric: "tabular-nums" }}
         >
-          {pbp === undefined
-            ? "—"
-            : pbp === 0
-              ? IMMEDIATE_PAYBACK_LABEL
-              : isPaybackBeyondHorizon(
-                    pbp,
-                    appraisedFigures(fr)?.metadata.project_lifetime,
-                  )
-                ? "No payback"
-                : formatDecimal(pbp)}
+          <ReadingText reading={read("PBP")} />
         </Text>
       </Table.Td>
     </Table.Tr>
@@ -661,7 +653,7 @@ function RowStatusBadge({ row }: { row: RowVm }) {
           leftSection={<IconInfoCircle size={11} />}
           style={{ cursor: "default" }}
         >
-          Rejected
+          {UNFINISHED_BUILDING_STATUS_LABEL.rejected}
         </Badge>
       </Tooltip>
     );
@@ -670,7 +662,7 @@ function RowStatusBadge({ row }: { row: RowVm }) {
   if (result.status === "error") {
     return (
       <Badge color="red" size="sm" variant="light">
-        Failed
+        {UNFINISHED_BUILDING_STATUS_LABEL.error}
       </Badge>
     );
   }
@@ -678,7 +670,7 @@ function RowStatusBadge({ row }: { row: RowVm }) {
   if (result.status === "running" || result.status === "pending") {
     return (
       <Badge color="yellow" size="sm" variant="light">
-        {result.status === "running" ? "Running" : "Pending"}
+        {UNFINISHED_BUILDING_STATUS_LABEL[result.status]}
       </Badge>
     );
   }
@@ -714,11 +706,13 @@ function GroupTh({
  * every numeric cell stay on one line.
  */
 function ThLabel({
+  prefix,
   label,
   unit,
   active,
   numeric,
 }: {
+  prefix?: ConceptPrefix;
   label: ReactNode;
   unit?: string;
   active?: boolean;
@@ -726,6 +720,7 @@ function ThLabel({
 }) {
   return (
     <Stack gap={0} align={numeric ? "flex-end" : undefined}>
+      {prefix && <MetricEyebrow>{prefix}</MetricEyebrow>}
       <Text fz={13} fw={700} c={active ? "relife.7" : undefined}>
         {label}
       </Text>
@@ -760,6 +755,7 @@ function PlainTh({
 }
 
 function SortableTh({
+  prefix,
   label,
   unit,
   sortKey,
@@ -768,6 +764,7 @@ function SortableTh({
   numeric,
   groupStart,
 }: {
+  prefix?: ConceptPrefix;
   label: string;
   unit?: string;
   sortKey: SortKey;
@@ -795,6 +792,7 @@ function SortableTh({
           justify={numeric ? "flex-end" : "flex-start"}
         >
           <ThLabel
+            prefix={prefix}
             label={label}
             unit={unit}
             active={active}

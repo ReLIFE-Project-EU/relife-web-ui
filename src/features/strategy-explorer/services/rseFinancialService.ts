@@ -24,25 +24,13 @@ import type {
 import { RSE_PACKAGES } from "./rsePackageCatalog";
 
 /** How each skipped package appraisal reads as an excluded combination. */
-const SKIPPED_APPRAISAL: Record<
+const SKIPPED_APPRAISAL_REASON: Record<
   AppraisalSkipReason,
-  { reason: RSEUnavailableReason; message: string }
+  RSEUnavailableReason
 > = {
-  "fully-subsidized": {
-    reason: RSE_UNAVAILABLE_REASONS.fullySubsidized,
-    message:
-      "Financial indicators are unavailable because the subsidy covers the full renovation cost for this archetype and package, leaving no investment to appraise.",
-  },
-  "non-positive-savings": {
-    reason: RSE_UNAVAILABLE_REASONS.nonPositiveEnergySavings,
-    message:
-      "Financial indicators are unavailable because carrier-aware annual savings (gas and grid electricity at the tariffs shown) are not positive for this archetype and package.",
-  },
-  "missing-carrier-breakdown": {
-    reason: RSE_UNAVAILABLE_REASONS.missingCarrierBreakdown,
-    message:
-      "Financial indicators are unavailable because the simulation did not return the gas and grid-electricity split needed to price savings for this archetype and package.",
-  },
+  "fully-subsidized": RSE_UNAVAILABLE_REASONS.fullySubsidized,
+  "non-positive-savings": RSE_UNAVAILABLE_REASONS.nonPositiveEnergySavings,
+  "missing-carrier-breakdown": RSE_UNAVAILABLE_REASONS.missingCarrierBreakdown,
 };
 
 /** Provider for the CAPEX/OPEX reference-data lookup pre-pass. */
@@ -73,8 +61,7 @@ export interface RSEFinancialServiceInput {
  *
  * Skips ARV.  Always requests `output_level: "professional"`.
  *
- * @returns Normalised `RSEFinancialResult` with camelCase point forecasts,
- *   percentiles, and probabilities when available.
+ * @returns `RSEFinancialResult` carrying the package appraisal when one ran.
  */
 export async function computeFinancials(
   input: RSEFinancialServiceInput,
@@ -114,9 +101,6 @@ export async function computeFinancials(
       annualEnergySavingsKwh: 0,
       status: "unavailable",
       unavailableReason: RSE_UNAVAILABLE_REASONS.costLookupFailed,
-      unavailableMessage:
-        "Financial indicators are unavailable because CAPEX and maintenance costs could not be resolved from EU reference data for this archetype and package.",
-      pointForecasts: {},
     };
   }
   const capexEur = costs.capex;
@@ -137,7 +121,6 @@ export async function computeFinancials(
     });
 
   if (appraisal.kind === "skipped") {
-    const skipped = SKIPPED_APPRAISAL[appraisal.reason];
     return {
       archetype: input.archetype,
       packageId: input.packageId,
@@ -146,9 +129,7 @@ export async function computeFinancials(
       annualMaintenanceEur,
       annualEnergySavingsKwh: electricityEquivalentKwh,
       status: "unavailable",
-      unavailableReason: skipped.reason,
-      unavailableMessage: skipped.message,
-      pointForecasts: {},
+      unavailableReason: SKIPPED_APPRAISAL_REASON[appraisal.reason],
     };
   }
 
@@ -184,8 +165,6 @@ function normalizeAppraisal(
     simulated: input.simulated,
     measureIds: RSE_PACKAGES[input.packageId].measureIds,
   });
-  const pf = appraisal.pointForecasts;
-
   return {
     archetype: input.archetype,
     packageId: input.packageId,
@@ -195,20 +174,6 @@ function normalizeAppraisal(
     annualEnergySavingsKwh,
     embodiedCarbonKgCo2e: embodiedCarbonKgCo2e ?? undefined,
     status: "available",
-    pointForecasts: {
-      NPV: pf.NPV,
-      IRR: pf.IRR ?? undefined,
-      ROI: pf.ROI ?? undefined,
-      PBP: pf.PBP,
-      DPP: pf.DPP,
-    },
-    percentiles: appraisal.percentiles,
-    probabilities: appraisal.probabilities,
-    cashFlow: appraisal.cashFlowData?.annual_net_cash_flow
-      ? {
-          years: appraisal.cashFlowData.years,
-          annualNetCashFlowEur: appraisal.cashFlowData.annual_net_cash_flow,
-        }
-      : undefined,
+    appraisal,
   };
 }

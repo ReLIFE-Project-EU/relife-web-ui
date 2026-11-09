@@ -21,21 +21,26 @@ import {
   Text,
 } from "@mantine/core";
 import { IconArrowRight, IconInfoCircle, IconX } from "@tabler/icons-react";
+import type { ReactNode } from "react";
 import { ConceptMetricCard } from "../../../../components/shared/ConceptMetricCard";
+import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
+import {
+  relifeConcepts,
+  type ConceptId,
+} from "../../../../constants/relifeConcepts";
 import { ErrorAlert } from "../../../../components/shared/ErrorAlert";
 import { MetricEyebrow } from "../../../../components/shared/MetricEyebrow";
+import { ReadingText } from "../../../../components/shared/ReadingText";
+import { readMetric } from "../../../../services/appraisalReadout";
 import {
   appraisedFigures,
   resolveSavingsAvailability,
   savingsAvailabilityExplanation,
   savingsAvailabilityLabel,
 } from "../../../../services/savingsState";
-import { MetricCard } from "../../../../components/shared/MetricCard";
 import {
-  formatCurrency,
   formatDecimal,
   formatNumber,
-  formatPaybackYears,
   formatTonnageCo2,
   getEnergyReduction,
 } from "../../../../utils/formatters";
@@ -59,17 +64,20 @@ interface BuildingDrillDownModalProps {
 
 /** One half of the header verdict: an uppercase eyebrow over a large figure. */
 function VerdictStat({
-  label,
+  conceptId,
   value,
   color,
 }: {
-  label: string;
-  value: string;
+  conceptId: ConceptId;
+  value: ReactNode;
   color?: string;
 }) {
   return (
     <Stack gap={0} align="flex-end">
-      <MetricEyebrow>{label}</MetricEyebrow>
+      <Group gap={4} wrap="nowrap">
+        <MetricEyebrow>{relifeConcepts[conceptId].label}</MetricEyebrow>
+        <ConceptExplainer conceptId={conceptId} />
+      </Group>
       <Text
         fz={22}
         fw={700}
@@ -175,21 +183,16 @@ export function BuildingDrillDownModal({
             {!isError && (
               <>
                 <VerdictStat
-                  label="Lifetime NPV"
+                  conceptId="npv"
                   value={
-                    figures ? formatCurrency(figures.pointForecasts.NPV) : "—"
+                    <ReadingText reading={readMetric(fr?.appraisal, "NPV")} />
                   }
                   color="relife.7"
                 />
                 <VerdictStat
-                  label="Payback"
+                  conceptId="payback-period"
                   value={
-                    figures
-                      ? formatPaybackYears(
-                          figures.pointForecasts.PBP,
-                          figures.metadata.project_lifetime,
-                        )
-                      : "—"
+                    <ReadingText reading={readMetric(fr?.appraisal, "PBP")} />
                   }
                 />
               </>
@@ -218,8 +221,9 @@ export function BuildingDrillDownModal({
               <Stack gap="xs">
                 <MetricEyebrow>Energy &amp; carbon impact</MetricEyebrow>
                 <SimpleGrid cols={{ base: 2, sm: 3, md: 4 }} spacing="sm">
-                  <MetricCard
-                    label="Energy reduction"
+                  <ConceptMetricCard
+                    conceptId="annual-building-thermal-needs"
+                    prefix="Reduction in"
                     value={
                       energyReduction !== undefined
                         ? `${formatDecimal(energyReduction)}%`

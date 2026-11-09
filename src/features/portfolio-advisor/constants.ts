@@ -26,6 +26,14 @@ export const PRA_PACKAGE_ID = "renovated";
  */
 export const PRA_BASELINE_SCENARIO_ID = "current";
 
+/** Badge and CSV wording for a building that did not finish successfully. */
+export const UNFINISHED_BUILDING_STATUS_LABEL = {
+  pending: "Pending",
+  running: "Running",
+  error: "Failed",
+  rejected: "Rejected",
+} as const;
+
 // CSV column schema
 export const CSV_REQUIRED_COLUMNS = [
   "building_name",

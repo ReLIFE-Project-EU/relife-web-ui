@@ -14,6 +14,7 @@ import {
 } from "@tabler/icons-react";
 import { relifeConcepts } from "../../../../constants/relifeConcepts";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
+import { MetricEyebrow } from "../../../../components/shared/MetricEyebrow";
 import { FundingPills } from "../../../../components/shared/FundingPills";
 import {
   formatCurrency,
@@ -43,7 +44,7 @@ export function StrategyHero({
   const goal = request.goal;
   const goalDisplay = GOAL_DISPLAY[goal.kind];
   const GoalIcon = goalDisplay.icon;
-  const horizonYears = request.financialAssumptions.projectLifetimeYears;
+  const lifetimeYears = request.financialAssumptions.projectLifetimeYears;
 
   const winner = rankings[0];
   const winnerAggregate = packageAggregates.find(
@@ -116,9 +117,9 @@ export function StrategyHero({
 
           {winnerAggregate ? (
             <div className={classes.recoMetrics}>
-              {heroMetricsFor(goal, winnerAggregate, horizonYears).map(
+              {heroMetricsFor(goal, winnerAggregate, lifetimeYears).map(
                 (metric) => (
-                  <HeroMetricTile key={metric.label} metric={metric} />
+                  <HeroMetricTile key={metric.conceptId} metric={metric} />
                 ),
               )}
             </div>
@@ -143,8 +144,8 @@ export function StrategyHero({
           </Text>
           <Text size="xs" c="dimmed" mt={4}>
             {goal.kind === "financial"
-              ? `Budget ${formatCurrency(goal.maxBudgetEur)} · ${horizonYears}-year horizon`
-              : `${horizonYears}-year horizon`}
+              ? `Budget ${formatCurrency(goal.maxBudgetEur)} · ${lifetimeYears}-year project lifetime`
+              : `${lifetimeYears}-year project lifetime`}
           </Text>
           <Text
             size="xs"
@@ -210,12 +211,11 @@ function HeroMetricTile({ metric }: { metric: HeroMetric }) {
   const Icon = metric.icon;
   return (
     <div className={shared.recoMetric}>
+      {metric.prefix ? <MetricEyebrow>{metric.prefix}</MetricEyebrow> : null}
       <div className={shared.metricLabel}>
         <Icon size={14} />
-        {metric.label}
-        {metric.conceptId ? (
-          <ConceptExplainer conceptId={metric.conceptId} />
-        ) : null}
+        {relifeConcepts[metric.conceptId].label}
+        <ConceptExplainer conceptId={metric.conceptId} />
       </div>
       <div className={shared.metricValue}>{metric.value}</div>
       {metric.hint ? (

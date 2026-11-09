@@ -14,11 +14,13 @@ import {
   IconLeaf,
   IconTrendingUp,
 } from "@tabler/icons-react";
-import {
-  relifeConcepts,
-  type ConceptId,
+import type {
+  ConceptId,
+  ConceptPrefix,
 } from "../../../../constants/relifeConcepts";
+import { formatMetricValue } from "../../../../services/appraisalReadout";
 import type { RenovationMeasureId } from "../../../../types/renovation";
+import { pooledPaybackYears } from "../../../../utils/financialCalculations";
 import {
   formatCurrency,
   formatDecimal,
@@ -62,9 +64,10 @@ export const RSE_MEASURE_LABELS: Record<RenovationMeasureId, string> = {
 
 export interface RankingColumn {
   key: string;
-  label: string;
+  /** The shared concept the column reports; it supplies the header. */
+  conceptId: ConceptId;
+  prefix?: ConceptPrefix;
   formatter: (value: number) => string;
-  conceptId?: ConceptId;
 }
 
 export const RANKING_COLUMNS: Record<
@@ -74,49 +77,44 @@ export const RANKING_COLUMNS: Record<
   financial: [
     {
       key: "renovatableBuildingsWithinBudget",
-      label: relifeConcepts["rse-renovatable-buildings"].label,
-      formatter: formatNumber,
       conceptId: "rse-renovatable-buildings",
+      formatter: formatNumber,
     },
     {
       key: "aggregateROI",
-      label: "Aggregate ROI",
-      formatter: (v) => `${formatDecimal(v * 100)}%`,
       conceptId: "roi",
+      prefix: "Portfolio",
+      formatter: (v) => formatMetricValue("ROI", v),
     },
     {
       key: "aggregateNPV",
-      label: "Aggregate NPV",
-      formatter: formatCurrency,
       conceptId: "npv",
+      prefix: "Total",
+      formatter: (v) => formatMetricValue("NPV", v),
     },
   ],
   energy: [
     {
       key: "energySavedPerEur",
-      label: "Primary kWh saved / €",
-      formatter: (v) => `${formatDecimal(v)} kWh/€`,
       conceptId: "rse-energy-saved-per-eur",
+      formatter: (v) => `${formatDecimal(v)} kWh/€`,
     },
     {
       key: "totalAnnualEnergySavingsKwh",
-      label: "Total primary energy savings",
-      formatter: formatEnergy,
       conceptId: "rse-total-energy-savings",
+      formatter: formatEnergy,
     },
   ],
   emission: [
     {
       key: "co2ReducedTonPerEur",
-      label: "kg CO₂ reduced / €",
-      formatter: (v) => `${formatDecimal(v * 1000)} kg/€`,
       conceptId: "rse-co2-reduced-per-eur",
+      formatter: (v) => `${formatDecimal(v * 1000)} kg/€`,
     },
     {
       key: "totalAnnualCo2ReductionTon",
-      label: "Total CO₂ reduction",
-      formatter: formatTonnageCo2,
       conceptId: "rse-total-co2-reduction",
+      formatter: formatTonnageCo2,
     },
   ],
 };
@@ -133,7 +131,7 @@ export function getAggregateValue(
     case "aggregateNPV":
       return agg.financialIndicators.aggregateNPV;
     case "aggregatePaybackYears":
-      return agg.financialIndicators.aggregatePaybackYears;
+      return pooledPaybackYears(agg.financialIndicators.aggregatePayback);
     case "energySavedPerEur":
       return agg.energySavedPerEur;
     case "totalAnnualEnergySavingsKwh":
@@ -168,34 +166,16 @@ export function getAggregateValue(
  */
 export const SCORE_COMPONENT_META: Record<
   string,
-  { label: string; conceptId?: ConceptId }
+  { conceptId: ConceptId; prefix?: ConceptPrefix }
 > = {
-  energySavedPerEur: {
-    label: "Primary energy saved per €",
-    conceptId: "rse-energy-saved-per-eur",
-  },
-  totalAnnualEnergySavingsKwh: {
-    label: "Total primary energy savings",
-    conceptId: "rse-total-energy-savings",
-  },
-  co2ReducedTonPerEur: {
-    label: "CO₂ reduced per €",
-    conceptId: "rse-co2-reduced-per-eur",
-  },
-  totalAnnualCo2ReductionTon: {
-    label: "Total CO₂ reduction",
-    conceptId: "rse-total-co2-reduction",
-  },
-  renovatableBuildingsWithinBudget: {
-    label: relifeConcepts["rse-renovatable-buildings"].label,
-    conceptId: "rse-renovatable-buildings",
-  },
-  aggregateROI: { label: "Aggregate ROI", conceptId: "roi" },
-  aggregateNPV: { label: "Aggregate NPV", conceptId: "npv" },
-  aggregatePayback: {
-    label: "Aggregate payback",
-    conceptId: "payback-period",
-  },
+  energySavedPerEur: { conceptId: "rse-energy-saved-per-eur" },
+  totalAnnualEnergySavingsKwh: { conceptId: "rse-total-energy-savings" },
+  co2ReducedTonPerEur: { conceptId: "rse-co2-reduced-per-eur" },
+  totalAnnualCo2ReductionTon: { conceptId: "rse-total-co2-reduction" },
+  renovatableBuildingsWithinBudget: { conceptId: "rse-renovatable-buildings" },
+  aggregateROI: { conceptId: "roi", prefix: "Portfolio" },
+  aggregateNPV: { conceptId: "npv", prefix: "Total" },
+  aggregatePayback: { conceptId: "payback-period", prefix: "Portfolio" },
 };
 
 export const RSE_CHART_TOOLTIP_PROPS = {
@@ -232,10 +212,11 @@ export const GOAL_DISPLAY: Record<
 };
 
 export interface HeroMetric {
-  label: string;
+  /** The shared concept the tile reports; it supplies the name and explainer. */
+  conceptId: ConceptId;
+  prefix?: ConceptPrefix;
   value: string;
   hint?: string;
-  conceptId?: ConceptId;
   icon: ComponentType<{ size?: number }>;
 }
 
@@ -243,30 +224,26 @@ export interface HeroMetric {
 export function heroMetricsFor(
   goal: RSERenovationGoal,
   agg: RSEPackageAggregate,
-  horizonYears: number,
+  lifetimeYears: number,
 ): HeroMetric[] {
   const investmentMetric: HeroMetric = {
-    label: "Total investment",
+    conceptId: "investment",
+    prefix: "Total",
     value: formatCurrency(agg.totalCapexEur),
     hint: "gross, before incentives",
-    conceptId: "investment",
     icon: IconCash,
   };
 
   if (goal.kind === "energy") {
     return [
       {
-        label: "Primary energy saved per €",
-        value: `${formatDecimal(agg.energySavedPerEur)} kWh/€`,
-        hint: "primary energy per euro invested",
         conceptId: "rse-energy-saved-per-eur",
+        value: `${formatDecimal(agg.energySavedPerEur)} kWh/€`,
         icon: IconBolt,
       },
       {
-        label: "Total primary energy savings",
-        value: formatEnergy(agg.totalAnnualEnergySavingsKwh),
-        hint: "primary energy per year, across portfolio",
         conceptId: "rse-total-energy-savings",
+        value: formatEnergy(agg.totalAnnualEnergySavingsKwh),
         icon: IconChartBar,
       },
       investmentMetric,
@@ -276,17 +253,13 @@ export function heroMetricsFor(
   if (goal.kind === "emission") {
     return [
       {
-        label: "CO₂ reduced per €",
-        value: `${formatDecimal(agg.co2ReducedTonPerEur * 1000)} kg/€`,
-        hint: "per euro invested",
         conceptId: "rse-co2-reduced-per-eur",
+        value: `${formatDecimal(agg.co2ReducedTonPerEur * 1000)} kg/€`,
         icon: IconLeaf,
       },
       {
-        label: "Total CO₂ reduction",
-        value: formatTonnageCo2(agg.totalAnnualCo2ReductionTon),
-        hint: "per year, across portfolio",
         conceptId: "rse-total-co2-reduction",
+        value: formatTonnageCo2(agg.totalAnnualCo2ReductionTon),
         icon: IconChartBar,
       },
       investmentMetric,
@@ -297,27 +270,24 @@ export function heroMetricsFor(
   const roi = agg.financialIndicators.aggregateROI;
   return [
     {
-      label: relifeConcepts["rse-renovatable-buildings"].label,
+      conceptId: "rse-renovatable-buildings",
       value:
         agg.renovatableBuildingsWithinBudget !== undefined
           ? formatNumber(agg.renovatableBuildingsWithinBudget)
           : "—",
-      hint: "renovatable with this package",
-      conceptId: "rse-renovatable-buildings",
       icon: IconBuildingCommunity,
     },
     {
-      label: "Aggregate ROI",
-      value: roi !== undefined ? `${formatDecimal(roi * 100)}%` : "—",
-      hint: "across portfolio",
       conceptId: "roi",
+      prefix: "Portfolio",
+      value: roi !== undefined ? formatMetricValue("ROI", roi) : "—",
       icon: IconTrendingUp,
     },
     {
-      label: "Aggregate NPV",
-      value: npv !== undefined ? formatCurrency(npv) : "—",
-      hint: `over ${horizonYears} years`,
       conceptId: "npv",
+      prefix: "Total",
+      value: npv !== undefined ? formatMetricValue("NPV", npv) : "—",
+      hint: `over ${lifetimeYears} years`,
       icon: IconCash,
     },
   ];
@@ -329,7 +299,7 @@ export function heroMetricsFor(
 
 const ARCHETYPE_KEY_SEPARATOR = "\u001f"; // mirrors RSE_KEY_SEPARATOR in services/rseKeys.ts
 
-/** Decode the `country␟category␟name` key used by `perArchetypeOnly` maps. */
+/** Decode the `country␟category␟name` key used by `perArchetypeAppraisals`. */
 export function decodeArchetypeKey(key: string): {
   country: string;
   category: string;

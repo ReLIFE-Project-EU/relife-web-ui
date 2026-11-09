@@ -7,6 +7,8 @@ import type {
   RSESimulationResult,
 } from "../../../../../src/features/strategy-explorer/types";
 import type { SimulatedBuilding } from "../../../../../src/services/simulatedBuilding";
+import type { RiskAssessmentPointForecasts } from "../../../../../src/types/renovation";
+import { pooledPaybackYears } from "../../../../../src/utils/financialCalculations";
 
 function makePortfolio(): RSEExpandedPortfolioSelection[] {
   return [
@@ -77,13 +79,14 @@ function makeSimulation(
   };
 }
 
+/** Forecasts a test leaves out are absent: NaN, or null for the ratios. */
 function makeFinancial(
   name: string,
   capexEur: number,
-  pointForecasts: RSEFinancialResult["pointForecasts"],
+  pointForecasts: Partial<RiskAssessmentPointForecasts>,
   options: {
     effectiveCapexEur?: number;
-    cashFlow?: RSEFinancialResult["cashFlow"];
+    cashFlow?: { years: number[]; annualNetCashFlowEur: number[] };
     embodiedCarbonKgCo2e?: number;
   } = {},
 ): RSEFinancialResult {
@@ -96,8 +99,30 @@ function makeFinancial(
     annualEnergySavingsKwh: name === "A" ? 1_000 : 2_000,
     embodiedCarbonKgCo2e: options.embodiedCarbonKgCo2e,
     status: "available",
-    pointForecasts,
-    cashFlow: options.cashFlow,
+    appraisal: {
+      kind: "appraised",
+      pointForecasts: {
+        NPV: NaN,
+        IRR: null,
+        ROI: null,
+        PBP: NaN,
+        DPP: NaN,
+        MonthlyAvgSavings: NaN,
+        SuccessRate: NaN,
+        ...pointForecasts,
+      },
+      metadata: {
+        project_lifetime: 20,
+        capex: capexEur,
+        output_level: "professional",
+      },
+      cashFlowData: options.cashFlow && {
+        years: options.cashFlow.years,
+        annual_inflows: [],
+        annual_outflows: [],
+        annual_net_cash_flow: options.cashFlow.annualNetCashFlowEur,
+      },
+    },
   };
 }
 
@@ -220,20 +245,14 @@ describe("aggregatePackage", () => {
     // Pooled euros: invest 3_100, recover 1_300/year -> 2 + 500/1300 years.
     // A building-count-weighted average of PBPs would give (1 + 3 * 2.5) / 4
     // = 2.125 — euros must dominate, not building counts.
-    expect(result.financialIndicators.aggregatePaybackYears).toBeCloseTo(
-      2 + 500 / 1_300,
+    const paybackYears = pooledPaybackYears(
+      result.financialIndicators.aggregatePayback,
     );
-    expect(result.financialIndicators.aggregatePaybackYears).not.toBeCloseTo(
-      2.125,
-    );
-    expect(result.financialIndicators.perArchetypeOnly?.IRR).toEqual({
-      "IT\u001fResidential\u001fA": 0.1,
-      "IT\u001fResidential\u001fB": 0.2,
-    });
-    expect(result.financialIndicators.perArchetypeOnly?.PBP).toEqual({
-      "IT\u001fResidential\u001fA": 1,
-      "IT\u001fResidential\u001fB": 2.5,
-    });
+    expect(paybackYears).toBeCloseTo(2 + 500 / 1_300);
+    expect(paybackYears).not.toBeCloseTo(2.125);
+    expect(
+      Object.keys(result.financialIndicators.perArchetypeAppraisals ?? {}),
+    ).toEqual(["IT\u001fResidential\u001fA", "IT\u001fResidential\u001fB"]);
   });
 
   test("a never-breaking-even archetype keeps weighing on aggregate payback", () => {
@@ -273,7 +292,9 @@ describe("aggregatePackage", () => {
       projectLifetimeYears: 20,
     });
 
-    expect(result.financialIndicators.aggregatePaybackYears).toBeUndefined();
+    expect(result.financialIndicators.aggregatePayback?.kind).toBe(
+      "over-lifetime",
+    );
   });
 
   test("uses post-incentive CAPEX for €-ratios, budget fit, and aggregate ROI", () => {
@@ -343,6 +364,7 @@ describe("aggregatePackage", () => {
       financials: [
         {
           ...makeFinancial("A", 100, {}),
+          appraisal: undefined,
           annualEnergySavingsKwh: 0,
           status: "unavailable",
           unavailableReason: "non-positive-energy-savings",

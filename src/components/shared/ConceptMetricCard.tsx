@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { ConceptId } from "../../constants/relifeConcepts";
+import type { ConceptId, ConceptPrefix } from "../../constants/relifeConcepts";
 import { ConceptLabel } from "./ConceptLabel";
 import { MetricCard } from "./MetricCard";
 
@@ -14,7 +14,7 @@ interface ConceptMetricCardProps {
    * reduction in Annual building thermal needs (kWh thermal/year)" on one
    * wrapping line.
    */
-  prefix?: string;
+  prefix?: ConceptPrefix;
 }
 
 export function ConceptMetricCard({

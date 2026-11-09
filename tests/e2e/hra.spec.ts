@@ -8,6 +8,7 @@
  */
 
 import { expect, test } from "@playwright/test";
+import { relifeConcepts } from "../../src/constants/relifeConcepts";
 import { captureRunArtifacts, expectCleanAuditRun } from "./helpers/artifacts";
 import { chooseCatalogArchetype } from "./helpers/buildingSelector";
 
@@ -81,7 +82,9 @@ test("homeowner completes the HRA journey with plausible results", async ({
   // labels means ranking finished, so the audit trace contains mcda.rank.end
   // before we capture it. (The numeric TOPSIS score this used to wait on is
   // deliberately no longer shown to homeowners.)
-  await expect(page.getByText("Yearly savings").first()).toBeVisible({
+  await expect(
+    page.getByText(relifeConcepts["monthly-cash-benefit"].label).first(),
+  ).toBeVisible({
     timeout: 120_000,
   });
 

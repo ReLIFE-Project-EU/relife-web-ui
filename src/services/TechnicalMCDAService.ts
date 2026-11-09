@@ -13,7 +13,11 @@ import type {
   McdaTopsisRequest,
 } from "../types/technical";
 import type { IMCDAService, MCDAPersona } from "./types";
-import { appraisedFigures } from "./savingsState";
+import {
+  appraisedFigures,
+  savingsAvailabilityLabel,
+  skipReasonAvailability,
+} from "./savingsState";
 import { MCDA_PERSONAS } from "./mock/data/personas";
 import { auditLog, type AuditCtx } from "../utils/auditLogger";
 
@@ -373,7 +377,9 @@ function getRankingExclusionReason(
   }
 
   if (financial.appraisal.kind === "skipped") {
-    return "No energy savings calculated";
+    return savingsAvailabilityLabel[
+      skipReasonAvailability(financial.appraisal.reason)
+    ];
   }
 
   if (!isFiniteNumber(getAnnualMaintenanceCost(financial))) {

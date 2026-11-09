@@ -1,3 +1,4 @@
+import type { AppraisedPackage } from "../../../types/renovation";
 import type {
   RSEExpandedPortfolioSelection,
   RSEFinancialResult,
@@ -7,7 +8,7 @@ import type {
   RSESimulationResult,
 } from "../types";
 import { computeLifetimeCarbonKgCo2e } from "../../../services/carrierSavingsService";
-import { computePooledPaybackYears } from "../../../utils/financialCalculations";
+import { computePooledPayback } from "../../../utils/financialCalculations";
 import { rseArchetypePackageKey, rseArchetypeKey } from "./rseKeys";
 
 export interface RSEPackageAggregationInput {
@@ -54,9 +55,7 @@ export function aggregatePackage(
     netByYear: number[];
     count: number;
   } | null> = [];
-  const perArchetypeOnly: NonNullable<
-    RSEPackageAggregate["financialIndicators"]["perArchetypeOnly"]
-  > = {};
+  const perArchetypeAppraisals: Record<string, AppraisedPackage> = {};
 
   for (const selection of input.portfolio) {
     const key = rseArchetypePackageKey(selection.archetype, input.packageId);
@@ -97,54 +96,33 @@ export function aggregatePackage(
       }
     }
 
+    const appraisal = financial.appraisal;
+    const forecasts = appraisal?.pointForecasts;
+
     // Summing P50 values is an approximation (the median of a sum is not the
     // sum of medians), acceptable here because all archetypes share the same
     // backend macro-scenario distributions.
-    if (isFiniteNumber(financial.pointForecasts.NPV)) {
-      aggregateNPV += financial.pointForecasts.NPV * buildingCount;
+    if (isFiniteNumber(forecasts?.NPV)) {
+      aggregateNPV += forecasts.NPV * buildingCount;
       hasNPV = true;
     }
 
     // The backend computes ROI against the upfront share of the effective
     // CAPEX; every archetype has the same loan share, so CAPEX weights it.
-    if (
-      isFiniteNumber(financial.pointForecasts.ROI) &&
-      financial.effectiveCapexEur > 0
-    ) {
+    if (isFiniteNumber(forecasts?.ROI) && financial.effectiveCapexEur > 0) {
       netProfitEur +=
-        financial.pointForecasts.ROI *
-        financial.effectiveCapexEur *
-        buildingCount;
+        forecasts.ROI * financial.effectiveCapexEur * buildingCount;
       hasROI = true;
     }
 
+    const netByYear = appraisal?.cashFlowData?.annual_net_cash_flow;
     cashFlowContributions.push(
-      financial.cashFlow
-        ? {
-            netByYear: financial.cashFlow.annualNetCashFlowEur,
-            count: buildingCount,
-          }
-        : null,
+      netByYear ? { netByYear, count: buildingCount } : null,
     );
 
-    appendPerArchetypeMetric(
-      perArchetypeOnly,
-      "IRR",
-      selection,
-      financial.pointForecasts.IRR,
-    );
-    appendPerArchetypeMetric(
-      perArchetypeOnly,
-      "PBP",
-      selection,
-      financial.pointForecasts.PBP,
-    );
-    appendPerArchetypeMetric(
-      perArchetypeOnly,
-      "DPP",
-      selection,
-      financial.pointForecasts.DPP,
-    );
+    if (appraisal) {
+      perArchetypeAppraisals[rseArchetypeKey(selection.archetype)] = appraisal;
+    }
   }
 
   const aggregate: RSEPackageAggregate = {
@@ -175,10 +153,11 @@ export function aggregatePackage(
         hasROI && totalEffectiveCapexEur > 0
           ? netProfitEur / totalEffectiveCapexEur
           : undefined,
-      aggregatePaybackYears: computePooledPaybackYears(cashFlowContributions),
-      perArchetypeOnly: hasPerArchetypeMetrics(perArchetypeOnly)
-        ? perArchetypeOnly
-        : undefined,
+      aggregatePayback: computePooledPayback(cashFlowContributions),
+      perArchetypeAppraisals:
+        Object.keys(perArchetypeAppraisals).length > 0
+          ? perArchetypeAppraisals
+          : undefined,
     },
   };
 
@@ -205,32 +184,6 @@ export function aggregatePackage(
   return aggregate;
 }
 
-function appendPerArchetypeMetric(
-  target: NonNullable<
-    RSEPackageAggregate["financialIndicators"]["perArchetypeOnly"]
-  >,
-  metric: "IRR" | "PBP" | "DPP",
-  selection: RSEExpandedPortfolioSelection,
-  value: number | undefined,
-): void {
-  if (!isFiniteNumber(value)) {
-    return;
-  }
-
-  target[metric] ??= {};
-  target[metric][rseArchetypeKey(selection.archetype)] = value;
-}
-
-function hasPerArchetypeMetrics(
-  metrics: NonNullable<
-    RSEPackageAggregate["financialIndicators"]["perArchetypeOnly"]
-  >,
-): boolean {
-  return Object.values(metrics).some(
-    (metricValues) => Object.keys(metricValues ?? {}).length > 0,
-  );
-}
-
 function divideOrZero(numerator: number, denominator: number): number {
   if (!isFiniteNumber(numerator) || !isFiniteNumber(denominator)) {
     return 0;
@@ -238,6 +191,6 @@ function divideOrZero(numerator: number, denominator: number): number {
   return denominator > 0 ? numerator / denominator : 0;
 }
 
-function isFiniteNumber(value: number | undefined): value is number {
+function isFiniteNumber(value: number | null | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }

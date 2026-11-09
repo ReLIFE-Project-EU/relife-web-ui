@@ -48,6 +48,21 @@ export function applyFundingReduction(
   return { effectiveCost, loanAmount, subsidyAmount };
 }
 
+/** Why a pooled payback has, or lacks, a year count. */
+export type PooledPayback =
+  | { kind: "years"; years: number }
+  /** The pooled total is still negative in the last year of the series. */
+  | { kind: "over-lifetime"; lifetimeYears: number }
+  /** A contributor has no usable cash-flow series, e.g. its appraisal was skipped. */
+  | { kind: "missing-series" };
+
+/** The year count, for ranking and charts that need a plain number. */
+export function pooledPaybackYears(
+  pooled: PooledPayback | undefined,
+): number | undefined {
+  return pooled?.kind === "years" ? pooled.years : undefined;
+}
+
 /**
  * Payback from a pooled cash-flow series: each contributor's net cash flows are
  * scaled by its count and summed, then payback is the year from which the
@@ -56,19 +71,19 @@ export function applyFundingReduction(
  * Averaging individual payback periods would weight buildings instead of euros
  * and silently drop the ones that never break even, so it is avoided.
  *
- * Returns `undefined` when a contributor lacks a series, the series disagree on
- * length, or the pooled total is still negative in the last year.
+ * The series covers years 0 to the project lifetime, so its length carries the
+ * lifetime. Returns `undefined` when there is nothing to pool.
  */
-export function computePooledPaybackYears(
+export function computePooledPayback(
   contributions: Array<{ netByYear: number[]; count: number } | null>,
-): number | undefined {
+): PooledPayback | undefined {
   if (contributions.length === 0) {
     return undefined;
   }
   const series: Array<{ netByYear: number[]; count: number }> = [];
   for (const contribution of contributions) {
     if (contribution === null) {
-      return undefined;
+      return { kind: "missing-series" };
     }
     series.push(contribution);
   }
@@ -78,7 +93,7 @@ export function computePooledPaybackYears(
     yearCount < 2 ||
     series.some((entry) => entry.netByYear.length !== yearCount)
   ) {
-    return undefined;
+    return { kind: "missing-series" };
   }
 
   const pooled = new Array<number>(yearCount).fill(0);
@@ -100,10 +115,13 @@ export function computePooledPaybackYears(
   }
 
   if (lastNegativeYear === -1) {
-    return 0;
+    return { kind: "years", years: 0 };
   }
   if (lastNegativeYear === yearCount - 1) {
-    return undefined;
+    return { kind: "over-lifetime", lifetimeYears: yearCount - 1 };
   }
-  return lastNegativeYear - lastNegativeTotal / pooled[lastNegativeYear + 1];
+  return {
+    kind: "years",
+    years: lastNegativeYear - lastNegativeTotal / pooled[lastNegativeYear + 1],
+  };
 }

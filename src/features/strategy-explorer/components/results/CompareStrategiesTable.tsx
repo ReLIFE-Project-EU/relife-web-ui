@@ -13,8 +13,13 @@ import {
   IconCrown,
   IconSelector,
 } from "@tabler/icons-react";
-import { relifeConcepts } from "../../../../constants/relifeConcepts";
+import {
+  compactConceptLabel,
+  relifeConcepts,
+  type ConceptPrefix,
+} from "../../../../constants/relifeConcepts";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
+import { MetricEyebrow } from "../../../../components/shared/MetricEyebrow";
 import {
   formatCurrency,
   formatEnergy,
@@ -40,38 +45,36 @@ import shared from "../../../../components/shared/ResultsLayout.module.css";
 const ALWAYS_ON_COLUMNS: RankingColumn[] = [
   {
     key: "totalBuildings",
-    label: relifeConcepts["modeled-property"].label,
+    conceptId: "modeled-property",
     formatter: formatNumber,
   },
   {
     key: "totalCapexEur",
-    label: "Investment",
-    formatter: formatCurrency,
     conceptId: "investment",
+    prefix: "Total",
+    formatter: formatCurrency,
   },
   {
     key: "totalAnnualEnergySavingsKwh",
-    label: "Energy savings",
-    formatter: formatEnergy,
     conceptId: "rse-total-energy-savings",
+    formatter: formatEnergy,
   },
   {
     key: "totalAnnualCo2ReductionTon",
-    label: "CO₂ reduction",
-    formatter: formatTonnageCo2,
     conceptId: "rse-total-co2-reduction",
+    formatter: formatTonnageCo2,
   },
   {
     key: "totalEmbodiedCarbonTon",
-    label: "Material carbon",
-    formatter: formatTonnageCo2,
     conceptId: "embodied-carbon",
+    prefix: "Total",
+    formatter: formatTonnageCo2,
   },
   {
     key: "totalWholeLifeCarbonTon",
-    label: "Lifetime carbon",
-    formatter: formatTonnageCo2,
     conceptId: "whole-life-carbon",
+    prefix: "Total",
+    formatter: formatTonnageCo2,
   },
 ];
 
@@ -156,7 +159,7 @@ export function CompareStrategiesTable({
               />
               <th>Package</th>
               <SortableTh
-                label="Score"
+                label={relifeConcepts["ranking-score"].label}
                 sortKey="score"
                 sort={sort}
                 onSort={handleSort}
@@ -164,7 +167,8 @@ export function CompareStrategiesTable({
               {metricColumns.map((col) => (
                 <SortableTh
                   key={col.key}
-                  label={col.label}
+                  prefix={col.prefix}
+                  label={compactConceptLabel(col.conceptId)}
                   sortKey={col.key}
                   sort={sort}
                   onSort={handleSort}
@@ -249,12 +253,14 @@ export function CompareStrategiesTable({
 }
 
 function SortableTh({
+  prefix,
   label,
   sortKey,
   sort,
   onSort,
   conceptId,
 }: {
+  prefix?: ConceptPrefix;
   label: string;
   sortKey: string;
   sort: SortState;
@@ -269,6 +275,7 @@ function SortableTh({
       : IconChevronDown;
   return (
     <th>
+      {prefix ? <MetricEyebrow>{prefix}</MetricEyebrow> : null}
       <button
         type="button"
         className={`${classes.sortBtn} ${active ? classes.activeSort : ""}`}

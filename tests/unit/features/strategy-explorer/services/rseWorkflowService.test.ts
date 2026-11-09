@@ -134,12 +134,22 @@ function makeFinancial(input: {
     annualMaintenanceEur: 10,
     annualEnergySavingsKwh: input.annualEnergySavingsKwh,
     status: "available",
-    pointForecasts: {
-      NPV: 1_000,
-      ROI: input.packageId === "combined" ? 0.4 : 0.2,
-      IRR: 0.1,
-      PBP: 6,
-      DPP: 7,
+    appraisal: {
+      kind: "appraised",
+      pointForecasts: {
+        NPV: 1_000,
+        ROI: input.packageId === "combined" ? 0.4 : 0.2,
+        IRR: 0.1,
+        PBP: 6,
+        DPP: 7,
+        MonthlyAvgSavings: 50,
+        SuccessRate: 0.9,
+      },
+      metadata: {
+        project_lifetime: 20,
+        capex: capexEur,
+        output_level: "professional",
+      },
     },
   };
 }
@@ -360,7 +370,6 @@ describe("rseWorkflowService", () => {
             annualEnergySavingsKwh: 0,
             status: "unavailable" as const,
             unavailableReason: "non-positive-energy-savings" as const,
-            pointForecasts: {},
           };
         }
 
@@ -418,7 +427,6 @@ describe("rseWorkflowService", () => {
         annualEnergySavingsKwh: 0,
         status: "unavailable" as const,
         unavailableReason: "non-positive-energy-savings" as const,
-        pointForecasts: {},
       })),
     });
 

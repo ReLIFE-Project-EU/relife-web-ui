@@ -81,7 +81,7 @@ describe("rankPackages", () => {
           financialIndicators: {
             aggregateROI: 0.1,
             aggregateNPV: 1_000,
-            aggregatePaybackYears: 8,
+            aggregatePayback: { kind: "years", years: 8 },
           },
         }),
         makeAggregate("combined", {
@@ -89,7 +89,7 @@ describe("rankPackages", () => {
           financialIndicators: {
             aggregateROI: 0.3,
             aggregateNPV: 5_000,
-            aggregatePaybackYears: 4,
+            aggregatePayback: { kind: "years", years: 4 },
           },
         }),
       ],
@@ -122,7 +122,7 @@ describe("rankPackages", () => {
           financialIndicators: {
             aggregateROI: 0.2,
             aggregateNPV: 1_000,
-            aggregatePaybackYears: 5,
+            aggregatePayback: { kind: "years", years: 5 },
           },
         }),
         makeAggregate("combined", {
@@ -130,7 +130,7 @@ describe("rankPackages", () => {
           financialIndicators: {
             aggregateROI: undefined,
             aggregateNPV: 1_000,
-            aggregatePaybackYears: 5,
+            aggregatePayback: { kind: "years", years: 5 },
           },
         }),
       ],

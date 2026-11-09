@@ -6,7 +6,9 @@
 
 import { Alert, Text } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
-import { FundingPills, NotApplicable } from "../../../../components/shared";
+import { FundingPills, ReadingText } from "../../../../components/shared";
+import { compactConceptLabel } from "../../../../constants/relifeConcepts";
+import { readMetric, readRange } from "../../../../services/appraisalReadout";
 import {
   appraisedFigures,
   resolveSavingsAvailability,
@@ -18,12 +20,7 @@ import type {
   FundingOptions,
   RenovationScenario,
 } from "../../context/types";
-import {
-  formatCurrency,
-  formatPaybackYears,
-  formatPercent,
-  isPaybackBeyondHorizon,
-} from "../../utils/formatters";
+import { formatCurrency } from "../../utils/formatters";
 import { FinancialMetricCard } from "./FinancialMetricCard";
 import { RiskGauge } from "./RiskGauge";
 import classes from "./ResultsLayout.module.css";
@@ -42,12 +39,6 @@ export function FinancialDeepDive({
 }: FinancialDeepDiveProps) {
   const appraised = appraisedFigures(result);
   const availability = resolveSavingsAvailability(selected, result);
-  const paybackPercentiles = appraised?.percentiles?.PBP;
-  const projectLifetime = appraised?.metadata.project_lifetime;
-  const noPaybackWithinRange =
-    paybackPercentiles != null &&
-    isPaybackBeyondHorizon(paybackPercentiles.P10, projectLifetime) &&
-    isPaybackBeyondHorizon(paybackPercentiles.P90, projectLifetime);
 
   return (
     <div>
@@ -72,9 +63,8 @@ export function FinancialDeepDive({
               <FinancialMetricCard
                 conceptId="npv"
                 metricType="NPV"
-                value={appraised.pointForecasts.NPV}
-                formatter={formatCurrency}
-                percentiles={appraised.percentiles?.NPV}
+                value={<ReadingText reading={readMetric(appraised, "NPV")} />}
+                range={readRange(appraised, "NPV")}
                 color="green"
                 highlighted
               />
@@ -83,11 +73,8 @@ export function FinancialDeepDive({
               <FinancialMetricCard
                 conceptId="payback-period"
                 metricType="PBP"
-                value={appraised.pointForecasts.PBP}
-                formatter={(v) => formatPaybackYears(v, projectLifetime)}
-                percentiles={
-                  noPaybackWithinRange ? undefined : paybackPercentiles
-                }
+                value={<ReadingText reading={readMetric(appraised, "PBP")} />}
+                range={readRange(appraised, "PBP")}
                 color="teal"
                 lowerIsBetter
                 highlighted
@@ -97,8 +84,11 @@ export function FinancialDeepDive({
               <FinancialMetricCard
                 conceptId="monthly-cash-benefit"
                 metricType="MonthlyAvgSavings"
-                value={appraised.pointForecasts.MonthlyAvgSavings}
-                formatter={formatCurrency}
+                value={
+                  <ReadingText
+                    reading={readMetric(appraised, "MonthlyAvgSavings")}
+                  />
+                }
                 color="orange"
                 highlighted
               />
@@ -106,8 +96,7 @@ export function FinancialDeepDive({
             <FinancialMetricCard
               conceptId="investment"
               metricType="CAPEX"
-              value={result.capitalExpenditure}
-              formatter={formatCurrency}
+              value={formatCurrency(result.capitalExpenditure)}
               color="gray"
             />
           </div>
@@ -139,34 +128,22 @@ export function FinancialDeepDive({
 
 function SecondaryMetrics({ result }: { result: FinancialResults }) {
   const appraised = appraisedFigures(result);
-  const irr = appraised?.pointForecasts.IRR;
-  const roi = appraised?.pointForecasts.ROI;
-  const dpp = appraised?.pointForecasts.DPP;
-  const ratio = (value: number | null) =>
-    value === null ? (
-      <NotApplicable result={result} />
-    ) : (
-      formatPercent(value * 100)
-    );
+  if (!appraised) return null;
 
   return (
     <div className={classes.finExtras}>
-      {irr !== undefined ? (
-        <span>
-          <b>IRR</b> {ratio(irr)}
-        </span>
-      ) : null}
-      {roi !== undefined ? (
-        <span>
-          <b>ROI</b> {ratio(roi)}
-        </span>
-      ) : null}
-      {dpp !== undefined ? (
-        <span>
-          <b>DPP</b>{" "}
-          {formatPaybackYears(dpp, appraised?.metadata.project_lifetime)}
-        </span>
-      ) : null}
+      <span>
+        <b>{compactConceptLabel("irr")}</b>{" "}
+        <ReadingText reading={readMetric(appraised, "IRR")} />
+      </span>
+      <span>
+        <b>{compactConceptLabel("roi")}</b>{" "}
+        <ReadingText reading={readMetric(appraised, "ROI")} />
+      </span>
+      <span>
+        <b>{compactConceptLabel("discounted-payback-period")}</b>{" "}
+        <ReadingText reading={readMetric(appraised, "DPP")} />
+      </span>
     </div>
   );
 }

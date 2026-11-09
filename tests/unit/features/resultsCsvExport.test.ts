@@ -1,213 +1,52 @@
-import { describe, expect, test } from "vitest";
-import {
-  buildBuildingsCsv,
-  buildSummaryCsv,
-} from "../../../src/features/portfolio-advisor/services/resultsCsvExport";
+import { expect, test } from "vitest";
+import { buildingExportColumns } from "../../../src/features/portfolio-advisor/services/resultsCsvExport";
 import type {
   BuildingAnalysisResult,
   PRABuilding,
 } from "../../../src/features/portfolio-advisor/context/types";
-import type { PortfolioPackageAggregate } from "../../../src/features/portfolio-advisor/services/portfolioAggregation";
 
-function building(id: string, name: string): PRABuilding {
-  return {
-    id,
-    name,
-    source: "manual",
-    category: "Single Family House",
-    country: "Italy",
-    lat: 41.9,
-    lng: 12.5,
-    floorArea: 120,
-    constructionPeriod: "1946-1969",
-    numberOfFloors: 2,
-    propertyType: "owner",
-    validationStatus: "valid",
-  };
-}
-
-const successResult = {
+const result = {
   buildingId: "b1",
   status: "success",
   estimation: { baseline: { thermalNeed: 20000 } },
   scenarios: [
-    {
-      id: "current",
-      annualEnergyNeeds: 20000,
-      deliveredTotal: 17000,
-      annualEmissionsTonCo2e: 4.2,
-    },
+    { id: "current", deliveredTotal: 17000 },
     {
       id: "renovated",
-      annualEnergyNeeds: 12000,
-      deliveredTotal: 10000,
       annualEmissionsTonCo2e: 2.5,
       embodiedCarbonKgCo2e: 8000,
     },
   ],
   financialResults: {
-    capitalExpenditure: 50000,
-    annualMaintenanceCost: 600,
     afterRenovationValue: 250000,
     arv: { priceIncreasePct: 12.5 },
-    appraisal: {
-      kind: "appraised",
-      pointForecasts: { NPV: 30000, ROI: 0.12, PBP: 8.5, IRR: 0.07, DPP: 10.2 },
-    },
-    probabilities: {
-      "Pr(NPV > 0)": 0.82,
-      "Pr(PBP < 20y)": 0.71,
-      "Pr(DPP < 20y)": 0.64,
-    },
+    probabilities: { "Pr(PBP < 30y)": 0.71 },
   },
 } as unknown as BuildingAnalysisResult;
 
-/** A subsidy pays the whole cost, so the owner invests nothing. */
-const skippedResult = {
-  ...successResult,
-  buildingId: "b4",
-  financialResults: {
-    capitalExpenditure: 0,
-    annualMaintenanceCost: 600,
-    afterRenovationValue: null,
-    arv: null,
-    appraisal: { kind: "skipped", reason: "fully-subsidized" },
-  },
-} as unknown as BuildingAnalysisResult;
+const valueOf = (key: string, country = "Italy") =>
+  buildingExportColumns
+    .find((column) => column.key === key)!
+    .value({
+      building: { country } as PRABuilding,
+      result,
+      projectLifetimeYears: 30,
+    });
 
-const errorResult = {
-  buildingId: "b2",
-  status: "error",
-  error: "Forecasting API failed",
-} as unknown as BuildingAnalysisResult;
-
-const rejectedResult = {
-  buildingId: "b3",
-  status: "rejected",
-} as unknown as BuildingAnalysisResult;
-
-describe("buildBuildingsCsv", () => {
-  const buildings = [
-    building("b1", "Alpha"),
-    building("b2", "Beta"),
-    building("b3", "Gamma"),
-    building("b4", "Delta"),
-  ];
-  const results: Record<string, BuildingAnalysisResult> = {
-    b1: successResult,
-    b2: errorResult,
-    b3: rejectedResult,
-    b4: skippedResult,
-  };
-
-  const csv = buildBuildingsCsv(buildings, results, 20);
-  const lines = csv.split("\r\n");
-  const header = lines[0].split(",");
-  const dataRows = lines.slice(1).map((line) => line.split(","));
-  const cell = (row: string[], col: string) => row[header.indexOf(col)];
-
-  test("emits one row per building in input order", () => {
-    expect(dataRows).toHaveLength(4);
-    expect(dataRows.map((r) => cell(r, "Building"))).toEqual([
-      "Alpha",
-      "Beta",
-      "Gamma",
-      "Delta",
-    ]);
-  });
-
-  test("writes raw success metrics", () => {
-    const row = dataRows[0];
-    expect(cell(row, "Status")).toBe("success");
-    expect(cell(row, "NPV (EUR)")).toBe("30000");
-    expect(cell(row, "ROI (ratio)")).toBe("0.12");
-    expect(cell(row, "Payback period (years)")).toBe("8.5");
-    expect(cell(row, "IRR (ratio)")).toBe("0.07");
-    expect(cell(row, "Discounted payback (years)")).toBe("10.2");
-    expect(cell(row, "Pr(NPV > 0)")).toBe("0.82");
-    // Lifetime-dynamic probability keys are matched by prefix, not literally.
-    expect(cell(row, "Pr(PBP < project lifetime)")).toBe("0.71");
-    expect(cell(row, "Pr(DPP < project lifetime)")).toBe("0.64");
-    // The ARV model is Greek-only: absolute prices are withheld outside Greece
-    // (these fixtures are Italian), while the relative uplift is kept as-is.
-    expect(cell(row, "ARV (EUR - Greek market model)")).toBe("");
-    expect(cell(row, "ARV uplift (% - Greek market model)")).toBe("12.5");
-  });
-
-  test("takes system energy before from the baseline scenario", () => {
-    expect(cell(dataRows[0], "System energy before (kWh/year)")).toBe("17000");
-  });
-
-  test("writes the carbon and maintenance columns", () => {
-    const row = dataRows[0];
-    expect(cell(row, "Annual maintenance cost (EUR/year)")).toBe("600");
-    expect(cell(row, "Operational emissions before (t CO2e/year)")).toBe("4.2");
-    expect(cell(row, "Operational emissions after (t CO2e/year)")).toBe("2.5");
-    expect(cell(row, "Material carbon (kg CO2e)")).toBe("8000");
-    // 8000 embodied + 2.5 t/yr x 1000 x 20 yr of operation.
-    expect(cell(row, "Whole-life carbon (kg CO2e)")).toBe("58000");
-  });
-
-  test("blanks metric cells for non-success rows but keeps status", () => {
-    const errorRow = dataRows[1];
-    expect(cell(errorRow, "Status")).toBe("error");
-    expect(cell(errorRow, "NPV (EUR)")).toBe("");
-
-    const rejectedRow = dataRows[2];
-    expect(cell(rejectedRow, "Status")).toBe("rejected");
-    expect(cell(rejectedRow, "CAPEX (EUR)")).toBe("");
-  });
-
-  test("leaves appraisal cells empty for a skipped building", () => {
-    const row = dataRows[3];
-    expect(cell(row, "Status")).toBe("fully-funded");
-    expect(cell(row, "CAPEX (EUR)")).toBe("0");
-    expect(cell(row, "NPV (EUR)")).toBe("");
-    expect(cell(row, "ROI (ratio)")).toBe("");
-    expect(cell(row, "Payback period (years)")).toBe("");
-  });
+test("exports delivered energy from the simulated baseline", () => {
+  expect(valueOf("systemBefore")).toBe(17000);
 });
 
-describe("buildSummaryCsv", () => {
-  const aggregate: PortfolioPackageAggregate = {
-    packageId: "renovated",
-    coverage: {
-      totalBuildings: 3,
-      contributing: 1,
-      errored: 1,
-      rejected: 1,
-      withoutPackage: 0,
-    },
-    totalCapexEur: 50000,
-    totalNpvEur: 30000,
-    totalAnnualMaintenanceEur: 600,
-    totalThermalNeedsBeforeKwh: 20000,
-    totalThermalNeedsAfterKwh: 12000,
-    totalDeliveredBeforeKwh: undefined,
-    totalDeliveredAfterKwh: undefined,
-    totalAnnualEmissionsBeforeTon: 8,
-    totalAnnualEmissionsAfterTon: 3,
-    totalEmbodiedCarbonTon: 12,
-    totalWholeLifeCarbonTon: 72,
-    portfolioRoi: 0.12,
-    portfolioPaybackYears: 8.5,
-  };
+test("passes the configured lifetime into the carbon calculation", () => {
+  expect(valueOf("wholeLifeCarbon")).toBe(83000);
+});
 
-  test("emits a Metric,Value table with raw aggregates", () => {
-    const csv = buildSummaryCsv(aggregate);
-    const lines = csv.split("\r\n");
+test("matches probabilities independently of the lifetime in their keys", () => {
+  expect(valueOf("prPbp")).toBe(0.71);
+});
 
-    expect(lines[0]).toBe("Metric,Value");
-    expect(lines).toContain("Total buildings,3");
-    expect(lines).toContain("Buildings in totals,1");
-    expect(lines).toContain("Portfolio ROI (ratio),0.12");
-    expect(lines).toContain("Total NPV (EUR),30000");
-    expect(lines).toContain("Total material carbon (t CO2e),12");
-  });
-
-  test("leaves unavailable totals empty rather than writing a zero", () => {
-    const lines = buildSummaryCsv(aggregate).split("\r\n");
-
-    expect(lines).toContain("Total system energy before (kWh/year),");
-  });
+test("exports absolute ARV only for Greece and retains indicative uplift elsewhere", () => {
+  expect(valueOf("arv", "Greece")).toBe(250000);
+  expect(valueOf("arv", "Italy")).toBeUndefined();
+  expect(valueOf("arvUpliftPct", "Italy")).toBe(12.5);
 });

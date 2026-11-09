@@ -10,7 +10,10 @@ import { Accordion, Stack, Text, ThemeIcon } from "@mantine/core";
 import { IconChartBar, IconInfoCircle } from "@tabler/icons-react";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
 import { formatNumber } from "../../../../utils/formatters";
-import { relifeConcepts } from "../../../../constants/relifeConcepts";
+import {
+  prefixedConceptLabel,
+  relifeConcepts,
+} from "../../../../constants/relifeConcepts";
 import { RSE_PACKAGES } from "../../services/rsePackageCatalog";
 import type { RSERankingResult } from "../../types";
 import {
@@ -45,7 +48,12 @@ export function ScoreCompositionChart({
   }));
   const series = componentKeys.map((key, index) => ({
     name: key,
-    label: SCORE_COMPONENT_META[key]?.label ?? key,
+    label: SCORE_COMPONENT_META[key]
+      ? prefixedConceptLabel(
+          SCORE_COMPONENT_META[key].conceptId,
+          SCORE_COMPONENT_META[key].prefix,
+        )
+      : key,
     color: SERIES_COLORS[index % SERIES_COLORS.length],
   }));
 

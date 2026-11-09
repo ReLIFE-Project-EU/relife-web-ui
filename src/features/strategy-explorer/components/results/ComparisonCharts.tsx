@@ -9,6 +9,7 @@ import { SimpleGrid, Text } from "@mantine/core";
 import { IconCash, IconChartBar } from "@tabler/icons-react";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
 import {
+  prefixedConceptLabel,
   relifeConcepts,
   type ConceptId,
 } from "../../../../constants/relifeConcepts";
@@ -108,7 +109,12 @@ export function ComparisonCharts({
       >
         <div className={classes.chartCardHead}>
           <IconCash size={16} />
-          <h3>Investment{hasNpv ? " vs aggregate NPV" : ""}</h3>
+          <h3>
+            {prefixedConceptLabel("investment", "Total")}
+            {hasNpv
+              ? ` vs ${prefixedConceptLabel("npv", "Total").toLowerCase()}`
+              : ""}
+          </h3>
           <ConceptExplainer conceptId={hasNpv ? "npv" : "investment"} />
         </div>
         <Text size="xs" c="dimmed" mb="md">
@@ -122,9 +128,19 @@ export function ComparisonCharts({
           dataKey="package"
           orientation="vertical"
           series={[
-            { name: "investment", label: "Investment", color: "gray.6" },
+            {
+              name: "investment",
+              label: prefixedConceptLabel("investment", "Total"),
+              color: "gray.6",
+            },
             ...(hasNpv
-              ? [{ name: "npv", label: "Aggregate NPV", color: "relife.6" }]
+              ? [
+                  {
+                    name: "npv",
+                    label: prefixedConceptLabel("npv", "Total"),
+                    color: "relife.6",
+                  },
+                ]
               : []),
           ]}
           withLegend

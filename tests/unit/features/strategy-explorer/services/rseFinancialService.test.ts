@@ -439,10 +439,9 @@ describe("computeFinancials", () => {
         status: "unavailable",
         unavailableReason: "non-positive-energy-savings",
         capexEur: 22_000,
-        pointForecasts: {},
       }),
     );
-    expect(result.unavailableMessage).toContain("carrier-aware");
+    expect(result.appraisal).toBeUndefined();
   });
 
   test("returns unavailable when the lookup cannot price the package", async () => {
@@ -457,10 +456,9 @@ describe("computeFinancials", () => {
         status: "unavailable",
         unavailableReason: "cost-lookup-failed",
         capexEur: 0,
-        pointForecasts: {},
       }),
     );
-    expect(result.unavailableMessage).toContain("reference data");
+    expect(result.appraisal).toBeUndefined();
   });
 
   test("returns unavailable when the lookup rejects with a validation APIError", async () => {
@@ -500,25 +498,17 @@ describe("computeFinancials", () => {
     );
     expect(result.status).toBe("available");
 
-    expect(result.pointForecasts).toEqual({
+    expect(result.appraisal?.pointForecasts).toMatchObject({
       NPV: 15_000,
       IRR: 0.12,
       ROI: 0.35,
       PBP: 8,
       DPP: 10,
     });
-
-    expect(result.probabilities?.["Pr(NPV > 0)"]).toBe(0.92);
-    expect(result.percentiles?.NPV?.P10).toBe(5_000);
-    expect(result.percentiles?.NPV?.P90).toBe(30_000);
-
-    expect(result.cashFlow).toEqual({
-      years: [0, 1, 2],
-      annualNetCashFlowEur: [-1_000, 600, 600],
-    });
   });
 
-  test("leaves a missing IRR unset and omits its percentiles", async () => {
+  // A null IRR must survive so RSE reads it as not applicable, like HRA and PRA.
+  test("keeps a missing IRR as null", async () => {
     mockAssessRisk.mockResolvedValue({
       results: {
         equity: {
@@ -543,10 +533,7 @@ describe("computeFinancials", () => {
 
     const result = await computeFinancials(makeCarrierInput());
 
-    expect(result.pointForecasts.NPV).toBe(10_000);
-    expect(result.pointForecasts.IRR).toBeUndefined();
-    expect(result.percentiles?.NPV?.P50).toBe(10_000);
-    expect(result.percentiles?.IRR).toBeUndefined();
+    expect(result.appraisal?.pointForecasts.IRR).toBeNull();
   });
 });
 

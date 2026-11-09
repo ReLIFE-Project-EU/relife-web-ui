@@ -45,9 +45,15 @@ export function resolveSavingsAvailability(
   return skipReasonAvailability(financials.appraisal.reason);
 }
 
+/** The states a skipped appraisal can be in. */
+export type SkippedAvailability = Exclude<
+  SavingsAvailability,
+  "appraised" | "unknown"
+>;
+
 export function skipReasonAvailability(
   reason: AppraisalSkipReason,
-): SavingsAvailability {
+): SkippedAvailability {
   switch (reason) {
     case "fully-subsidized":
       return "fully-funded";

@@ -19,10 +19,20 @@ import {
 import type { ComponentType } from "react";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
 import {
+  relifeConcepts,
+  type ConceptId,
+} from "../../../../constants/relifeConcepts";
+import { ReadingText } from "../../../../components/shared/ReadingText";
+import {
+  readMetric,
+  readRange,
+  readingText,
+  type Reading,
+} from "../../../../services/appraisalReadout";
+import {
   appraisedFigures,
   resolveSavingsAvailability,
   savingsAvailabilityExplanation,
-  savingsAvailabilityLabel,
   type SavingsAvailability,
 } from "../../../../services/savingsState";
 import type {
@@ -32,14 +42,7 @@ import type {
   ScenarioId,
 } from "../../context/types";
 import type { MCDAPersona } from "../../../../services/types";
-import {
-  formatApproxCurrency,
-  formatCurrency,
-  formatNumber,
-  formatPaybackYears,
-  formatYears,
-  isPaybackBeyondHorizon,
-} from "../../utils/formatters";
+import { formatCurrency, formatNumber } from "../../utils/formatters";
 import classes from "./ResultsLayout.module.css";
 import shared from "../../../../components/shared/ResultsLayout.module.css";
 import { ScenDot, ScoreBar } from "./resultsAtoms";
@@ -81,8 +84,9 @@ export function RecommendationHero({
 }: RecommendationHeroProps) {
   const winner = getWinner(renovationScenarios, ranking);
   const winnerResult = winner ? financialResults[winner.id] : undefined;
-  const winnerAppraisal = appraisedFigures(winnerResult);
-  const winnerPbp = winnerAppraisal?.pointForecasts.PBP;
+  const winnerAppraisal = winnerResult?.appraisal;
+  const winnerBenefit = readMetric(winnerAppraisal, "MonthlyAvgSavings");
+  const paybackRange = readRange(winnerAppraisal, "PBP");
   const personaLabel =
     personas.find((p) => p.id === selectedPersona)?.name ?? "your priorities";
   const savings = resolveSavingsState(currentScenario, winner, winnerResult);
@@ -141,6 +145,7 @@ export function RecommendationHero({
                   current={currentScenario}
                   winner={winner}
                   result={winnerResult}
+                  benefit={winnerBenefit}
                   savings={savings}
                 />
               </div>
@@ -148,26 +153,28 @@ export function RecommendationHero({
               <div className={classes.recoMetrics}>
                 <Metric
                   icon={<IconCoin size={14} />}
-                  label="Yearly savings"
-                  value={savingsTileValue(savings)}
-                  hint={savingsTileHint(savings)}
+                  conceptId="monthly-cash-benefit"
+                  value={
+                    <ReadingText reading={winnerBenefit} style="headline" />
+                  }
+                  hint={
+                    winnerBenefit.kind === "value"
+                      ? "roughly, after running costs"
+                      : undefined
+                  }
                 />
                 <Metric
                   icon={<IconClockHour3 size={14} />}
-                  label="Payback period"
+                  conceptId="payback-period"
                   value={
-                    winnerPbp !== undefined
-                      ? formatPaybackYears(
-                          // Rounded for the headline; the deep-dive keeps the
-                          // exact figure. Censoring is handled downstream.
-                          // Under half a year stays unrounded: 0 means no
-                          // upfront investment.
-                          Math.round(winnerPbp) || winnerPbp,
-                          winnerAppraisal?.metadata.project_lifetime,
-                        )
-                      : "—"
+                    <ReadingText
+                      reading={readMetric(winnerAppraisal, "PBP")}
+                      style="headline"
+                    />
                   }
-                  hint={paybackRangeHint(winnerResult)}
+                  hint={
+                    paybackRange ? `P10–P90: ${paybackRange.text}` : undefined
+                  }
                 />
               </div>
 
@@ -321,17 +328,18 @@ export function RecommendationHero({
 
 interface MetricProps {
   icon: React.ReactNode;
-  label: string;
-  value: string;
+  conceptId: ConceptId;
+  value: React.ReactNode;
   hint?: string;
 }
 
-function Metric({ icon, label, value, hint }: MetricProps) {
+function Metric({ icon, conceptId, value, hint }: MetricProps) {
   return (
     <div className={shared.recoMetric}>
       <div className={shared.metricLabel}>
         {icon}
-        {label}
+        {relifeConcepts[conceptId].label}
+        <ConceptExplainer conceptId={conceptId} />
       </div>
       <div className={shared.metricValue}>{value}</div>
       {hint ? <div className={shared.metricHint}>{hint}</div> : null}
@@ -352,25 +360,9 @@ function RecoSkeleton() {
   );
 }
 
-function paybackRangeHint(result: FinancialResults | undefined): string {
-  const appraised = appraisedFigures(result);
-  const p10 = appraised?.percentiles?.PBP?.P10;
-  const p90 = appraised?.percentiles?.PBP?.P90;
-  if (p10 === undefined || p90 === undefined) return "";
-  const lifetime = appraised?.metadata.project_lifetime;
-  const p90Label = isPaybackBeyondHorizon(p90, lifetime)
-    ? `>${formatNumber(lifetime ?? p90)}`
-    : formatNumber(p90);
-  return `P10–P90: ${formatNumber(p10)}–${p90Label} yr`;
-}
-
-/**
- * How the yearly-savings figure should be presented. Distinguishing these
- * states is what keeps an unpriceable or unprofitable package from rendering
- * as a bare, unexplained "€0".
- */
+/** Which sentence explains the package's money, so no package reads as a bare "€0". */
 type SavingsState =
-  | { kind: "ok"; yearlyEur: number; monthlyEur: number }
+  | { kind: "ok" }
   | { kind: "unprofitable" }
   /** Every reason the shared classifier gives for not appraising at all. */
   | { kind: Exclude<SavingsAvailability, "appraised"> };
@@ -394,58 +386,31 @@ function resolveSavingsState(
   if (monthlyEur === undefined) return { kind: "unknown" };
   if (monthlyEur <= 0) return { kind: "unprofitable" };
 
-  return { kind: "ok", yearlyEur: monthlyEur * 12, monthlyEur };
-}
-
-function savingsTileValue(savings: SavingsState): string {
-  switch (savings.kind) {
-    case "ok":
-      return `${formatApproxCurrency(savings.yearlyEur)}/yr`;
-    case "unprofitable":
-    case "no-savings":
-      return "No net saving";
-    case "fully-funded":
-      return "Fully funded";
-    case "not-priceable":
-      return "Not available";
-    case "unknown":
-      return "—";
-  }
-}
-
-function savingsTileHint(savings: SavingsState): string {
-  switch (savings.kind) {
-    case "ok":
-      return "roughly, after running costs";
-    case "unprofitable":
-      return "costs more to run and repay than it saves";
-    case "no-savings":
-      return savingsAvailabilityLabel["no-savings"];
-    case "fully-funded":
-      return "a grant covers the whole cost, so there is nothing to pay back";
-    case "not-priceable":
-      return "we could not work out this package's running costs";
-    case "unknown":
-      return "";
-  }
+  return { kind: "ok" };
 }
 
 interface SavingsCopyProps {
   current: RenovationScenario;
   winner: RenovationScenario;
   result: FinancialResults | undefined;
+  benefit: Reading;
   savings: SavingsState;
 }
 
-function SavingsCopy({ current, winner, result, savings }: SavingsCopyProps) {
+function SavingsCopy({
+  current,
+  winner,
+  result,
+  benefit,
+  savings,
+}: SavingsCopyProps) {
   const thermalNeedsChangePct =
     current.annualEnergyNeeds > 0
       ? ((winner.annualEnergyNeeds - current.annualEnergyNeeds) /
           current.annualEnergyNeeds) *
         100
       : null;
-  const appraised = appraisedFigures(result);
-  const pbp = appraised?.pointForecasts.PBP;
+  const payback = readMetric(result?.appraisal, "PBP");
 
   if (savings.kind === "not-priceable") {
     return (
@@ -481,23 +446,20 @@ function SavingsCopy({ current, winner, result, savings }: SavingsCopyProps) {
       {formatThermalNeedsChange(thermalNeedsChangePct)}
       {savings.kind === "unprofitable" ? (
         <>
-          , but <b>does not pay for itself</b> over the project horizon
+          , but <b>does not pay for itself</b> over the project lifetime
         </>
-      ) : pbp !== undefined && pbp !== 0 ? (
-        isPaybackBeyondHorizon(pbp, appraised?.metadata.project_lifetime) ? (
-          <>
-            , does <b>not pay back within the project horizon</b>
-          </>
-        ) : (
-          <>
-            , pays back in <b>{formatYears(pbp)}</b>
-          </>
-        )
+      ) : payback.kind === "over-lifetime" ? (
+        <>
+          , does <b>not pay back within the project lifetime</b>
+        </>
+      ) : payback.kind === "value" ? (
+        <>
+          , pays back in <b>{readingText(payback)}</b>
+        </>
       ) : null}
       {savings.kind === "ok" ? (
         <>
-          , with a modeled cash benefit of{" "}
-          <b>{formatCurrency(savings.monthlyEur)}/mo</b>
+          , with a modeled cash benefit of <b>{readingText(benefit)}</b>
         </>
       ) : null}
       .

@@ -8,6 +8,10 @@
  * new-shape mapping lives in exactly one place.
  */
 
+import {
+  financialMetricConceptIds,
+  relifeConcepts,
+} from "../constants/relifeConcepts";
 import type {
   RiskAssessmentResponse,
   SchemeInput,
@@ -32,13 +36,11 @@ const RISK_INDICATORS: FinancialRiskIndicator[] = [
   "DPP",
 ];
 
-const INDICATOR_AXIS_LABELS: Record<FinancialRiskIndicator, string> = {
-  NPV: "Net present value (EUR)",
-  IRR: "Internal rate of return",
-  ROI: "Return on investment",
-  PBP: "Payback period (years)",
-  DPP: "Discounted payback (years)",
-};
+/** Histogram x-axis title: the indicator's shared name and display unit. */
+function indicatorAxisLabel(indicator: FinancialRiskIndicator): string {
+  const concept = relifeConcepts[financialMetricConceptIds[indicator]];
+  return `${concept.label} (${concept.unit})`;
+}
 
 /** The scheme types the frontend currently emits. */
 export type EmittedSchemeType = "equity" | "bank_loan";
@@ -181,7 +183,7 @@ function mapChartMetadata(
         P90: h.p90,
       },
       chart_config: {
-        xlabel: INDICATOR_AXIS_LABELS[indicator],
+        xlabel: indicatorAxisLabel(indicator),
         ylabel: "Frequency",
       },
     };
