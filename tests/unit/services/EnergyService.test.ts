@@ -9,25 +9,20 @@ import type {
 
 // ── Mock setup ──────────────────────────────────────────────────────────────
 
-const { mockListArchetypes, mockSimulateECM, mockValidateCustomBuilding } =
-  vi.hoisted(() => ({
-    mockListArchetypes: vi.fn(),
-    mockSimulateECM: vi.fn(),
-    mockValidateCustomBuilding: vi.fn(),
-  }));
+const { mockSimulateECM, mockValidateCustomBuilding } = vi.hoisted(() => ({
+  mockSimulateECM: vi.fn(),
+  mockValidateCustomBuilding: vi.fn(),
+}));
 
 vi.mock("../../../src/api", () => ({
   forecasting: {
-    listArchetypes: mockListArchetypes,
     simulateECM: mockSimulateECM,
     validateCustomBuilding: mockValidateCustomBuilding,
   },
 }));
 
-import {
-  EnergyService,
-  ArchetypeNotAvailableError,
-} from "../../../src/services/EnergyService";
+import { EnergyService } from "../../../src/services/EnergyService";
+import { validateEstimation } from "../../../src/services/estimationValidation";
 import { simulatedFloorArea } from "../../../src/services/simulatedBuilding";
 import { surfaceAreasFromBui } from "../../../src/utils/archetypeModifier";
 
@@ -215,7 +210,9 @@ describe("EnergyService", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockListArchetypes.mockResolvedValue(archetypeList);
+    (
+      mockBuildingService.getArchetypes as ReturnType<typeof vi.fn>
+    ).mockResolvedValue(archetypeList);
     mockSimulateECM.mockResolvedValue(stubEcmResponse);
     (
       mockBuildingService.getArchetypeDetails as ReturnType<typeof vi.fn>
@@ -434,88 +431,30 @@ describe("EnergyService", () => {
     );
   });
 
-  test("findMatchingArchetype climate fallback: Spain resolves to Greek archetype via mediterranean region", async () => {
-    const spanishBuilding: BuildingInfo = {
+  test("a building with no archetype in its country gets another country's, at low confidence", async () => {
+    const norwegianBuilding: BuildingInfo = {
       ...unmodifiedBuilding,
-      country: "Spain",
+      country: "Norway",
       selectedArchetype: undefined,
     };
+    (
+      mockBuildingService.findMatchingArchetype as ReturnType<typeof vi.fn>
+    ).mockResolvedValue({
+      archetype: archetypeList[0],
+      scoreBreakdown: { countryScore: 0, periodScore: 1 },
+    });
 
-    const estimation = await service.estimateEPC(spanishBuilding);
+    const estimation = await service.estimateEPC(norwegianBuilding);
 
-    expect(mockSimulateECM).toHaveBeenCalledWith(
-      expect.objectContaining({
-        country: "Greece",
-        category: "SFH",
-        name: "GR_SFH_1961_1980",
-      }),
+    expect(mockBuildingService.findMatchingArchetype).toHaveBeenCalledWith(
+      "SFH",
+      "1961-1980",
+      { lat: norwegianBuilding.lat, lng: norwegianBuilding.lng },
+      "Norway",
     );
-    expect(estimation).toBeDefined();
-  });
-
-  test("findMatchingArchetype normalizes country aliases before exact matching", async () => {
-    const czechBuilding: BuildingInfo = {
-      ...unmodifiedBuilding,
-      country: "Czech Republic",
-      selectedArchetype: undefined,
-    };
-
-    await service.estimateEPC(czechBuilding);
-
-    expect(mockSimulateECM).toHaveBeenCalledWith(
-      expect.objectContaining({
-        country: "Czechia",
-        category: "SFH",
-        name: "CZ_SFH_1961_1980",
-      }),
-    );
-  });
-
-  test("findMatchingArchetype selects the exact period among hyphenated-period archetypes", async () => {
-    mockListArchetypes.mockResolvedValue([
-      {
-        category: "Apartment buildings",
-        country: "Austria",
-        name: "AT_AB_0-1945",
-      },
-      {
-        category: "Apartment buildings",
-        country: "Austria",
-        name: "AT_AB_2011-now",
-      },
-    ]);
-
-    const austrianBuilding: BuildingInfo = {
-      ...unmodifiedBuilding,
-      country: "Austria",
-      buildingType: "Apartment buildings",
-      constructionPeriod: "2011-now",
-      selectedArchetype: undefined,
-    };
-
-    await service.estimateEPC(austrianBuilding);
-
-    // The 0-1945 archetype comes first, so getting 2011-now proves the match
-    // was period-aware (EXACT_FULL) rather than first-in-country fallback.
-    expect(mockSimulateECM).toHaveBeenCalledWith(
-      expect.objectContaining({
-        country: "Austria",
-        category: "Apartment buildings",
-        name: "AT_AB_2011-now",
-      }),
-    );
-  });
-
-  test("findMatchingArchetype throws ArchetypeNotAvailableError when no match at all", async () => {
-    const unmatchedBuilding: BuildingInfo = {
-      ...unmodifiedBuilding,
-      country: "Japan",
-      buildingType: "SFH",
-      selectedArchetype: undefined,
-    };
-
-    await expect(service.estimateEPC(unmatchedBuilding)).rejects.toThrow(
-      ArchetypeNotAvailableError,
+    expect(estimation.matchStrategy).toBe("other-country");
+    expect(validateEstimation(estimation, norwegianBuilding).level).toBe(
+      "low-confidence",
     );
   });
 });

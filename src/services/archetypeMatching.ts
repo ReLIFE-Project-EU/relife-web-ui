@@ -16,12 +16,8 @@ export const ArchetypeMatchStrategy = {
   EXACT_FULL: "exact-full",
   /** Same country and same category, but different construction period. */
   EXACT_CATEGORY_PERIOD_MISMATCH: "exact-category-period-mismatch",
-  /** Same country, but a different building category. */
-  COUNTRY_ANY_CATEGORY: "country-any-category",
-  /** A different country in the same climate region, same category. */
-  REGION_CATEGORY_MATCH: "region-category-match",
-  /** A different country in the same climate region, any category. */
-  REGION_ANY_MATCH: "region-any-match",
+  /** No archetype in the country; the nearest one of the same category. */
+  OTHER_COUNTRY: "other-country",
   /** User-selected archetype was not present in the live catalogue. */
   SELECTED_NOT_FOUND: "selected-not-found",
 } as const;

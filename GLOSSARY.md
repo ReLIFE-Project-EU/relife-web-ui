@@ -12,6 +12,10 @@ _Avoid_: template, reference building
 A copy of an archetype with the user's changes to geometry, insulation or setpoints applied before simulation.
 _Avoid_: custom building, modified BUI
 
+**Archetype match**:
+How a building got its archetype: the user picked it, or the tool selected the nearest one by country, category and construction period.
+_Avoid_: match strategy, match quality
+
 **Simulated building**:
 The building Forecasting actually ran (an archetype or an adjusted archetype), together with the modeled home it stands for.
 _Avoid_: estimation building, archetype geometry

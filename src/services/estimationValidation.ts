@@ -66,26 +66,12 @@ const STRATEGY_RULES: Record<ArchetypeMatchStrategy, StrategyRule> = {
     remediation: (country, category, period) =>
       `No archetype exists for ${category}${period ? ` (${period})` : ""} in ${country}; an archetype from a different construction period was used.`,
   },
-  [ArchetypeMatchStrategy.COUNTRY_ANY_CATEGORY]: {
-    level: "unusable",
-    message:
-      "No archetype of the requested category was available; a different category in the same country was substituted.",
-    remediation: (country, category, period) =>
-      `No ${country} ${category} archetype is available${period ? ` (${period})` : ""}. Provide a custom building, change the building category, or remove this building from the portfolio.`,
-  },
-  [ArchetypeMatchStrategy.REGION_CATEGORY_MATCH]: {
+  [ArchetypeMatchStrategy.OTHER_COUNTRY]: {
     level: "low-confidence",
     message:
-      "No archetype was available in the requested country; a matching category from a climate-region neighbour was substituted.",
+      "No archetype was available in the requested country; the nearest one of the same category was substituted.",
     remediation: (country) =>
-      `No ${country} archetype matches this building. The estimate uses a climate-region neighbour and may be less representative.`,
-  },
-  [ArchetypeMatchStrategy.REGION_ANY_MATCH]: {
-    level: "unusable",
-    message:
-      "No archetype was available in the requested country or category; an arbitrary archetype from a climate-region neighbour was substituted.",
-    remediation: (country, category, period) =>
-      `No ${country} ${category} archetype is available${period ? ` (${period})` : ""}. Provide a custom building, change the building category, or remove this building from the portfolio.`,
+      `No ${country} archetype matches this building. The estimate uses an archetype from another country and may be less representative.`,
   },
   [ArchetypeMatchStrategy.SELECTED_NOT_FOUND]: {
     level: "unusable",

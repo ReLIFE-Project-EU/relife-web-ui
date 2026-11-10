@@ -224,7 +224,7 @@ Read the `EnergyService` implementation:
 
 Answer these questions by reading the code (not assuming):
 
-- How is the archetype resolved? Is there a fallback chain (selected → matching → climate region)?
+- How is the archetype resolved? Is there a fallback chain (selected → nearest match)?
 - What building parameters are sent to the Forecasting API?
 - How is the area scale factor computed? What is the ratio?
 - Which energy values are scaled by this factor, and which are not?

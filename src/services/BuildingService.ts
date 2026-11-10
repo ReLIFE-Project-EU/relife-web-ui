@@ -222,16 +222,16 @@ export class BuildingService implements IBuildingService {
     category: string,
     period?: string | null,
     coords?: { lat: number; lng: number } | null,
+    country?: string | null,
   ): Promise<ArchetypeMatchResult | null> {
     const allArchetypes = await this.getArchetypes();
     const archetypes = allArchetypes.filter((a) => a.category === category);
 
     if (archetypes.length === 0) return null;
 
-    // Detect user's country from coordinates
-    const detectedCountry = coords
-      ? detectCountry(coords, calculateDistance)
-      : null;
+    // A stated country decides; otherwise detect it from the coordinates.
+    const detectedCountry =
+      country || (coords ? detectCountry(coords, calculateDistance) : null);
 
     // Score all candidates
     const scored = archetypes.map((archetype) => {

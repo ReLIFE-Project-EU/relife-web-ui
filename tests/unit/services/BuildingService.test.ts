@@ -297,6 +297,21 @@ describe("BuildingService", () => {
     expect(result!.scoreBreakdown.countryScore).toBe(1.0);
   });
 
+  test("findMatchingArchetype lets a stated country decide over the coordinates", async () => {
+    mockListArchetypes.mockResolvedValue(archetypeList);
+
+    // Coords near Rome, but the building states Greece.
+    const result = await service.findMatchingArchetype(
+      "SFH",
+      "1961-1980",
+      { lat: 41.9, lng: 12.5 },
+      "Greece",
+    );
+
+    expect(result!.archetype.country).toBe("Greece");
+    expect(result!.scoreBreakdown.countryScore).toBe(1.0);
+  });
+
   test("detectCountryFromCoords returns null outside supported EU polygons", () => {
     expect(
       service.detectCountryFromCoords({

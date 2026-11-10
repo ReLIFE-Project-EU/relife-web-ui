@@ -41,11 +41,9 @@ import {
   surfaceAreasFromBui,
   validateModifications,
 } from "../utils/archetypeModifier";
-import { countryNamesEqual, normalizeCountryName } from "../utils/countries";
-import { normalizeConstructionPeriod } from "../utils/apiMappings";
+import { countryNamesEqual } from "../utils/countries";
 import { auditLog, type AuditCtx } from "../utils/auditLogger";
 import { ArchetypeMatchStrategy } from "./archetypeMatching";
-import { extractArchetypePeriod } from "../utils/archetypePeriod";
 
 interface ResolvedArchetype {
   archetype: ArchetypeInfo;
@@ -90,59 +88,6 @@ export class APIResponseError extends Error {
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Climate regions for fallback archetype matching
- * Countries grouped by similar climate characteristics
- */
-const CLIMATE_REGIONS: Record<string, string[]> = {
-  mediterranean: [
-    "Greece",
-    "Italy",
-    "Spain",
-    "Portugal",
-    "Croatia",
-    "Cyprus",
-    "Malta",
-  ],
-  central: [
-    "Germany",
-    "Austria",
-    "Netherlands",
-    "Belgium",
-    "France",
-    "Luxembourg",
-    "Ireland",
-    "Slovenia",
-  ],
-  northern: [
-    "Finland",
-    "Sweden",
-    "Norway",
-    "Denmark",
-    "Estonia",
-    "Latvia",
-    "Lithuania",
-  ],
-  eastern: ["Poland", "Czechia", "Hungary", "Romania", "Slovakia", "Bulgaria"],
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper Functions
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Get the climate region for a country
- */
-function getClimateRegion(country: string): string | null {
-  const normalizedCountry = normalizeCountryName(country) ?? country;
-  for (const [region, countries] of Object.entries(CLIMATE_REGIONS)) {
-    if (countries.includes(normalizedCountry)) {
-      return region;
-    }
-  }
-  return null;
-}
-
 /** Run an ECM simulation with no measures applied and return its baseline scenario. */
 async function simulateEcmBaseline(
   simulated: SimulatedBuilding,
@@ -170,7 +115,6 @@ async function simulateEcmBaseline(
 // ─────────────────────────────────────────────────────────────────────────────
 
 export class EnergyService implements IEnergyService {
-  private archetypesCache: ArchetypeInfo[] | null = null;
   private readonly archetypeSimulationCache = new Map<
     string,
     Promise<ECMScenario>
@@ -181,18 +125,10 @@ export class EnergyService implements IEnergyService {
     this.buildingService = buildingService;
   }
 
-  /**
-   * Fetch and cache available archetypes
-   */
+  /** The catalogue, read through the building service's cache. */
   private async getArchetypes(): Promise<ArchetypeInfo[]> {
-    if (this.archetypesCache) {
-      return this.archetypesCache;
-    }
-
     try {
-      const archetypes = await forecasting.listArchetypes();
-      this.archetypesCache = archetypes;
-      return archetypes;
+      return await this.buildingService.getArchetypes();
     } catch (error) {
       if (error instanceof TypeError && error.message.includes("fetch")) {
         throw new APIConnectionError();
@@ -281,166 +217,52 @@ export class EnergyService implements IEnergyService {
     };
   }
 
-  /**
-   * Find the best matching archetype for the given building.
-   * Only used as a fallback when building.selectedArchetype is not set.
-   *
-   * NOTE: building.country and building.buildingType are expected to contain
-   * API-level values (country name, category name) — not legacy UI codes.
-   *
-   * Matching priority:
-   * 1. Same country + matching category
-   * 2. Same country + any category
-   * 3. Similar climate region + matching category
-   * 4. Error state
-   */
+  /** Auto-match for a building with no selected archetype, by the map rule. */
   private async findMatchingArchetype(
     building: BuildingInfo,
     auditCtx?: AuditCtx,
   ): Promise<ResolvedArchetype> {
-    const archetypes = await this.getArchetypes();
-    const { buildingType } = building;
-    const country = normalizeCountryName(building.country) ?? building.country;
-    const requestedPeriod = normalizeConstructionPeriod(
+    const match = await this.buildingService.findMatchingArchetype(
+      building.buildingType,
       building.constructionPeriod,
+      building.lat !== null && building.lng !== null
+        ? { lat: building.lat, lng: building.lng }
+        : null,
+      building.country,
     );
+    if (!match) {
+      throw new ArchetypeNotAvailableError(
+        building.country,
+        building.buildingType,
+      );
+    }
 
-    // Priority 1: Exact match (country + category). Period-aware: prefer an
-    // archetype whose parsed period matches the requested period; if none does,
-    // fall back to any same-country/same-category archetype but classify the
-    // strategy as EXACT_CATEGORY_PERIOD_MISMATCH so downstream code can surface
-    // the gap.
-    const sameCountryAndCategory = archetypes.filter(
-      (a) =>
-        countryNamesEqual(a.country, country) && a.category === buildingType,
-    );
-    if (sameCountryAndCategory.length > 0) {
-      const periodMatch = requestedPeriod
-        ? sameCountryAndCategory.find(
-            (a) => extractArchetypePeriod(a.name) === requestedPeriod,
-          )
-        : undefined;
-      if (periodMatch) {
-        return {
-          archetype: periodMatch,
-          strategy: ArchetypeMatchStrategy.EXACT_FULL,
-        };
-      }
+    const { countryScore, periodScore } = match.scoreBreakdown;
+    const strategy =
+      countryScore < 1
+        ? ArchetypeMatchStrategy.OTHER_COUNTRY
+        : periodScore < 1
+          ? ArchetypeMatchStrategy.EXACT_CATEGORY_PERIOD_MISMATCH
+          : ArchetypeMatchStrategy.EXACT_FULL;
 
-      const chosen = sameCountryAndCategory[0];
+    if (strategy !== ArchetypeMatchStrategy.EXACT_FULL) {
       auditLog.warn(
         "energy",
         "energy.archetype.fallback",
         {
-          reason: ArchetypeMatchStrategy.EXACT_CATEGORY_PERIOD_MISMATCH,
+          reason: strategy,
           requested: {
-            country,
-            category: buildingType,
-            period: requestedPeriod,
+            country: building.country,
+            category: building.buildingType,
+            period: building.constructionPeriod,
           },
-          chosen: {
-            country: chosen.country,
-            category: chosen.category,
-            name: chosen.name,
-            period: extractArchetypePeriod(chosen.name),
-          },
+          chosen: match.archetype,
         },
         auditCtx,
       );
-      return {
-        archetype: chosen,
-        strategy: ArchetypeMatchStrategy.EXACT_CATEGORY_PERIOD_MISMATCH,
-      };
     }
 
-    // Priority 2: Same country, any category
-    const countryMatch = archetypes.find((a) =>
-      countryNamesEqual(a.country, country),
-    );
-    if (countryMatch) {
-      auditLog.warn(
-        "energy",
-        "energy.archetype.fallback",
-        {
-          reason: ArchetypeMatchStrategy.COUNTRY_ANY_CATEGORY,
-          requested: { country, category: buildingType },
-          chosen: {
-            country: countryMatch.country,
-            category: countryMatch.category,
-            name: countryMatch.name,
-          },
-        },
-        auditCtx,
-      );
-      return {
-        archetype: countryMatch,
-        strategy: ArchetypeMatchStrategy.COUNTRY_ANY_CATEGORY,
-      };
-    }
-
-    // Priority 3: Similar climate region + matching category
-    const userRegion = getClimateRegion(country);
-    if (userRegion) {
-      const regionCountries = CLIMATE_REGIONS[userRegion];
-      const regionMatch = archetypes.find(
-        (a) =>
-          regionCountries.some((regionCountry) =>
-            countryNamesEqual(regionCountry, a.country),
-          ) && a.category === buildingType,
-      );
-      if (regionMatch) {
-        auditLog.warn(
-          "energy",
-          "energy.archetype.fallback",
-          {
-            reason: ArchetypeMatchStrategy.REGION_CATEGORY_MATCH,
-            requested: { country, category: buildingType },
-            chosen: {
-              country: regionMatch.country,
-              category: regionMatch.category,
-              name: regionMatch.name,
-            },
-            region: userRegion,
-          },
-          auditCtx,
-        );
-        return {
-          archetype: regionMatch,
-          strategy: ArchetypeMatchStrategy.REGION_CATEGORY_MATCH,
-        };
-      }
-
-      // Any match in region
-      const anyRegionMatch = archetypes.find((a) =>
-        regionCountries.some((regionCountry) =>
-          countryNamesEqual(regionCountry, a.country),
-        ),
-      );
-      if (anyRegionMatch) {
-        auditLog.warn(
-          "energy",
-          "energy.archetype.fallback",
-          {
-            reason: ArchetypeMatchStrategy.REGION_ANY_MATCH,
-            requested: { country, category: buildingType },
-            chosen: {
-              country: anyRegionMatch.country,
-              category: anyRegionMatch.category,
-              name: anyRegionMatch.name,
-            },
-            region: userRegion,
-          },
-          auditCtx,
-        );
-        return {
-          archetype: anyRegionMatch,
-          strategy: ArchetypeMatchStrategy.REGION_ANY_MATCH,
-        };
-      }
-    }
-
-    // No match found
-    throw new ArchetypeNotAvailableError(country, buildingType);
+    return { archetype: match.archetype, strategy };
   }
 
   private buildEstimationFromSimulation(params: {

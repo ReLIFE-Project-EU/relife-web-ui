@@ -74,29 +74,6 @@ describe("validateEstimation", () => {
     expect(diagnostic.remediation).toBe("");
   });
 
-  test("COUNTRY_ANY_CATEGORY is always unusable", () => {
-    const diagnostic = validate(
-      makeEstimation(ArchetypeMatchStrategy.COUNTRY_ANY_CATEGORY, 4200),
-      makeBuilding({ floorArea: 4200 }),
-    );
-    expect(diagnostic.level).toBe("unusable");
-    expect(diagnostic.reasons[0].code).toBe("strategy");
-    expect(diagnostic.remediation).toContain("Greece");
-    expect(diagnostic.remediation).toContain("Multi family House");
-  });
-
-  test("Athens-shaped 33.6× scale factor is unusable on both axes", () => {
-    const diagnostic = validate(
-      makeEstimation(ArchetypeMatchStrategy.COUNTRY_ANY_CATEGORY, 125),
-      makeBuilding({ floorArea: 4200 }),
-    );
-    expect(diagnostic.level).toBe("unusable");
-    expect(diagnostic.areaScaleFactor).toBeCloseTo(33.6, 5);
-    const codes = diagnostic.reasons.map((r) => r.code);
-    expect(codes).toContain("strategy");
-    expect(codes).toContain("scale");
-  });
-
   test("EXACT_CATEGORY_PERIOD_MISMATCH at 2× scale is low-confidence", () => {
     const diagnostic = validate(
       makeEstimation(
@@ -155,21 +132,5 @@ describe("validateEstimation", () => {
     );
     expect(diagnostic.level).toBe("unusable");
     expect(diagnostic.reasons[0].code).toBe("scale");
-  });
-
-  test("REGION_ANY_MATCH is unusable", () => {
-    const diagnostic = validate(
-      makeEstimation(ArchetypeMatchStrategy.REGION_ANY_MATCH, 4200),
-      makeBuilding({ floorArea: 4200 }),
-    );
-    expect(diagnostic.level).toBe("unusable");
-  });
-
-  test("REGION_CATEGORY_MATCH is low-confidence", () => {
-    const diagnostic = validate(
-      makeEstimation(ArchetypeMatchStrategy.REGION_CATEGORY_MATCH, 4200),
-      makeBuilding({ floorArea: 4200 }),
-    );
-    expect(diagnostic.level).toBe("low-confidence");
   });
 });

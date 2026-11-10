@@ -95,6 +95,7 @@ export interface IBuildingService {
     category: string,
     period?: string | null,
     coords?: { lat: number; lng: number } | null,
+    country?: string | null,
   ): Promise<ArchetypeMatchResult | null>;
 
   /**

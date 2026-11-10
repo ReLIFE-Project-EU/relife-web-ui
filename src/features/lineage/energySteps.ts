@@ -41,9 +41,7 @@ const MATCH_STRATEGY_LABELS: Record<ArchetypeMatchStrategy, string> = {
   "exact-full": "Same country, type and construction period",
   "exact-category-period-mismatch":
     "Same country and type, different construction period",
-  "country-any-category": "Same country, different building type",
-  "region-category-match": "Same climate region in another country, same type",
-  "region-any-match": "Same climate region in another country, any type",
+  "other-country": "Another country, same type and construction period",
   "selected-not-found": "Your pick is not in the catalogue",
 };
 
