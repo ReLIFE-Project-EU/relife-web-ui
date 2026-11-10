@@ -61,7 +61,6 @@ describe("reduceEcmRun", () => {
         carrierBreakdown: { naturalGasKwh: 1600, gridElectricityKwh: 400 },
         primaryEnergy: 2600,
         heatingPrimaryEnergy: 1900,
-        comfortBandIndex: 100,
         dailyMeanOperativeTemperatures: Array(365).fill(22),
       },
     ],

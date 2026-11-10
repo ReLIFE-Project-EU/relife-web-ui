@@ -104,12 +104,6 @@ const mockBuilding: BuildingInfo = {
   numberOfFloors: 2,
   isModified: false,
   projectLifetime: 20,
-  climateZone: "",
-  heatingTechnology: "",
-  coolingTechnology: "",
-  hotWaterTechnology: "",
-  numberOfOpenings: null,
-  glazingTechnology: "",
   constructionYear: null,
   floorNumber: null,
 };
@@ -141,8 +135,6 @@ const mockSimulated: SimulatedBuilding = {
 function estimationFrom(baselineRun: ECMScenario): EstimationResult {
   return {
     baseline: reduceEcmRun(baselineRun, mockSimulated),
-    flexibilityIndex: 50,
-    comfortIndex: 70,
     simulated: mockSimulated,
     matchStrategy: ArchetypeMatchStrategy.EXACT_FULL,
   };

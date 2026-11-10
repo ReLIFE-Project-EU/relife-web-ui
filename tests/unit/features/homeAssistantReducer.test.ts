@@ -150,8 +150,6 @@ describe("homeAssistantReducer package financial inputs", () => {
           label: "Wall Insulation",
           annualEnergyNeeds: 12000,
           heatingCoolingNeeds: 12000,
-          flexibilityIndex: 50,
-          comfortIndex: 72,
           measureIds: ["wall-insulation"],
           measures: ["Wall Insulation"],
         },

@@ -45,12 +45,6 @@ const initialBuilding: BuildingInfo = {
   apartmentLocation: undefined,
 
   // Deprecated fields (kept for compatibility)
-  climateZone: "",
-  heatingTechnology: "",
-  coolingTechnology: "",
-  hotWaterTechnology: "",
-  numberOfOpenings: null,
-  glazingTechnology: "",
 
   // Financial API fields
   constructionYear: null,

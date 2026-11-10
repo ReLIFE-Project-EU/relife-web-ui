@@ -45,15 +45,6 @@ export interface BuildingInfo {
   numberOfFloors: number | null; // 1-100 - can be modified by user
   apartmentLocation?: "bottom" | "middle" | "top";
 
-  // Deprecated fields (kept for backward compatibility with Financial API)
-  // These are now derived from archetype or removed from user input
-  climateZone: string; // Deprecated - not user input
-  heatingTechnology: string; // Deprecated - fixed in archetype
-  coolingTechnology: string; // Deprecated - fixed in archetype
-  hotWaterTechnology: string; // Deprecated - fixed in archetype
-  numberOfOpenings: number | null; // Deprecated - derived from archetype
-  glazingTechnology: string; // Deprecated - fixed in archetype
-
   // Fields for Financial API (/arv endpoint)
   constructionYear: number | null; // Integer 1800-2030, derived from constructionPeriod
   floorNumber: number | null; // Optional, for apartments (0 = ground floor)
@@ -72,8 +63,6 @@ export interface BuildingInfo {
 export interface EstimationResult {
   /** The modeled home today; the "current" scenario reuses it. */
   baseline: import("../services/scenarioEnergy").ScenarioEnergy;
-  flexibilityIndex: number; // 0-100
-  comfortIndex: number; // 0-100
 
   /**
    * Notices returned during validation of a modified archetype.
@@ -210,8 +199,6 @@ export interface RenovationScenario {
   annualThermalDalyPerPerson?: number;
   /** Annual per-person thermal DALYs avoided versus the current building. */
   avoidedThermalDalyPerPerson?: number;
-  flexibilityIndex: number;
-  comfortIndex: number;
   packageId: string | null;
   measureIds: RenovationMeasureId[];
   measures: string[];

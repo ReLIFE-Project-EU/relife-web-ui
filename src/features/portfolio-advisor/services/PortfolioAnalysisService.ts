@@ -477,12 +477,6 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       modifications: hasModifications ? modifications : undefined,
       floorArea: b.floorArea,
       numberOfFloors: b.numberOfFloors,
-      climateZone: "",
-      heatingTechnology: "",
-      coolingTechnology: "",
-      hotWaterTechnology: "",
-      numberOfOpenings: null,
-      glazingTechnology: "",
       constructionYear: deriveConstructionYear(b.constructionPeriod),
       floorNumber: isApartmentLikeCategory(b.propertyType)
         ? (b.floorNumber ?? null)

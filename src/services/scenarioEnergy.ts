@@ -15,7 +15,6 @@ import type {
 } from "../types/forecasting";
 import {
   calculateAnnualTotals,
-  computeComfortBandIndex,
   computeDailyMeanOperativeTemperatures,
   extractUniTotals,
   resolveEpcRatingIntensity,
@@ -42,8 +41,6 @@ export interface ScenarioEnergy {
   pvGridExport?: number;
   pvSelfConsumptionRate?: number;
   pvSelfSufficiencyRate?: number;
-  /** Share of hours (0–100) with operative temperature in the comfort band. */
-  comfortBandIndex?: number;
   /** Daily mean operative temperature (°C), the DALY input; undefined when the hourly profile is unusable. */
   dailyMeanOperativeTemperatures?: number[];
   /** Unrounded figures behind the audit trace. */
@@ -207,7 +204,6 @@ export function reduceEcmRun(
     pvGridExport: roundKwh(scaled.pvGridExport),
     pvSelfConsumptionRate: pvSummary?.indicators?.self_consumption_rate,
     pvSelfSufficiencyRate: pvSummary?.indicators?.self_sufficiency_rate,
-    comfortBandIndex: computeComfortBandIndex(hourly),
     dailyMeanOperativeTemperatures: dailyMeanOperativeTemperatures(run),
     trace,
   };

@@ -42,11 +42,7 @@ import {
   validateModifications,
 } from "../utils/archetypeModifier";
 import { countryNamesEqual, normalizeCountryName } from "../utils/countries";
-import {
-  deriveConstructionPeriod,
-  deriveConstructionYear,
-  normalizeConstructionPeriod,
-} from "../utils/apiMappings";
+import { normalizeConstructionPeriod } from "../utils/apiMappings";
 import { auditLog, type AuditCtx } from "../utils/auditLogger";
 import { ArchetypeMatchStrategy } from "./archetypeMatching";
 import { extractArchetypePeriod } from "../utils/archetypePeriod";
@@ -95,12 +91,6 @@ export class APIResponseError extends Error {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Base comfort and flexibility indices
- */
-const BASE_COMFORT_INDEX = 70;
-const BASE_FLEXIBILITY_INDEX = 50;
-
-/**
  * Climate regions for fallback archetype matching
  * Countries grouped by similar climate characteristics
  */
@@ -139,85 +129,6 @@ const CLIMATE_REGIONS: Record<string, string[]> = {
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper Functions
 // ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Calculate comfort index based on building characteristics
- */
-function calculateComfortIndex(building: BuildingInfo): number {
-  let comfort = BASE_COMFORT_INDEX;
-
-  const glazingBonus: Record<string, number> = {
-    "triple-pvc": 15,
-    "triple-wood": 12,
-    "double-pvc": 8,
-    "double-wood": 5,
-    "double-aluminium": 3,
-    "single-wood": -10,
-  };
-  comfort += glazingBonus[building.glazingTechnology] || 0;
-
-  const periodBonus: Record<string, number> = {
-    "post-2010": 10,
-    "2001-2010": 5,
-    "1991-2000": 0,
-    "1971-1990": -5,
-    "1945-1970": -10,
-    "pre-1945": -15,
-  };
-  // Bucket archetype-vocabulary periods (e.g. "1946-1969") into the
-  // canonical keys the bonus map uses.
-  const normalizedPeriod = normalizeConstructionPeriod(
-    building.constructionPeriod,
-  );
-  const bucketedPeriod = normalizedPeriod
-    ? deriveConstructionPeriod(deriveConstructionYear(normalizedPeriod))
-    : undefined;
-  comfort += (bucketedPeriod ? periodBonus[bucketedPeriod] : undefined) || 0;
-
-  if (building.heatingTechnology.includes("heat-pump")) {
-    comfort += 5;
-  }
-
-  return Math.max(0, Math.min(100, comfort));
-}
-
-/**
- * Calculate flexibility index based on building characteristics
- */
-function calculateFlexibilityIndex(building: BuildingInfo): number {
-  let flexibility = BASE_FLEXIBILITY_INDEX;
-
-  if (
-    ["heat-pump-air", "heat-pump-ground", "electric-resistance"].includes(
-      building.heatingTechnology,
-    )
-  ) {
-    flexibility += 20;
-  }
-
-  if (building.hotWaterTechnology === "solar-thermal") {
-    flexibility += 10;
-  }
-
-  const periodBonus: Record<string, number> = {
-    "post-2010": 15,
-    "2001-2010": 10,
-    "1991-2000": 5,
-    "1971-1990": 0,
-    "1945-1970": -5,
-    "pre-1945": -10,
-  };
-  const normalizedPeriod = normalizeConstructionPeriod(
-    building.constructionPeriod,
-  );
-  const bucketedPeriod = normalizedPeriod
-    ? deriveConstructionPeriod(deriveConstructionYear(normalizedPeriod))
-    : undefined;
-  flexibility +=
-    (bucketedPeriod ? periodBonus[bucketedPeriod] : undefined) || 0;
-
-  return Math.max(0, Math.min(100, flexibility));
-}
 
 /**
  * Get the climate region for a country
@@ -536,7 +447,6 @@ export class EnergyService implements IEnergyService {
     simulationResponse: ECMScenario;
     simulated: SimulatedBuilding;
     matchStrategy: ArchetypeMatchStrategy;
-    building: BuildingInfo;
     validationNotes?: string[];
     referenceBaseline?: ScenarioEnergy;
     auditCtx?: AuditCtx;
@@ -545,7 +455,6 @@ export class EnergyService implements IEnergyService {
       simulationResponse,
       simulated,
       matchStrategy,
-      building,
       validationNotes,
       referenceBaseline,
       auditCtx,
@@ -571,8 +480,6 @@ export class EnergyService implements IEnergyService {
 
     const baseline = reduceEcmRun(simulationResponse, simulated);
     const { raw, scaled } = baseline.trace;
-    const comfortIndex = calculateComfortIndex(building);
-    const flexibilityIndex = calculateFlexibilityIndex(building);
 
     auditLog.debug(
       "energy",
@@ -604,8 +511,6 @@ export class EnergyService implements IEnergyService {
         energyIntensity: baseline.trace.epcIntensity,
         uniTotalsAvailable: raw.deliveredTotal !== undefined,
         uniSummary: baseline.trace.uniSummary,
-        comfortIndex,
-        flexibilityIndex,
         validationNoteCount: validationNotes?.length ?? 0,
       },
       auditCtx,
@@ -613,8 +518,6 @@ export class EnergyService implements IEnergyService {
 
     return {
       baseline,
-      flexibilityIndex: Math.round(flexibilityIndex),
-      comfortIndex: Math.round(comfortIndex),
       simulated,
       matchStrategy,
       ...(validationNotes && validationNotes.length > 0
@@ -771,10 +674,6 @@ export class EnergyService implements IEnergyService {
             simulationResponse: referenceSimulation,
             simulated: reference,
             matchStrategy,
-            building: {
-              ...building,
-              floorArea: reference.modeledFloorArea,
-            },
             auditCtx,
           });
 
@@ -787,7 +686,6 @@ export class EnergyService implements IEnergyService {
           simulationResponse: customSimulation,
           simulated,
           matchStrategy,
-          building,
           validationNotes,
           referenceBaseline,
           auditCtx,
@@ -831,7 +729,6 @@ export class EnergyService implements IEnergyService {
         simulationResponse,
         simulated,
         matchStrategy,
-        building,
         auditCtx,
       });
       auditLog.info(

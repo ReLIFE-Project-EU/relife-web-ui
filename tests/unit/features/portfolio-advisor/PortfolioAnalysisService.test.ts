@@ -31,8 +31,6 @@ const estimation: EstimationResult = {
     heatingNeed: 10000,
     coolingNeed: 5000,
   } as ScenarioEnergy,
-  flexibilityIndex: 50,
-  comfortIndex: 70,
   // One wall surface, so the cost lookup has at least one priceable action.
   simulated: {
     archetype: {
@@ -71,8 +69,6 @@ const scenarios: RenovationScenario[] = [
     heatingCoolingNeeds: 15000,
     deliveredTotal: 11000,
     primaryEnergy: 16500,
-    flexibilityIndex: 50,
-    comfortIndex: 70,
     measureIds: [],
     measures: [],
   },
@@ -84,8 +80,6 @@ const scenarios: RenovationScenario[] = [
     heatingCoolingNeeds: 12000,
     deliveredTotal: 9000,
     primaryEnergy: 14000,
-    flexibilityIndex: 50,
-    comfortIndex: 72,
     measureIds: ["wall-insulation"],
     measures: ["Wall Insulation"],
   },

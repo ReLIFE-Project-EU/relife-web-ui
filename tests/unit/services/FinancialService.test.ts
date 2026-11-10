@@ -102,12 +102,6 @@ const mockBuilding = {
   projectLifetime: 20,
   constructionYear: 1970,
   floorNumber: null,
-  numberOfOpenings: null,
-  climateZone: "",
-  heatingTechnology: "",
-  coolingTechnology: "",
-  hotWaterTechnology: "",
-  glazingTechnology: "",
 } as BuildingInfo;
 
 const selfFundedOptions: FundingOptions = {
@@ -125,8 +119,6 @@ const renovatedScenario = {
   deliveredTotal: 7000,
   carrierBreakdown: { naturalGasKwh: 6000, gridElectricityKwh: 1000 },
   primaryEnergy: 9600,
-  flexibilityIndex: 55,
-  comfortIndex: 75,
   measureIds: ["wall-insulation"],
   measures: ["Wall Insulation"],
 } as RenovationScenario;
@@ -140,8 +132,6 @@ const currentScenario = {
   deliveredTotal: 11000,
   carrierBreakdown: { naturalGasKwh: 10000, gridElectricityKwh: 1000 },
   primaryEnergy: 16500,
-  flexibilityIndex: 50,
-  comfortIndex: 70,
   measureIds: [],
   measures: [],
 } as RenovationScenario;

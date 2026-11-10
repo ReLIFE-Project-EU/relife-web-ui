@@ -420,11 +420,6 @@ export class RenovationService implements IRenovationService {
         measures: renovationPackage.measureIds.map(
           (measureId) => this.getMeasure(measureId)?.name ?? measureId,
         ),
-        // Comfort from the simulated hourly operative temperature (share of
-        // hours in the comfort band); falls back to the estimation scorecard
-        // only when the simulation returned no usable T_op series.
-        comfortIndex: energy.comfortBandIndex ?? estimation.comfortIndex,
-        flexibilityIndex: estimation.flexibilityIndex,
       },
       energy,
     );
@@ -586,10 +581,6 @@ export class RenovationService implements IRenovationService {
         label: "Current Status",
         measureIds: [],
         measures: [],
-        // Same simulated comfort-band basis as the renovated scenarios, so the
-        // baseline and packages are compared on a like-for-like metric.
-        comfortIndex: energy.comfortBandIndex ?? estimation.comfortIndex,
-        flexibilityIndex: estimation.flexibilityIndex,
       },
       energy,
     );
@@ -662,8 +653,6 @@ export class RenovationService implements IRenovationService {
       label: string;
       measureIds: RenovationMeasureId[];
       measures: string[];
-      comfortIndex: number;
-      flexibilityIndex: number;
     },
     energy: ScenarioEnergy,
   ): RenovationScenario {
@@ -684,8 +673,6 @@ export class RenovationService implements IRenovationService {
       pvGridExport: energy.pvGridExport,
       pvSelfConsumptionRate: energy.pvSelfConsumptionRate,
       pvSelfSufficiencyRate: energy.pvSelfSufficiencyRate,
-      comfortIndex: meta.comfortIndex,
-      flexibilityIndex: meta.flexibilityIndex,
       measureIds: meta.measureIds,
       measures: meta.measures,
     };

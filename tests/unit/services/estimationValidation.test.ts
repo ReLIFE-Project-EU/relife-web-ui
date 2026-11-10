@@ -19,12 +19,6 @@ function makeBuilding(overrides: Partial<BuildingInfo> = {}): BuildingInfo {
     isModified: false,
     floorArea: 4200,
     numberOfFloors: 8,
-    climateZone: "",
-    heatingTechnology: "",
-    coolingTechnology: "",
-    hotWaterTechnology: "",
-    numberOfOpenings: null,
-    glazingTechnology: "",
     constructionYear: 1980,
     floorNumber: 4,
     projectLifetime: 20,
@@ -39,8 +33,6 @@ function makeEstimation(
 ): EstimationResult {
   return {
     baseline: { thermalNeed: 0 } as ScenarioEnergy,
-    flexibilityIndex: 50,
-    comfortIndex: 50,
     simulated: {
       archetype: {
         category: "Single Family House",

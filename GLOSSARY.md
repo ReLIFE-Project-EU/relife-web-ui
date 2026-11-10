@@ -43,7 +43,7 @@ The modeled home as it is today, simulated on the same engine as the renovation 
 _Avoid_: current status, reference (the reference is the unmodified archetype)
 
 **Scenario energy**:
-The annual energy of one simulated scenario (baseline or renovation package), scaled to the modeled home: thermal need, delivered energy by carrier, primary energy, PV generation and indoor comfort.
+The annual energy of one simulated scenario (baseline or renovation package), scaled to the modeled home: thermal need, delivered energy by carrier, primary energy, PV generation and indoor temperature.
 _Avoid_: estimation energy, ECM scaling
 
 ## Energy flows

@@ -37,8 +37,6 @@ function services() {
           deliveredTotal: 12000,
           primaryEnergy: 15000,
         } as ScenarioEnergy,
-        flexibilityIndex: 50,
-        comfortIndex: 50,
         simulated: {
           archetype: { category: "SFH", country: "Italy", name: "IT_SFH" },
           bui: {
