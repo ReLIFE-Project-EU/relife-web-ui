@@ -4,9 +4,7 @@
 
 import type {
   EstimationResult,
-  FinancialChartMetadata,
   FinancialResults,
-  FinancialRiskIndicator,
   FinancingType,
   FundingOptions,
   IncentiveDetails,
@@ -57,18 +55,6 @@ export interface PRABuilding {
   validationErrors?: string[];
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-export interface ProfessionalProbabilities {
-  [key: string]: number; // "Pr(NPV > 0)", "Pr(PBP < Ny)", "Pr(DPP < Ny)"
-}
-
-export interface PRAFinancialResults extends FinancialResults {
-  probabilities?: ProfessionalProbabilities;
-  chartMetadata?: Partial<
-    Record<FinancialRiskIndicator, FinancialChartMetadata>
-  >;
-}
-
 /**
  * Provenance of the CAPEX/OPEX used in a building's financial analysis. A flag
  * is true when that cost was resolved from EU reference data via the Financial
@@ -97,7 +83,7 @@ export interface BuildingAnalysisResult {
   rejection?: import("../../../services/estimationValidation").EstimationDiagnostic;
   estimation?: EstimationResult;
   scenarios?: RenovationScenario[];
-  financialResults?: PRAFinancialResults;
+  financialResults?: FinancialResults;
   /** Provenance of the costs used; set when status === "success". */
   costSource?: CostSource;
 }

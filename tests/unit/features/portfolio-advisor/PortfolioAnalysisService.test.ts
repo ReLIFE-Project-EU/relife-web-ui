@@ -454,47 +454,48 @@ describe("PortfolioAnalysisService", () => {
     expect(results["has-override"]).toMatchObject({ status: "success" });
   });
 
-  test("copies professional chart metadata into PRA financial results", async () => {
-    mockCalculateForAllScenarios.mockResolvedValue({
-      renovated: {
-        ...financialResults.renovated,
-        appraisal: {
-          kind: "appraised",
-          pointForecasts: {
-            NPV: 5000,
-            IRR: 0.05,
-            ROI: 0.2,
-            PBP: 8,
-            DPP: 10,
-            MonthlyAvgSavings: 40,
-            SuccessRate: 0.8,
-          },
-          metadata: {
-            project_lifetime: 20,
-            capex: 10000,
-            output_level: "professional",
-            chart_metadata: {
-              NPV: {
-                bins: {
-                  centers: [-1000, 0, 1000],
-                  counts: [2, 5, 3],
-                  edges: [-1500, -500, 500, 1500],
-                },
-                statistics: {
-                  mean: 100,
-                  std: 250,
-                  P10: -500,
-                  P50: 100,
-                  P90: 750,
-                },
+  test("preserves the package appraisal in portfolio results", async () => {
+    const professionalResults: FinancialResults = {
+      ...financialResults.renovated,
+      appraisal: {
+        kind: "appraised",
+        pointForecasts: {
+          NPV: 5000,
+          IRR: 0.05,
+          ROI: 0.2,
+          PBP: 8,
+          DPP: 10,
+          MonthlyAvgSavings: 40,
+          SuccessRate: 0.8,
+        },
+        metadata: {
+          project_lifetime: 20,
+          capex: 10000,
+          output_level: "professional",
+          chart_metadata: {
+            NPV: {
+              bins: {
+                centers: [-1000, 0, 1000],
+                counts: [2, 5, 3],
+                edges: [-1500, -500, 500, 1500],
+              },
+              statistics: {
+                mean: 100,
+                std: 250,
+                P10: -500,
+                P50: 100,
+                P90: 750,
               },
             },
           },
-          probabilities: {
-            "Pr(NPV > 0)": 0.8,
-          },
+        },
+        probabilities: {
+          "Pr(NPV > 0)": 0.8,
         },
       },
+    };
+    mockCalculateForAllScenarios.mockResolvedValue({
+      renovated: professionalResults,
     });
 
     const results = await service.analyzePortfolio({
@@ -507,20 +508,7 @@ describe("PortfolioAnalysisService", () => {
       globalMaintenanceCost: 500,
     });
 
-    expect(results["building-1"].financialResults?.chartMetadata?.NPV).toEqual({
-      bins: {
-        centers: [-1000, 0, 1000],
-        counts: [2, 5, 3],
-        edges: [-1500, -500, 500, 1500],
-      },
-      statistics: {
-        mean: 100,
-        std: 250,
-        P10: -500,
-        P50: 100,
-        P90: 750,
-      },
-    });
+    expect(results["building-1"].financialResults).toEqual(professionalResults);
   });
 
   test("unsupported-only selections fail before scenario evaluation", async () => {

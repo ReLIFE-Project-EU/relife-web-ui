@@ -17,6 +17,7 @@ import {
   type AppraisalMetric,
 } from "../../../services/appraisalReadout";
 import {
+  appraisedFigures,
   resolveSavingsAvailability,
   savingsAvailabilityLabel,
 } from "../../../services/savingsState";
@@ -49,7 +50,9 @@ function probabilityByPrefix(
   result: BuildingAnalysisResult,
   prefix: string,
 ): number | undefined {
-  const probabilities = result.financialResults?.probabilities;
+  const probabilities = appraisedFigures(
+    result.financialResults,
+  )?.probabilities;
   if (!probabilities) return undefined;
   const key = Object.keys(probabilities).find((k) => k.startsWith(prefix));
   return key ? probabilities[key] : undefined;

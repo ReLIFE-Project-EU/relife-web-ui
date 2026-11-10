@@ -20,7 +20,10 @@ const result = {
   financialResults: {
     afterRenovationValue: 250000,
     arv: { priceIncreasePct: 12.5 },
-    probabilities: { "Pr(PBP < 30y)": 0.71 },
+    appraisal: {
+      kind: "appraised",
+      probabilities: { "Pr(PBP < 30y)": 0.71 },
+    },
   },
 } as unknown as BuildingAnalysisResult;
 

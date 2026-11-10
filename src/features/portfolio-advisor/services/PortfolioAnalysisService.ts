@@ -33,7 +33,6 @@ import type {
   BuildingAnalysisResult,
   CostSource,
   PRABuilding,
-  PRAFinancialResults,
 } from "../context/types";
 import type {
   IPortfolioAnalysisService,
@@ -321,43 +320,9 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       auditCtx,
     });
 
-    // Enhance results with professional-level data if available
     const renovatedResults = financialResults["renovated"];
-    let praFinancialResults: PRAFinancialResults | undefined;
-
-    if (renovatedResults) {
-      praFinancialResults = { ...renovatedResults };
-
-      // Prefer the dedicated probabilities field mapped by FinancialService
-      const appraised = appraisedFigures(renovatedResults);
-      if (appraised?.metadata.chart_metadata) {
-        praFinancialResults.chartMetadata = appraised.metadata.chart_metadata;
-      }
-
-      if (
-        appraised?.probabilities &&
-        Object.keys(appraised.probabilities).length > 0
-      ) {
-        praFinancialResults.probabilities = appraised.probabilities;
-      } else {
-        // Fallback: mine Pr(*) keys from metadata for backward compatibility
-        const metadata = appraised?.metadata;
-        if (metadata) {
-          const probabilities: Record<string, number> = {};
-          for (const [key, value] of Object.entries(metadata)) {
-            if (key.startsWith("Pr(") && typeof value === "number") {
-              probabilities[key] = value;
-            }
-          }
-          if (Object.keys(probabilities).length > 0) {
-            praFinancialResults.probabilities = probabilities;
-          }
-        }
-      }
-    }
-
-    const renovatedForecasts =
-      appraisedFigures(praFinancialResults)?.pointForecasts;
+    const appraised = appraisedFigures(renovatedResults);
+    const renovatedForecasts = appraised?.pointForecasts;
     auditLog.info(
       "portfolio",
       "portfolio.building.end",
@@ -367,10 +332,10 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
         renovatedNPV: renovatedForecasts?.NPV,
         renovatedROI: renovatedForecasts?.ROI,
         renovatedPaybackTime: renovatedForecasts?.PBP,
-        renovatedCapex: praFinancialResults?.capitalExpenditure,
-        renovatedARV: praFinancialResults?.afterRenovationValue,
-        probabilityKeys: praFinancialResults?.probabilities
-          ? Object.keys(praFinancialResults.probabilities)
+        renovatedCapex: renovatedResults?.capitalExpenditure,
+        renovatedARV: renovatedResults?.afterRenovationValue,
+        probabilityKeys: appraised?.probabilities
+          ? Object.keys(appraised.probabilities)
           : undefined,
       },
       auditCtx,
@@ -381,7 +346,7 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
       status: "success",
       estimation,
       scenarios,
-      financialResults: praFinancialResults,
+      financialResults: renovatedResults,
       costSource,
     };
   }

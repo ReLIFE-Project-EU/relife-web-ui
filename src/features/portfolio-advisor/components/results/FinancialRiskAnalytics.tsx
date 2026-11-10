@@ -32,13 +32,13 @@ import { formatDecimal, formatPercent } from "../../../../utils/formatters";
 import type {
   AppraisedPackage,
   FinancialChartMetadata,
+  FinancialResults,
   FinancialRiskIndicator,
   PercentileData,
 } from "../../../../types/renovation";
-import type { PRAFinancialResults } from "../../context/types";
 
 interface FinancialRiskAnalyticsProps {
-  financialResults?: PRAFinancialResults;
+  financialResults?: FinancialResults;
 }
 
 interface IndicatorConfig {
@@ -100,10 +100,8 @@ export function FinancialRiskAnalytics({
   // the memoization below.
   const appraisal = financialResults?.appraisal;
   const appraised = appraisal?.kind === "appraised" ? appraisal : undefined;
-  const probabilities =
-    financialResults?.probabilities ?? appraised?.probabilities;
-  const chartMetadata =
-    financialResults?.chartMetadata ?? appraised?.metadata.chart_metadata;
+  const probabilities = appraised?.probabilities;
+  const chartMetadata = appraised?.metadata.chart_metadata;
   const percentiles = appraised?.percentiles;
 
   const availableIndicators = useMemo(
