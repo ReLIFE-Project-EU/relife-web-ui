@@ -175,6 +175,78 @@ describe("homeAssistantReducer package financial inputs", () => {
     expect(state.financialResults).toEqual({});
   });
 
+  test("changing the home forgets estimated costs and results, keeps typed costs", () => {
+    let state = homeAssistantReducer(initialState, {
+      type: "SET_SUGGESTED_PACKAGES",
+      packages: packages.slice(0, 2),
+    });
+    for (const packageId of [
+      "package-wall-insulation",
+      "package-roof-insulation",
+    ]) {
+      state = homeAssistantReducer(state, {
+        type: "SET_PACKAGE_COST_ESTIMATE",
+        packageId,
+        capex: 24_000,
+        annualMaintenanceCost: 300,
+      });
+    }
+    state = homeAssistantReducer(state, {
+      type: "SET_PACKAGE_FINANCIAL_INPUT",
+      packageId: "package-roof-insulation",
+      field: "capex",
+      value: 28_000,
+    });
+    state = {
+      ...state,
+      scenarios: [
+        {
+          id: "package-wall-insulation",
+          packageId: "package-wall-insulation",
+          label: "Wall Insulation",
+          annualEnergyNeeds: 12000,
+          heatingCoolingNeeds: 12000,
+          measureIds: ["wall-insulation"],
+          measures: ["Wall Insulation"],
+        },
+      ],
+      financialResults: {
+        "package-wall-insulation": {
+          arv: null,
+          appraisal: { kind: "skipped", reason: "non-positive-savings" },
+          capitalExpenditure: 24_000,
+          afterRenovationValue: 0,
+        },
+      },
+      mcdaRanking: [
+        { scenarioId: "package-wall-insulation", rank: 1, score: 1 },
+      ],
+    };
+
+    state = homeAssistantReducer(state, {
+      type: "SET_BUILDING",
+      building: { floorArea: 160 },
+    });
+
+    expect(state.packageFinancialInputs).toEqual({
+      "package-wall-insulation": {
+        capex: null,
+        annualMaintenanceCost: null,
+        capexAutoEstimated: false,
+        opexAutoEstimated: false,
+      },
+      "package-roof-insulation": {
+        capex: 28_000,
+        annualMaintenanceCost: null,
+        capexAutoEstimated: false,
+        opexAutoEstimated: false,
+      },
+    });
+    expect(state.scenarios).toEqual([]);
+    expect(state.financialResults).toEqual({});
+    expect(state.mcdaRanking).toBeNull();
+  });
+
   test("updating selected package costs invalidates prior evaluation results", () => {
     let state = homeAssistantReducer(initialState, {
       type: "SET_SUGGESTED_PACKAGES",

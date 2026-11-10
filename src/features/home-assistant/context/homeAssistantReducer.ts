@@ -123,6 +123,34 @@ function syncPackageFinancialInputs(
   }, {});
 }
 
+/** Empties the costs estimated for the previous building; typed costs stay. */
+function forgetEstimatedCosts(
+  inputs: PackageFinancialInputsById,
+): PackageFinancialInputsById {
+  return Object.fromEntries(
+    Object.entries(inputs).map(([packageId, input]) => [
+      packageId,
+      {
+        capex: input.capexAutoEstimated ? null : input.capex,
+        annualMaintenanceCost: input.opexAutoEstimated
+          ? null
+          : input.annualMaintenanceCost,
+        capexAutoEstimated: false,
+        opexAutoEstimated: false,
+      },
+    ]),
+  );
+}
+
+/** Drops everything derived from the previous building. */
+function clearedForBuildingChange(state: HomeAssistantState) {
+  return {
+    estimation: null,
+    packageFinancialInputs: forgetEstimatedCosts(state.packageFinancialInputs),
+    ...clearedEvaluationResults,
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Reducer
 // ─────────────────────────────────────────────────────────────────────────────
@@ -168,14 +196,14 @@ export function homeAssistantReducer(
           ...state.building,
           ...action.building,
         },
-        estimation: null,
+        ...clearedForBuildingChange(state),
       };
 
     case "RESET_BUILDING":
       return {
         ...state,
         building: initialBuilding,
-        estimation: null,
+        ...clearedForBuildingChange(state),
       };
 
     // ─────────────────────────────────────────────────────────────────────────
