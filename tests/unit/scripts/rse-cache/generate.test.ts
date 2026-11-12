@@ -12,6 +12,7 @@ import {
   type RSEGeneratedSeed,
   type RSEForecastingSeedClient,
   type RSESeedArchetype,
+  type RSESeedCliDeps,
   type RSESeedRunState,
 } from "../../../../scripts/rse-cache/generate.ts";
 import { RSE_PACKAGE_IDS } from "../../../../src/features/strategy-explorer/constants.ts";
@@ -23,6 +24,34 @@ type RSESeedLogEvent = {
   level: string;
   [key: string]: unknown;
 };
+
+const generationArgs = [
+  "--archetypes",
+  '[{"country":"IT","category":"Residential","name":"Detached 1980"}]',
+  "--forecasting-base-url",
+  "http://forecasting.test",
+];
+const cliScenarios = [
+  makeScenario("baseline", 12_000, { thermalKwh: 12_000 }),
+  makeScenario("wall", 8_000, { thermalKwh: 8_000 }),
+];
+
+function runSeedCli(
+  cacheVersion: string,
+  argv: string[],
+  overrides: Partial<RSESeedCliDeps> = {},
+) {
+  return runRSESeedCli(["--cache-version", cacheVersion, ...argv], {
+    env: {},
+    stdout: () => undefined,
+    writeFile: async () => undefined,
+    applySeed: async () => undefined,
+    makeForecastingClient: () =>
+      makeForecastingClient({ scenarios: cliScenarios }).client,
+    now: () => new Date("2026-05-12T10:04:00.000Z"),
+    ...overrides,
+  });
+}
 
 describe("generateRSECacheSeedSql", () => {
   test("emits idempotent SQL for a one-row RSE cache seed", async () => {
@@ -346,10 +375,9 @@ describe("checkpointed baseline reuse", () => {
   });
 
   function run(client: RSEForecastingSeedClient, maxAttempts = 2) {
-    return runRSESeedCli(
+    return runSeedCli(
+      "1.test.baseline-reuse",
       [
-        "--cache-version",
-        "1.test.baseline-reuse",
         "--archetypes",
         '[{"country":"IT","category":"Residential","name":"Detached 1980"}]',
         "--forecasting-base-url",
@@ -370,12 +398,8 @@ describe("checkpointed baseline reuse", () => {
         "silent",
       ],
       {
-        env: {},
-        stdout: () => undefined,
         writeFile,
-        applySeed: async () => undefined,
         makeForecastingClient: () => client,
-        now: () => new Date("2026-05-12T10:04:00.000Z"),
       },
     );
   }
@@ -573,29 +597,16 @@ describe("resolveSeedArchetypes", () => {
 describe("runRSESeedCli", () => {
   test("dry-run validates generation and skips file and database writes", async () => {
     const { client, listCalls } = makeForecastingClient({
-      scenarios: [
-        makeScenario("baseline", 12_000, { thermalKwh: 12_000 }),
-        makeScenario("wall", 8_000, { thermalKwh: 8_000 }),
-      ],
+      scenarios: cliScenarios,
     });
     const output: string[] = [];
     const writes: string[] = [];
     const applied: RSEGeneratedSeed[] = [];
 
-    await runRSESeedCli(
-      [
-        "--cache-version",
-        "1.test.dry",
-        "--archetypes",
-        '[{"country":"IT","category":"Residential","name":"Detached 1980"}]',
-        "--forecasting-base-url",
-        "http://forecasting.test",
-        "--packages",
-        "envelope",
-        "--dry-run",
-      ],
+    await runSeedCli(
+      "1.test.dry",
+      [...generationArgs, "--packages", "envelope", "--dry-run"],
       {
-        env: {},
         stdout: (text) => output.push(text),
         writeFile: async (path) => {
           writes.push(path);
@@ -604,7 +615,6 @@ describe("runRSESeedCli", () => {
           applied.push(generated);
         },
         makeForecastingClient: () => client,
-        now: () => new Date("2026-05-12T10:04:00.000Z"),
       },
     );
 
@@ -625,10 +635,9 @@ describe("runRSESeedCli", () => {
     const writes: string[] = [];
     const applied: RSEGeneratedSeed[] = [];
 
-    await runRSESeedCli(
+    await runSeedCli(
+      "1.test.empty",
       [
-        "--cache-version",
-        "1.test.empty",
         "--archetypes",
         "[]",
         "--forecasting-base-url",
@@ -636,7 +645,6 @@ describe("runRSESeedCli", () => {
         "--dry-run",
       ],
       {
-        env: {},
         stdout: (text) => output.push(text),
         writeFile: async (path) => {
           writes.push(path);
@@ -645,7 +653,6 @@ describe("runRSESeedCli", () => {
           applied.push(generated);
         },
         makeForecastingClient: () => client,
-        now: () => new Date("2026-05-12T10:04:00.000Z"),
       },
     );
 
@@ -659,39 +666,23 @@ describe("runRSESeedCli", () => {
   test("fails fast when Forecasting availability cannot be checked", async () => {
     const { client, listCalls, simulateCalls } = makeForecastingClient({
       listError: new Error("connection refused"),
-      scenarios: [
-        makeScenario("baseline", 12_000, { thermalKwh: 12_000 }),
-        makeScenario("wall", 8_000, { thermalKwh: 8_000 }),
-      ],
+      scenarios: cliScenarios,
     });
     const output: string[] = [];
     const writes: string[] = [];
     const applied: RSEGeneratedSeed[] = [];
 
     await expect(
-      runRSESeedCli(
-        [
-          "--cache-version",
-          "1.test.down",
-          "--archetypes",
-          '[{"country":"IT","category":"Residential","name":"Detached 1980"}]',
-          "--forecasting-base-url",
-          "http://forecasting.test",
-          "--dry-run",
-        ],
-        {
-          env: {},
-          stdout: (text) => output.push(text),
-          writeFile: async (path) => {
-            writes.push(path);
-          },
-          applySeed: async (generated) => {
-            applied.push(generated);
-          },
-          makeForecastingClient: () => client,
-          now: () => new Date("2026-05-12T10:04:00.000Z"),
+      runSeedCli("1.test.down", [...generationArgs, "--dry-run"], {
+        stdout: (text) => output.push(text),
+        writeFile: async (path) => {
+          writes.push(path);
         },
-      ),
+        applySeed: async (generated) => {
+          applied.push(generated);
+        },
+        makeForecastingClient: () => client,
+      }),
     ).rejects.toThrow("Forecasting API is not reachable");
 
     expect(listCalls).toEqual(["list"]);
@@ -702,43 +693,19 @@ describe("runRSESeedCli", () => {
   });
 
   test("emits structured logs to stderr without contaminating stdout", async () => {
-    const { client } = makeForecastingClient({
-      scenarios: [
-        makeScenario("baseline", 12_000, { thermalKwh: 12_000 }),
-        makeScenario("wall", 8_000, { thermalKwh: 8_000 }),
-      ],
-    });
     const output: string[] = [];
     const errors: string[] = [];
 
-    await runRSESeedCli(
-      [
-        "--cache-version",
-        "1.test.logs",
-        "--archetypes",
-        '[{"country":"IT","category":"Residential","name":"Detached 1980"}]',
-        "--forecasting-base-url",
-        "http://forecasting.test",
-        "--packages",
-        "envelope",
-        "--dry-run",
-      ],
+    await runSeedCli(
+      "1.test.logs",
+      [...generationArgs, "--packages", "envelope", "--dry-run"],
       {
-        env: {},
         stdout: (text) => output.push(text),
         stderr: (text) => errors.push(text),
-        writeFile: async () => undefined,
-        applySeed: async () => undefined,
-        makeForecastingClient: () => client,
-        now: () => new Date("2026-05-12T10:04:00.000Z"),
       },
     );
 
-    const logEvents = errors
-      .join("")
-      .trim()
-      .split("\n")
-      .map((line) => JSON.parse(line) as { event: string; level: string });
+    const logEvents = parseJsonLines(errors);
 
     expect(output.join("")).toContain("RSE seed dry run completed.");
     expect(output.join("")).not.toContain('"event"');
@@ -762,20 +729,13 @@ describe("runRSESeedCli", () => {
   });
 
   test("summarizes service URLs before applying directly", async () => {
-    const { client } = makeForecastingClient({
-      scenarios: [
-        makeScenario("baseline", 12_000, { thermalKwh: 12_000 }),
-        makeScenario("wall", 8_000, { thermalKwh: 8_000 }),
-      ],
-    });
     const errors: string[] = [];
     const applied: RSEGeneratedSeed[] = [];
     const verified: Array<{ url: string; key: string }> = [];
 
-    await runRSESeedCli(
+    await runSeedCli(
+      "1.test.apply",
       [
-        "--cache-version",
-        "1.test.apply",
         "--allow-test-version",
         "--archetypes",
         '[{"country":"IT","category":"Residential","name":"Detached 1980"}]',
@@ -790,33 +750,17 @@ describe("runRSESeedCli", () => {
           SUPABASE_URL: "https://example.supabase.co?apikey=secret",
           SUPABASE_KEY: "service-role-key",
         },
-        stdout: () => undefined,
         stderr: (text) => errors.push(text),
-        writeFile: async () => undefined,
         applySeed: async (generated) => {
           applied.push(generated);
         },
         verifySupabase: async (url, key) => {
           verified.push({ url, key });
         },
-        makeForecastingClient: () => client,
-        now: () => new Date("2026-05-12T10:04:00.000Z"),
       },
     );
 
-    const [serviceSummary] = errors
-      .join("")
-      .trim()
-      .split("\n")
-      .map(
-        (line) =>
-          JSON.parse(line) as {
-            event: string;
-            forecastingBaseUrl: string;
-            supabaseUrl: string;
-            supabaseApplyEnabled: boolean;
-          },
-      );
+    const [serviceSummary] = parseJsonLines(errors);
 
     expect(serviceSummary).toEqual(
       expect.objectContaining({
@@ -836,23 +780,16 @@ describe("runRSESeedCli", () => {
 
   test("fails fast when Supabase connectivity check fails", async () => {
     const { client, simulateCalls } = makeForecastingClient({
-      scenarios: [
-        makeScenario("baseline", 12_000, { thermalKwh: 12_000 }),
-        makeScenario("wall", 8_000, { thermalKwh: 8_000 }),
-      ],
+      scenarios: cliScenarios,
     });
     const applied: RSEGeneratedSeed[] = [];
 
     await expect(
-      runRSESeedCli(
+      runSeedCli(
+        "1.test.apply-fail",
         [
-          "--cache-version",
-          "1.test.apply-fail",
           "--allow-test-version",
-          "--archetypes",
-          '[{"country":"IT","category":"Residential","name":"Detached 1980"}]',
-          "--forecasting-base-url",
-          "http://forecasting.test",
+          ...generationArgs,
           "--packages",
           "envelope",
           "--apply",
@@ -862,8 +799,6 @@ describe("runRSESeedCli", () => {
             SUPABASE_URL: "https://example.supabase.co",
             SUPABASE_KEY: "bad-key",
           },
-          stdout: () => undefined,
-          writeFile: async () => undefined,
           applySeed: async (generated) => {
             applied.push(generated);
           },
@@ -871,7 +806,6 @@ describe("runRSESeedCli", () => {
             throw new Error("auth failed");
           },
           makeForecastingClient: () => client,
-          now: () => new Date("2026-05-12T10:04:00.000Z"),
         },
       ),
     ).rejects.toThrow("auth failed");
@@ -882,36 +816,26 @@ describe("runRSESeedCli", () => {
 
   test("fails fast when Supabase env vars are missing for --apply", async () => {
     const { client, simulateCalls } = makeForecastingClient({
-      scenarios: [
-        makeScenario("baseline", 12_000, { thermalKwh: 12_000 }),
-        makeScenario("wall", 8_000, { thermalKwh: 8_000 }),
-      ],
+      scenarios: cliScenarios,
     });
     const applied: RSEGeneratedSeed[] = [];
 
     await expect(
-      runRSESeedCli(
+      runSeedCli(
+        "1.test.apply-no-env",
         [
-          "--cache-version",
-          "1.test.apply-no-env",
           "--allow-test-version",
-          "--archetypes",
-          '[{"country":"IT","category":"Residential","name":"Detached 1980"}]',
-          "--forecasting-base-url",
-          "http://forecasting.test",
+          ...generationArgs,
           "--packages",
           "envelope",
           "--apply",
         ],
         {
           env: {},
-          stdout: () => undefined,
-          writeFile: async () => undefined,
           applySeed: async (generated) => {
             applied.push(generated);
           },
           makeForecastingClient: () => client,
-          now: () => new Date("2026-05-12T10:04:00.000Z"),
         },
       ),
     ).rejects.toThrow("SUPABASE_URL and SUPABASE_KEY are required for --apply");
@@ -922,38 +846,23 @@ describe("runRSESeedCli", () => {
 
   test("refuses --apply for a test-looking cache version without --allow-test-version", async () => {
     const { client, simulateCalls } = makeForecastingClient({
-      scenarios: [
-        makeScenario("baseline", 12_000, { thermalKwh: 12_000 }),
-        makeScenario("wall", 8_000, { thermalKwh: 8_000 }),
-      ],
+      scenarios: cliScenarios,
     });
     const applied: RSEGeneratedSeed[] = [];
 
     await expect(
-      runRSESeedCli(
-        [
-          "--cache-version",
-          "1.test.abc1234",
-          "--archetypes",
-          '[{"country":"IT","category":"Residential","name":"Detached 1980"}]',
-          "--forecasting-base-url",
-          "http://forecasting.test",
-          "--packages",
-          "envelope",
-          "--apply",
-        ],
+      runSeedCli(
+        "1.test.abc1234",
+        [...generationArgs, "--packages", "envelope", "--apply"],
         {
           env: {
             SUPABASE_URL: "https://example.supabase.co",
             SUPABASE_KEY: "service-role-key",
           },
-          stdout: () => undefined,
-          writeFile: async () => undefined,
           applySeed: async (generated) => {
             applied.push(generated);
           },
           makeForecastingClient: () => client,
-          now: () => new Date("2026-05-12T10:04:00.000Z"),
         },
       ),
     ).rejects.toThrow(
@@ -965,22 +874,12 @@ describe("runRSESeedCli", () => {
   });
 
   test("emits useful debug events for a one-target dry run", async () => {
-    const { client } = makeForecastingClient({
-      scenarios: [
-        makeScenario("baseline", 12_000, { thermalKwh: 12_000 }),
-        makeScenario("wall", 8_000, { thermalKwh: 8_000 }),
-      ],
-    });
     const errors: string[] = [];
 
-    await runRSESeedCli(
+    await runSeedCli(
+      "1.test.debug",
       [
-        "--cache-version",
-        "1.test.debug",
-        "--archetypes",
-        '[{"country":"IT","category":"Residential","name":"Detached 1980"}]',
-        "--forecasting-base-url",
-        "http://forecasting.test",
+        ...generationArgs,
         "--packages",
         "envelope",
         "--dry-run",
@@ -988,13 +887,7 @@ describe("runRSESeedCli", () => {
         "debug",
       ],
       {
-        env: {},
-        stdout: () => undefined,
         stderr: (text) => errors.push(text),
-        writeFile: async () => undefined,
-        applySeed: async () => undefined,
-        makeForecastingClient: () => client,
-        now: () => new Date("2026-05-12T10:04:00.000Z"),
       },
     );
 
@@ -1031,34 +924,13 @@ describe("runRSESeedCli", () => {
   });
 
   test("does not emit debug events at info level", async () => {
-    const { client } = makeForecastingClient({
-      scenarios: [
-        makeScenario("baseline", 12_000, { thermalKwh: 12_000 }),
-        makeScenario("wall", 8_000, { thermalKwh: 8_000 }),
-      ],
-    });
     const errors: string[] = [];
 
-    await runRSESeedCli(
-      [
-        "--cache-version",
-        "1.test.info",
-        "--archetypes",
-        '[{"country":"IT","category":"Residential","name":"Detached 1980"}]',
-        "--forecasting-base-url",
-        "http://forecasting.test",
-        "--packages",
-        "envelope",
-        "--dry-run",
-      ],
+    await runSeedCli(
+      "1.test.info",
+      [...generationArgs, "--packages", "envelope", "--dry-run"],
       {
-        env: {},
-        stdout: () => undefined,
         stderr: (text) => errors.push(text),
-        writeFile: async () => undefined,
-        applySeed: async () => undefined,
-        makeForecastingClient: () => client,
-        now: () => new Date("2026-05-12T10:04:00.000Z"),
       },
     );
 
@@ -1102,10 +974,7 @@ describe("runRSESeedCli", () => {
               scenario_elements: "wall",
             },
             n_scenarios: 2,
-            scenarios: [
-              makeScenario("baseline", 12_000, { thermalKwh: 12_000 }),
-              makeScenario("wall", 8_000, { thermalKwh: 8_000 }),
-            ],
+            scenarios: cliScenarios,
           });
         }
 
@@ -1129,10 +998,9 @@ describe("runRSESeedCli", () => {
     );
 
     try {
-      await runRSESeedCli(
+      await runSeedCli(
+        "1.test.http",
         [
-          "--cache-version",
-          "1.test.http",
           "--archetypes",
           '[{"country":"IT","category":"Residential","name":"Detached 1980"}]',
           "--forecasting-base-url",
@@ -1144,14 +1012,9 @@ describe("runRSESeedCli", () => {
           "debug",
         ],
         {
-          env: {},
-          stdout: () => undefined,
           stderr: (text) => errors.push(text),
-          writeFile: async () => undefined,
-          applySeed: async () => undefined,
           makeForecastingClient: (baseUrl, logger) =>
             makeRealForecastingClientForTest(baseUrl, logger),
-          now: () => new Date("2026-05-12T10:04:00.000Z"),
         },
       );
     } finally {
@@ -1192,22 +1055,12 @@ describe("runRSESeedCli", () => {
   });
 
   test("suppresses structured logs when log level is silent", async () => {
-    const { client } = makeForecastingClient({
-      scenarios: [
-        makeScenario("baseline", 12_000, { thermalKwh: 12_000 }),
-        makeScenario("wall", 8_000, { thermalKwh: 8_000 }),
-      ],
-    });
     const errors: string[] = [];
 
-    await runRSESeedCli(
+    await runSeedCli(
+      "1.test.silent",
       [
-        "--cache-version",
-        "1.test.silent",
-        "--archetypes",
-        '[{"country":"IT","category":"Residential","name":"Detached 1980"}]',
-        "--forecasting-base-url",
-        "http://forecasting.test",
+        ...generationArgs,
         "--packages",
         "envelope",
         "--dry-run",
@@ -1215,13 +1068,7 @@ describe("runRSESeedCli", () => {
         "silent",
       ],
       {
-        env: {},
-        stdout: () => undefined,
         stderr: (text) => errors.push(text),
-        writeFile: async () => undefined,
-        applySeed: async () => undefined,
-        makeForecastingClient: () => client,
-        now: () => new Date("2026-05-12T10:04:00.000Z"),
       },
     );
 
@@ -1231,19 +1078,13 @@ describe("runRSESeedCli", () => {
   test("rejects dry-run combinations that would create side effects", async () => {
     const { client } = makeForecastingClient();
     const deps = {
-      env: {},
-      stdout: () => undefined,
-      writeFile: async () => undefined,
-      applySeed: async () => undefined,
       makeForecastingClient: () => client,
-      now: () => new Date("2026-05-12T10:04:00.000Z"),
     };
 
     await expect(
-      runRSESeedCli(
+      runSeedCli(
+        "1.test",
         [
-          "--cache-version",
-          "1.test",
           "--archetypes",
           "[]",
           "--forecasting-base-url",
@@ -1257,10 +1098,9 @@ describe("runRSESeedCli", () => {
     ).rejects.toThrow("--dry-run cannot be combined with --out");
 
     await expect(
-      runRSESeedCli(
+      runSeedCli(
+        "1.test",
         [
-          "--cache-version",
-          "1.test",
           "--archetypes",
           "[]",
           "--forecasting-base-url",
@@ -1279,20 +1119,16 @@ describe("runRSESeedCli", () => {
         A: makeArchetypeDetails(100),
         B: makeArchetypeDetails(120),
       },
-      scenarios: [
-        makeScenario("baseline", 12_000, { thermalKwh: 12_000 }),
-        makeScenario("wall", 8_000, { thermalKwh: 8_000 }),
-      ],
+      scenarios: cliScenarios,
       simulateFailuresByName: { A: 2 },
     });
     const output: string[] = [];
     const writes: Array<{ path: string; contents: string }> = [];
 
     await expect(
-      runRSESeedCli(
+      runSeedCli(
+        "1.test.partial",
         [
-          "--cache-version",
-          "1.test.partial",
           "--archetypes",
           '[{"country":"IT","category":"Residential","name":"A"},{"country":"IT","category":"Residential","name":"B"}]',
           "--forecasting-base-url",
@@ -1307,14 +1143,11 @@ describe("runRSESeedCli", () => {
           "0",
         ],
         {
-          env: {},
           stdout: (text) => output.push(text),
           writeFile: async (path, contents) => {
             writes.push({ path, contents });
           },
-          applySeed: async () => undefined,
           makeForecastingClient: () => client,
-          now: () => new Date("2026-05-12T10:04:00.000Z"),
         },
       ),
     ).rejects.toThrow("failed target");
@@ -1336,18 +1169,14 @@ describe("runRSESeedCli", () => {
         A: makeArchetypeDetails(100),
         B: makeArchetypeDetails(120),
       },
-      scenarios: [
-        makeScenario("baseline", 12_000, { thermalKwh: 12_000 }),
-        makeScenario("wall", 8_000, { thermalKwh: 8_000 }),
-      ],
+      scenarios: cliScenarios,
       simulateFailuresByName: { A: 2 },
     });
     const applied: RSEGeneratedSeed[] = [];
 
-    await runRSESeedCli(
+    await runSeedCli(
+      "1.test.partial-apply",
       [
-        "--cache-version",
-        "1.test.partial-apply",
         "--allow-test-version",
         "--archetypes",
         '[{"country":"IT","category":"Residential","name":"A"},{"country":"IT","category":"Residential","name":"B"}]',
@@ -1368,14 +1197,11 @@ describe("runRSESeedCli", () => {
           SUPABASE_URL: "https://example.supabase.co",
           SUPABASE_KEY: "service-role-key",
         },
-        stdout: () => undefined,
-        writeFile: async () => undefined,
         applySeed: async (generated) => {
           applied.push(generated);
         },
         verifySupabase: async () => undefined,
         makeForecastingClient: () => client,
-        now: () => new Date("2026-05-12T10:04:00.000Z"),
       },
     );
 
@@ -1388,22 +1214,11 @@ describe("runRSESeedCli", () => {
     const { client } = makeForecastingClient();
 
     await expect(
-      runRSESeedCli(
-        [
-          "--cache-version",
-          "1.test.publish-modes",
-          "--from-json",
-          "artifact.json",
-          "--publish",
-          "--publish-partial",
-        ],
+      runSeedCli(
+        "1.test.publish-modes",
+        ["--from-json", "artifact.json", "--publish", "--publish-partial"],
         {
-          env: {},
-          stdout: () => undefined,
-          writeFile: async () => undefined,
-          applySeed: async () => undefined,
           makeForecastingClient: () => client,
-          now: () => new Date("2026-05-12T10:04:00.000Z"),
         },
       ),
     ).rejects.toThrow("--publish cannot be combined with --publish-partial");
