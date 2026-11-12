@@ -34,5 +34,4 @@ export type StrategyExplorerAction =
   | { type: "START_WORKFLOW" }
   | { type: "WORKFLOW_COMPLETE"; result: RSEWorkflowResult }
   | { type: "WORKFLOW_ERROR"; error: string }
-  | { type: "RESET" }
-  | { type: "CLEAR_ERROR" };
+  | { type: "RESET" };

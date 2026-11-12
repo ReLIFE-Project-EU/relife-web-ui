@@ -143,16 +143,6 @@ export async function computeFinancials(
   );
 }
 
-/**
- * Batch version of `computeFinancials`.  Runs all calls concurrently via
- * `Promise.all`.
- */
-export async function computeFinancialsBatch(
-  inputs: RSEFinancialServiceInput[],
-): Promise<RSEFinancialResult[]> {
-  return Promise.all(inputs.map((input) => computeFinancials(input)));
-}
-
 function normalizeAppraisal(
   input: RSEFinancialServiceInput,
   capexEur: number,

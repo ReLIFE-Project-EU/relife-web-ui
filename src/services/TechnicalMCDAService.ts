@@ -73,10 +73,6 @@ export class TechnicalMCDAService implements IMCDAService {
     return MCDA_PERSONAS;
   }
 
-  getPersona(personaId: string): MCDAPersona | undefined {
-    return MCDA_PERSONAS.find((persona) => persona.id === personaId);
-  }
-
   async rank(
     scenarios: RenovationScenario[],
     financialResults: Record<ScenarioId, FinancialResults>,

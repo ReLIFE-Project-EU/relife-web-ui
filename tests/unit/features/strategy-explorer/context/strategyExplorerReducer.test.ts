@@ -148,12 +148,4 @@ describe("strategyExplorerReducer", () => {
     const state = strategyExplorerReducer(modified, { type: "RESET" });
     expect(state).toEqual(initialState);
   });
-
-  test("CLEAR_ERROR removes error", () => {
-    const state = strategyExplorerReducer(
-      { ...initialState, error: "bad input" },
-      { type: "CLEAR_ERROR" },
-    );
-    expect(state.error).toBeNull();
-  });
 });

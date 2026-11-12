@@ -85,16 +85,6 @@ export class RenovationService implements IRenovationService {
     return RENOVATION_MEASURES.find((m) => m.id === id);
   }
 
-  getSupportedMeasures(): RenovationMeasure[] {
-    return RENOVATION_MEASURES.filter((m) => m.isSupported);
-  }
-
-  getEnvelopePackageMeasures(): RenovationMeasure[] {
-    return ENVELOPE_PACKAGE_MEASURE_PRIORITY.map((id) =>
-      this.getMeasure(id),
-    ).filter((measure): measure is RenovationMeasure => measure !== undefined);
-  }
-
   getAnalysisEligibleMeasures(): RenovationMeasure[] {
     return ANALYSIS_ELIGIBLE_MEASURES.map((id) => this.getMeasure(id)).filter(
       (measure): measure is RenovationMeasure => measure !== undefined,

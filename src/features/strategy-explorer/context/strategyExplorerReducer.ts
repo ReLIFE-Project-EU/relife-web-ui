@@ -95,9 +95,6 @@ export function strategyExplorerReducer(
     case "RESET":
       return initialState;
 
-    case "CLEAR_ERROR":
-      return { ...state, error: null };
-
     default:
       return state;
   }

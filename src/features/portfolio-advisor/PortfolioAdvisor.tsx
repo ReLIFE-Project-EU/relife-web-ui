@@ -66,7 +66,6 @@ function PortfolioAdvisorWizard() {
     hasValidSelections && !capexInvalid && !maintenanceInvalid;
 
   // Sync local loading states to the global loading overlay
-  useSyncGlobalLoading(state.isEstimating, "PortfolioAdvisor.estimate");
   useSyncGlobalLoading(state.isEvaluating, "PortfolioAdvisor.evaluate");
   useWizardStepScroll(state.currentStep, topRef);
 

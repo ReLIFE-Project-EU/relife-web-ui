@@ -7,7 +7,6 @@ import { fileApi } from "../api";
 import { PortfolioContext } from "../context/PortfolioContextDefinition";
 import type { PortfolioFile } from "../types";
 import { normalizeErrorMessage, getISOTimestamp } from "../utils";
-import { refreshPortfolioQuota } from "./quotaRefresh";
 
 export function useFileUpload() {
   const context = useContext(PortfolioContext);
@@ -158,13 +157,6 @@ export function useFileUpload() {
   );
 
   /**
-   * Refresh quota after operations
-   */
-  const refreshQuota = useCallback(async () => {
-    await refreshPortfolioQuota(dispatch);
-  }, [dispatch]);
-
-  /**
    * Clear completed uploads from the list
    */
   const clearCompletedUploads = useCallback(() => {
@@ -185,7 +177,6 @@ export function useFileUpload() {
     renameFile,
     moveFile,
     downloadFile,
-    refreshQuota,
     clearCompletedUploads,
   };
 }

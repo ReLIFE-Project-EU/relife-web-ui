@@ -223,17 +223,6 @@ export interface IRenovationService {
   getMeasuresByCategory(category: MeasureCategory): RenovationMeasure[];
 
   /**
-   * Get all measures that are currently supported by the backend
-   */
-  getSupportedMeasures(): RenovationMeasure[];
-
-  /**
-   * Get envelope measures used for envelope package generation.
-   * Ranking itself is based on complete scenario data, not measure category.
-   */
-  getEnvelopePackageMeasures(): RenovationMeasure[];
-
-  /**
    * Get all measures that can currently participate in scenario analysis.
    */
   getAnalysisEligibleMeasures(): RenovationMeasure[];
@@ -372,11 +361,6 @@ export interface IMCDAService {
    * Get all available MCDA personas
    */
   getPersonas(): MCDAPersona[];
-
-  /**
-   * Get a specific persona by ID
-   */
-  getPersona(personaId: string): MCDAPersona | undefined;
 
   /**
    * Rank renovation scenarios using the Technical API.

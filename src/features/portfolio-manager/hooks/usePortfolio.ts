@@ -25,7 +25,6 @@ export function usePortfolio(): PortfolioContextValue & {
   renamePortfolio: (id: string, name: string) => Promise<void>;
   deletePortfolio: (id: string) => Promise<void>;
   selectPortfolio: (id: string | null) => void;
-  refreshPortfolios: () => Promise<void>;
 } {
   const context = useContext(PortfolioContext);
 
@@ -103,20 +102,6 @@ export function usePortfolio(): PortfolioContextValue & {
     [dispatch],
   );
 
-  const refreshPortfolios = useCallback(async () => {
-    dispatch({ type: "SET_LOADING_PORTFOLIOS", loading: true });
-    try {
-      const portfolios = await portfolioApi.list();
-      dispatch({ type: "SET_PORTFOLIOS", portfolios });
-    } catch (err) {
-      const message = normalizeErrorMessage(
-        err,
-        "Failed to refresh portfolios",
-      );
-      dispatch({ type: "SET_ERROR", error: message });
-    }
-  }, [dispatch]);
-
   return {
     state,
     dispatch,
@@ -125,6 +110,5 @@ export function usePortfolio(): PortfolioContextValue & {
     renamePortfolio,
     deletePortfolio,
     selectPortfolio,
-    refreshPortfolios,
   };
 }

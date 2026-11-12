@@ -251,17 +251,6 @@ describe("RenovationService", () => {
     ]);
   });
 
-  test("getEnvelopePackageMeasures returns envelope package seed measures", () => {
-    expect(
-      service.getEnvelopePackageMeasures().map((measure) => measure.id),
-    ).toEqual([
-      "wall-insulation",
-      "roof-insulation",
-      "windows",
-      "floor-insulation",
-    ]);
-  });
-
   test("suggestPackages adds direct and mixed condensing-boiler scenarios", () => {
     const packages = service.suggestPackages([
       "wall-insulation",

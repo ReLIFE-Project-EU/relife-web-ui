@@ -19,10 +19,7 @@ import {
   FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
   NATURAL_GAS_NET_PER_GROSS_KWH,
 } from "../../../../../src/services/carrierSavingsService";
-import {
-  computeFinancials,
-  computeFinancialsBatch,
-} from "../../../../../src/features/strategy-explorer/services/rseFinancialService";
+import { computeFinancials } from "../../../../../src/features/strategy-explorer/services/rseFinancialService";
 import type { SimulatedBuilding } from "../../../../../src/services/simulatedBuilding";
 import { APIError } from "../../../../../src/types/common";
 
@@ -75,13 +72,6 @@ const ENVELOPE_ACTIONS = [
   { action: "Roof insulation - Accessible", area_m2: 60 },
   { action: "Floor insulation", area_m2: 50 },
   { action: "Windows", area_m2: 20 },
-];
-
-/** PV on the 60 m² roof hits the 3 kWp minimum. */
-const COMBINED_ACTIONS = [
-  ...ENVELOPE_ACTIONS,
-  { action: "Air-water Heat Pump", capacity_kw: 8 },
-  { action: "PV", capacity_kw: 3 },
 ];
 
 function makeSimulated(
@@ -535,47 +525,5 @@ describe("computeFinancials", () => {
     const result = await computeFinancials(makeCarrierInput());
 
     expect(result.appraisal?.pointForecasts.IRR).toBeNull();
-  });
-});
-
-describe("computeFinancialsBatch", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockAssessRisk.mockResolvedValue(makeFixtureResponse());
-  });
-
-  test("calls assessRisk for every input concurrently", async () => {
-    const inputs = [
-      makeCarrierInput(),
-      {
-        ...makeCarrierInput(),
-        packageId: "combined" as const,
-        annualPrimaryEnergySavingsKwh: 8_000,
-        carrierSourceBreakdown: {
-          baseline: { naturalGasKwh: 12_000, gridElectricityKwh: 0 },
-          renovated: { naturalGasKwh: 4_000, gridElectricityKwh: 0 },
-        },
-      },
-    ];
-
-    const results = await computeFinancialsBatch(inputs);
-
-    // One lookup pre-pass + one risk call per input.
-    expect(mockAssessRisk).toHaveBeenCalledTimes(4);
-    expect(results).toHaveLength(2);
-    expect(results[0].status).toBe("available");
-    expect(results[1].status).toBe("available");
-    expect(results[0].packageId).toBe("envelope");
-    expect(results[1].packageId).toBe("combined");
-
-    // The combined package's lookup includes the heating and PV capacities
-    // alongside the envelope surface areas.
-    const combinedLookup = mockAssessRisk.mock.calls
-      .map(([request]) => request)
-      .find(
-        (request) =>
-          isLookupRequest(request) && request.renovation_actions?.length === 6,
-      );
-    expect(combinedLookup?.renovation_actions).toEqual(COMBINED_ACTIONS);
   });
 });

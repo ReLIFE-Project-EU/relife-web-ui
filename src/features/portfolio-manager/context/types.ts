@@ -63,8 +63,6 @@ export type PortfolioAction =
   // Loading state actions
   | { type: "SET_LOADING_PORTFOLIOS"; loading: boolean }
   | { type: "SET_LOADING_FILES"; loading: boolean }
-  | { type: "SET_UPLOADING"; uploading: boolean }
 
   // Error actions
-  | { type: "SET_ERROR"; error: string | null }
-  | { type: "CLEAR_ERROR" };
+  | { type: "SET_ERROR"; error: string | null };

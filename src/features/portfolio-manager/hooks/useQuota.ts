@@ -5,11 +5,9 @@
 import { useContext, useCallback } from "react";
 import { PortfolioContext } from "../context/PortfolioContextDefinition";
 import type { StorageQuota } from "../types";
-import { refreshPortfolioQuota } from "./quotaRefresh";
 
 export function useQuota(): {
   quota: StorageQuota | null;
-  refreshQuota: () => Promise<void>;
   checkUploadAllowed: (fileSize: number) => boolean;
   getQuotaColor: () => "green" | "yellow" | "red";
   formatBytes: (bytes: number) => string;
@@ -20,11 +18,7 @@ export function useQuota(): {
     throw new Error("useQuota must be used within a PortfolioProvider");
   }
 
-  const { state, dispatch } = context;
-
-  const refreshQuota = useCallback(async () => {
-    await refreshPortfolioQuota(dispatch);
-  }, [dispatch]);
+  const { state } = context;
 
   /**
    * Check if a file of given size can be uploaded
@@ -61,7 +55,6 @@ export function useQuota(): {
 
   return {
     quota: state.quota,
-    refreshQuota,
     checkUploadAllowed,
     getQuotaColor,
     formatBytes,

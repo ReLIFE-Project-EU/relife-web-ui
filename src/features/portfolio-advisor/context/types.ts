@@ -105,7 +105,6 @@ export interface PortfolioAdvisorState {
     total: number;
     currentBuilding?: string;
   } | null;
-  isEstimating: boolean;
   isEvaluating: boolean;
   error: string | null;
 }
@@ -118,7 +117,6 @@ export type PortfolioAdvisorAction =
   | { type: "SET_STEP"; step: 0 | 1 | 2 | 3 }
   | { type: "ADD_BUILDING"; building: PRABuilding }
   | { type: "REMOVE_BUILDING"; buildingId: string }
-  | { type: "SET_BUILDINGS"; buildings: PRABuilding[] }
   | { type: "APPEND_BUILDINGS"; buildings: PRABuilding[] }
   | { type: "TOGGLE_MEASURE"; measureId: RenovationMeasureId }
   | { type: "SET_MEASURES"; measures: RenovationMeasureId[] }
@@ -143,15 +141,9 @@ export type PortfolioAdvisorAction =
       currentBuilding?: string;
     }
   | {
-      type: "SET_BUILDING_RESULT";
-      buildingId: string;
-      result: BuildingAnalysisResult;
-    }
-  | {
       type: "BATCH_SET_BUILDING_RESULTS";
       results: Record<string, BuildingAnalysisResult>;
     }
   | { type: "ANALYSIS_COMPLETE" }
   | { type: "ANALYSIS_ERROR"; error: string }
-  | { type: "RESET" }
-  | { type: "CLEAR_ERROR" };
+  | { type: "RESET" };

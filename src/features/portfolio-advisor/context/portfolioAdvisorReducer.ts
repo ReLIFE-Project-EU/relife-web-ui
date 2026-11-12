@@ -26,7 +26,6 @@ export const initialState: PortfolioAdvisorState = {
   gasTariffOverrideEurPerKwh: null,
   buildingResults: {},
   analysisProgress: null,
-  isEstimating: false,
   isEvaluating: false,
   error: null,
 };
@@ -68,13 +67,6 @@ export function portfolioAdvisorReducer(
       return {
         ...state,
         buildings: state.buildings.filter((b) => b.id !== action.buildingId),
-        ...clearedAnalysisResults,
-      };
-
-    case "SET_BUILDINGS":
-      return {
-        ...state,
-        buildings: action.buildings,
         ...clearedAnalysisResults,
       };
 
@@ -221,15 +213,6 @@ export function portfolioAdvisorReducer(
         },
       };
 
-    case "SET_BUILDING_RESULT":
-      return {
-        ...state,
-        buildingResults: {
-          ...state.buildingResults,
-          [action.buildingId]: action.result,
-        },
-      };
-
     case "BATCH_SET_BUILDING_RESULTS":
       return {
         ...state,
@@ -255,16 +238,10 @@ export function portfolioAdvisorReducer(
       };
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Reset and Error Handling
+    // Reset
     // ─────────────────────────────────────────────────────────────────────────
     case "RESET":
       return initialState;
-
-    case "CLEAR_ERROR":
-      return {
-        ...state,
-        error: null,
-      };
 
     default:
       return state;

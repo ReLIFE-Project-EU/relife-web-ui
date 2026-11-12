@@ -136,39 +136,6 @@ export const portfolioApi = {
   },
 
   /**
-   * Update portfolio description.
-   * Defense-in-depth: scopes by user_id to prevent unauthorized access.
-   */
-  async updateDescription(
-    id: string,
-    description: string | null,
-  ): Promise<void> {
-    try {
-      const user = await requireAuthenticatedUser();
-
-      const { error } = await supabase
-        .from("portfolios")
-        .update({ description, updated_at: getISOTimestamp() })
-        .eq("id", id)
-        .eq("user_id", user.id);
-
-      if (error) {
-        throw wrapPortfolioApiError(
-          "Failed to update portfolio description.",
-          "database",
-          error,
-        );
-      }
-    } catch (error) {
-      throw wrapPortfolioApiError(
-        "Failed to update portfolio description.",
-        "database",
-        error,
-      );
-    }
-  },
-
-  /**
    * Delete a portfolio and all its files.
    * Defense-in-depth: scopes by user_id to prevent unauthorized access.
    */
