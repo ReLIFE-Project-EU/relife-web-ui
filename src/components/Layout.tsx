@@ -1,7 +1,6 @@
 import { AppShell, Box } from "@mantine/core";
 import { useDisclosure, useElementSize } from "@mantine/hooks";
 import { useState, type ReactNode } from "react";
-import { GlobalLoadingOverlay } from "./GlobalLoadingOverlay";
 import { LayoutFooter } from "./LayoutFooter";
 import { LayoutHeader } from "./LayoutHeader";
 import { LayoutNavbar } from "./LayoutNavbar";
@@ -24,7 +23,6 @@ export const Layout = ({ children }: LayoutProps) => {
 
   return (
     <>
-      <GlobalLoadingOverlay />
       <AppShell
         padding="md"
         header={{ height: computedHeaderHeight }}

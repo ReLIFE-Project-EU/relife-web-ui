@@ -54,6 +54,8 @@ export interface RSEWorkflowServiceDependencies {
   financialConcurrencyLimit?: number;
 }
 
+export type RSEWorkflowStage = "portfolio" | "energy" | "financial";
+
 export class RSEWorkflowError extends Error {
   readonly cause?: unknown;
 
@@ -87,13 +89,20 @@ export function createRSEWorkflowService(
     dependencies.financialConcurrencyLimit ?? RSE_FINANCIAL_CONCURRENCY_LIMIT;
 
   return {
-    async runWorkflow(request: RSEWorkflowRequest): Promise<RSEWorkflowResult> {
-      return runWorkflowWithDependencies(request, {
-        portfolioService,
-        cacheService,
-        financialMapper,
-        financialConcurrencyLimit,
-      });
+    async runWorkflow(
+      request: RSEWorkflowRequest,
+      onStage?: (stage: RSEWorkflowStage) => void,
+    ): Promise<RSEWorkflowResult> {
+      return runWorkflowWithDependencies(
+        request,
+        {
+          portfolioService,
+          cacheService,
+          financialMapper,
+          financialConcurrencyLimit,
+        },
+        onStage,
+      );
     },
   };
 }
@@ -102,8 +111,9 @@ export const rseWorkflowService = createRSEWorkflowService();
 
 export function runWorkflow(
   request: RSEWorkflowRequest,
+  onStage?: (stage: RSEWorkflowStage) => void,
 ): Promise<RSEWorkflowResult> {
-  return rseWorkflowService.runWorkflow(request);
+  return rseWorkflowService.runWorkflow(request, onStage);
 }
 
 async function runWorkflowWithDependencies(
@@ -116,6 +126,7 @@ async function runWorkflowWithDependencies(
     ) => Promise<RSEFinancialResult>;
     financialConcurrencyLimit: number;
   },
+  onStage?: (stage: RSEWorkflowStage) => void,
 ): Promise<RSEWorkflowResult> {
   const auditCtx = auditLog.startRun("rse");
   logGasTariff(
@@ -143,10 +154,12 @@ async function runWorkflowWithDependencies(
       auditCtx,
     );
 
+    onStage?.("portfolio");
     const portfolio = await dependencies.portfolioService.expandPortfolio(
       request.portfolio,
     );
     const archetypes = portfolio.map((selection) => selection.archetype);
+    onStage?.("energy");
     const cacheResolution = await dependencies.cacheService.resolveCacheMatrix({
       archetypes,
       packageIds,
@@ -220,6 +233,7 @@ async function runWorkflowWithDependencies(
       auditCtx,
     );
 
+    onStage?.("financial");
     const financialResults = await mapWithConcurrencyLimit(
       financialInputs,
       dependencies.financialConcurrencyLimit,

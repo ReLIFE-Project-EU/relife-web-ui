@@ -3,6 +3,55 @@ import type { RenovationMeasureId } from "../types/renovation";
 export const HEATING_SYSTEM_CONFLICT_MESSAGE =
   "Choose only one heating system.";
 
+export const analysisLoadingCopy = {
+  titles: {
+    home: "Home energy profile",
+    renovation: "Renovation comparison",
+    recommendations: "Renovation recommendations",
+    portfolio: "Portfolio analysis",
+    strategy: "Strategy comparison",
+    analysis: "Analysis",
+  },
+  stages: {
+    preparing: {
+      active: "Preparing analysis",
+      waiting: "Waiting for analysis results",
+    },
+    baseline: {
+      active: "Estimating energy use",
+      waiting: "Waiting for energy results",
+    },
+    energy: {
+      active: "Comparing energy use",
+      waiting: "Waiting for energy results",
+    },
+    financial: {
+      active: "Calculating financial outcomes",
+      waiting: "Waiting for financial results",
+    },
+    ranking: {
+      active: "Ranking renovation options",
+      waiting: "Waiting for recommendations",
+    },
+    buildings: {
+      active: "Processing buildings",
+      waiting: "Waiting for building results",
+    },
+    portfolio: {
+      active: "Preparing portfolio",
+      waiting: "Waiting for portfolio data",
+    },
+    cache: {
+      active: "Loading energy results",
+      waiting: "Waiting for energy results",
+    },
+  },
+  buildings: (completed: number, total: number) =>
+    `${completed} of ${total} buildings processed`,
+  elapsed: (seconds: number) =>
+    `Elapsed ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`,
+};
+
 export type ConceptId =
   | "gas-tariff"
   | "modeled-property"

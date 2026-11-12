@@ -6,7 +6,7 @@
  * Reads only existing state — no new reducer fields, no new API calls.
  */
 
-import { Badge, Card, Group, Loader, Stack, Text } from "@mantine/core";
+import { Badge, Card, Group, Stack, Text } from "@mantine/core";
 import { useMemo } from "react";
 import { FundingPills, MetricEyebrow } from "../../../components/shared";
 import { formatCurrency, formatNumber } from "../../../utils/formatters";
@@ -43,16 +43,13 @@ export function PortfolioSummaryStrip({ state }: PortfolioSummaryStripProps) {
 
   const resultsCount = Object.keys(state.buildingResults).length;
   const status = (() => {
-    if (state.isEvaluating) {
-      return { label: "Running…", color: "blue", icon: true };
-    }
     if (resultsCount > 0) {
-      return { label: "Complete", color: "green", icon: false };
+      return { label: "Complete", color: "green" };
     }
     if (state.currentStep > 0) {
-      return { label: "In progress", color: "yellow", icon: false };
+      return { label: "In progress", color: "yellow" };
     }
-    return { label: "Not started", color: "gray", icon: false };
+    return { label: "Not started", color: "gray" };
   })();
 
   return (
@@ -120,19 +117,13 @@ export function PortfolioSummaryStrip({ state }: PortfolioSummaryStripProps) {
         <Cell label="Financing">
           <FundingPills funding={state.funding} />
         </Cell>
-        <Cell label="Status" alignEnd>
-          <Badge
-            color={status.color}
-            variant="light"
-            leftSection={
-              status.icon ? (
-                <Loader size={10} color={status.color} />
-              ) : undefined
-            }
-          >
-            {status.label}
-          </Badge>
-        </Cell>
+        {!state.isEvaluating && (
+          <Cell label="Status" alignEnd>
+            <Badge color={status.color} variant="light">
+              {status.label}
+            </Badge>
+          </Cell>
+        )}
       </Group>
     </Card>
   );

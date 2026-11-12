@@ -20,7 +20,11 @@ import {
   IconRefresh,
 } from "@tabler/icons-react";
 import { useRef } from "react";
-import { useSyncGlobalLoading } from "../../contexts/global-loading";
+import { AnalysisProgress } from "../../components/AnalysisProgress";
+import {
+  useGlobalLoadingState,
+  useSyncGlobalLoading,
+} from "../../contexts/global-loading";
 import { useWizardStepScroll } from "../../hooks/useWizardStepScroll";
 import { HomeAssistantProvider } from "./context/HomeAssistantContext";
 import { HomeAssistantServiceProvider } from "./context/ServiceContext";
@@ -38,8 +42,9 @@ import {
 function HomeAssistantWizard() {
   const { state, dispatch } = useHomeAssistant();
   const topRef = useRef<HTMLDivElement | null>(null);
+  const { isLoading } = useGlobalLoadingState();
 
-  // Sync local loading states to the global loading overlay
+  // Keep workflow status active between HTTP requests
   useSyncGlobalLoading(state.isEstimating, "HomeAssistant.estimate");
   useSyncGlobalLoading(state.isEvaluating, "HomeAssistant.evaluate");
   useSyncGlobalLoading(state.isRanking, "HomeAssistant.rank");
@@ -47,7 +52,7 @@ function HomeAssistantWizard() {
 
   const handleStepClick = (step: number) => {
     // Only allow going back to previous steps or staying on current
-    if (step <= state.currentStep) {
+    if (!isLoading && step <= state.currentStep) {
       dispatch({ type: "SET_STEP", step: step as 0 | 1 | 2 });
     }
   };
@@ -92,47 +97,50 @@ function HomeAssistantWizard() {
               leftSection={<IconRefresh size={16} />}
               onClick={handleReset}
               size="sm"
+              disabled={isLoading}
             >
               Start Over
             </Button>
           )}
         </Group>
         <Box ref={topRef} aria-hidden style={{ scrollMarginTop: 96 }} />
-        <Stepper
-          active={state.currentStep}
-          onStepClick={handleStepClick}
-          allowNextStepsSelect={false}
-        >
-          <Stepper.Step
-            label="Building Information"
-            description="Enter your building details"
-            icon={<IconHome size={18} />}
-            loading={state.isEstimating}
-            color={canAccessStep(0) ? "blue" : "gray"}
+        <AnalysisProgress>
+          <Stepper
+            active={state.currentStep}
+            onStepClick={handleStepClick}
+            allowNextStepsSelect={false}
           >
-            {state.currentStep === 0 && <BuildingInfoStep />}
-          </Stepper.Step>
+            <Stepper.Step
+              label="Building Information"
+              description="Enter your building details"
+              icon={<IconHome size={18} />}
+              loading={state.isEstimating}
+              color={canAccessStep(0) ? "blue" : "gray"}
+            >
+              {state.currentStep === 0 && <BuildingInfoStep />}
+            </Stepper.Step>
 
-          <Stepper.Step
-            label="Energy & Renovation"
-            description="Review and select options"
-            icon={<IconBolt size={18} />}
-            loading={state.isEvaluating}
-            color={canAccessStep(1) ? "blue" : "gray"}
-          >
-            {state.currentStep === 1 && <EnergyRenovationStep />}
-          </Stepper.Step>
+            <Stepper.Step
+              label="Energy & Renovation"
+              description="Review and select options"
+              icon={<IconBolt size={18} />}
+              loading={state.isEvaluating}
+              color={canAccessStep(1) ? "blue" : "gray"}
+            >
+              {state.currentStep === 1 && <EnergyRenovationStep />}
+            </Stepper.Step>
 
-          <Stepper.Step
-            label="Results"
-            description="Compare and decide"
-            icon={<IconChartBar size={18} />}
-            loading={state.isRanking}
-            color={canAccessStep(2) ? "blue" : "gray"}
-          >
-            {state.currentStep === 2 && <ResultsStep />}
-          </Stepper.Step>
-        </Stepper>
+            <Stepper.Step
+              label="Results"
+              description="Compare and decide"
+              icon={<IconChartBar size={18} />}
+              loading={state.isRanking}
+              color={canAccessStep(2) ? "blue" : "gray"}
+            >
+              {state.currentStep === 2 && <ResultsStep />}
+            </Stepper.Step>
+          </Stepper>
+        </AnalysisProgress>
       </Stack>
     </Container>
   );

@@ -5,9 +5,10 @@ import {
   IconHome,
   IconMessageCircle,
 } from "@tabler/icons-react";
-import type { ComponentType } from "react";
+import type { ComponentType, MouseEvent } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { RELIFE_TOOLS } from "../constants/tools";
+import { useGlobalLoadingState } from "../contexts/global-loading";
 import classes from "./LayoutNavbar.module.css";
 
 const FEEDBACK_FORM_URL =
@@ -42,6 +43,15 @@ const SectionLabel = ({ children }: { children: string }) => (
 
 export const LayoutNavbar = () => {
   const { pathname } = useLocation();
+  const { isLoading } = useGlobalLoadingState();
+  const navigationProps = {
+    disabled: isLoading,
+    "aria-disabled": isLoading,
+    tabIndex: isLoading ? -1 : undefined,
+    onClick: (event: MouseEvent<HTMLAnchorElement>) => {
+      if (isLoading) event.preventDefault();
+    },
+  };
 
   return (
     <AppShell.Navbar p="sm">
@@ -49,6 +59,7 @@ export const LayoutNavbar = () => {
         <NavLink
           component={Link}
           to="/"
+          {...navigationProps}
           label="Home"
           active={pathname === "/"}
           classNames={navLinkClassNames}
@@ -61,6 +72,7 @@ export const LayoutNavbar = () => {
             key={tool.link}
             component={Link}
             to={tool.link}
+            {...navigationProps}
             label={tool.navLabel}
             description={tool.audience}
             color={tool.color}

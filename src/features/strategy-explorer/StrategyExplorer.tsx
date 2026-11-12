@@ -5,7 +5,6 @@ import {
   Card,
   Container,
   Group,
-  Loader,
   Stack,
   Stepper,
   Text,
@@ -19,8 +18,12 @@ import {
   IconRefresh,
 } from "@tabler/icons-react";
 import { useRef } from "react";
+import { AnalysisProgress } from "../../components/AnalysisProgress";
 import { relifeConcepts } from "../../constants/relifeConcepts";
-import { useSyncGlobalLoading } from "../../contexts/global-loading";
+import {
+  useGlobalLoadingState,
+  useSyncGlobalLoading,
+} from "../../contexts/global-loading";
 import { useWizardStepScroll } from "../../hooks/useWizardStepScroll";
 import { formatCurrency, formatNumber } from "../../utils/formatters";
 import { StrategyExplorerProvider } from "./context";
@@ -65,16 +68,13 @@ function SummaryStrip() {
   })();
 
   const status = (() => {
-    if (state.isRunningWorkflow) {
-      return { label: "Running…", color: "blue", icon: true };
-    }
     if (state.workflowResult) {
-      return { label: "Complete", color: "green", icon: false };
+      return { label: "Complete", color: "green" };
     }
     if (state.currentStep > 0) {
-      return { label: "In progress", color: "yellow", icon: false };
+      return { label: "In progress", color: "yellow" };
     }
-    return { label: "Not started", color: "gray", icon: false };
+    return { label: "Not started", color: "gray" };
   })();
 
   return (
@@ -110,19 +110,13 @@ function SummaryStrip() {
         </Cell>
         <Cell label="Packages">{packages.length}</Cell>
         <Cell label="Goal">{goalLabel}</Cell>
-        <Cell label="Status" alignEnd>
-          <Badge
-            color={status.color}
-            variant="light"
-            leftSection={
-              status.icon ? (
-                <Loader size={10} color={status.color} />
-              ) : undefined
-            }
-          >
-            {status.label}
-          </Badge>
-        </Cell>
+        {!state.isRunningWorkflow && (
+          <Cell label="Status" alignEnd>
+            <Badge color={status.color} variant="light">
+              {status.label}
+            </Badge>
+          </Cell>
+        )}
       </Group>
     </Card>
   );
@@ -178,6 +172,7 @@ function Cell({
 function StrategyExplorerWizard() {
   const { state, dispatch } = useStrategyExplorer();
   const topRef = useRef<HTMLDivElement | null>(null);
+  const { isLoading } = useGlobalLoadingState();
   const currentStep = useCurrentStep();
   const publishedCache = useRSEPublishedCacheVersion();
 
@@ -185,7 +180,7 @@ function StrategyExplorerWizard() {
   useWizardStepScroll(currentStep, topRef);
 
   const handleStepClick = (step: number) => {
-    if (step <= state.currentStep) {
+    if (!isLoading && step <= state.currentStep) {
       dispatch({ type: "SET_STEP", step: step as 0 | 1 | 2 | 3 });
     }
   };
@@ -255,7 +250,7 @@ function StrategyExplorerWizard() {
               leftSection={<IconRefresh size={16} />}
               onClick={handleReset}
               size="sm"
-              disabled={state.isRunningWorkflow}
+              disabled={isLoading}
             >
               Start Over
             </Button>
@@ -270,48 +265,50 @@ function StrategyExplorerWizard() {
 
         <SummaryStrip />
 
-        <Stepper
-          active={currentStep}
-          onStepClick={handleStepClick}
-          allowNextStepsSelect={false}
-        >
-          <Stepper.Step
-            label="Portfolio"
-            description="Select archetypes"
-            icon={<IconBuildingCommunity size={18} />}
-            color={canAccessStep(0) ? "relife" : "gray"}
+        <AnalysisProgress>
+          <Stepper
+            active={currentStep}
+            onStepClick={handleStepClick}
+            allowNextStepsSelect={false}
           >
-            {currentStep === 0 && <PortfolioStep />}
-          </Stepper.Step>
+            <Stepper.Step
+              label="Portfolio"
+              description="Select archetypes"
+              icon={<IconBuildingCommunity size={18} />}
+              color={canAccessStep(0) ? "relife" : "gray"}
+            >
+              {currentStep === 0 && <PortfolioStep />}
+            </Stepper.Step>
 
-          <Stepper.Step
-            label="Goal"
-            description="Choose objective"
-            icon={<IconChartAreaLine size={18} />}
-            color={canAccessStep(1) ? "relife" : "gray"}
-          >
-            {currentStep === 1 && <GoalStep />}
-          </Stepper.Step>
+            <Stepper.Step
+              label="Goal"
+              description="Choose objective"
+              icon={<IconChartAreaLine size={18} />}
+              color={canAccessStep(1) ? "relife" : "gray"}
+            >
+              {currentStep === 1 && <GoalStep />}
+            </Stepper.Step>
 
-          <Stepper.Step
-            label="Packages"
-            description="Compare strategies"
-            icon={<IconPresentation size={18} />}
-            loading={state.isRunningWorkflow}
-            color={canAccessStep(2) ? "relife" : "gray"}
-          >
-            {currentStep === 2 && <PackagesStep />}
-          </Stepper.Step>
+            <Stepper.Step
+              label="Packages"
+              description="Compare strategies"
+              icon={<IconPresentation size={18} />}
+              loading={state.isRunningWorkflow}
+              color={canAccessStep(2) ? "relife" : "gray"}
+            >
+              {currentStep === 2 && <PackagesStep />}
+            </Stepper.Step>
 
-          <Stepper.Step
-            label="Results"
-            description="View rankings"
-            icon={<IconChartBar size={18} />}
-            color={canAccessStep(3) ? "relife" : "gray"}
-          >
-            {currentStep === 3 && <ResultsStep />}
-          </Stepper.Step>
-        </Stepper>
+            <Stepper.Step
+              label="Results"
+              description="View rankings"
+              icon={<IconChartBar size={18} />}
+              color={canAccessStep(3) ? "relife" : "gray"}
+            >
+              {currentStep === 3 && <ResultsStep />}
+            </Stepper.Step>
+          </Stepper>
+        </AnalysisProgress>
       </Stack>
     </Container>
   );

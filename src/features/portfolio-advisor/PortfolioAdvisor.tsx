@@ -8,7 +8,6 @@ import {
   Button,
   Container,
   Group,
-  Progress,
   Stack,
   Stepper,
   Text,
@@ -22,7 +21,11 @@ import {
   IconRefresh,
 } from "@tabler/icons-react";
 import { useRef } from "react";
-import { useSyncGlobalLoading } from "../../contexts/global-loading";
+import { AnalysisProgress } from "../../components/AnalysisProgress";
+import {
+  useGlobalLoadingState,
+  useSyncGlobalLoading,
+} from "../../contexts/global-loading";
 import { useWizardStepScroll } from "../../hooks/useWizardStepScroll";
 import { PortfolioAdvisorProvider } from "./context/PortfolioAdvisorContext";
 import { PortfolioAdvisorServiceProvider } from "./context/ServiceContext";
@@ -48,6 +51,7 @@ function PortfolioAdvisorWizard() {
   const { state, dispatch } = usePortfolioAdvisor();
   const { renovation } = usePortfolioAdvisorServices();
   const topRef = useRef<HTMLDivElement | null>(null);
+  const { isLoading } = useGlobalLoadingState();
 
   const analysisEligibleMeasures = renovation
     .getAnalysisEligibleMeasures()
@@ -65,13 +69,13 @@ function PortfolioAdvisorWizard() {
   const canAccessFinancing =
     hasValidSelections && !capexInvalid && !maintenanceInvalid;
 
-  // Sync local loading states to the global loading overlay
+  // Keep workflow status active between HTTP requests
   useSyncGlobalLoading(state.isEvaluating, "PortfolioAdvisor.evaluate");
   useWizardStepScroll(state.currentStep, topRef);
 
   const handleStepClick = (step: number) => {
     // Only allow going back to previous steps or staying on current
-    if (step <= state.currentStep) {
+    if (!isLoading && step <= state.currentStep) {
       dispatch({ type: "SET_STEP", step: step as 0 | 1 | 2 | 3 });
     }
   };
@@ -96,13 +100,6 @@ function PortfolioAdvisorWizard() {
     }
   };
 
-  // Analysis progress bar
-  const progressPercent = state.analysisProgress
-    ? Math.round(
-        (state.analysisProgress.completed / state.analysisProgress.total) * 100,
-      )
-    : null;
-
   return (
     <Container size="xl" py="xl">
       <Stack gap="xl">
@@ -125,65 +122,62 @@ function PortfolioAdvisorWizard() {
               leftSection={<IconRefresh size={16} />}
               onClick={handleReset}
               size="sm"
-              disabled={state.isEvaluating}
+              disabled={isLoading}
             >
               Start Over
             </Button>
           )}
         </Group>
 
-        {/* Analysis Progress Bar */}
-        {progressPercent !== null && (
-          <Progress value={progressPercent} size="sm" radius="md" animated />
-        )}
-
         <Box ref={topRef} aria-hidden style={{ scrollMarginTop: 96 }} />
 
         {/* Sticky portfolio context strip */}
         <PortfolioSummaryStrip state={state} />
 
-        <Stepper
-          active={state.currentStep}
-          onStepClick={handleStepClick}
-          allowNextStepsSelect={false}
-        >
-          <Stepper.Step
-            label="Building Portfolio"
-            description="Add buildings"
-            icon={<IconBuilding size={18} />}
-            color={canAccessStep(0) ? "teal" : "gray"}
+        <AnalysisProgress progress={state.analysisProgress}>
+          <Stepper
+            active={state.currentStep}
+            onStepClick={handleStepClick}
+            allowNextStepsSelect={false}
           >
-            {state.currentStep === 0 && <BuildingPortfolioStep />}
-          </Stepper.Step>
+            <Stepper.Step
+              label="Building Portfolio"
+              description="Add buildings"
+              icon={<IconBuilding size={18} />}
+              color={canAccessStep(0) ? "teal" : "gray"}
+            >
+              {state.currentStep === 0 && <BuildingPortfolioStep />}
+            </Stepper.Step>
 
-          <Stepper.Step
-            label="Energy & Renovation"
-            description="Select measures"
-            icon={<IconBolt size={18} />}
-            color={canAccessStep(1) ? "teal" : "gray"}
-          >
-            {state.currentStep === 1 && <EnergyRenovationStep />}
-          </Stepper.Step>
+            <Stepper.Step
+              label="Energy & Renovation"
+              description="Select measures"
+              icon={<IconBolt size={18} />}
+              color={canAccessStep(1) ? "teal" : "gray"}
+            >
+              {state.currentStep === 1 && <EnergyRenovationStep />}
+            </Stepper.Step>
 
-          <Stepper.Step
-            label="Financing"
-            description="Configure funding"
-            icon={<IconCash size={18} />}
-            loading={state.isEvaluating}
-            color={canAccessStep(2) ? "teal" : "gray"}
-          >
-            {state.currentStep === 2 && <FinancingStep />}
-          </Stepper.Step>
+            <Stepper.Step
+              label="Financing"
+              description="Configure funding"
+              icon={<IconCash size={18} />}
+              loading={state.isEvaluating}
+              color={canAccessStep(2) ? "teal" : "gray"}
+            >
+              {state.currentStep === 2 && <FinancingStep />}
+            </Stepper.Step>
 
-          <Stepper.Step
-            label="Results"
-            description="Portfolio analysis"
-            icon={<IconChartBar size={18} />}
-            color={canAccessStep(3) ? "teal" : "gray"}
-          >
-            {state.currentStep === 3 && <ResultsStep />}
-          </Stepper.Step>
-        </Stepper>
+            <Stepper.Step
+              label="Results"
+              description="Portfolio analysis"
+              icon={<IconChartBar size={18} />}
+              color={canAccessStep(3) ? "teal" : "gray"}
+            >
+              {state.currentStep === 3 && <ResultsStep />}
+            </Stepper.Step>
+          </Stepper>
+        </AnalysisProgress>
       </Stack>
     </Container>
   );

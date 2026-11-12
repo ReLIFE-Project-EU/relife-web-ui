@@ -1,4 +1,6 @@
-import { useEffect, useReducer, type ReactNode } from "react";
+import { useEffect, useReducer, useState, type ReactNode } from "react";
+import { useSyncGlobalLoading } from "../../../contexts/global-loading";
+import type { RSEWorkflowStage } from "../services/rseWorkflowService";
 import { useGasTariff } from "../../../hooks/useGasTariff";
 import { archetypePortfolioService } from "../services/archetypePortfolioService";
 import {
@@ -15,6 +17,12 @@ export function StrategyExplorerProvider({
   children,
 }: StrategyExplorerProviderProps) {
   const [state, dispatch] = useReducer(strategyExplorerReducer, initialState);
+  const [workflowStage, setWorkflowStage] =
+    useState<RSEWorkflowStage>("portfolio");
+  useSyncGlobalLoading(
+    state.isRunningWorkflow,
+    `StrategyExplorer.workflow.${workflowStage}`,
+  );
   const gasTariff = useGasTariff(
     state.portfolio.selections.map((selection) => selection.archetype.country),
     state.gasTariffOverrideEurPerKwh,
@@ -41,7 +49,9 @@ export function StrategyExplorerProvider({
   }, []);
 
   return (
-    <StrategyExplorerContext.Provider value={{ state, dispatch, gasTariff }}>
+    <StrategyExplorerContext.Provider
+      value={{ state, dispatch, gasTariff, setWorkflowStage }}
+    >
       {children}
     </StrategyExplorerContext.Provider>
   );

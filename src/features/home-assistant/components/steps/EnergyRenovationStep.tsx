@@ -3,10 +3,11 @@
  * Screen 2: Shows energy estimation results and allows renovation/funding selection.
  */
 
-import { useEffect } from "react";
+import { useContext, useEffect } from "react";
 import { Alert, Box, Divider, Flex, Stack, Text, Title } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { EnergyTariffPanel } from "../../../../components/shared/EnergyTariffPanel";
+import { GlobalLoadingContext } from "../../../../contexts/global-loading";
 import { estimatePackageEmbodiedCarbon } from "../../../../services/embodiedCarbon";
 import { logGasTariff } from "../../../../services/gasTariffService";
 import { auditLog } from "../../../../utils/auditLogger";
@@ -27,6 +28,7 @@ import { ErrorAlert, StepNavigation } from "../shared";
 export function EnergyRenovationStep() {
   const { state, dispatch, gasTariff } = useHomeAssistant();
   const { financial, renovation } = useHomeAssistantServices();
+  const { withLoading } = useContext(GlobalLoadingContext);
 
   const selectedMeasures = state.renovation.selectedMeasures;
   const suggestedPackages = state.suggestedPackages;
@@ -86,11 +88,14 @@ export function EnergyRenovationStep() {
         selectedPackageIds.includes(pkg.id),
       );
 
-      const evaluated = await renovation.evaluateScenarios(
-        state.building,
-        state.estimation,
-        selectedPackages,
-        auditCtx,
+      const evaluated = await withLoading(
+        renovation.evaluateScenarios(
+          state.building,
+          state.estimation,
+          selectedPackages,
+          auditCtx,
+        ),
+        "HomeAssistant.evaluate.energy",
       );
 
       // Material carbon rides along with the scenarios so ranking eligibility
@@ -113,17 +118,20 @@ export function EnergyRenovationStep() {
       });
 
       // Calculate financial results for all scenarios
-      const financialResults = await financial.calculateForAllScenarios({
-        scenarios,
-        fundingOptions: state.funding,
-        floorArea,
-        packageFinancialInputs: state.packageFinancialInputs,
-        building: state.building,
-        financialAssumptions: {
-          gasTariffEurPerKwh: gasTariff.eurPerKwh,
-        },
-        auditCtx,
-      });
+      const financialResults = await withLoading(
+        financial.calculateForAllScenarios({
+          scenarios,
+          fundingOptions: state.funding,
+          floorArea,
+          packageFinancialInputs: state.packageFinancialInputs,
+          building: state.building,
+          financialAssumptions: {
+            gasTariffEurPerKwh: gasTariff.eurPerKwh,
+          },
+          auditCtx,
+        }),
+        "HomeAssistant.evaluate.financial",
+      );
 
       dispatch({
         type: "SET_EVALUATION_RESULTS",

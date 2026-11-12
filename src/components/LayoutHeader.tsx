@@ -15,6 +15,7 @@ import { IconFolder, IconLogin, IconLogout } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
 import { getKeycloakLogoutUrl, signInWithKeycloak, supabase } from "../auth";
 import { useSupabaseSession, useWhoami } from "../hooks/useAuth";
+import { useGlobalLoadingState } from "../contexts/global-loading";
 import { DevelopmentVersionNotice } from "./DevelopmentVersionNotice";
 import { ServiceStatus } from "./ServiceStatus";
 
@@ -33,6 +34,7 @@ export const LayoutHeader = ({
 }: LayoutHeaderProps) => {
   const { session, loading: sessionLoading } = useSupabaseSession();
   const { fullName, loading: profileLoading } = useWhoami(session);
+  const { isLoading } = useGlobalLoadingState();
 
   const handleLogin = async () => {
     try {
@@ -97,6 +99,7 @@ export const LayoutHeader = ({
                 <Menu shadow="md" width={200}>
                   <Menu.Target>
                     <Button
+                      disabled={isLoading}
                       variant="subtle"
                       color="gray.0"
                       leftSection={
@@ -119,6 +122,7 @@ export const LayoutHeader = ({
 
                   <Menu.Dropdown>
                     <Menu.Item
+                      disabled={isLoading}
                       leftSection={<IconFolder size={14} />}
                       component={Link}
                       to="/my-portfolios"
@@ -127,6 +131,7 @@ export const LayoutHeader = ({
                     </Menu.Item>
                     <Menu.Divider />
                     <Menu.Item
+                      disabled={isLoading}
                       color="red"
                       leftSection={<IconLogout size={14} />}
                       onClick={handleLogout}
@@ -138,6 +143,7 @@ export const LayoutHeader = ({
               ) : (
                 <>
                   <Button
+                    disabled={isLoading}
                     variant="white"
                     size="sm"
                     onClick={handleLogin}
@@ -147,6 +153,7 @@ export const LayoutHeader = ({
                     Sign In
                   </Button>
                   <ActionIcon
+                    disabled={isLoading}
                     variant="white"
                     size="lg"
                     onClick={handleLogin}

@@ -6,7 +6,8 @@ import type { RSEWorkflowRequest } from "../types";
 import { useStrategyExplorer } from "./useStrategyExplorer";
 
 export function useRSEWorkflow() {
-  const { state, dispatch, gasTariff } = useStrategyExplorer();
+  const { state, dispatch, gasTariff, setWorkflowStage } =
+    useStrategyExplorer();
 
   const run = useCallback(
     async (options?: {
@@ -41,7 +42,7 @@ export function useRSEWorkflow() {
           },
         };
 
-        const result = await runWorkflow(request);
+        const result = await runWorkflow(request, setWorkflowStage);
         dispatch({ type: "WORKFLOW_COMPLETE", result });
       } catch (error) {
         const message =
@@ -58,6 +59,7 @@ export function useRSEWorkflow() {
       gasTariff,
       state.funding,
       dispatch,
+      setWorkflowStage,
     ],
   );
 
