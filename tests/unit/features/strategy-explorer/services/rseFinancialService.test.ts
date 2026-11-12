@@ -15,10 +15,6 @@ import {
   RSE_ENERGY_TARIFF_DEFAULTS,
   RSE_UNAVAILABLE_REASONS,
 } from "../../../../../src/features/strategy-explorer/constants";
-import {
-  FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
-  NATURAL_GAS_NET_PER_GROSS_KWH,
-} from "../../../../../src/services/carrierSavingsService";
 import { computeFinancials } from "../../../../../src/features/strategy-explorer/services/rseFinancialService";
 import type { SimulatedBuilding } from "../../../../../src/services/simulatedBuilding";
 import { APIError } from "../../../../../src/types/common";
@@ -128,22 +124,6 @@ function makeCarrierInput(overrides?: {
         RSE_ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
     },
   };
-}
-
-function expectedEquivalentKwh(
-  input: ReturnType<typeof makeCarrierInput>,
-): number {
-  const gasDelta =
-    input.carrierSourceBreakdown.baseline.naturalGasKwh -
-    input.carrierSourceBreakdown.renovated.naturalGasKwh;
-  const gridDelta =
-    input.carrierSourceBreakdown.baseline.gridElectricityKwh -
-    input.carrierSourceBreakdown.renovated.gridElectricityKwh;
-  const savingsEur =
-    (gasDelta / NATURAL_GAS_NET_PER_GROSS_KWH) *
-      input.financialAssumptions!.gasTariffEurPerKwh +
-    gridDelta * FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH;
-  return savingsEur / FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH;
 }
 
 /** New multi-scheme wire response with a single equity scheme. */
@@ -302,48 +282,31 @@ describe("computeFinancials", () => {
     expect(result.annualMaintenanceEur).toBe(350);
   });
 
-  test("POSTs carrier-aware electricity-equivalent kWh at professional output level", async () => {
-    const input = makeCarrierInput();
-    await computeFinancials(input);
+  test("appraises carrier savings at professional output level and preserves the result", async () => {
+    const input = makeCarrierInput({ gasTariffEurPerKwh: 0.2 });
+    const result = await computeFinancials(input);
+    const [request] = mockAssessRisk.mock.calls[1];
 
     expect(mockAssessRisk).toHaveBeenCalledTimes(2);
-    const [request] = mockAssessRisk.mock.calls[1];
-
-    expect(request.output_level).toBe("professional");
-    expect(request.project_lifetime).toBe(20);
-    expect(request.schemes).toEqual([{ scheme_type: "equity" }]);
-    expect(request.annual_energy_savings).toBeCloseTo(
-      expectedEquivalentKwh(input),
-      5,
-    );
-    expect(request.capex).toBeGreaterThan(0);
-    expect(request.annual_maintenance_cost).toBeGreaterThanOrEqual(0);
-  });
-
-  test("folds a percentage subsidy into CAPEX and stays on the equity scheme", async () => {
-    const input = makeCarrierInput();
-    const result = await computeFinancials({
-      ...input,
-      financialAssumptions: {
-        projectLifetimeYears: 25,
-        funding: {
-          ...DEFAULT_FUNDING_OPTIONS,
-          incentives: {
-            mode: "percentage",
-            upfrontPercentage: 10,
-            upfrontAmount: 0,
-          },
-        },
-        gasTariffEurPerKwh: 0.115,
+    expect(request).toMatchObject({
+      output_level: "professional",
+      project_lifetime: 20,
+      schemes: [{ scheme_type: "equity" }],
+      annual_energy_savings: expect.closeTo(((4000 / 0.9) * 0.2) / 0.246, 5),
+    });
+    expect(result).toMatchObject({
+      archetype: input.archetype,
+      packageId: "envelope",
+      capexEur: 22_000,
+      effectiveCapexEur: 22_000,
+      annualMaintenanceEur: 0,
+      annualEnergySavingsKwh: request.annual_energy_savings,
+      status: "available",
+      appraisal: {
+        kind: "appraised",
+        pointForecasts: { NPV: 15_000, IRR: 0.12, ROI: 0.35, PBP: 8, DPP: 10 },
       },
     });
-
-    const [request] = mockAssessRisk.mock.calls[1];
-    expect(request.project_lifetime).toBe(25);
-    expect(request.schemes).toEqual([{ scheme_type: "equity" }]);
-    expect(request.capex).toBe(19_800);
-    expect(result.capexEur).toBe(22_000);
-    expect(result.effectiveCapexEur).toBe(19_800);
   });
 
   test("sends a bank loan drawn on the post-subsidy cost", async () => {
@@ -359,7 +322,7 @@ describe("computeFinancials", () => {
     const result = await computeFinancials({
       ...input,
       financialAssumptions: {
-        projectLifetimeYears: 20,
+        projectLifetimeYears: 25,
         funding: {
           financingType: "loan",
           loan: { percentage: 50, duration: 12 },
@@ -375,7 +338,9 @@ describe("computeFinancials", () => {
 
     // 22,000 gross − 10% = 19,800 effective; the loan covers 50% of that.
     const [request] = mockAssessRisk.mock.calls[1];
+    expect(request.project_lifetime).toBe(25);
     expect(request.capex).toBe(19_800);
+    expect(result.capexEur).toBe(22_000);
     expect(request.schemes).toEqual([
       { scheme_type: "bank_loan", loan_amount: 9_900, term_years: 12 },
     ]);
@@ -383,7 +348,6 @@ describe("computeFinancials", () => {
   });
 
   test("returns unavailable when a subsidy covers the whole cost", async () => {
-    const callsBefore = mockAssessRisk.mock.calls.length;
     const input = makeCarrierInput();
     const result = await computeFinancials({
       ...input,
@@ -409,7 +373,7 @@ describe("computeFinancials", () => {
     );
     expect(result.capexEur).toBe(22_000);
     expect(result.effectiveCapexEur).toBe(0);
-    expect(mockAssessRisk.mock.calls.length).toBe(callsBefore + 1);
+    expect(mockAssessRisk).toHaveBeenCalledTimes(1);
   });
 
   test("returns unavailable when carrier-aware savings are not positive", async () => {
@@ -470,56 +434,21 @@ describe("computeFinancials", () => {
     );
   });
 
-  test("normalises the scheme result into RSEFinancialResult shape", async () => {
-    const input = makeCarrierInput();
-    const result = await computeFinancials(input);
-
-    expect(result.archetype).toEqual({
-      country: "IT",
-      category: "Residential",
-      name: "Detached 1980",
-    });
-    expect(result.packageId).toBe("envelope");
-    expect(result.capexEur).toBe(22_000);
-    expect(result.effectiveCapexEur).toBe(22_000);
-    expect(result.annualMaintenanceEur).toBe(0);
-    expect(result.annualEnergySavingsKwh).toBeCloseTo(
-      expectedEquivalentKwh(input),
-      5,
-    );
-    expect(result.status).toBe("available");
-
-    expect(result.appraisal?.pointForecasts).toMatchObject({
-      NPV: 15_000,
-      IRR: 0.12,
-      ROI: 0.35,
-      PBP: 8,
-      DPP: 10,
-    });
-  });
-
   // A null IRR must survive so RSE reads it as not applicable, like HRA and PRA.
   test("keeps a missing IRR as null", async () => {
+    const response = makeFixtureResponse();
+    const equity = response.results.equity;
     mockAssessRisk.mockResolvedValue({
+      ...response,
       results: {
         equity: {
-          scheme_id: 1,
-          scheme_family: "self_financed",
+          ...equity,
           summary: {
-            percentiles: { NPV: { P10: 5_000, P50: 10_000, P90: 15_000 } },
-            probabilities: {},
-            disc_target_used: 0.05,
-            n_sims: 10_000,
-          },
-          cashflow_distributions: {
-            years: [0, 1],
-            cash_flows: { P50: [-1_000, 500] },
-            inflows: { P50: [0, 500] },
-            outflows: { P50: [0, 0] },
+            ...equity.summary,
+            percentiles: { NPV: equity.summary.percentiles.NPV },
           },
         },
       },
-      metadata: { capex: 22_000, project_lifetime: 20 },
     });
 
     const result = await computeFinancials(makeCarrierInput());

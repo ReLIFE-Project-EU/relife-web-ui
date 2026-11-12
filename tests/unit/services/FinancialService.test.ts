@@ -6,6 +6,7 @@ import type {
   RenovationScenario,
   ScenarioId,
 } from "../../../src/types/renovation";
+import type { CalculateFinancialScenariosRequest } from "../../../src/services/types";
 import type { RiskAssessmentRequest } from "../../../src/types/financial";
 import { APIError } from "../../../src/types/common";
 import { FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH } from "../../../src/services/carrierSavingsService";
@@ -61,17 +62,6 @@ const schemeResultStub = {
     cash_flows: { P50: [-10000, 300, 300] },
     inflows: { P50: [0, 500, 500] },
     outflows: { P50: [0, 200, 200] },
-  },
-  kpi_histograms: {
-    NPV: {
-      bin_edges: [-500, 500],
-      feasible_counts: [1],
-      infeasible_counts: [0],
-      p10: 0,
-      p50: 100,
-      p90: 200,
-      project_lifetime: null,
-    },
   },
 };
 
@@ -161,6 +151,14 @@ const packageFinancialInputs: PackageFinancialInputsById = {
   },
 };
 
+const scenarioRequest: CalculateFinancialScenariosRequest = {
+  scenarios: [currentScenario, renovatedScenario],
+  fundingOptions: selfFundedOptions,
+  floorArea: 100,
+  packageFinancialInputs,
+  building: mockBuilding,
+};
+
 describe("FinancialService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -173,17 +171,16 @@ describe("FinancialService", () => {
   test("ARV request includes national EPC country and renovated energy intensity", async () => {
     const service = new FinancialService();
 
-    await service.calculateForAllScenarios({
-      scenarios: [currentScenario, renovatedScenario],
-      fundingOptions: selfFundedOptions,
-      floorArea: 100,
-      packageFinancialInputs,
-      building: mockBuilding,
-    });
+    await service.calculateForAllScenarios(scenarioRequest);
 
     expect(mockCalculateARV).toHaveBeenCalledWith(
       expect.objectContaining({
         target_country: "Greece",
+        lat: 37.98,
+        lng: 23.73,
+        floor_area: 100,
+        construction_year: 1970,
+        property_type: "Detached House",
         // Primary-energy intensities (EP_total / floor area): 16500/100, 9600/100.
         energy_consumption_before: 165,
         energy_consumption_after: 96,
@@ -194,37 +191,16 @@ describe("FinancialService", () => {
   test("the baseline is input only: no result entry and no ARV call", async () => {
     const service = new FinancialService();
 
-    const results = await service.calculateForAllScenarios({
-      scenarios: [currentScenario, renovatedScenario],
-      fundingOptions: selfFundedOptions,
-      floorArea: 100,
-      packageFinancialInputs,
-      building: mockBuilding,
-    });
+    const results = await service.calculateForAllScenarios(scenarioRequest);
 
     expect(Object.keys(results)).toEqual(["renovated"]);
-    expect(mockCalculateARV).toHaveBeenCalledTimes(1);
-  });
-
-  test("ARV request includes location and area", async () => {
-    const service = new FinancialService();
-
-    await service.calculateForAllScenarios({
-      scenarios: [currentScenario, renovatedScenario],
-      fundingOptions: selfFundedOptions,
-      floorArea: 100,
-      packageFinancialInputs,
-      building: mockBuilding,
-    });
-
-    expect(mockCalculateARV).toHaveBeenCalledWith(
+    expect(mockAssessRisk).toHaveBeenCalledWith(
       expect.objectContaining({
-        lat: 37.98,
-        lng: 23.73,
-        floor_area: 100,
-        construction_year: 1970,
+        output_level: "private",
+        schemes: [{ scheme_type: "equity" }],
       }),
     );
+    expect(mockCalculateARV).toHaveBeenCalledTimes(1);
   });
 
   test("ARV request normalizes fractional catalogue floors to integer fields", async () => {
@@ -237,10 +213,8 @@ describe("FinancialService", () => {
     };
 
     await service.calculateForAllScenarios({
-      scenarios: [currentScenario, renovatedScenario],
-      fundingOptions: selfFundedOptions,
+      ...scenarioRequest,
       floorArea: 80,
-      packageFinancialInputs,
       building: apartmentBuilding,
     });
 
@@ -261,10 +235,7 @@ describe("FinancialService", () => {
     };
 
     await service.calculateForAllScenarios({
-      scenarios: [currentScenario, renovatedScenario],
-      fundingOptions: selfFundedOptions,
-      floorArea: 100,
-      packageFinancialInputs,
+      ...scenarioRequest,
       building: buildingWithoutYear,
     });
 
@@ -272,62 +243,6 @@ describe("FinancialService", () => {
       expect.objectContaining({
         construction_year: 2005,
       }),
-    );
-  });
-
-  test("ARV request maps Single Family House to Detached House property_type", async () => {
-    const service = new FinancialService();
-    const sfhBuilding = {
-      ...mockBuilding,
-      buildingType: "Single Family House",
-    };
-
-    await service.calculateForAllScenarios({
-      scenarios: [currentScenario, renovatedScenario],
-      fundingOptions: selfFundedOptions,
-      floorArea: 100,
-      packageFinancialInputs,
-      building: sfhBuilding,
-    });
-
-    expect(mockCalculateARV).toHaveBeenCalledWith(
-      expect.objectContaining({
-        property_type: "Detached House",
-      }),
-    );
-  });
-
-  test("risk assessment savings are carrier-aware electricity-equivalent kWh", async () => {
-    const service = new FinancialService();
-
-    await service.calculateForAllScenarios({
-      scenarios: [currentScenario, renovatedScenario],
-      fundingOptions: selfFundedOptions,
-      floorArea: 100,
-      packageFinancialInputs,
-      building: mockBuilding,
-    });
-
-    expect(mockAssessRisk).toHaveBeenCalledWith(
-      expect.objectContaining({
-        annual_energy_savings: ((4000 / 0.9) * 0.115) / 0.246,
-      }),
-    );
-  });
-
-  test("self-funded analysis sends a single equity scheme", async () => {
-    const service = new FinancialService();
-
-    await service.calculateForAllScenarios({
-      scenarios: [currentScenario, renovatedScenario],
-      fundingOptions: selfFundedOptions,
-      floorArea: 100,
-      packageFinancialInputs,
-      building: mockBuilding,
-    });
-
-    expect(mockAssessRisk).toHaveBeenCalledWith(
-      expect.objectContaining({ schemes: [{ scheme_type: "equity" }] }),
     );
   });
 
@@ -349,22 +264,23 @@ describe("FinancialService", () => {
     };
 
     await service.calculateForAllScenarios({
+      ...scenarioRequest,
+      building: { ...mockBuilding, projectLifetime: 25 },
+      financialAssumptions: { gasTariffEurPerKwh: 0.2 },
       scenarios: [currentScenario, systemOnlyScenario],
-      fundingOptions: selfFundedOptions,
-      floorArea: 100,
       packageFinancialInputs: {
         "scenario-condensing-boiler": {
           capex: 10000,
           annualMaintenanceCost: 300,
         },
       },
-      building: mockBuilding,
     });
 
     expect(mockAssessRisk).toHaveBeenCalledWith(
       expect.objectContaining({
+        project_lifetime: 25,
         annual_energy_savings: expect.closeTo(
-          ((1000 / 0.9) * 0.115 +
+          ((1000 / 0.9) * 0.2 +
             1000 * FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH) /
             FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
           6,
@@ -385,13 +301,7 @@ describe("FinancialService", () => {
   test("output level matches constructor argument with a single call", async () => {
     const service = new FinancialService("professional");
 
-    await service.calculateForAllScenarios({
-      scenarios: [currentScenario, renovatedScenario],
-      fundingOptions: selfFundedOptions,
-      floorArea: 100,
-      packageFinancialInputs,
-      building: mockBuilding,
-    });
+    await service.calculateForAllScenarios(scenarioRequest);
 
     // No supplemental private call any more: cashflow_distributions ships at all levels.
     expect(mockAssessRisk).toHaveBeenCalledTimes(1);
@@ -404,11 +314,8 @@ describe("FinancialService", () => {
     const service = new FinancialService();
 
     await service.calculateForAllScenarios({
+      ...scenarioRequest,
       scenarios: [currentScenario, renovatedScenario, secondScenario],
-      fundingOptions: selfFundedOptions,
-      floorArea: 100,
-      packageFinancialInputs,
-      building: mockBuilding,
     });
 
     expect(mockAssessRisk).toHaveBeenNthCalledWith(
@@ -427,47 +334,7 @@ describe("FinancialService", () => {
     );
   });
 
-  test("debt financing sends a bank_loan scheme sized per package", async () => {
-    const service = new FinancialService();
-    const fundedOptions: FundingOptions = {
-      financingType: "loan",
-      loan: { percentage: 50, duration: 12 },
-      incentives: {
-        mode: "percentage",
-        upfrontPercentage: 0,
-        upfrontAmount: 0,
-      },
-    };
-
-    await service.calculateForAllScenarios({
-      scenarios: [currentScenario, renovatedScenario, secondScenario],
-      fundingOptions: fundedOptions,
-      floorArea: 100,
-      packageFinancialInputs,
-      building: mockBuilding,
-    });
-
-    expect(mockAssessRisk).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        capex: 10000,
-        schemes: [
-          { scheme_type: "bank_loan", loan_amount: 5000, term_years: 12 },
-        ],
-      }),
-    );
-    expect(mockAssessRisk).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        capex: 18000,
-        schemes: [
-          { scheme_type: "bank_loan", loan_amount: 9000, term_years: 12 },
-        ],
-      }),
-    );
-  });
-
-  test("folds the upfront incentive into CAPEX and the loan amount", async () => {
+  test("sizes the loan and subsidy from each package cost", async () => {
     const service = new FinancialService();
     const fundedOptions: FundingOptions = {
       financingType: "loan",
@@ -480,19 +347,26 @@ describe("FinancialService", () => {
     };
 
     await service.calculateForAllScenarios({
-      scenarios: [currentScenario, renovatedScenario],
+      ...scenarioRequest,
+      scenarios: [currentScenario, renovatedScenario, secondScenario],
       fundingOptions: fundedOptions,
-      floorArea: 100,
-      packageFinancialInputs,
-      building: mockBuilding,
     });
 
-    // 10000 * (1 - 0.20) = 8000 effective CAPEX; loan = 8000 * 0.5 = 4000.
-    expect(mockAssessRisk).toHaveBeenCalledWith(
+    expect(mockAssessRisk).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({
         capex: 8000,
         schemes: [
           { scheme_type: "bank_loan", loan_amount: 4000, term_years: 12 },
+        ],
+      }),
+    );
+    expect(mockAssessRisk).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        capex: 14400,
+        schemes: [
+          { scheme_type: "bank_loan", loan_amount: 7200, term_years: 12 },
         ],
       }),
     );
@@ -511,10 +385,7 @@ describe("FinancialService", () => {
     const service = new FinancialService();
 
     const results = await service.calculateForAllScenarios({
-      scenarios: [currentScenario, renovatedScenario],
-      fundingOptions: selfFundedOptions,
-      floorArea: 100,
-      packageFinancialInputs,
+      ...scenarioRequest,
       building: { ...mockBuilding, country: "Poland" },
     });
 
