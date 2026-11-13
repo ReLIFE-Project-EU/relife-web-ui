@@ -288,7 +288,6 @@ export interface CashFlowData {
   annual_outflows: number[]; // EUR — maintenance + loan payments per year
   annual_net_cash_flow?: number[]; // EUR — inflows minus outflows per year
   cumulative_cash_flow?: number[]; // EUR — running cumulative net cash flow
-  breakeven_year?: number | null; // Year index when cumulative turns positive
   loan_term?: number | null; // Years — loan repayment duration
 }
 

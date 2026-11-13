@@ -30,3 +30,9 @@ function getDeterministicColor(value: string): string {
 
   return palette[hash % palette.length];
 }
+
+/** Green for a gain, red for a loss, neutral at zero or when unknown. */
+export function gainLossColor(value: number | undefined): string | undefined {
+  if (value === undefined || value === 0) return undefined;
+  return value > 0 ? "green.8" : "red.8";
+}

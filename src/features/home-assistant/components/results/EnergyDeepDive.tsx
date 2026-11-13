@@ -4,33 +4,24 @@
  * the scenario's measure list, all relative to the current home today.
  */
 
-import { Text } from "@mantine/core";
-import {
-  IconBolt,
-  IconCloud,
-  IconPlug,
-  IconSolarPanel,
-  IconSun,
-  IconUpload,
-} from "@tabler/icons-react";
-import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
-import {
-  relifeConcepts,
-  type ConceptId,
-} from "../../../../constants/relifeConcepts";
-import { DeltaBadge } from "../../../../components/shared";
+import { Group, Text } from "@mantine/core";
+import type { ReactNode } from "react";
+import { ConceptMetricCard, DeltaBadge } from "../../../../components/shared";
 import type { RenovationScenario } from "../../context/types";
 import { getScenarioColor } from "../../utils/colorUtils";
 import {
   calculatePercentChange,
+  formatCount,
   formatDecimal,
-  formatEnergyPerYear,
+  formatHealthyLifeDays,
   formatNumber,
-  formatTonnageCo2,
+  formatPercent,
+  toHealthyLifeDays,
 } from "../../utils/formatters";
-import { ThermalHealthCard } from "./ThermalHealthCard";
 import classes from "./ResultsLayout.module.css";
 import shared from "../../../../components/shared/ResultsLayout.module.css";
+
+const PERCENT_PER_RATIO = 100;
 
 interface EnergyDeepDiveProps {
   current: RenovationScenario;
@@ -42,136 +33,127 @@ export function EnergyDeepDive({ current, selected }: EnergyDeepDiveProps) {
 
   return (
     <div>
-      <div className={shared.deepEyebrow}>Energy &amp; health</div>
-      <h3 className={shared.deepHeading}>vs. your home today</h3>
+      <h3 className={shared.deepHeading}>Energy &amp; health</h3>
 
-      <div className={shared.miniGrid}>
-        <MiniMetric
-          icon={<IconBolt size={14} />}
+      <div className={shared.tileGrid}>
+        <ConceptMetricCard
           conceptId="annual-building-thermal-needs"
           value={formatNumber(selected.annualEnergyNeeds)}
-          delta={
-            <>
-              <DeltaBadge
-                delta={calculatePercentChange(
-                  current.annualEnergyNeeds,
-                  selected.annualEnergyNeeds,
-                )}
-                higherIsBetter={false}
-              />
-              <Text size="xs" c="dimmed" component="span">
-                vs. {formatEnergyPerYear(current.annualEnergyNeeds)} today
-              </Text>
-            </>
+          withUnit
+          footer={
+            <VersusToday
+              today={formatNumber(current.annualEnergyNeeds)}
+              changePct={calculatePercentChange(
+                current.annualEnergyNeeds,
+                selected.annualEnergyNeeds,
+              )}
+            />
           }
         />
 
         {selected.deliveredTotal !== undefined &&
         current.deliveredTotal !== undefined ? (
-          <MiniMetric
-            icon={<IconPlug size={14} />}
+          <ConceptMetricCard
             conceptId="system-energy-consumption"
             value={formatNumber(selected.deliveredTotal)}
-            delta={
-              <>
-                <DeltaBadge
-                  delta={calculatePercentChange(
-                    current.deliveredTotal,
-                    selected.deliveredTotal,
-                  )}
-                  higherIsBetter={false}
-                />
-                <Text size="xs" c="dimmed" component="span">
-                  delivered to building
-                </Text>
-              </>
+            withUnit
+            footer={
+              <VersusToday
+                today={formatNumber(current.deliveredTotal)}
+                changePct={calculatePercentChange(
+                  current.deliveredTotal,
+                  selected.deliveredTotal,
+                )}
+              />
             }
           />
         ) : null}
 
         {selected.annualEmissionsTonCo2e !== undefined &&
         current.annualEmissionsTonCo2e !== undefined ? (
-          <MiniMetric
-            icon={<IconCloud size={14} />}
+          <ConceptMetricCard
             conceptId="operational-co2-emissions"
             value={formatDecimal(selected.annualEmissionsTonCo2e)}
-            delta={
-              <>
-                <DeltaBadge
-                  delta={calculatePercentChange(
-                    current.annualEmissionsTonCo2e,
-                    selected.annualEmissionsTonCo2e,
-                  )}
-                  higherIsBetter={false}
-                />
-                <Text size="xs" c="dimmed" component="span">
-                  vs.{" "}
-                  {formatTonnageCo2(current.annualEmissionsTonCo2e, {
-                    decimal: true,
-                  })}{" "}
-                  today
-                </Text>
-              </>
+            withUnit
+            footer={
+              <VersusToday
+                today={formatDecimal(current.annualEmissionsTonCo2e)}
+                changePct={calculatePercentChange(
+                  current.annualEmissionsTonCo2e,
+                  selected.annualEmissionsTonCo2e,
+                )}
+              />
             }
           />
         ) : null}
 
-        <ThermalHealthCard current={current} selected={selected} />
+        <ConceptMetricCard
+          conceptId="thermal-health-impact"
+          value={formatHealthyLifeDays(
+            toHealthyLifeDays(selected.annualThermalDalyPerPerson),
+          )}
+          footer={
+            <FooterLine>
+              vs.{" "}
+              {formatHealthyLifeDays(
+                toHealthyLifeDays(current.annualThermalDalyPerPerson),
+              )}{" "}
+              today
+            </FooterLine>
+          }
+        />
       </div>
 
       {selected.pvGeneration !== undefined ? (
-        <div style={{ marginTop: 18 }}>
-          <div className={shared.deepEyebrow} style={{ marginBottom: 6 }}>
-            Solar PV
-          </div>
-          <div className={shared.miniGrid}>
-            <MiniMetric
-              icon={<IconSolarPanel size={14} />}
+        <div className={classes.block}>
+          <div className={shared.deepEyebrow}>Solar PV</div>
+          <div className={shared.tileGrid}>
+            <ConceptMetricCard
               conceptId="pv-generation"
               value={formatNumber(selected.pvGeneration)}
+              withUnit
             />
             {selected.pvSelfConsumption !== undefined ? (
-              <MiniMetric
-                icon={<IconSun size={14} />}
+              <ConceptMetricCard
                 conceptId="pv-self-consumption"
                 value={formatNumber(selected.pvSelfConsumption)}
-                delta={
+                withUnit
+                footer={
                   selected.pvSelfConsumptionRate !== undefined ? (
-                    <Text size="xs" c="dimmed" component="span">
-                      {formatNumber(selected.pvSelfConsumptionRate * 100)}% of
-                      generation
-                    </Text>
-                  ) : null
+                    <FooterLine>
+                      {formatPercent(
+                        selected.pvSelfConsumptionRate * PERCENT_PER_RATIO,
+                      )}{" "}
+                      of generation
+                    </FooterLine>
+                  ) : undefined
                 }
               />
             ) : null}
             {selected.pvGridExport !== undefined ? (
-              <MiniMetric
-                icon={<IconUpload size={14} />}
+              <ConceptMetricCard
                 conceptId="pv-grid-export"
                 value={formatNumber(selected.pvGridExport)}
+                withUnit
               />
             ) : null}
           </div>
         </div>
       ) : null}
 
-      <div style={{ marginTop: 18 }}>
-        <div className={shared.deepEyebrow} style={{ marginBottom: 6 }}>
-          Measures included
-        </div>
+      <div className={classes.block}>
+        <div className={shared.deepEyebrow}>Measures included</div>
         <div
-          className={classes.measures}
+          className={shared.measures}
           style={
             {
-              "--scen-color": `var(--mantine-color-${color}-6)`,
+              "--accent-color": `var(--mantine-color-${color}-6)`,
             } as React.CSSProperties
           }
         >
           <div className={shared.measuresHead}>
             <Text size="sm" fw={600}>
-              {selected.measures.length}{" "}
-              {selected.measures.length === 1 ? "action" : "actions"}
+              {formatCount(selected.measures.length, "measure")}
             </Text>
           </div>
           {selected.measures.length > 0 ? (
@@ -191,44 +173,26 @@ export function EnergyDeepDive({ current, selected }: EnergyDeepDiveProps) {
   );
 }
 
-interface MiniMetricProps {
-  icon: React.ReactNode;
-  /** Concept this card represents. Drives label, unit, and the info-icon explainer. */
-  conceptId: ConceptId;
-  /** Pre-formatted main value. */
-  value: string;
-  /** Override the unit suffix; defaults to the concept's `unit`. */
-  unit?: string;
-  /** Override the label; defaults to the concept's `label`. */
-  label?: string;
-  delta?: React.ReactNode;
+function FooterLine({ children }: { children: ReactNode }) {
+  return (
+    <Group gap={6} c="dimmed" fz="xs">
+      {children}
+    </Group>
+  );
 }
 
-function MiniMetric({
-  icon,
-  conceptId,
-  value,
-  unit,
-  label,
-  delta,
-}: MiniMetricProps) {
-  const concept = relifeConcepts[conceptId];
-  const resolvedUnit = unit ?? concept.unit;
-  const resolvedLabel = label ?? concept.label;
+/** The tile states the unit once, so today's figure is a bare number. */
+function VersusToday({
+  today,
+  changePct,
+}: {
+  today: string;
+  changePct: number;
+}) {
   return (
-    <div className={shared.miniCard}>
-      <div className={shared.miniLabel}>
-        {icon}
-        {resolvedLabel}
-        <ConceptExplainer conceptId={conceptId} />
-      </div>
-      <div className={shared.miniValue}>
-        {value}
-        {resolvedUnit ? (
-          <span className={shared.miniUnit}>{resolvedUnit}</span>
-        ) : null}
-      </div>
-      {delta ? <div className={classes.miniDelta}>{delta}</div> : null}
-    </div>
+    <FooterLine>
+      <DeltaBadge delta={changePct} higherIsBetter={false} />
+      vs. {today} today
+    </FooterLine>
   );
 }

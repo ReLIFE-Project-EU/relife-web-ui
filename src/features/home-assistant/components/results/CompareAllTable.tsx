@@ -1,20 +1,18 @@
 /**
- * CompareAllTable — comparison table shown inside the "Compare all packages"
- * results section. Includes a baseline (current home) row and one row per
- * renovation scenario, with click-to-inspect behavior tied to the deep-dive
- * selection. The surrounding section supplies the heading and card chrome.
+ * CompareAllTable — every package side by side. One column per package in
+ * rank order, after today's home; one row per metric. Clicking a package
+ * header opens it in the details below.
  */
 
-import { Text } from "@mantine/core";
+import { Group, Table, Text, UnstyledButton } from "@mantine/core";
 import { IconCrown } from "@tabler/icons-react";
-import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
-import {
-  compactConceptLabel,
-  relifeConcepts,
-} from "../../../../constants/relifeConcepts";
-import { computeLifetimeCarbonKgCo2e } from "../../../../services/carrierSavingsService";
+import type { ReactNode } from "react";
+import { ConceptLabel } from "../../../../components/shared/ConceptLabel";
+import { MetricEyebrow } from "../../../../components/shared/MetricEyebrow";
 import { ReadingText } from "../../../../components/shared/ReadingText";
+import type { ConceptId } from "../../../../constants/relifeConcepts";
 import { readMetric } from "../../../../services/appraisalReadout";
+import { computeLifetimeCarbonKgCo2e } from "../../../../services/carrierSavingsService";
 import { appraisedFigures } from "../../../../services/savingsState";
 import type {
   FinancialResults,
@@ -24,256 +22,247 @@ import type {
 } from "../../context/types";
 import {
   formatCurrency,
-  formatEnergyPerYear,
+  formatDecimal,
   formatHealthyLifeDays,
-  formatHealthChange,
-  formatTonnageCo2,
-  getHealthChange,
+  formatNumber,
   toHealthyLifeDays,
 } from "../../utils/formatters";
 import classes from "./ResultsLayout.module.css";
-import shared from "../../../../components/shared/ResultsLayout.module.css";
-import { ScenDot, ScoreBar } from "./resultsAtoms";
+import { ColorDot, ScoreBar } from "../../../../components/shared/ResultAtoms";
+import { gainLossColor, getScenarioColor } from "../../utils/colorUtils";
+
+const KG_PER_TONNE = 1000;
+const PERCENT_PER_RATIO = 100;
+const EMPTY = "—";
 
 interface CompareAllTableProps {
   current: RenovationScenario | undefined;
-  renovationScenarios: RenovationScenario[];
+  /** Packages in rank order. */
+  rankedScenarios: RenovationScenario[];
   financialResults: Record<ScenarioId, FinancialResults>;
   projectLifetime: number;
   ranking: MCDARankingResult[] | null;
-  selectedScenarioId: ScenarioId | null;
   onSelectScenario: (scenarioId: ScenarioId) => void;
+}
+
+interface MetricRow {
+  conceptId: ConceptId;
+  /** Cells are bare numbers, so the row label carries the unit. */
+  withUnit?: boolean;
+  today: ReactNode;
+  cell: (scenario: RenovationScenario) => ReactNode;
+}
+
+interface MetricGroup {
+  title?: string;
+  rows: MetricRow[];
 }
 
 export function CompareAllTable({
   current,
-  renovationScenarios,
+  rankedScenarios,
   financialResults,
   projectLifetime,
   ranking,
-  selectedScenarioId,
   onSelectScenario,
 }: CompareAllTableProps) {
-  // Doing nothing installs no materials, so the baseline's lifetime carbon is
-  // its operational emissions alone. It is the anchor the packages are read
-  // against, which is why it gets a figure where material carbon gets a dash.
-  const baselineLifetimeCarbonKg = computeLifetimeCarbonKgCo2e({
-    embodiedCarbonKgCo2e: 0,
-    annualOperationalEmissionsTonCo2e: current?.annualEmissionsTonCo2e,
-    projectLifetimeYears: projectLifetime,
-  });
   const winnerId = ranking?.[0]?.scenarioId ?? null;
   const scoreById = new Map(
     (ranking ?? []).map((entry) => [entry.scenarioId, entry.score]),
   );
+  const tonnes = (kg: number | undefined) =>
+    kg === undefined ? EMPTY : formatDecimal(kg / KG_PER_TONNE);
+  const lifetimeCarbonKg = (
+    scenario: RenovationScenario | undefined,
+    embodiedCarbonKgCo2e: number | undefined,
+  ) =>
+    computeLifetimeCarbonKgCo2e({
+      embodiedCarbonKgCo2e,
+      annualOperationalEmissionsTonCo2e: scenario?.annualEmissionsTonCo2e,
+      projectLifetimeYears: projectLifetime,
+    });
+  const reading = (
+    scenario: RenovationScenario,
+    metric: "NPV" | "PBP" | "MonthlyAvgSavings",
+  ) => (
+    <ReadingText
+      reading={readMetric(financialResults[scenario.id]?.appraisal, metric)}
+    />
+  );
+
+  const groups: MetricGroup[] = [
+    {
+      rows: [
+        {
+          conceptId: "ranking-score",
+          today: EMPTY,
+          cell: (scenario) => {
+            const score = scoreById.get(scenario.id);
+            return score === undefined ? (
+              EMPTY
+            ) : (
+              <ScoreBar
+                color={getScenarioColor(scenario.id)}
+                pct={score * PERCENT_PER_RATIO}
+              />
+            );
+          },
+        },
+      ],
+    },
+    {
+      title: "Energy & health",
+      rows: [
+        {
+          conceptId: "annual-building-thermal-needs",
+          withUnit: true,
+          today: current ? formatNumber(current.annualEnergyNeeds) : EMPTY,
+          cell: (scenario) => formatNumber(scenario.annualEnergyNeeds),
+        },
+        {
+          conceptId: "thermal-health-impact",
+          today: formatHealthyLifeDays(
+            toHealthyLifeDays(current?.annualThermalDalyPerPerson),
+          ),
+          cell: (scenario) =>
+            formatHealthyLifeDays(
+              toHealthyLifeDays(scenario.annualThermalDalyPerPerson),
+            ),
+        },
+      ],
+    },
+    {
+      title: "Carbon",
+      rows: [
+        {
+          conceptId: "operational-co2-emissions",
+          withUnit: true,
+          today:
+            current?.annualEmissionsTonCo2e !== undefined
+              ? formatDecimal(current.annualEmissionsTonCo2e)
+              : EMPTY,
+          cell: (scenario) =>
+            scenario.annualEmissionsTonCo2e !== undefined
+              ? formatDecimal(scenario.annualEmissionsTonCo2e)
+              : EMPTY,
+        },
+        {
+          conceptId: "embodied-carbon",
+          withUnit: true,
+          today: EMPTY,
+          cell: (scenario) => tonnes(scenario.embodiedCarbonKgCo2e),
+        },
+        {
+          conceptId: "whole-life-carbon",
+          withUnit: true,
+          // Doing nothing installs no materials.
+          today: tonnes(lifetimeCarbonKg(current, 0)),
+          cell: (scenario) =>
+            tonnes(lifetimeCarbonKg(scenario, scenario.embodiedCarbonKgCo2e)),
+        },
+      ],
+    },
+    {
+      title: "Financials",
+      rows: [
+        {
+          conceptId: "investment",
+          today: EMPTY,
+          cell: (scenario) => {
+            const capex = financialResults[scenario.id]?.capitalExpenditure;
+            return capex === undefined ? EMPTY : formatCurrency(capex);
+          },
+        },
+        {
+          conceptId: "npv",
+          today: EMPTY,
+          cell: (scenario) => (
+            <Text
+              span
+              inherit
+              c={gainLossColor(
+                appraisedFigures(financialResults[scenario.id])?.pointForecasts
+                  .NPV,
+              )}
+            >
+              {reading(scenario, "NPV")}
+            </Text>
+          ),
+        },
+        {
+          conceptId: "payback-period",
+          today: EMPTY,
+          cell: (scenario) => reading(scenario, "PBP"),
+        },
+        {
+          conceptId: "monthly-cash-benefit",
+          today: EMPTY,
+          cell: (scenario) => reading(scenario, "MonthlyAvgSavings"),
+        },
+      ],
+    },
+  ];
 
   return (
-    <div className={shared.tableScroll}>
-      <table className={shared.table}>
-        <thead>
-          <tr>
-            <th>Package</th>
-            <th>{relifeConcepts["annual-building-thermal-needs"].label}</th>
-            <th>
-              {relifeConcepts["thermal-health-impact"].label}{" "}
-              <ConceptExplainer conceptId="thermal-health-impact" />
-            </th>
-            <th>
-              {relifeConcepts["operational-co2-emissions"].label}{" "}
-              <ConceptExplainer conceptId="operational-co2-emissions" />
-            </th>
-            <th>
-              {relifeConcepts["embodied-carbon"].label}{" "}
-              <ConceptExplainer conceptId="embodied-carbon" />
-            </th>
-            <th>
-              {relifeConcepts["whole-life-carbon"].label}{" "}
-              <ConceptExplainer conceptId="whole-life-carbon" />
-            </th>
-            <th>{relifeConcepts.investment.label}</th>
-            <th>{compactConceptLabel("npv")}</th>
-            <th>{relifeConcepts["payback-period"].label}</th>
-            <th>{relifeConcepts["monthly-cash-benefit"].label}</th>
-            <th>{relifeConcepts["ranking-score"].label}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {current ? (
-            <tr className={shared.baseline}>
-              <td>
-                <div className={shared.rowName}>
-                  <ScenDot scenarioId={current.id} />
-                  <div>
-                    <span className={classes.baselineTag}>Baseline</span>
-                    Current home
-                  </div>
-                </div>
-              </td>
-              <td>{formatEnergyPerYear(current.annualEnergyNeeds)}</td>
-              <td>
-                {formatHealthyLifeDays(
-                  toHealthyLifeDays(current.annualThermalDalyPerPerson),
-                )}
-              </td>
-              <td>
-                {current.annualEmissionsTonCo2e !== undefined
-                  ? formatTonnageCo2(current.annualEmissionsTonCo2e, {
-                      decimal: true,
-                    })
-                  : "—"}
-              </td>
-              <td>—</td>
-              <td>
-                {baselineLifetimeCarbonKg !== undefined
-                  ? formatTonnageCo2(baselineLifetimeCarbonKg / 1000, {
-                      decimal: true,
-                    })
-                  : "—"}
-              </td>
-              <td>—</td>
-              <td>—</td>
-              <td>—</td>
-              <td>—</td>
-              <td>—</td>
-            </tr>
-          ) : null}
-          {renovationScenarios.map((scenario) => {
-            const result = financialResults[scenario.id];
-            const isSel = scenario.id === selectedScenarioId;
-            const score = scoreById.get(scenario.id);
-            const appraised = appraisedFigures(result);
-            const npv = appraised?.pointForecasts.NPV;
-            const avoidedDays = toHealthyLifeDays(
-              scenario.avoidedThermalDalyPerPerson,
-            );
-            const healthChange = getHealthChange(avoidedDays);
-            const emissionsDelta =
-              scenario.annualEmissionsTonCo2e !== undefined &&
-              current?.annualEmissionsTonCo2e !== undefined
-                ? scenario.annualEmissionsTonCo2e -
-                  current.annualEmissionsTonCo2e
-                : undefined;
-            const lifetimeCarbonKg = computeLifetimeCarbonKgCo2e({
-              embodiedCarbonKgCo2e: scenario.embodiedCarbonKgCo2e,
-              annualOperationalEmissionsTonCo2e:
-                scenario.annualEmissionsTonCo2e,
-              projectLifetimeYears: projectLifetime,
-            });
-
-            return (
-              <tr
-                key={scenario.id}
-                className={`${shared.scen} ${isSel ? shared.sel : ""}`}
-                onClick={() => onSelectScenario(scenario.id)}
-              >
-                <td>
-                  <div className={shared.rowName}>
-                    <ScenDot scenarioId={scenario.id} />
-                    <span>{scenario.label}</span>
-                    {scenario.id === winnerId ? (
-                      <IconCrown
-                        size={14}
-                        color="var(--mantine-color-relife-8)"
-                      />
-                    ) : null}
-                  </div>
-                </td>
-                <td>{formatEnergyPerYear(scenario.annualEnergyNeeds)}</td>
-                <td>
-                  {formatHealthyLifeDays(
-                    toHealthyLifeDays(scenario.annualThermalDalyPerPerson),
-                  )}
-                  {avoidedDays !== undefined ? (
-                    <Text
-                      component="span"
-                      display="block"
-                      size="xs"
-                      fw={600}
-                      c={healthChange?.color ?? "dimmed"}
-                    >
-                      {formatHealthChange(avoidedDays, healthChange)}
-                    </Text>
-                  ) : null}
-                </td>
-                <td>
-                  {scenario.annualEmissionsTonCo2e !== undefined
-                    ? formatTonnageCo2(scenario.annualEmissionsTonCo2e, {
-                        decimal: true,
-                      })
-                    : "—"}
-                  {emissionsDelta !== undefined && emissionsDelta !== 0 ? (
-                    <Text
-                      component="span"
-                      display="block"
-                      size="xs"
-                      fw={600}
-                      c={emissionsDelta < 0 ? "green" : "red"}
-                    >
-                      {emissionsDelta > 0 ? "+" : ""}
-                      {formatTonnageCo2(emissionsDelta, { decimal: true })}
-                    </Text>
-                  ) : null}
-                </td>
-                <td>
-                  {scenario.embodiedCarbonKgCo2e !== undefined
-                    ? formatTonnageCo2(scenario.embodiedCarbonKgCo2e / 1000, {
-                        decimal: true,
-                      })
-                    : "—"}
-                </td>
-                <td>
-                  {lifetimeCarbonKg !== undefined
-                    ? formatTonnageCo2(lifetimeCarbonKg / 1000, {
-                        decimal: true,
-                      })
-                    : "—"}
-                </td>
-                <td>
-                  {result?.capitalExpenditure !== undefined
-                    ? formatCurrency(result.capitalExpenditure)
-                    : "—"}
-                </td>
-                <td
-                  style={{
-                    color:
-                      npv !== undefined && npv < 0
-                        ? "var(--mantine-color-red-7)"
-                        : undefined,
-                    fontWeight: 600,
-                  }}
+    <div className={classes.compareScroll}>
+      <Table className={classes.compare} verticalSpacing="sm">
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th />
+            <Table.Th>
+              <Group gap="xs" wrap="nowrap">
+                <ColorDot color={getScenarioColor("current")} />
+                Today
+              </Group>
+            </Table.Th>
+            {rankedScenarios.map((scenario) => (
+              <Table.Th key={scenario.id}>
+                <UnstyledButton
+                  fz="inherit"
+                  fw="inherit"
+                  onClick={() => onSelectScenario(scenario.id)}
                 >
-                  <ReadingText reading={readMetric(result?.appraisal, "NPV")} />
-                </td>
-                <td>
-                  <ReadingText reading={readMetric(result?.appraisal, "PBP")} />
-                </td>
-                <td>
-                  <ReadingText
-                    reading={readMetric(result?.appraisal, "MonthlyAvgSavings")}
-                  />
-                </td>
-                <td>
-                  {score !== undefined ? (
-                    <span
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "flex-end",
-                      }}
-                    >
-                      <ScoreBar pct={score * 100} scenarioId={scenario.id} />
+                  <Group gap="xs" wrap="nowrap" align="flex-start">
+                    <ColorDot color={getScenarioColor(scenario.id)} />
+                    <span>
+                      {scenario.label}{" "}
+                      {scenario.id === winnerId ? (
+                        <IconCrown size={14} className={classes.crown} />
+                      ) : null}
                     </span>
-                  ) : (
-                    <Text component="span" size="sm" c="dimmed">
-                      —
-                    </Text>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                  </Group>
+                </UnstyledButton>
+              </Table.Th>
+            ))}
+          </Table.Tr>
+        </Table.Thead>
+        {groups.map((group, index) => (
+          <Table.Tbody key={group.title ?? index}>
+            {group.title ? (
+              <Table.Tr>
+                <Table.Th colSpan={rankedScenarios.length + 2}>
+                  <MetricEyebrow>{group.title}</MetricEyebrow>
+                </Table.Th>
+              </Table.Tr>
+            ) : null}
+            {group.rows.map((row) => (
+              <Table.Tr key={row.conceptId}>
+                <Table.Th scope="row">
+                  <ConceptLabel
+                    conceptId={row.conceptId}
+                    withUnit={row.withUnit ?? false}
+                    size="xs"
+                  />
+                </Table.Th>
+                <Table.Td c="dimmed">{row.today}</Table.Td>
+                {rankedScenarios.map((scenario) => (
+                  <Table.Td key={scenario.id}>{row.cell(scenario)}</Table.Td>
+                ))}
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        ))}
+      </Table>
     </div>
   );
 }

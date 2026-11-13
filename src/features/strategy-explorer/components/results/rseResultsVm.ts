@@ -6,14 +6,7 @@
 
 import type { ComponentType } from "react";
 import type { BarChartProps } from "@mantine/charts";
-import {
-  IconBolt,
-  IconBuildingCommunity,
-  IconCash,
-  IconChartBar,
-  IconLeaf,
-  IconTrendingUp,
-} from "@tabler/icons-react";
+import { IconBolt, IconCash, IconLeaf } from "@tabler/icons-react";
 import type {
   ConceptId,
   ConceptPrefix,
@@ -217,7 +210,6 @@ export interface HeroMetric {
   prefix?: ConceptPrefix;
   value: string;
   hint?: string;
-  icon: ComponentType<{ size?: number }>;
 }
 
 /** The three goal-dependent headline metrics shown on the hero card. */
@@ -231,7 +223,6 @@ export function heroMetricsFor(
     prefix: "Total",
     value: formatCurrency(agg.totalCapexEur),
     hint: "gross, before incentives",
-    icon: IconCash,
   };
 
   if (goal.kind === "energy") {
@@ -239,12 +230,10 @@ export function heroMetricsFor(
       {
         conceptId: "rse-energy-saved-per-eur",
         value: `${formatDecimal(agg.energySavedPerEur)} kWh/€`,
-        icon: IconBolt,
       },
       {
         conceptId: "rse-total-energy-savings",
         value: formatEnergy(agg.totalAnnualEnergySavingsKwh),
-        icon: IconChartBar,
       },
       investmentMetric,
     ];
@@ -255,12 +244,10 @@ export function heroMetricsFor(
       {
         conceptId: "rse-co2-reduced-per-eur",
         value: `${formatDecimal(agg.co2ReducedTonPerEur * 1000)} kg/€`,
-        icon: IconLeaf,
       },
       {
         conceptId: "rse-total-co2-reduction",
         value: formatTonnageCo2(agg.totalAnnualCo2ReductionTon),
-        icon: IconChartBar,
       },
       investmentMetric,
     ];
@@ -275,20 +262,17 @@ export function heroMetricsFor(
         agg.renovatableBuildingsWithinBudget !== undefined
           ? formatNumber(agg.renovatableBuildingsWithinBudget)
           : "—",
-      icon: IconBuildingCommunity,
     },
     {
       conceptId: "roi",
       prefix: "Portfolio",
       value: roi !== undefined ? formatMetricValue("ROI", roi) : "—",
-      icon: IconTrendingUp,
     },
     {
       conceptId: "npv",
       prefix: "Total",
       value: npv !== undefined ? formatMetricValue("NPV", npv) : "—",
       hint: `over ${lifetimeYears} years`,
-      icon: IconCash,
     },
   ];
 }

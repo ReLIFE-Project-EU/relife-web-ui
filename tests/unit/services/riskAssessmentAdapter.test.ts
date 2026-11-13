@@ -130,14 +130,13 @@ describe("mapWireRiskResponse", () => {
     });
   });
 
-  test("derives cumulative cash flow and breakeven year", () => {
+  test("derives cumulative cash flow", () => {
     expect(mapped.cashFlowData?.annual_net_cash_flow).toEqual([
       -1000, 600, 600,
     ]);
     expect(mapped.cashFlowData?.cumulative_cash_flow).toEqual([
       -1000, -400, 200,
     ]);
-    expect(mapped.cashFlowData?.breakeven_year).toBe(2);
     expect(mapped.cashFlowData?.initial_investment).toBe(1000);
   });
 

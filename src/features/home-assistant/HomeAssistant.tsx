@@ -47,7 +47,11 @@ function HomeAssistantWizard() {
   // Keep workflow status active between HTTP requests
   useSyncGlobalLoading(state.isEstimating, "HomeAssistant.estimate");
   useSyncGlobalLoading(state.isEvaluating, "HomeAssistant.evaluate");
-  useSyncGlobalLoading(state.isRanking, "HomeAssistant.rank");
+  // Re-ranking keeps the previous result on screen, so only the first run blocks.
+  useSyncGlobalLoading(
+    state.isRanking && state.mcdaRanking === null,
+    "HomeAssistant.rank",
+  );
   useWizardStepScroll(state.currentStep, topRef);
 
   const handleStepClick = (step: number) => {
@@ -115,7 +119,7 @@ function HomeAssistantWizard() {
               description="Enter your building details"
               icon={<IconHome size={18} />}
               loading={state.isEstimating}
-              color={canAccessStep(0) ? "blue" : "gray"}
+              color={canAccessStep(0) ? "relife" : "gray"}
             >
               {state.currentStep === 0 && <BuildingInfoStep />}
             </Stepper.Step>
@@ -125,7 +129,7 @@ function HomeAssistantWizard() {
               description="Review and select options"
               icon={<IconBolt size={18} />}
               loading={state.isEvaluating}
-              color={canAccessStep(1) ? "blue" : "gray"}
+              color={canAccessStep(1) ? "relife" : "gray"}
             >
               {state.currentStep === 1 && <EnergyRenovationStep />}
             </Stepper.Step>
@@ -135,7 +139,7 @@ function HomeAssistantWizard() {
               description="Compare and decide"
               icon={<IconChartBar size={18} />}
               loading={state.isRanking}
-              color={canAccessStep(2) ? "blue" : "gray"}
+              color={canAccessStep(2) ? "relife" : "gray"}
             >
               {state.currentStep === 2 && <ResultsStep />}
             </Stepper.Step>

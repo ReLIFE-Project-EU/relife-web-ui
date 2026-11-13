@@ -6,7 +6,8 @@
 import { IconCrown } from "@tabler/icons-react";
 import { RSE_PACKAGES } from "../../services/rsePackageCatalog";
 import type { RSEPackageId, RSERankingResult } from "../../types";
-import { PackageDot } from "./rseResultsAtoms";
+import { ColorDot } from "../../../../components/shared/ResultAtoms";
+import { PACKAGE_COLORS } from "./rseResultsVm";
 import shared from "../../../../components/shared/ResultsLayout.module.css";
 
 interface PackageTabsProps {
@@ -33,7 +34,7 @@ export function PackageTabs({
             className={shared.tab}
             onClick={() => onSelectPackage(entry.packageId)}
           >
-            <PackageDot packageId={entry.packageId} />
+            <ColorDot color={PACKAGE_COLORS[entry.packageId]} />
             <span>{RSE_PACKAGES[entry.packageId].label}</span>
             {entry.rank === 1 ? (
               <IconCrown size={14} className={shared.tabCrown} />

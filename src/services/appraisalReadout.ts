@@ -3,7 +3,6 @@
 import type { AppraisedPackage, PackageAppraisal } from "../types/renovation";
 import type { PooledPayback } from "../utils/financialCalculations";
 import {
-  formatApproxCurrency,
   formatCurrency,
   formatNumber,
   formatPercent,
@@ -22,8 +21,6 @@ export type AppraisalMetric =
   | "PBP"
   | "DPP"
   | "MonthlyAvgSavings";
-
-export type ReadingStyle = "standard" | "headline";
 
 export type Reading =
   | { kind: "value"; metric: AppraisalMetric; value: number }
@@ -141,9 +138,7 @@ function readValue(
 export function formatMetricValue(
   metric: AppraisalMetric,
   value: number,
-  style: ReadingStyle = "standard",
 ): string {
-  const headline = style === "headline";
   switch (metric) {
     case "NPV":
       return formatCurrency(value);
@@ -152,18 +147,14 @@ export function formatMetricValue(
       return formatPercent(value * PERCENT_PER_RATIO);
     case "PBP":
     case "DPP":
-      // Under half a year stays unrounded: zero means no upfront investment.
-      return formatYears(headline ? Math.round(value) || value : value);
+      return formatYears(value);
     case "MonthlyAvgSavings":
-      return `${headline ? formatApproxCurrency(value) : formatCurrency(value)}/mo`;
+      return `${formatCurrency(value)}/mo`;
   }
 }
 
-export function readingText(
-  reading: Reading,
-  style: ReadingStyle = "standard",
-): string {
-  return renderReading(reading, style).text;
+export function readingText(reading: Reading): string {
+  return renderReading(reading).text;
 }
 
 export function readingHint(reading: Reading): string | undefined {
@@ -175,11 +166,11 @@ export function readingCsvValue(reading: Reading): number | string | undefined {
   return renderReading(reading).csvValue;
 }
 
-function renderReading(reading: Reading, style: ReadingStyle = "standard") {
+function renderReading(reading: Reading) {
   switch (reading.kind) {
     case "value":
       return {
-        text: formatMetricValue(reading.metric, reading.value, style),
+        text: formatMetricValue(reading.metric, reading.value),
         csvValue: reading.value,
       };
     case "over-lifetime": {

@@ -31,7 +31,7 @@ export function FundingPills({ funding }: FundingPillsProps) {
   return (
     <Group gap={6} wrap="wrap">
       {pills.map((pill) => (
-        <Badge key={pill} variant="light" color="blue" radius="sm">
+        <Badge key={pill} variant="light" radius="sm">
           {pill}
         </Badge>
       ))}

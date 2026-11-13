@@ -5,22 +5,12 @@
  */
 
 import { Table, Text } from "@mantine/core";
-import {
-  IconBolt,
-  IconBuildingCommunity,
-  IconCash,
-  IconLeaf,
-  IconTool,
-  IconTrendingUp,
-} from "@tabler/icons-react";
-import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
-import { MetricEyebrow } from "../../../../components/shared/MetricEyebrow";
+import { ConceptMetricCard } from "../../../../components/shared/ConceptMetricCard";
 import {
   compactConceptLabel,
   relifeConcepts,
-  type ConceptId,
-  type ConceptPrefix,
 } from "../../../../constants/relifeConcepts";
+import { gainLossColor } from "../../../../utils/colorUtils";
 import { getArchetypeSelectionLabel } from "../../../../utils/archetypeLabels";
 import { ReadingText } from "../../../../components/shared/ReadingText";
 import {
@@ -29,6 +19,7 @@ import {
   readPooledPayback,
 } from "../../../../services/appraisalReadout";
 import {
+  formatCount,
   formatCurrency,
   formatDecimal,
   formatEnergy,
@@ -42,7 +33,6 @@ import {
   PACKAGE_COLORS,
   RSE_MEASURE_LABELS,
 } from "./rseResultsVm";
-import classes from "./StrategyResults.module.css";
 import shared from "../../../../components/shared/ResultsLayout.module.css";
 
 interface PackageDeepDiveProps {
@@ -62,45 +52,36 @@ export function PackageDeepDive({ aggregate, goal }: PackageDeepDiveProps) {
     <div className={shared.deep}>
       <div className={shared.deepCols}>
         <div>
-          <Text component="h2" size="md" mb="0.6em">
-            Stock impact
-          </Text>
-          <div className={shared.miniGrid}>
-            <MiniMetric
-              icon={<IconBuildingCommunity size={14} />}
+          <h3 className={shared.deepHeading}>Stock impact</h3>
+          <div className={shared.tileGrid}>
+            <ConceptMetricCard
               conceptId="modeled-property"
               value={formatNumber(aggregate.totalBuildings)}
             />
             {goal.kind === "financial" &&
             aggregate.renovatableBuildingsWithinBudget !== undefined ? (
-              <MiniMetric
-                icon={<IconBuildingCommunity size={14} />}
+              <ConceptMetricCard
                 conceptId="rse-renovatable-buildings"
                 value={formatNumber(aggregate.renovatableBuildingsWithinBudget)}
               />
             ) : null}
-            <MiniMetric
-              icon={<IconBolt size={14} />}
+            <ConceptMetricCard
               conceptId="rse-total-energy-savings"
               value={formatEnergy(aggregate.totalAnnualEnergySavingsKwh)}
             />
-            <MiniMetric
-              icon={<IconLeaf size={14} />}
+            <ConceptMetricCard
               conceptId="rse-total-co2-reduction"
               value={formatTonnageCo2(aggregate.totalAnnualCo2ReductionTon)}
             />
-            <MiniMetric
-              icon={<IconBolt size={14} />}
+            <ConceptMetricCard
               conceptId="rse-energy-saved-per-eur"
               value={`${formatDecimal(aggregate.energySavedPerEur)} kWh/€`}
             />
-            <MiniMetric
-              icon={<IconLeaf size={14} />}
+            <ConceptMetricCard
               conceptId="rse-co2-reduced-per-eur"
               value={`${formatDecimal(aggregate.co2ReducedTonPerEur * 1000)} kg/€`}
             />
-            <MiniMetric
-              icon={<IconLeaf size={14} />}
+            <ConceptMetricCard
               prefix="Total"
               conceptId="embodied-carbon"
               value={
@@ -109,8 +90,7 @@ export function PackageDeepDive({ aggregate, goal }: PackageDeepDiveProps) {
                   : "—"
               }
             />
-            <MiniMetric
-              icon={<IconLeaf size={14} />}
+            <ConceptMetricCard
               prefix="Total"
               conceptId="whole-life-carbon"
               value={
@@ -118,35 +98,30 @@ export function PackageDeepDive({ aggregate, goal }: PackageDeepDiveProps) {
                   ? formatTonnageCo2(aggregate.totalWholeLifeCarbonTon)
                   : "—"
               }
-              hint="over the project lifetime"
+              footer="over the project lifetime"
             />
           </div>
         </div>
 
         <div>
-          <Text component="h2" size="md" mb="0.6em">
-            Financials
-          </Text>
-          <div className={shared.miniGrid}>
-            <MiniMetric
-              icon={<IconCash size={14} />}
+          <h3 className={shared.deepHeading}>Financials</h3>
+          <div className={shared.tileGrid}>
+            <ConceptMetricCard
               prefix="Total"
               conceptId="investment"
               value={formatCurrency(aggregate.totalCapexEur)}
-              hint={
+              footer={
                 hasIncentive
                   ? `${formatCurrency(aggregate.totalEffectiveCapexEur)} after incentives`
                   : "gross, before incentives"
               }
             />
-            <MiniMetric
-              icon={<IconTool size={14} />}
+            <ConceptMetricCard
               prefix="Total"
               conceptId="annual-maintenance-cost"
               value={formatCurrency(aggregate.totalAnnualMaintenanceEur)}
             />
-            <MiniMetric
-              icon={<IconCash size={14} />}
+            <ConceptMetricCard
               prefix="Total"
               conceptId="npv"
               value={
@@ -154,14 +129,9 @@ export function PackageDeepDive({ aggregate, goal }: PackageDeepDiveProps) {
                   ? formatMetricValue("NPV", aggregateNPV)
                   : "—"
               }
-              valueColor={
-                aggregateNPV !== undefined && aggregateNPV < 0
-                  ? "var(--mantine-color-red-7)"
-                  : undefined
-              }
+              valueColor={gainLossColor(aggregateNPV)}
             />
-            <MiniMetric
-              icon={<IconTrendingUp size={14} />}
+            <ConceptMetricCard
               prefix="Portfolio"
               conceptId="roi"
               value={
@@ -170,8 +140,7 @@ export function PackageDeepDive({ aggregate, goal }: PackageDeepDiveProps) {
                   : "—"
               }
             />
-            <MiniMetric
-              icon={<IconTrendingUp size={14} />}
+            <ConceptMetricCard
               prefix="Portfolio"
               conceptId="payback-period"
               value={
@@ -187,17 +156,16 @@ export function PackageDeepDive({ aggregate, goal }: PackageDeepDiveProps) {
           Measures included
         </div>
         <div
-          className={classes.measures}
+          className={shared.measures}
           style={
             {
-              "--pkg-color": `var(--mantine-color-${color}-6)`,
+              "--accent-color": `var(--mantine-color-${color}-6)`,
             } as React.CSSProperties
           }
         >
           <div className={shared.measuresHead}>
             <Text size="sm" fw={600}>
-              {pkg.measureIds.length}{" "}
-              {pkg.measureIds.length === 1 ? "measure" : "measures"}
+              {formatCount(pkg.measureIds.length, "measure")}
             </Text>
           </div>
           <ul className={shared.measuresList}>
@@ -264,40 +232,6 @@ function PerArchetypeTable({ aggregate }: { aggregate: RSEPackageAggregate }) {
           })}
         </Table.Tbody>
       </Table>
-    </div>
-  );
-}
-
-interface MiniMetricProps {
-  icon: React.ReactNode;
-  /** The shared concept the figure reports; it supplies the name and explainer. */
-  conceptId: ConceptId;
-  prefix?: ConceptPrefix;
-  value: React.ReactNode;
-  hint?: string;
-  valueColor?: string;
-}
-
-function MiniMetric({
-  icon,
-  conceptId,
-  prefix,
-  value,
-  hint,
-  valueColor,
-}: MiniMetricProps) {
-  return (
-    <div className={shared.miniCard}>
-      {prefix ? <MetricEyebrow>{prefix}</MetricEyebrow> : null}
-      <div className={shared.miniLabel}>
-        {icon}
-        {relifeConcepts[conceptId].label}
-        <ConceptExplainer conceptId={conceptId} />
-      </div>
-      <div className={shared.miniValue} style={{ color: valueColor }}>
-        {value}
-      </div>
-      {hint ? <div className={classes.miniHint}>{hint}</div> : null}
     </div>
   );
 }

@@ -4,24 +4,19 @@
  * and full ranking list (right), driven by the active MCDA persona.
  */
 
-import { Alert, Loader, Skeleton, Text } from "@mantine/core";
+import { Alert, Group, Loader, Skeleton, Text } from "@mantine/core";
 import {
   IconAlertCircle,
   IconAward,
-  IconClockHour3,
   IconCoin,
   IconCrown,
   IconHeartbeat,
-  IconHelpCircle,
   IconInfoCircle,
   IconLeaf,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
-import {
-  relifeConcepts,
-  type ConceptId,
-} from "../../../../constants/relifeConcepts";
+import { ConceptMetricCard } from "../../../../components/shared/ConceptMetricCard";
 import { ReadingText } from "../../../../components/shared/ReadingText";
 import {
   readMetric,
@@ -37,15 +32,20 @@ import {
 } from "../../../../services/savingsState";
 import type {
   FinancialResults,
-  MCDARankingResult,
   RenovationScenario,
   ScenarioId,
 } from "../../context/types";
 import type { MCDAPersona } from "../../../../services/types";
-import { formatCurrency, formatNumber } from "../../utils/formatters";
+import {
+  formatCount,
+  formatCurrency,
+  formatNumber,
+} from "../../utils/formatters";
+import { getScenarioColor } from "../../utils/colorUtils";
 import classes from "./ResultsLayout.module.css";
 import shared from "../../../../components/shared/ResultsLayout.module.css";
-import { ScenDot, ScoreBar } from "./resultsAtoms";
+import { rankingOf, type RankingStatus } from "./rankingStatus";
+import { ColorDot, ScoreBar } from "../../../../components/shared/ResultAtoms";
 
 const PERSONA_ICON: Record<string, ComponentType<{ size?: number }>> = {
   "environmentally-conscious": IconLeaf,
@@ -55,12 +55,10 @@ const PERSONA_ICON: Record<string, ComponentType<{ size?: number }>> = {
 
 interface RecommendationHeroProps {
   currentScenario: RenovationScenario | undefined;
-  renovationScenarios: RenovationScenario[];
+  /** Packages in rank order. */
+  rankedScenarios: RenovationScenario[];
   financialResults: Record<ScenarioId, FinancialResults>;
-  ranking: MCDARankingResult[] | null;
-  isRanking: boolean;
-  canRank: boolean;
-  error: string | null;
+  status: RankingStatus;
   personas: MCDAPersona[];
   selectedPersona: string;
   selectedScenarioId: ScenarioId | null;
@@ -70,26 +68,22 @@ interface RecommendationHeroProps {
 
 export function RecommendationHero({
   currentScenario,
-  renovationScenarios,
+  rankedScenarios,
   financialResults,
-  ranking,
-  isRanking,
-  canRank,
-  error,
+  status,
   personas,
   selectedPersona,
   selectedScenarioId,
   onSelectPersona,
   onSelectScenario,
 }: RecommendationHeroProps) {
-  const winner = getWinner(renovationScenarios, ranking);
-  const winnerResult = winner ? financialResults[winner.id] : undefined;
-  const winnerAppraisal = winnerResult?.appraisal;
-  const winnerBenefit = readMetric(winnerAppraisal, "MonthlyAvgSavings");
-  const paybackRange = readRange(winnerAppraisal, "PBP");
   const personaLabel =
     personas.find((p) => p.id === selectedPersona)?.name ?? "your priorities";
-  const savings = resolveSavingsState(currentScenario, winner, winnerResult);
+  const updating =
+    status.kind === "loading" || (status.kind === "ready" && status.stale);
+  const scoreById = new Map(
+    (rankingOf(status) ?? []).map((entry) => [entry.scenarioId, entry.score]),
+  );
 
   return (
     <div className={shared.hero}>
@@ -97,7 +91,7 @@ export function RecommendationHero({
         <div className={shared.recoBand}>
           <span className={shared.recoRank}>#1</span>
           <span className={shared.recoBandTitle}>
-            {error ? (
+            {status.kind === "failed" || status.kind === "cannot-rank" ? (
               "Recommendation unavailable"
             ) : (
               <>
@@ -106,92 +100,24 @@ export function RecommendationHero({
               </>
             )}
           </span>
-          {!error ? (
+          {status.kind === "ready" || status.kind === "loading" ? (
             <span className={shared.recoBandScore}>
               <IconAward size={16} />
-              {isRanking ? "Ranking…" : "Best overall fit"}
+              {updating ? "Ranking…" : "Best overall fit"}
             </span>
           ) : null}
         </div>
 
-        <div className={shared.recoBody}>
-          {error ? (
-            <Alert color="red" icon={<IconAlertCircle size={16} />}>
-              {error}
-            </Alert>
-          ) : winner && currentScenario ? (
-            <>
-              <div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    marginBottom: 6,
-                  }}
-                >
-                  <ScenDot scenarioId={winner.id} size={12} />
-                  <Text size="xs" c="dimmed" fw={500}>
-                    {winner.measures.length} measures
-                    {winnerResult?.capitalExpenditure !== undefined
-                      ? ` · ${formatCurrency(winnerResult.capitalExpenditure)} investment`
-                      : null}
-                  </Text>
-                </div>
-                <Text component="h2" fz={26} fw={700} lh={1.15} m={0}>
-                  {winner.label}
-                </Text>
-                <SavingsCopy
-                  current={currentScenario}
-                  winner={winner}
-                  result={winnerResult}
-                  benefit={winnerBenefit}
-                  savings={savings}
-                />
-              </div>
-
-              <div className={classes.recoMetrics}>
-                <Metric
-                  icon={<IconCoin size={14} />}
-                  conceptId="monthly-cash-benefit"
-                  value={
-                    <ReadingText reading={winnerBenefit} style="headline" />
-                  }
-                  hint={
-                    winnerBenefit.kind === "value"
-                      ? "roughly, after running costs"
-                      : undefined
-                  }
-                />
-                <Metric
-                  icon={<IconClockHour3 size={14} />}
-                  conceptId="payback-period"
-                  value={
-                    <ReadingText
-                      reading={readMetric(winnerAppraisal, "PBP")}
-                      style="headline"
-                    />
-                  }
-                  hint={
-                    paybackRange ? `P10–P90: ${paybackRange.text}` : undefined
-                  }
-                />
-              </div>
-
-              <div className={classes.recoFootnote}>
-                <IconInfoCircle size={14} />
-                Recommendation re-ranks automatically when you change profile.
-              </div>
-            </>
-          ) : isRanking ? (
-            <RecoSkeleton />
-          ) : (
-            <Alert color="yellow" icon={<IconInfoCircle size={16} />}>
-              {canRank
-                ? "Calculating recommendation…"
-                : "Not enough packages with complete data to rank. Compare options below."}
-            </Alert>
-          )}
+        <div
+          className={`${shared.recoBody} ${updating ? classes.stale : ""}`}
+          aria-busy={updating}
+        >
+          <RecommendationBody
+            status={status}
+            currentScenario={currentScenario}
+            winner={rankedScenarios[0]}
+            financialResults={financialResults}
+          />
         </div>
       </section>
 
@@ -199,11 +125,7 @@ export function RecommendationHero({
         <div className={shared.sideCard}>
           <div className={shared.sideTitle}>
             <h3>Your priorities</h3>
-            <IconHelpCircle
-              size={14}
-              color="var(--mantine-color-gray-6)"
-              aria-hidden
-            />
+            <ConceptExplainer conceptId="priority-profile" />
           </div>
           <div className={classes.persona} role="radiogroup">
             {personas.map((persona) => {
@@ -221,9 +143,11 @@ export function RecommendationHero({
                   <span className={classes.personaIc}>
                     <Icon size={14} />
                   </span>
-                  <span className={classes.personaLabel}>{persona.name}</span>
-                  <span className={classes.personaHint}>
-                    {persona.description}
+                  <span>
+                    <span className={classes.personaLabel}>{persona.name}</span>
+                    <span className={classes.personaHint}>
+                      {persona.description}
+                    </span>
                   </span>
                 </button>
               );
@@ -235,34 +159,25 @@ export function RecommendationHero({
           <div className={shared.sideTitle}>
             <h3>Full ranking</h3>
             <Text size="xs" c="dimmed" component="span">
-              {isRanking ? (
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                >
+              {updating ? (
+                <Group gap={6} component="span" wrap="nowrap">
                   <Loader size="xs" />
                   Updating…
-                </span>
+                </Group>
               ) : (
-                `${renovationScenarios.length} packages`
+                `${rankedScenarios.length} packages`
               )}
             </Text>
           </div>
-          {error ? (
-            <div className={classes.rankNotice}>Ranking unavailable.</div>
-          ) : ranking && ranking.length > 0 ? (
-            <ul className={shared.rankList}>
-              {ranking.map((entry, idx) => {
-                const scenario = renovationScenarios.find(
-                  (s) => s.id === entry.scenarioId,
-                );
-                if (!scenario) return null;
+          {status.kind === "ready" ? (
+            <ul
+              className={`${shared.rankList} ${status.stale ? classes.stale : ""}`}
+            >
+              {rankedScenarios.map((scenario, idx) => {
                 const isSel = scenario.id === selectedScenarioId;
+                const score = scoreById.get(scenario.id);
                 return (
-                  <li key={entry.scenarioId}>
+                  <li key={scenario.id}>
                     <button
                       type="button"
                       onClick={() => onSelectScenario(scenario.id)}
@@ -270,55 +185,35 @@ export function RecommendationHero({
                       aria-pressed={isSel}
                     >
                       <span className={shared.rankNum}>
-                        {idx === 0 ? (
+                        {score === undefined ? (
+                          "—"
+                        ) : idx === 0 ? (
                           <IconCrown size={16} className={shared.rankCrown} />
                         ) : (
                           idx + 1
                         )}
                       </span>
-                      <ScenDot scenarioId={scenario.id} />
+                      <ColorDot color={getScenarioColor(scenario.id)} />
                       <span className={shared.rankName}>{scenario.label}</span>
-                      <span className={shared.rankScore}>
-                        <ScoreBar
-                          pct={entry.score * 100}
-                          scenarioId={scenario.id}
-                        />
-                      </span>
+                      {score === undefined ? (
+                        <Text size="xs" c="dimmed" component="span">
+                          Not ranked
+                        </Text>
+                      ) : (
+                        <span className={shared.rankScore}>
+                          <ScoreBar
+                            color={getScenarioColor(scenario.id)}
+                            pct={score * 100}
+                          />
+                        </span>
+                      )}
                     </button>
                   </li>
                 );
               })}
-              {renovationScenarios
-                .filter((s) => !ranking.some((r) => r.scenarioId === s.id))
-                .map((scenario) => {
-                  const isSel = scenario.id === selectedScenarioId;
-                  return (
-                    <li key={scenario.id}>
-                      <button
-                        type="button"
-                        onClick={() => onSelectScenario(scenario.id)}
-                        className={`${shared.rankItem} ${isSel ? shared.sel : ""}`}
-                        aria-pressed={isSel}
-                      >
-                        <span className={shared.rankNum}>—</span>
-                        <ScenDot scenarioId={scenario.id} />
-                        <span className={shared.rankName}>
-                          {scenario.label}
-                        </span>
-                        <Text size="xs" c="dimmed" component="span">
-                          Not ranked
-                        </Text>
-                      </button>
-                    </li>
-                  );
-                })}
             </ul>
-          ) : isRanking ? (
-            <div className={classes.rankNotice}>Computing ranking…</div>
           ) : (
-            <div className={classes.rankNotice}>
-              Ranking unavailable. Add at least two packages with complete data.
-            </div>
+            <div className={classes.rankNotice}>{rankingNotice(status)}</div>
           )}
         </div>
       </aside>
@@ -326,24 +221,107 @@ export function RecommendationHero({
   );
 }
 
-interface MetricProps {
-  icon: React.ReactNode;
-  conceptId: ConceptId;
-  value: React.ReactNode;
-  hint?: string;
+function rankingNotice(
+  status: Exclude<RankingStatus, { kind: "ready" }>,
+): string {
+  switch (status.kind) {
+    case "loading":
+      return "Computing ranking…";
+    case "failed":
+      return "Ranking unavailable.";
+    case "cannot-rank":
+      return status.reason === "too-few-packages"
+        ? "Ranking unavailable. Add at least two packages with complete data."
+        : "Ranking unavailable.";
+  }
 }
 
-function Metric({ icon, conceptId, value, hint }: MetricProps) {
+interface RecommendationBodyProps {
+  status: RankingStatus;
+  currentScenario: RenovationScenario | undefined;
+  winner: RenovationScenario | undefined;
+  financialResults: Record<ScenarioId, FinancialResults>;
+}
+
+function RecommendationBody({
+  status,
+  currentScenario,
+  winner,
+  financialResults,
+}: RecommendationBodyProps) {
+  switch (status.kind) {
+    case "failed":
+      return (
+        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+          {status.message}
+        </Alert>
+      );
+    case "cannot-rank":
+      return (
+        <Alert color="gray" icon={<IconInfoCircle size={16} />}>
+          Not enough packages with complete data to rank. Compare options below.
+        </Alert>
+      );
+    case "loading":
+      return <RecoSkeleton />;
+    case "ready":
+      break;
+  }
+  if (!winner || !currentScenario) return <RecoSkeleton />;
+
+  const winnerResult = financialResults[winner.id];
+  const winnerAppraisal = winnerResult?.appraisal;
+  const winnerBenefit = readMetric(winnerAppraisal, "MonthlyAvgSavings");
+  const paybackRange = readRange(winnerAppraisal, "PBP");
+  const savings = resolveSavingsState(currentScenario, winner, winnerResult);
+
   return (
-    <div className={shared.recoMetric}>
-      <div className={shared.metricLabel}>
-        {icon}
-        {relifeConcepts[conceptId].label}
-        <ConceptExplainer conceptId={conceptId} />
+    <>
+      <div>
+        <Group gap="xs" mb={6}>
+          <ColorDot color={getScenarioColor(winner.id)} size={12} />
+          <Text size="xs" c="dimmed" fw={500}>
+            {formatCount(winner.measures.length, "measure")}
+            {winnerResult?.capitalExpenditure !== undefined
+              ? ` · ${formatCurrency(winnerResult.capitalExpenditure)} investment`
+              : null}
+          </Text>
+        </Group>
+        <Text component="h2" fz={26} fw={700} lh={1.15} m={0}>
+          {winner.label}
+        </Text>
+        <SavingsCopy
+          current={currentScenario}
+          winner={winner}
+          result={winnerResult}
+          benefit={winnerBenefit}
+          savings={savings}
+        />
       </div>
-      <div className={shared.metricValue}>{value}</div>
-      {hint ? <div className={shared.metricHint}>{hint}</div> : null}
-    </div>
+
+      <div className={shared.tileGrid}>
+        <ConceptMetricCard
+          conceptId="monthly-cash-benefit"
+          value={<ReadingText reading={winnerBenefit} />}
+        />
+        <ConceptMetricCard
+          conceptId="payback-period"
+          value={<ReadingText reading={readMetric(winnerAppraisal, "PBP")} />}
+          footer={
+            paybackRange ? (
+              <Text size="xs" c="dimmed">
+                P10–P90: {paybackRange.text}
+              </Text>
+            ) : undefined
+          }
+        />
+      </div>
+
+      <div className={shared.recoFootnote}>
+        <IconInfoCircle size={14} />
+        Recommendation re-ranks automatically when you change profile.
+      </div>
+    </>
   );
 }
 
@@ -352,7 +330,7 @@ function RecoSkeleton() {
     <>
       <Skeleton height={32} width="60%" />
       <Skeleton height={20} width="80%" />
-      <div className={classes.recoMetrics}>
+      <div className={shared.tileGrid}>
         <Skeleton height={84} />
         <Skeleton height={84} />
       </div>
@@ -492,12 +470,4 @@ function formatThermalNeedsChange(changePct: number | null) {
       Increases your thermal needs by <b>{formatNumber(roundedChange)}%</b>
     </>
   );
-}
-
-function getWinner(
-  scenarios: RenovationScenario[],
-  ranking: MCDARankingResult[] | null,
-): RenovationScenario | undefined {
-  if (!ranking || ranking.length === 0) return undefined;
-  return scenarios.find((s) => s.id === ranking[0].scenarioId);
 }

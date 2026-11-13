@@ -4,32 +4,28 @@
  */
 
 import { IconCrown } from "@tabler/icons-react";
-import type {
-  MCDARankingResult,
-  RenovationScenario,
-  ScenarioId,
-} from "../../context/types";
+import type { RenovationScenario, ScenarioId } from "../../context/types";
+import { getScenarioColor } from "../../utils/colorUtils";
 import shared from "../../../../components/shared/ResultsLayout.module.css";
-import { ScenDot } from "./resultsAtoms";
+import { ColorDot } from "../../../../components/shared/ResultAtoms";
 
 interface ScenarioTabsProps {
-  renovationScenarios: RenovationScenario[];
-  ranking: MCDARankingResult[] | null;
+  /** Packages in rank order. */
+  rankedScenarios: RenovationScenario[];
+  winnerId: ScenarioId | null;
   selectedScenarioId: ScenarioId | null;
   onSelectScenario: (scenarioId: ScenarioId) => void;
 }
 
 export function ScenarioTabs({
-  renovationScenarios,
-  ranking,
+  rankedScenarios,
+  winnerId,
   selectedScenarioId,
   onSelectScenario,
 }: ScenarioTabsProps) {
-  const winnerId = ranking?.[0]?.scenarioId ?? null;
-
   return (
     <div className={shared.tabsRow} role="tablist">
-      {renovationScenarios.map((scenario) => {
+      {rankedScenarios.map((scenario) => {
         const isSel = scenario.id === selectedScenarioId;
         return (
           <button
@@ -40,7 +36,7 @@ export function ScenarioTabs({
             className={shared.tab}
             onClick={() => onSelectScenario(scenario.id)}
           >
-            <ScenDot scenarioId={scenario.id} />
+            <ColorDot color={getScenarioColor(scenario.id)} />
             <span>{scenario.label}</span>
             {scenario.id === winnerId ? (
               <IconCrown size={14} className={shared.tabCrown} />

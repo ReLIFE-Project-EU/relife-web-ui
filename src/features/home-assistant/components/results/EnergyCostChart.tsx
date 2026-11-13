@@ -1,6 +1,6 @@
 /**
- * EnergyCostChart — before/after heating & cooling running cost for the
- * recommended package.
+ * EnergyCostChart — heating & cooling running cost today and for every
+ * package.
  *
  * Deliberately NOT called an energy bill: the carrier breakdown derives from
  * delivered energy, which covers HVAC end uses only. Hot water, lighting and
@@ -11,30 +11,31 @@
  * cannot contradict the savings figures derived from that request.
  */
 
-import { BarChart } from "@mantine/charts";
-import { Text } from "@mantine/core";
+import { Group, Progress, Stack, Text } from "@mantine/core";
 import { IconChartBar } from "@tabler/icons-react";
 import {
   computeCarrierAnnualCostEur,
   FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
 } from "../../../../services/carrierSavingsService";
+import { getScenarioColor } from "../../utils/colorUtils";
 import { formatApproxCurrency } from "../../utils/formatters";
 import type { RenovationScenario } from "../../context/types";
 import classes from "./ResultsLayout.module.css";
+import { ColorDot } from "../../../../components/shared/ResultAtoms";
 
-const CHART_HEIGHT = 180;
+const PERCENT_PER_RATIO = 100;
 
 interface EnergyCostChartProps {
   current: RenovationScenario | undefined;
-  /** The recommended package, matching the hero card. */
-  winner: RenovationScenario | undefined;
+  /** Packages in rank order. */
+  rankedScenarios: RenovationScenario[];
   /** User-adjustable gas tariff from HRA state. */
   gasTariffEurPerKwh: number;
 }
 
 export function EnergyCostChart({
   current,
-  winner,
+  rankedScenarios,
   gasTariffEurPerKwh,
 }: EnergyCostChartProps) {
   const tariffs = {
@@ -43,8 +44,25 @@ export function EnergyCostChart({
       FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
   };
 
-  const baselineBreakdown = current?.carrierBreakdown;
-  const winnerBreakdown = winner?.carrierBreakdown;
+  const bars = [
+    ...(current ? [{ ...current, label: "Today" }] : []),
+    ...rankedScenarios,
+  ].flatMap((scenario) =>
+    scenario.carrierBreakdown
+      ? [
+          {
+            id: scenario.id,
+            label: scenario.label,
+            cost: computeCarrierAnnualCostEur(
+              scenario.carrierBreakdown,
+              tariffs,
+            ),
+          },
+        ]
+      : [],
+  );
+
+  const highestCost = Math.max(...bars.map((bar) => bar.cost));
 
   return (
     <section className={classes.panel} aria-label="Running cost">
@@ -53,33 +71,34 @@ export function EnergyCostChart({
         <h3>Heating &amp; cooling running cost</h3>
       </div>
 
-      {!baselineBreakdown || !winnerBreakdown ? (
+      {!current?.carrierBreakdown || bars.length < 2 || highestCost <= 0 ? (
         <Text size="sm" c="dimmed">
           We could not work out what this package costs to run, so we cannot
           show a before-and-after comparison.
         </Text>
       ) : (
         <>
-          <BarChart
-            h={CHART_HEIGHT}
-            data={[
-              {
-                stage: "Today",
-                cost: computeCarrierAnnualCostEur(baselineBreakdown, tariffs),
-              },
-              {
-                stage: winner.label,
-                cost: computeCarrierAnnualCostEur(winnerBreakdown, tariffs),
-              },
-            ]}
-            dataKey="stage"
-            orientation="vertical"
-            series={[{ name: "cost", label: "Per year", color: "relife.6" }]}
-            tickLine="none"
-            gridAxis="x"
-            valueFormatter={formatApproxCurrency}
-            withTooltip
-          />
+          <Stack gap="sm">
+            {bars.map((bar) => (
+              <div key={bar.id}>
+                <Group justify="space-between" wrap="nowrap" align="flex-end">
+                  <Group gap="xs" wrap="nowrap">
+                    <ColorDot color={getScenarioColor(bar.id)} />
+                    <Text size="sm">{bar.label}</Text>
+                  </Group>
+                  <Text size="sm" fw={600}>
+                    {formatApproxCurrency(bar.cost)}
+                  </Text>
+                </Group>
+                <Progress
+                  value={(bar.cost / highestCost) * PERCENT_PER_RATIO}
+                  color={`${getScenarioColor(bar.id)}.6`}
+                  size="lg"
+                  mt={4}
+                />
+              </div>
+            ))}
+          </Stack>
           <Text size="xs" c="dimmed" mt="sm">
             Rounded heating and cooling costs only (not a full energy bill).
           </Text>

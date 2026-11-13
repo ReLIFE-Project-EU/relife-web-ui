@@ -244,7 +244,7 @@ export function BuildingDrillDownModal({
                               color="var(--mantine-color-gray-5)"
                             />
                             <Text span fz={20} fw={600}>
-                              {formatDecimal(co2After)}
+                              {formatTonnageCo2(co2After, { decimal: true })}
                             </Text>
                           </Group>
                           {co2Before !== co2After ? (
@@ -322,6 +322,7 @@ export function BuildingDrillDownModal({
               {cashFlowData && cashFlowData.years.length > 0 ? (
                 <CashFlowChart
                   data={cashFlowData}
+                  payback={readMetric(fr?.appraisal, "PBP")}
                   projectLifetime={horizonYears}
                   title="Cash flow timeline"
                 />

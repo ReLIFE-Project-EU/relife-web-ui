@@ -14,9 +14,10 @@ import {
 } from "@tabler/icons-react";
 import { relifeConcepts } from "../../../../constants/relifeConcepts";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
-import { MetricEyebrow } from "../../../../components/shared/MetricEyebrow";
+import { ConceptMetricCard } from "../../../../components/shared/ConceptMetricCard";
 import { FundingPills } from "../../../../components/shared/FundingPills";
 import {
+  formatCount,
   formatCurrency,
   formatEnergy,
   formatNumber,
@@ -24,9 +25,8 @@ import {
 } from "../../../../utils/formatters";
 import { RSE_PACKAGES } from "../../services/rsePackageCatalog";
 import type { RSEPackageId, RSEWorkflowResult } from "../../types";
-import { PackageDot, PackageScoreBar } from "./rseResultsAtoms";
-import { GOAL_DISPLAY, heroMetricsFor, type HeroMetric } from "./rseResultsVm";
-import classes from "./StrategyResults.module.css";
+import { ColorDot, ScoreBar } from "../../../../components/shared/ResultAtoms";
+import { GOAL_DISPLAY, heroMetricsFor, PACKAGE_COLORS } from "./rseResultsVm";
 import shared from "../../../../components/shared/ResultsLayout.module.css";
 
 interface StrategyHeroProps {
@@ -81,9 +81,9 @@ export function StrategyHero({
                 marginBottom: 6,
               }}
             >
-              <PackageDot packageId={winner.packageId} size={12} />
+              <ColorDot color={PACKAGE_COLORS[winner.packageId]} size={12} />
               <Text size="xs" c="dimmed" fw={500}>
-                {winnerPackage.measureIds.length} measures
+                {formatCount(winnerPackage.measureIds.length, "measure")}
                 {winnerAggregate
                   ? ` · ${formatCurrency(winnerAggregate.totalCapexEur)} gross investment`
                   : null}
@@ -116,16 +116,22 @@ export function StrategyHero({
           </div>
 
           {winnerAggregate ? (
-            <div className={classes.recoMetrics}>
+            <div className={shared.tileGrid}>
               {heroMetricsFor(goal, winnerAggregate, lifetimeYears).map(
                 (metric) => (
-                  <HeroMetricTile key={metric.conceptId} metric={metric} />
+                  <ConceptMetricCard
+                    key={metric.conceptId}
+                    conceptId={metric.conceptId}
+                    prefix={metric.prefix}
+                    value={metric.value}
+                    footer={metric.hint}
+                  />
                 ),
               )}
             </div>
           ) : null}
 
-          <div className={classes.recoFootnote}>
+          <div className={shared.recoFootnote}>
             <IconInfoCircle size={14} />
             Investment figures are planning assumptions — see the cost
             assumptions note below.
@@ -185,14 +191,14 @@ export function StrategyHero({
                         entry.rank
                       )}
                     </span>
-                    <PackageDot packageId={entry.packageId} />
+                    <ColorDot color={PACKAGE_COLORS[entry.packageId]} />
                     <span className={shared.rankName}>
                       {RSE_PACKAGES[entry.packageId].label}
                     </span>
                     <span className={shared.rankScore}>
-                      <PackageScoreBar
+                      <ScoreBar
+                        color={PACKAGE_COLORS[entry.packageId]}
                         pct={entry.score * 100}
-                        packageId={entry.packageId}
                       />
                       {formatNumber(entry.score * 100)}
                     </span>
@@ -203,24 +209,6 @@ export function StrategyHero({
           </ul>
         </div>
       </aside>
-    </div>
-  );
-}
-
-function HeroMetricTile({ metric }: { metric: HeroMetric }) {
-  const Icon = metric.icon;
-  return (
-    <div className={shared.recoMetric}>
-      {metric.prefix ? <MetricEyebrow>{metric.prefix}</MetricEyebrow> : null}
-      <div className={shared.metricLabel}>
-        <Icon size={14} />
-        {relifeConcepts[metric.conceptId].label}
-        <ConceptExplainer conceptId={metric.conceptId} />
-      </div>
-      <div className={shared.metricValue}>{metric.value}</div>
-      {metric.hint ? (
-        <div className={shared.metricHint}>{metric.hint}</div>
-      ) : null}
     </div>
   );
 }

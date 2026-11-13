@@ -6,9 +6,19 @@
 
 import { Alert, Text } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
-import { FundingPills, ReadingText } from "../../../../components/shared";
+import {
+  ConceptExplainer,
+  ConceptMetricCard,
+  FundingPills,
+  RangeIndicator,
+  ReadingText,
+} from "../../../../components/shared";
 import { compactConceptLabel } from "../../../../constants/relifeConcepts";
-import { readMetric, readRange } from "../../../../services/appraisalReadout";
+import {
+  readMetric,
+  readRange,
+  type MetricRange,
+} from "../../../../services/appraisalReadout";
 import {
   appraisedFigures,
   resolveSavingsAvailability,
@@ -21,8 +31,8 @@ import type {
   RenovationScenario,
 } from "../../context/types";
 import { formatCurrency } from "../../utils/formatters";
-import { FinancialMetricCard } from "./FinancialMetricCard";
 import { RiskGauge } from "./RiskGauge";
+import { gainLossColor } from "../../utils/colorUtils";
 import classes from "./ResultsLayout.module.css";
 import shared from "../../../../components/shared/ResultsLayout.module.css";
 
@@ -42,13 +52,12 @@ export function FinancialDeepDive({
 
   return (
     <div>
-      <div className={shared.deepEyebrow}>Financials</div>
-      <h3 className={shared.deepHeading}>Money in, money out</h3>
+      <h3 className={shared.deepHeading}>Financials</h3>
 
       <FundingPills funding={funding} />
 
       {!result ? (
-        <div className={classes.empty} style={{ marginTop: 12 }}>
+        <div className={`${classes.empty} ${classes.block}`}>
           <div className={classes.emptyTitle}>
             Financial results unavailable
           </div>
@@ -58,47 +67,42 @@ export function FinancialDeepDive({
         </div>
       ) : (
         <>
-          <div className={classes.finGrid} style={{ marginTop: 12 }}>
+          <div className={`${shared.tileGrid} ${classes.block}`}>
             {appraised ? (
-              <FinancialMetricCard
+              <ConceptMetricCard
                 conceptId="npv"
-                metricType="NPV"
                 value={<ReadingText reading={readMetric(appraised, "NPV")} />}
-                range={readRange(appraised, "NPV")}
-                color="green"
-                highlighted
+                valueColor={gainLossColor(appraised.pointForecasts.NPV)}
+                footer={<Range range={readRange(appraised, "NPV")} />}
               />
             ) : null}
             {appraised ? (
-              <FinancialMetricCard
+              <ConceptMetricCard
                 conceptId="payback-period"
-                metricType="PBP"
                 value={<ReadingText reading={readMetric(appraised, "PBP")} />}
-                range={readRange(appraised, "PBP")}
-                color="teal"
-                lowerIsBetter
-                highlighted
+                footer={<Range range={readRange(appraised, "PBP")} />}
               />
             ) : null}
             {appraised?.pointForecasts.MonthlyAvgSavings !== undefined ? (
-              <FinancialMetricCard
+              <ConceptMetricCard
                 conceptId="monthly-cash-benefit"
-                metricType="MonthlyAvgSavings"
                 value={
                   <ReadingText
                     reading={readMetric(appraised, "MonthlyAvgSavings")}
                   />
                 }
-                color="orange"
-                highlighted
+                valueColor={gainLossColor(
+                  appraised.pointForecasts.MonthlyAvgSavings,
+                )}
               />
             ) : null}
-            <FinancialMetricCard
+            <ConceptMetricCard
               conceptId="investment"
-              metricType="CAPEX"
               value={formatCurrency(result.capitalExpenditure)}
-              color="gray"
             />
+            {appraised?.pointForecasts.SuccessRate !== undefined ? (
+              <RiskGauge successRate={appraised.pointForecasts.SuccessRate} />
+            ) : null}
           </div>
 
           {!appraised && (
@@ -113,12 +117,6 @@ export function FinancialDeepDive({
             </Alert>
           )}
 
-          {appraised?.pointForecasts.SuccessRate !== undefined ? (
-            <div style={{ marginTop: 12 }}>
-              <RiskGauge successRate={appraised.pointForecasts.SuccessRate} />
-            </div>
-          ) : null}
-
           <SecondaryMetrics result={result} />
         </>
       )}
@@ -126,24 +124,39 @@ export function FinancialDeepDive({
   );
 }
 
+const SECONDARY_METRICS = [
+  { metric: "IRR", conceptId: "irr" },
+  { metric: "ROI", conceptId: "roi" },
+  { metric: "DPP", conceptId: "discounted-payback-period" },
+] as const;
+
 function SecondaryMetrics({ result }: { result: FinancialResults }) {
   const appraised = appraisedFigures(result);
   if (!appraised) return null;
 
   return (
     <div className={classes.finExtras}>
-      <span>
-        <b>{compactConceptLabel("irr")}</b>{" "}
-        <ReadingText reading={readMetric(appraised, "IRR")} />
-      </span>
-      <span>
-        <b>{compactConceptLabel("roi")}</b>{" "}
-        <ReadingText reading={readMetric(appraised, "ROI")} />
-      </span>
-      <span>
-        <b>{compactConceptLabel("discounted-payback-period")}</b>{" "}
-        <ReadingText reading={readMetric(appraised, "DPP")} />
-      </span>
+      {SECONDARY_METRICS.map(({ metric, conceptId }) => (
+        <span key={metric}>
+          <b>{compactConceptLabel(conceptId)}</b>{" "}
+          <ReadingText reading={readMetric(appraised, metric)} />{" "}
+          <ConceptExplainer conceptId={conceptId} />
+        </span>
+      ))}
     </div>
+  );
+}
+
+function Range({ range }: { range: MetricRange | undefined }) {
+  if (!range) return null;
+  return (
+    <RangeIndicator
+      min={range.low}
+      median={range.median}
+      max={range.high}
+      formatter={range.format}
+      color="gray"
+      size="sm"
+    />
   );
 }

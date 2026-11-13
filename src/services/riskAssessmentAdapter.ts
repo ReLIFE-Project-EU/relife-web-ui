@@ -221,10 +221,8 @@ function mapCashFlowData(
   loanTerm: number | null,
 ): CashFlowData {
   let running = 0;
-  let breakevenYear: number | null = null;
-  const cumulative = net.map((value, i) => {
+  const cumulative = net.map((value) => {
     running += value;
-    if (breakevenYear === null && i > 0 && running >= 0) breakevenYear = i;
     return running;
   });
   const year0 = net[0] ?? 0;
@@ -235,7 +233,6 @@ function mapCashFlowData(
     annual_outflows: outflows,
     annual_net_cash_flow: net,
     cumulative_cash_flow: cumulative,
-    breakeven_year: breakevenYear,
     loan_term: loanTerm,
   };
 }

@@ -1,10 +1,9 @@
 /**
  * ResultsStep Component
  * Screen 3: Recommendation-first dashboard built around the active MCDA
- * persona. Auto-ranks scenarios whenever the persona changes. The headline
- * answer (recommended package, yearly savings, payback, ranking) stays in
- * view; per-package detail and the comparison table sit behind collapsed
- * sections so secondary indicators remain reachable without crowding it.
+ * persona. Auto-ranks scenarios whenever the persona changes. The
+ * recommendation comes first, then every package side by side, then the
+ * details of the selected package.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -25,6 +24,7 @@ import {
   getRankingScenarioStatuses,
   hasCompleteHealthImpactData,
 } from "../../../../services/TechnicalMCDAService";
+import { readMetric } from "../../../../services/appraisalReadout";
 import { appraisedFigures } from "../../../../services/savingsState";
 import { CashFlowChart } from "../results/CashFlowChart";
 import { CompareAllTable } from "../results/CompareAllTable";
@@ -34,12 +34,21 @@ import { FinancialDeepDive } from "../results/FinancialDeepDive";
 import { RecommendationHero } from "../results/RecommendationHero";
 import { ScenarioTabs } from "../results/ScenarioTabs";
 import { getEffectiveDetailScenarioId } from "../results/financialSelection";
+import {
+  canRank,
+  deriveRankingStatus,
+  orderByRank,
+  rankingOf,
+} from "../results/rankingStatus";
 import { ErrorAlert, StepNavigation } from "../shared";
+import classes from "../results/ResultsLayout.module.css";
 import shared from "../../../../components/shared/ResultsLayout.module.css";
 import type { ScenarioId } from "../../context/types";
 import { validateEstimation } from "../../../../services/estimationValidation";
 import { LineageLink } from "../../../lineage";
 import { formatFixed } from "../../utils/formatters";
+
+const PACKAGE_DETAILS = "package-details";
 
 const RECOMMENDATION_ERROR =
   "We couldn’t complete the recommendation. Please try again.";
@@ -77,17 +86,29 @@ export function ResultsStep() {
     .map((status) => status.scenario);
   const healthImpactAvailable =
     hasCompleteHealthImpactData(renovationScenarios);
-  const canRank =
-    healthImpactAvailable && eligibleScenarios.length >= 2 && !!currentScenario;
-  const recommendationError = healthImpactAvailable
-    ? state.error
-    : RECOMMENDATION_ERROR;
+  const rankingInputs = {
+    healthImpactAvailable,
+    eligiblePackageCount: currentScenario ? eligibleScenarios.length : 0,
+  };
+  const rankable = canRank(rankingInputs);
+  const rankingStatus = deriveRankingStatus({
+    ...rankingInputs,
+    ranking: mcdaRanking,
+    isRanking,
+    error: state.error,
+  });
+  const ranking = rankingOf(rankingStatus);
+  // One package order for every surface on the screen.
+  const rankedScenarios = useMemo(
+    () => orderByRank(renovationScenarios, ranking),
+    [renovationScenarios, ranking],
+  );
 
   // Auto-rank: trigger an MCDA call whenever the active persona or the
   // ranking inputs change (and on first reach of step 3 once enough data is
   // available). The cancelled flag keeps overlapping runs latest-wins.
   useEffect(() => {
-    if (!canRank || !currentScenario) return;
+    if (!rankable || !currentScenario) return;
     let cancelled = false;
     const run = async () => {
       dispatch({ type: "START_RANKING" });
@@ -112,7 +133,7 @@ export function ResultsStep() {
     };
   }, [
     selectedPersona,
-    canRank,
+    rankable,
     currentScenario,
     renovationScenarios,
     financialResults,
@@ -125,10 +146,7 @@ export function ResultsStep() {
   const [selectedDetailId, setSelectedDetailId] = useState<ScenarioId | null>(
     null,
   );
-  const winnerId = mcdaRanking?.[0]?.scenarioId ?? null;
-  // The running-cost chart follows the recommendation, like the hero card,
-  // rather than the deep-dive selection inside the collapsed sections.
-  const winnerScenario = renovationScenarios.find((s) => s.id === winnerId);
+  const winnerId = ranking?.[0]?.scenarioId ?? null;
 
   // Snap the deep-dive selection to the winner when it changes, using the
   // render-time "adjust state on change" pattern instead of an effect.
@@ -273,12 +291,9 @@ export function ResultsStep() {
 
       <RecommendationHero
         currentScenario={currentScenario}
-        renovationScenarios={renovationScenarios}
+        rankedScenarios={rankedScenarios}
         financialResults={financialResults}
-        ranking={mcdaRanking}
-        isRanking={isRanking}
-        canRank={canRank}
-        error={recommendationError}
+        status={rankingStatus}
         personas={personas}
         selectedPersona={selectedPersona}
         selectedScenarioId={fallbackSelectedId}
@@ -286,17 +301,34 @@ export function ResultsStep() {
         onSelectScenario={handleSelectScenario}
       />
 
+      <section className={classes.panel} aria-label="Comparison">
+        <div className={classes.panelHead}>
+          <IconTable size={16} />
+          <h3>Compare all packages</h3>
+        </div>
+        <CompareAllTable
+          current={currentScenario}
+          rankedScenarios={rankedScenarios}
+          financialResults={financialResults}
+          projectLifetime={state.building.projectLifetime}
+          ranking={ranking}
+          onSelectScenario={handleSelectScenario}
+        />
+      </section>
+
       <EnergyCostChart
         current={currentScenario}
-        winner={winnerScenario}
+        rankedScenarios={rankedScenarios}
         gasTariffEurPerKwh={gasTariff.eurPerKwh}
       />
 
-      {/* Everything below the recommendation is secondary detail: kept
-       * reachable, but collapsed so the headline answer stays uncluttered. */}
-      <Accordion chevronPosition="right" variant="default" multiple>
-        {renovationScenarios.length > 0 ? (
-          <Accordion.Item value="package-details">
+      {rankedScenarios.length > 0 ? (
+        <Accordion
+          chevronPosition="right"
+          variant="default"
+          defaultValue={PACKAGE_DETAILS}
+        >
+          <Accordion.Item value={PACKAGE_DETAILS}>
             <Accordion.Control
               icon={
                 <ThemeIcon color="gray" variant="light" size="sm">
@@ -308,38 +340,35 @@ export function ResultsStep() {
             </Accordion.Control>
             <Accordion.Panel>
               <Stack gap="md">
-                <Stack gap={0}>
-                  <ScenarioTabs
-                    renovationScenarios={renovationScenarios}
-                    ranking={mcdaRanking}
-                    selectedScenarioId={fallbackSelectedId}
-                    onSelectScenario={handleSelectScenario}
-                  />
+                <ScenarioTabs
+                  rankedScenarios={rankedScenarios}
+                  winnerId={winnerId}
+                  selectedScenarioId={fallbackSelectedId}
+                  onSelectScenario={handleSelectScenario}
+                />
 
-                  <section className={shared.deep}>
-                    {selectedScenario && currentScenario ? (
-                      <div className={shared.deepCols}>
-                        <EnergyDeepDive
-                          current={currentScenario}
-                          selected={selectedScenario}
-                        />
-                        <FinancialDeepDive
-                          selected={selectedScenario}
-                          result={selectedResult}
-                          funding={funding}
-                        />
-                      </div>
-                    ) : (
-                      <Text c="dimmed" size="sm">
-                        Select a package above to inspect its details.
-                      </Text>
-                    )}
-                  </section>
-                </Stack>
+                {selectedScenario && currentScenario ? (
+                  <div className={shared.deepCols}>
+                    <EnergyDeepDive
+                      current={currentScenario}
+                      selected={selectedScenario}
+                    />
+                    <FinancialDeepDive
+                      selected={selectedScenario}
+                      result={selectedResult}
+                      funding={funding}
+                    />
+                  </div>
+                ) : (
+                  <Text c="dimmed" size="sm">
+                    Select a package above to inspect its details.
+                  </Text>
+                )}
 
                 {selectedAppraisal?.cashFlowData ? (
                   <CashFlowChart
                     data={selectedAppraisal.cashFlowData}
+                    payback={readMetric(selectedResult?.appraisal, "PBP")}
                     projectLifetime={
                       state.building.projectLifetime ?? undefined
                     }
@@ -349,31 +378,8 @@ export function ResultsStep() {
               </Stack>
             </Accordion.Panel>
           </Accordion.Item>
-        ) : null}
-
-        <Accordion.Item value="compare-all">
-          <Accordion.Control
-            icon={
-              <ThemeIcon color="gray" variant="light" size="sm">
-                <IconTable size={16} />
-              </ThemeIcon>
-            }
-          >
-            Compare all packages
-          </Accordion.Control>
-          <Accordion.Panel>
-            <CompareAllTable
-              current={currentScenario}
-              renovationScenarios={renovationScenarios}
-              financialResults={financialResults}
-              projectLifetime={state.building.projectLifetime}
-              ranking={mcdaRanking}
-              selectedScenarioId={fallbackSelectedId}
-              onSelectScenario={handleSelectScenario}
-            />
-          </Accordion.Panel>
-        </Accordion.Item>
-      </Accordion>
+        </Accordion>
+      ) : null}
 
       <StepNavigation
         currentStep={2}

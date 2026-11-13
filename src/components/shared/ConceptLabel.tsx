@@ -7,6 +7,8 @@ interface ConceptLabelProps {
   conceptId: ConceptId;
   descriptionVisible?: boolean;
   withExplainer?: boolean;
+  /** Off where the unit is shown elsewhere, such as beside a value. */
+  withUnit?: boolean;
   size?: "xs" | "sm" | "md";
 }
 
@@ -14,6 +16,7 @@ export function ConceptLabel({
   conceptId,
   descriptionVisible = false,
   withExplainer = true,
+  withUnit = true,
   size = "sm",
 }: ConceptLabelProps) {
   const concept = relifeConcepts[conceptId];
@@ -22,7 +25,7 @@ export function ConceptLabel({
     <Stack gap={2}>
       <Text span size={size} fw={500}>
         {concept.label}
-        {concept.unit ? (
+        {withUnit && concept.unit ? (
           <Text span inherit c="dimmed" fw={400}>
             {" "}
             ({concept.unit})

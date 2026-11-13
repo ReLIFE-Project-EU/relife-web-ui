@@ -33,9 +33,10 @@ import type {
   RSERankingResult,
   RSERenovationGoal,
 } from "../../types";
-import { PackageDot, PackageScoreBar } from "./rseResultsAtoms";
+import { ColorDot, ScoreBar } from "../../../../components/shared/ResultAtoms";
 import {
   getAggregateValue,
+  PACKAGE_COLORS,
   RANKING_COLUMNS,
   type RankingColumn,
 } from "./rseResultsVm";
@@ -148,7 +149,10 @@ export function CompareStrategiesTable({
         </Text>
       </div>
       <div className={shared.tableScroll}>
-        <table className={shared.table} data-testid="rse-ranking-table">
+        <table
+          className={`${shared.table} ${classes.rankingTable}`}
+          data-testid="rse-ranking-table"
+        >
           <thead>
             <tr>
               <SortableTh
@@ -184,6 +188,7 @@ export function CompareStrategiesTable({
                 <tr
                   key={ranking.packageId}
                   className={`${shared.scen} ${isSel ? shared.sel : ""}`}
+                  aria-selected={isSel}
                   onClick={() => onSelectPackage(ranking.packageId)}
                 >
                   <td>
@@ -193,7 +198,7 @@ export function CompareStrategiesTable({
                   </td>
                   <td>
                     <div className={shared.rowName}>
-                      <PackageDot packageId={ranking.packageId} />
+                      <ColorDot color={PACKAGE_COLORS[ranking.packageId]} />
                       <span>{RSE_PACKAGES[ranking.packageId].label}</span>
                       {ranking.rank === 1 ? (
                         <IconCrown
@@ -212,9 +217,9 @@ export function CompareStrategiesTable({
                         justifyContent: "flex-end",
                       }}
                     >
-                      <PackageScoreBar
+                      <ScoreBar
+                        color={PACKAGE_COLORS[ranking.packageId]}
                         pct={ranking.score * 100}
-                        packageId={ranking.packageId}
                       />
                       <Text component="span" fw={700} size="sm">
                         {formatNumber(ranking.score * 100)}

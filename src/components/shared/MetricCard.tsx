@@ -2,33 +2,44 @@
  * MetricCard Component
  * Displays a metric with label and value in a styled card.
  *
- * The value sits at the bottom of a fixed-minimum-height box so that cards
- * with labels of differing length still line their numbers up across a grid.
+ * Label, value and footer sit on three rows shared with the parent grid, so
+ * cards in one row line up their values whatever the label heights.
  */
 
-import { Box, Text } from "@mantine/core";
+import { Box, Text, type MantineColor } from "@mantine/core";
 import type { ReactNode } from "react";
 import { MetricEyebrow } from "./MetricEyebrow";
 
-/** Keeps values aligned across a row when labels wrap to different heights. */
+/** Keeps a row of cards the same size when some have no footer. */
 const METRIC_CARD_MIN_HEIGHT = 96;
+/** Label, value, footer. */
+const CARD_ROWS = 3;
 
 interface MetricCardProps {
   /** Label describing the metric (string or React node for inline icons) */
   label: ReactNode;
   /** Formatted value to display (string or React node) */
   value: ReactNode;
+  /** Unit shown beside the value, for values that are bare numbers */
+  unit?: string;
+  /** Only for gain or loss; neutral otherwise */
+  valueColor?: MantineColor;
   /** Optional variant for different visual styles */
   variant?: "default" | "highlight";
   /** Qualifier shown as an uppercase eyebrow above the label */
   prefix?: string;
+  /** Detail under the value: a comparison, a range or a hint */
+  footer?: ReactNode;
 }
 
 export function MetricCard({
   label,
   value,
+  unit,
+  valueColor,
   variant = "default",
   prefix,
+  footer,
 }: MetricCardProps) {
   const backgroundColor =
     variant === "highlight"
@@ -42,9 +53,11 @@ export function MetricCard({
       style={{
         backgroundColor,
         borderRadius: "var(--mantine-radius-md)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "var(--mantine-spacing-xs)",
+        display: "grid",
+        gridTemplateRows: "subgrid",
+        gridRow: `span ${CARD_ROWS}`,
+        alignContent: "start",
+        rowGap: "var(--mantine-spacing-xs)",
       }}
     >
       <Box>
@@ -61,11 +74,24 @@ export function MetricCard({
         component="div"
         fz={20}
         fw={600}
-        mt="auto"
+        c={valueColor}
         style={{ fontVariantNumeric: "tabular-nums" }}
       >
         {value}
+        {unit ? (
+          <Text span fz="xs" fw={400} c="dimmed">
+            {" "}
+            {unit}
+          </Text>
+        ) : null}
       </Text>
+      {typeof footer === "string" ? (
+        <Text size="xs" c="dimmed">
+          {footer}
+        </Text>
+      ) : (
+        footer
+      )}
     </Box>
   );
 }

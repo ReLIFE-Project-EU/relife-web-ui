@@ -83,6 +83,14 @@ export function formatFixed(value: number, decimals: number): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Format a count with its noun.
+ * Example: 1 -> "1 measure"; 3 -> "3 measures"
+ */
+export function formatCount(count: number, noun: string): string {
+  return `${formatNumber(count)} ${count === 1 ? noun : `${noun}s`}`;
+}
+
+/**
  * Format a value as EUR currency (no decimals).
  * Example: 12500 -> "12.500 €" (de-DE), "€12,500" (en-IE)
  */
@@ -92,8 +100,7 @@ export function formatCurrency(value: number): string {
 
 /**
  * Format a value as approximate EUR currency, rounded to two significant
- * figures. Used for homeowner-facing headline figures, which should not imply
- * more precision than the model has.
+ * figures. Used for chart axes and bar labels.
  * Example: 1237 -> "€1,200"; 18432 -> "€18,000"; 47 -> "€47"
  */
 export function formatApproxCurrency(value: number): string {

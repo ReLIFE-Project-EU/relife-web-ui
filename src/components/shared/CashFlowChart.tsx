@@ -4,6 +4,8 @@ import {
   type CompositeChartSeries,
 } from "@mantine/charts";
 import { Box, Card, Group, Stack, Text } from "@mantine/core";
+import { relifeConcepts } from "../../constants/relifeConcepts";
+import { readingText, type Reading } from "../../services/appraisalReadout";
 import type { CashFlowData } from "../../types/renovation";
 import { formatCurrency } from "../../utils/formatters";
 
@@ -14,28 +16,23 @@ const LEGEND_SWATCH_WIDTH = 16;
 const LEGEND_SWATCH_HEIGHT = 8;
 const CHART_MARGIN = { top: 16, right: 16, bottom: 16, left: 16 };
 
+/** Chart series, legend swatches and marker lines all read from here. */
 const CASH_FLOW_COLORS = {
   inflows: "teal.6",
   outflows: "red.6",
   cumulative: "relife.8",
-  reference: "blue.6",
+  marker: "gray.7",
+  zero: "gray.5",
 } as const;
 
-const CASH_FLOW_SWATCH_COLORS = {
-  inflows: "var(--mantine-color-teal-6)",
-  outflows: "var(--mantine-color-red-6)",
-  cumulative: "var(--mantine-color-relife-8)",
-  reference: "var(--mantine-color-blue-6)",
-} as const;
+function cssColor(color: string): string {
+  return `var(--mantine-color-${color.replace(".", "-")})`;
+}
 
-const compactCurrency = new Intl.NumberFormat(undefined, {
-  style: "currency",
-  currency: "EUR",
-  notation: "compact",
-  maximumFractionDigits: 1,
-});
 interface CashFlowChartProps {
   data: CashFlowData;
+  /** The appraisal's payback, drawn as a marker at the nearest year. */
+  payback?: Reading;
   projectLifetime?: number;
   title?: string;
   scenarioLabel?: string;
@@ -57,11 +54,11 @@ type LegendItem = {
 };
 
 const legendItems: LegendItem[] = [
-  { name: "Inflows", color: CASH_FLOW_SWATCH_COLORS.inflows },
-  { name: "Outflows", color: CASH_FLOW_SWATCH_COLORS.outflows },
+  { name: "Inflows", color: cssColor(CASH_FLOW_COLORS.inflows) },
+  { name: "Outflows", color: cssColor(CASH_FLOW_COLORS.outflows) },
   {
     name: "Cumulative cash flow",
-    color: CASH_FLOW_SWATCH_COLORS.cumulative,
+    color: cssColor(CASH_FLOW_COLORS.cumulative),
   },
 ];
 
@@ -89,6 +86,7 @@ function toChartData(data: CashFlowData) {
 
 export function CashFlowChart({
   data,
+  payback,
   projectLifetime,
   title = "Cash flow timeline",
   scenarioLabel,
@@ -100,14 +98,19 @@ export function CashFlowChart({
       : 0;
 
   const referenceLines: ChartReferenceLineProps[] = [
-    { y: 0, color: "gray.5", label: "0€", labelPosition: "insideTop" },
+    {
+      y: 0,
+      color: CASH_FLOW_COLORS.zero,
+      label: formatCurrency(0),
+      labelPosition: "insideTop",
+    },
   ];
 
-  if (data.breakeven_year !== undefined && data.breakeven_year !== null) {
+  if (payback?.kind === "value") {
     referenceLines.push({
-      x: data.breakeven_year,
-      color: "teal.6",
-      label: `Breakeven (Year ${data.breakeven_year})`,
+      x: Math.round(payback.value),
+      color: CASH_FLOW_COLORS.marker,
+      label: `${relifeConcepts["payback-period"].label}: ${readingText(payback)}`,
       labelPosition: "insideBottom",
       strokeDasharray: "5 5",
     });
@@ -119,7 +122,7 @@ export function CashFlowChart({
   if (data.loan_term && data.loan_term > 0 && !loanOutlastsHorizon) {
     referenceLines.push({
       x: data.loan_term,
-      color: "orange.6",
+      color: CASH_FLOW_COLORS.marker,
       label: `Loan paid off (Year ${data.loan_term})`,
       labelPosition: "insideTop",
       strokeDasharray: "5 5",
@@ -161,17 +164,10 @@ export function CashFlowChart({
             xAxisProps={{
               interval: tickInterval,
               allowDecimals: false,
-              label: { value: "Year", position: "insideBottom", dy: 10 },
             }}
             yAxisProps={{
-              tickFormatter: (value: number) => compactCurrency.format(value),
+              tickFormatter: (value: number) => formatCurrency(value),
               width: Y_AXIS_WIDTH,
-              label: {
-                value: "Cash flow (€)",
-                angle: -90,
-                position: "insideLeft",
-                dx: -10,
-              },
             }}
             valueFormatter={(value) => formatCurrency(value)}
             gridAxis="xy"
@@ -209,7 +205,7 @@ export function CashFlowChart({
                   style={{
                     width: LEGEND_SWATCH_WIDTH,
                     height: 0,
-                    borderTop: `2px dashed ${CASH_FLOW_SWATCH_COLORS.reference}`,
+                    borderTop: `2px dashed ${cssColor(CASH_FLOW_COLORS.marker)}`,
                   }}
                 />
                 <Text size="xs" c="dimmed">

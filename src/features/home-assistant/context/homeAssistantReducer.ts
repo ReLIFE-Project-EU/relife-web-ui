@@ -402,7 +402,6 @@ export function homeAssistantReducer(
       return {
         ...state,
         selectedPersona: action.persona,
-        mcdaRanking: null, // Clear ranking when persona changes
       };
 
     // ─────────────────────────────────────────────────────────────────────────

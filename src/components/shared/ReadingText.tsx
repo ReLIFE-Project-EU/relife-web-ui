@@ -5,16 +5,14 @@ import {
   readingHint,
   readingText,
   type Reading,
-  type ReadingStyle,
 } from "../../services/appraisalReadout";
 
 interface ReadingTextProps {
   reading: Reading;
-  style?: ReadingStyle;
 }
 
-export function ReadingText({ reading, style }: ReadingTextProps) {
-  const text = readingText(reading, style);
+export function ReadingText({ reading }: ReadingTextProps) {
+  const text = readingText(reading);
   const hint = readingHint(reading);
   if (!hint) return text;
 
