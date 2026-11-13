@@ -48,13 +48,7 @@ function PortfolioManagerContent() {
             <ThemeIcon size={42} radius="md" variant="light" color="teal">
               <IconFolder size={22} />
             </ThemeIcon>
-            <div>
-              <Title order={3}>Portfolio Workspace</Title>
-              <Text size="sm" c="dimmed" mt={4}>
-                Create, rename, and switch between stored portfolios before
-                uploading files.
-              </Text>
-            </div>
+            <Title order={3}>Portfolio workspace</Title>
           </Group>
           {currentPortfolio && (
             <Badge color="teal" variant="light">
@@ -65,7 +59,7 @@ function PortfolioManagerContent() {
 
         <Stack gap="xs">
           <Text size="sm" fw={600}>
-            Select Portfolio
+            Select portfolio
           </Text>
           <PortfolioSelector />
         </Stack>
@@ -75,19 +69,13 @@ function PortfolioManagerContent() {
 
       {currentPortfolio && (
         <Stack gap="md">
-          <Divider label="Upload Files" labelPosition="left" />
+          <Divider label="Upload files" labelPosition="left" />
           <Group justify="space-between" align="flex-start" gap="sm">
             <Group gap="sm" wrap="nowrap">
               <ThemeIcon size={42} radius="md" variant="light" color="teal">
                 <IconFileUpload size={22} />
               </ThemeIcon>
-              <div>
-                <Text fw={600}>Upload to {currentPortfolio.name}</Text>
-                <Text size="sm" c="dimmed" mt={4}>
-                  Add CSV files here. The upload area includes the sample file
-                  and CSV reference.
-                </Text>
-              </div>
+              <Text fw={600}>Upload to {currentPortfolio.name}</Text>
             </Group>
             <Badge color="teal" variant="light">
               {currentPortfolio.fileCount} files
@@ -105,13 +93,7 @@ function PortfolioManagerContent() {
               <ThemeIcon size={42} radius="md" variant="light" color="gray">
                 <IconFolderOpen size={22} />
               </ThemeIcon>
-              <div>
-                <Text fw={600}>Manage uploaded files</Text>
-                <Text size="sm" c="dimmed" mt={4}>
-                  Review uploaded files, then rename, move, download, or delete
-                  them as needed.
-                </Text>
-              </div>
+              <Text fw={600}>Manage uploaded files</Text>
             </Group>
             <Badge color="gray" variant="light">
               {currentPortfolio.fileCount} items
@@ -128,8 +110,7 @@ function PortfolioManagerContent() {
           </ThemeIcon>
           <Title order={4}>Choose a portfolio to continue</Title>
           <Text size="sm" c="dimmed" ta="center" maw={520}>
-            Create a new portfolio or select an existing one to unlock file
-            uploads, CSV guidance, and file management tools.
+            Create a portfolio or select an existing one.
           </Text>
         </Stack>
       )}

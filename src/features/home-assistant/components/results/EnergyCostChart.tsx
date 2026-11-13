@@ -74,8 +74,7 @@ export function EnergyCostChart({
 
       {!current?.carrierBreakdown || bars.length < 2 || highestCost <= 0 ? (
         <Text size="sm" c="dimmed">
-          We could not work out what this package costs to run, so we cannot
-          show a before-and-after comparison.
+          Running cost unavailable.
         </Text>
       ) : (
         <>
@@ -100,9 +99,6 @@ export function EnergyCostChart({
               </div>
             ))}
           </Stack>
-          <Text size="xs" c="dimmed" mt="sm">
-            Rounded heating and cooling costs only (not a full energy bill).
-          </Text>
         </>
       )}
     </section>

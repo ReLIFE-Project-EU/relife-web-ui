@@ -182,7 +182,7 @@ export function MapMode({
                 {formatArchetypeName(selectedDetails.name)}
               </Text>
               <Text size="xs" c="dimmed">
-                {formatNumber(selectedDetails.floorArea)} m2,{" "}
+                {formatNumber(selectedDetails.floorArea)} m²,{" "}
                 {selectedDetails.numberOfFloors} floors
               </Text>
             </Stack>

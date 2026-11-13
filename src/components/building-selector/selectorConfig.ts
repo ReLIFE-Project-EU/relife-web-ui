@@ -58,13 +58,9 @@ export const LIMITED_FIELDS: AdjustmentField[] = [
   },
 ];
 
-export const BUILDING_MODE_TEXT =
-  "These values describe the whole building used in the simulation.";
-export const FLAT_MODE_TEXT =
-  "These values describe one flat. Energy is simulated for the whole reference building, and your flat gets a share of it by floor area.";
+export const BUILDING_MODE_TEXT = "These values describe the whole building.";
+export const FLAT_MODE_TEXT = "These values describe one flat.";
 export const VALUATION_ONLY_NOTE = "Property valuation only";
-export const OVERRIDE_FOOTER_TEXT =
-  "Only changed values override the selected reference building.";
 
 /** Geometry fields relabeled for flat-unit mode: the floor area describes
  *  the user's apartment while floors/height still describe the building. */
@@ -101,7 +97,7 @@ export const FULL_FIELD_GROUPS: {
     fields: [
       {
         key: "wallUValue",
-        label: "Wall U-value (W/m2K)",
+        label: "Wall U-value (W/m²K)",
         min: 0.1,
         max: 5,
         step: 0.1,
@@ -109,7 +105,7 @@ export const FULL_FIELD_GROUPS: {
       },
       {
         key: "roofUValue",
-        label: "Roof U-value (W/m2K)",
+        label: "Roof U-value (W/m²K)",
         min: 0.1,
         max: 5,
         step: 0.1,
@@ -117,7 +113,7 @@ export const FULL_FIELD_GROUPS: {
       },
       {
         key: "windowUValue",
-        label: "Window U-value (W/m2K)",
+        label: "Window U-value (W/m²K)",
         min: 0.1,
         max: 5,
         step: 0.1,
@@ -130,13 +126,13 @@ export const FULL_FIELD_GROUPS: {
     fields: [
       {
         key: "heatingSetpoint",
-        label: "Heating setpoint (deg C)",
+        label: "Heating setpoint (°C)",
         min: 15,
         max: 22,
       },
       {
         key: "coolingSetpoint",
-        label: "Cooling setpoint (deg C)",
+        label: "Cooling setpoint (°C)",
         min: 24,
         max: 30,
       },

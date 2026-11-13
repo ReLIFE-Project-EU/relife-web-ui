@@ -39,7 +39,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
             <Stack gap={4} align="center">
               <Title order={2} ta="center" size="h3" fw={900}>
-                Authentication Required
+                Authentication required
               </Title>
               <Text c="dimmed" ta="center" size="sm" maw={400}>
                 Sign in to continue.

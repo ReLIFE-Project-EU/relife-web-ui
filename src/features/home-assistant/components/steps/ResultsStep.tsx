@@ -46,12 +46,11 @@ import shared from "../../../../components/shared/ResultsLayout.module.css";
 import type { ScenarioId } from "../../context/types";
 import { validateEstimation } from "../../../../services/estimationValidation";
 import { LineageLink } from "../../../lineage";
-import { formatFixed } from "../../utils/formatters";
 
 const PACKAGE_DETAILS = "package-details";
 
 const RECOMMENDATION_ERROR =
-  "We couldn’t complete the recommendation. Please try again.";
+  "We couldn’t complete the recommendation. Try again.";
 
 export function ResultsStep() {
   const { state, dispatch, gasTariff, electricityTariff } = useHomeAssistant();
@@ -194,9 +193,7 @@ export function ResultsStep() {
   if (scenarios.length === 0) {
     return (
       <Box>
-        <Alert color="yellow" title="No evaluation data">
-          Please complete Step 2 first to evaluate renovation measures.
-        </Alert>
+        <Alert color="yellow">Complete step 2 first.</Alert>
         <StepNavigation
           currentStep={2}
           totalSteps={3}
@@ -217,7 +214,7 @@ export function ResultsStep() {
         </Box>
         <ErrorAlert
           color="yellow"
-          title="We can't reliably model this building"
+          title="We can't model this building"
           error={
             <Stack gap={6}>
               {estimationDiagnostic.reasons.map((reason, idx) => (
@@ -230,15 +227,6 @@ export function ResultsStep() {
                   {estimationDiagnostic.remediation}
                 </Text>
               )}
-              <Text size="xs" c="dimmed">
-                Requested: {estimationDiagnostic.requested.country} ·{" "}
-                {estimationDiagnostic.requested.category}
-                {estimationDiagnostic.requested.period
-                  ? ` · ${estimationDiagnostic.requested.period}`
-                  : ""}{" "}
-                — chosen archetype: {estimationDiagnostic.chosen.name} (scale{" "}
-                {formatFixed(estimationDiagnostic.areaScaleFactor, 2)}×)
-              </Text>
             </Stack>
           }
         />

@@ -14,6 +14,7 @@ import {
 } from "../../../../src/features/strategy-explorer/api/rseCacheApi";
 import { rseForecastingCacheService } from "../../../../src/features/strategy-explorer/services/rseForecastingCacheService";
 import { relifeConcepts } from "../../../../src/constants/relifeConcepts";
+import { RSE_PACKAGES } from "../../../../src/features/strategy-explorer/services/rsePackageCatalog";
 
 // jsdom does not implement matchMedia, ResizeObserver, or scrollIntoView.
 Object.defineProperty(window, "matchMedia", {
@@ -171,8 +172,6 @@ vi.mock(
             co2ReducedTonPerEur: 0.5,
             totalAnnualCo2ReductionTon: 0.45,
           },
-          explanation:
-            "Ranks packages by annual CO₂ reduction per euro and total annual CO₂ reduction.",
         },
         {
           packageId: "combined",
@@ -182,8 +181,6 @@ vi.mock(
             co2ReducedTonPerEur: 0.45,
             totalAnnualCo2ReductionTon: 0.4,
           },
-          explanation:
-            "Ranks packages by annual CO₂ reduction per euro and total annual CO₂ reduction.",
         },
       ],
       unavailableCombinations: [],
@@ -269,9 +266,6 @@ describe("StrategyExplorer integration", () => {
     await waitFor(() => {
       expect(screen.getByRole("status").textContent).toBe(message);
     });
-    expect(
-      screen.getByRole("heading", { name: "Building Portfolio" }),
-    ).toBeTruthy();
     expect(screen.queryByText(error.message)).toBeNull();
   });
 
@@ -380,10 +374,10 @@ describe("StrategyExplorer integration", () => {
 
       // Assert ranking table with packages
       expect(
-        screen.getAllByText("Envelope Package").length,
+        screen.getAllByText(RSE_PACKAGES.envelope.label).length,
       ).toBeGreaterThanOrEqual(1);
       expect(
-        screen.getAllByText("Combined Package").length,
+        screen.getAllByText(RSE_PACKAGES.combined.label).length,
       ).toBeGreaterThanOrEqual(1);
 
       // Assert ranks are shown (within the ranking table)

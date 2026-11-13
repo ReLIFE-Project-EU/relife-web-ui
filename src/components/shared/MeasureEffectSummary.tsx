@@ -1,11 +1,4 @@
-import {
-  Box,
-  Group,
-  Pill,
-  Stack,
-  Text,
-  type MantineColor,
-} from "@mantine/core";
+import { Box, Group, Pill, Text, type MantineColor } from "@mantine/core";
 import {
   IconArrowDown,
   IconBolt,
@@ -38,39 +31,21 @@ const effectStyle: Record<
 
 interface MeasureEffectSummaryProps {
   measureId: RenovationMeasureId;
-  compact?: boolean;
-  showSummary?: boolean;
 }
 
-export function MeasureEffectSummary({
-  measureId,
-  compact = false,
-  showSummary = !compact,
-}: MeasureEffectSummaryProps) {
+export function MeasureEffectSummary({ measureId }: MeasureEffectSummaryProps) {
   const profile = measureEffectProfiles[measureId];
   const statements = [...profile.affects, ...profile.doesNotAffect];
 
   return (
-    <Stack gap="xs">
-      {showSummary ? (
-        <Text size="xs" c="dimmed">
-          {profile.summary}
-        </Text>
-      ) : null}
-      <Pill.Group>
-        {statements.map((statement) => (
-          <EffectPill
-            key={`${statement.kind}-${statement.label}`}
-            statement={statement}
-          />
-        ))}
-      </Pill.Group>
-      {!compact && profile.caveat ? (
-        <Text size="xs" c="dimmed">
-          {profile.caveat}
-        </Text>
-      ) : null}
-    </Stack>
+    <Pill.Group>
+      {statements.map((statement) => (
+        <EffectPill
+          key={`${statement.kind}-${statement.label}`}
+          statement={statement}
+        />
+      ))}
+    </Pill.Group>
   );
 }
 

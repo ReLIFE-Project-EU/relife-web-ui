@@ -75,11 +75,11 @@ export function appraisedFigures(
 
 /** Short label for the state, used on badges and in exports. */
 export const savingsAvailabilityLabel: Record<SavingsAvailability, string> = {
-  appraised: "Analysed",
+  appraised: "Analyzed",
   "no-savings": "No energy cost savings",
   "fully-funded": "Fully covered by subsidy",
   "not-priceable": "Could not be priced",
-  unknown: "Not analysed",
+  unknown: "Not analyzed",
 };
 
 /** One sentence explaining what the state means for the figures shown. */
@@ -89,10 +89,10 @@ export const savingsAvailabilityExplanation: Record<
 > = {
   appraised: "Financial indicators come from the full risk simulation.",
   "no-savings":
-    "This package does not reduce modeled energy costs, so its financial appraisal was skipped.",
+    "This package does not lower energy costs, so it was not appraised.",
   "fully-funded":
-    "A subsidy covers the whole cost, so there is no investment left to appraise.",
+    "A subsidy covers the whole cost, so there is nothing to appraise.",
   "not-priceable":
-    "The simulation did not return the fuel breakdown needed to price energy, so no financial appraisal could be run.",
+    "Energy could not be priced, so no financial appraisal was run.",
   unknown: "No financial results are available for this building.",
 };

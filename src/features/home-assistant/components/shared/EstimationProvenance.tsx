@@ -21,15 +21,7 @@ export function ReferenceAdjustedComparisonCard({
   return (
     <Card withBorder radius="md" p="lg">
       <Stack gap="lg">
-        <div>
-          <Title order={3} mb="xs">
-            Reference vs adjusted home
-          </Title>
-          <Text size="sm" c="dimmed">
-            Comparison between the matched archetype and the adjusted home that
-            was actually simulated.
-          </Text>
-        </div>
+        <Title order={3}>Reference vs adjusted home</Title>
 
         <Table highlightOnHover withRowBorders>
           <Table.Thead>

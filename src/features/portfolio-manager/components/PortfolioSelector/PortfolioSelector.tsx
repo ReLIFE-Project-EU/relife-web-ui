@@ -197,8 +197,8 @@ export function PortfolioSelector() {
           opened={deleteOpened}
           onClose={closeDelete}
           onConfirm={handleConfirmDelete}
-          title="Delete Portfolio"
-          message="This will permanently delete the portfolio and all files it contains. This action cannot be undone."
+          title="Delete portfolio"
+          message="Permanently deletes the portfolio and all its files."
           itemName={currentPortfolio.name}
           loading={loading}
         />

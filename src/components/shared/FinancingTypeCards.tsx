@@ -23,7 +23,6 @@ import { IconCash, IconCreditCard, IconPigMoney } from "@tabler/icons-react";
 import { relifeConcepts } from "../../constants/relifeConcepts";
 import type { FinancingType, LoanDetails } from "../../types/renovation";
 import { browserNumberSeparators } from "../../utils/formatters";
-import { ConceptExplainer } from "./ConceptExplainer";
 
 const ownFunds = relifeConcepts["own-funds"];
 const renovationLoan = relifeConcepts["renovation-loan"];
@@ -58,7 +57,6 @@ export function FinancingTypeCards({
         <FinancingCard
           selected={value === "self-funded"}
           icon={<IconCash size={18} />}
-          conceptId="own-funds"
           title={ownFunds.label}
           description={ownFunds.description}
           onClick={() => handleSelect("self-funded")}
@@ -66,7 +64,6 @@ export function FinancingTypeCards({
         <FinancingCard
           selected={value === "loan"}
           icon={<IconCreditCard size={18} />}
-          conceptId="renovation-loan"
           title={renovationLoan.label}
           description={renovationLoan.description}
           onClick={() => handleSelect("loan")}
@@ -112,7 +109,6 @@ export function FinancingTypeCards({
 
               <NumberInput
                 label="Repayment period"
-                description="How long the loan is repaid over"
                 value={loan.duration}
                 onChange={(next) =>
                   onLoanChange({
@@ -137,7 +133,6 @@ export function FinancingTypeCards({
 interface FinancingCardProps {
   selected: boolean;
   icon: React.ReactNode;
-  conceptId: "own-funds" | "renovation-loan";
   title: string;
   description: string;
   onClick: () => void;
@@ -146,7 +141,6 @@ interface FinancingCardProps {
 function FinancingCard({
   selected,
   icon,
-  conceptId,
   title,
   description,
   onClick,
@@ -169,16 +163,6 @@ function FinancingCard({
             <Text fw={600} size="sm">
               {title}
             </Text>
-            {/* The whole card is the selection target, so the explainer must
-                not bubble — a click on it would otherwise switch the financing
-                type and discard computed results. Same guard as
-                RenovationMeasureCard. */}
-            <span
-              role="presentation"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <ConceptExplainer conceptId={conceptId} />
-            </span>
           </Group>
           {selected && (
             <Badge size="xs" color="relife" variant="filled">

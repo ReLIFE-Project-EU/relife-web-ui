@@ -28,7 +28,7 @@ const MODIFIED_CAPTION = `The catalogue building that matches your inputs, next 
 const SIMULATED_CAPTION =
   "Hourly simulation over one year (ISO 52016), plus heating and cooling system losses (UNI/TS 11300). Results are for the simulated floor area. The next step scales them to yours.";
 const SIMULATED_PACKAGES_NOTE =
-  "Current Status comes from the same simulation as the energy profile.";
+  "Current status comes from the same simulation as the energy profile.";
 const SCALED_CAPTION =
   "Multiplies every simulated result by the scale factor. These are the energy figures shown in the results.";
 const SCALED_PV_NOTE =

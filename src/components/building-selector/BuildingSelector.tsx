@@ -616,7 +616,7 @@ export function BuildingSelector({
       ? [
           {
             field: "floorArea",
-            message: `Apartment floor area cannot exceed the reference building (${formatNumber(selectedDetails.floorArea)} m2).`,
+            message: `Apartment floor area cannot exceed the reference building (${formatNumber(selectedDetails.floorArea)} m²).`,
           },
         ]
       : [];

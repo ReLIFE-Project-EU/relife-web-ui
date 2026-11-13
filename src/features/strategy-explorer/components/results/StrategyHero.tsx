@@ -10,7 +10,6 @@ import {
   IconAward,
   IconBuildingCommunity,
   IconCrown,
-  IconInfoCircle,
 } from "@tabler/icons-react";
 import { relifeConcepts } from "../../../../constants/relifeConcepts";
 import { ConceptExplainer } from "../../../../components/shared/ConceptExplainer";
@@ -62,7 +61,7 @@ export function StrategyHero({
         <div className={shared.recoBand}>
           <span className={shared.recoRank}>#1</span>
           <span className={shared.recoBandTitle}>
-            Top strategy for {goalDisplay.label.toLowerCase()}
+            Top strategy: {goalDisplay.label}
           </span>
           <span className={shared.recoBandScore}>
             <IconAward size={16} />
@@ -106,13 +105,9 @@ export function StrategyHero({
                 <b>
                   {formatTonnageCo2(winnerAggregate.totalAnnualCo2ReductionTon)}
                 </b>{" "}
-                of CO₂ per year. {winner.explanation}
+                of CO₂ per year.
               </Text>
-            ) : (
-              <Text size="sm" c="dark.6" mt={8} maw={560}>
-                {winner.explanation}
-              </Text>
-            )}
+            ) : null}
           </div>
 
           {winnerAggregate ? (
@@ -130,12 +125,6 @@ export function StrategyHero({
               )}
             </div>
           ) : null}
-
-          <div className={shared.recoFootnote}>
-            <IconInfoCircle size={14} />
-            Investment figures are planning assumptions — see the cost
-            assumptions note below.
-          </div>
         </div>
       </section>
 

@@ -26,7 +26,7 @@ export function checkCapexPerSqm(
   if (perSqm < 20) {
     return {
       warning: true,
-      message: `CAPEX seems low relative to building size (${perSqm.toFixed(1)} €/m²). Typical renovation costs are €50–500/m². Please verify the value.`,
+      message: `CAPEX is ${perSqm.toFixed(1)} €/m². The usual range is €50–500/m².`,
     };
   }
 
@@ -51,7 +51,7 @@ export function checkAreaArchetypeMismatch(
   if (ratio > 3) {
     return {
       warning: true,
-      message: `Floor area (${userArea} m²) differs significantly from the matched archetype (${archetypeArea} m²) — ratio ${ratio.toFixed(1)}×. Energy results are scaled from the archetype simulation and may be less reliable.`,
+      message: `Floor area (${userArea} m²) differs ${ratio.toFixed(1)}× from the matched archetype (${archetypeArea} m²). Energy results are less reliable.`,
     };
   }
 

@@ -37,7 +37,6 @@ import {
 import {
   formatCurrency,
   formatEnergyPerYear,
-  formatFixed,
   getEnergyReduction,
 } from "../../../../utils/formatters";
 import type { PRABuilding, BuildingAnalysisResult } from "../../context/types";
@@ -65,7 +64,7 @@ type StatusFilter =
   | "rejected"
   /** Appraised, and the investment does not pay off. */
   | "unprofitable"
-  /** Analysed, but the financial appraisal never ran. */
+  /** Analyzed, but the financial appraisal never ran. */
   | "not-appraised";
 
 /**
@@ -84,18 +83,6 @@ interface SortState {
   key: SortKey;
   dir: "asc" | "desc";
 }
-
-/** Keeps the toolbar hint honest once the user sorts by something else. */
-const SORT_DESCRIPTIONS: Record<SortKey, { asc: string; desc: string }> = {
-  name: { asc: "name, A to Z", desc: "name, Z to A" },
-  energyReduction: {
-    asc: "energy reduction, largest first",
-    desc: "energy reduction, smallest first",
-  },
-  npv: { asc: "NPV, lowest first", desc: "NPV, highest first" },
-  roi: { asc: "ROI, lowest first", desc: "ROI, highest first" },
-  pbp: { asc: "payback, shortest first", desc: "payback, longest first" },
-};
 
 interface RowVm {
   building: PRABuilding;
@@ -256,10 +243,7 @@ export function BuildingResultsTable({
           data={[
             { value: "all", label: "All buildings" },
             { value: "success", label: "Successful" },
-            {
-              value: "unprofitable",
-              label: "Analysed — does not pay off (NPV ≤ 0)",
-            },
+            { value: "unprofitable", label: "Does not pay off (NPV ≤ 0)" },
             { value: "not-appraised", label: "Not appraised" },
             ...(["rejected", "error", "pending", "running"] as const).map(
               (status) => ({
@@ -275,8 +259,7 @@ export function BuildingResultsTable({
         />
         {onRowClick && (
           <Text size="xs" c="dimmed">
-            Click a row to see the full breakdown. Sorted by{" "}
-            {SORT_DESCRIPTIONS[sort.key][sort.dir]}.
+            Click a row for the full breakdown.
           </Text>
         )}
         <Group ml="auto" gap="xs">
@@ -451,19 +434,14 @@ function ResultsRow({
           <RowStatusBadge row={row} />
           {(result.costSource?.capexFromLookup ||
             result.costSource?.opexFromLookup) && (
-            <Tooltip
-              label="Cost estimated from EU reference data (no override set)"
-              withArrow
+            <Badge
+              variant="light"
+              color="blue"
+              size="xs"
+              leftSection={<IconInfoCircle size={11} />}
             >
-              <Badge
-                variant="light"
-                color="blue"
-                size="xs"
-                leftSection={<IconInfoCircle size={11} />}
-              >
-                Est. cost
-              </Badge>
-            </Tooltip>
+              Estimated cost
+            </Badge>
           )}
         </Group>
       </Table.Td>
@@ -474,7 +452,7 @@ function ResultsRow({
         {energyReduction !== undefined ? (
           <DeltaBadge delta={energyReduction} higherIsBetter={false} />
         ) : (
-          "-"
+          "—"
         )}
       </Table.Td>
       {showDeliveredEnergyColumn && (
@@ -496,7 +474,7 @@ function ResultsRow({
               )}
             </Group>
           ) : (
-            "-"
+            "—"
           )}
         </Table.Td>
       )}
@@ -515,7 +493,7 @@ function ResultsRow({
             <ReadingText reading={read("NPV")} />
           </Text>
         ) : (
-          "-"
+          "—"
         )}
       </Table.Td>
       <Table.Td ta="right" style={{ verticalAlign: "middle" }}>
@@ -636,10 +614,6 @@ function RowStatusBadge({ row }: { row: RowVm }) {
             {result.rejection.remediation && (
               <Text size="xs">{result.rejection.remediation}</Text>
             )}
-            <Text size="xs" c="dimmed">
-              Strategy: {result.rejection.strategy} · scale{" "}
-              {formatFixed(result.rejection.areaScaleFactor, 2)}×
-            </Text>
           </Stack>
         }
         multiline

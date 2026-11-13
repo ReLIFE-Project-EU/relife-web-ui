@@ -67,7 +67,7 @@ export function BuildingMeasuresTable() {
       <Card withBorder radius="md" p="lg">
         <Group justify="space-between" mb="md">
           <div>
-            <Title order={4}>Per-Building Measures</Title>
+            <Title order={4}>Per-building measures</Title>
             <Text size="sm" c="dimmed" mt={4}>
               Buildings without overrides use the portfolio selection above.
             </Text>

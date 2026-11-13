@@ -52,33 +52,31 @@ const CSV_COLUMN_DETAILS: Record<
   },
   category: {
     description:
-      "Archetype category. Must be one of the accepted values listed below. If you also provide archetype_name, this must match that archetype's category.",
+      "Archetype category. One of the accepted values below. Must match archetype_name's category when both are given.",
     example: "Single Family House",
   },
   country: {
-    description:
-      "Building country name, used for location-based matching and reporting.",
+    description: "Building country name.",
     example: "Italy",
   },
   floor_area: {
-    description: `${relifeConcepts["total-floor-area"].description} In square meters. ${relifeConcepts["modeled-property"].description}`,
+    description: `${relifeConcepts["total-floor-area"].description} In square meters.`,
     example: "9800",
   },
   construction_period: {
-    description:
-      "Accepted period label, a 4-digit year, or a YYYY-YYYY range. You can provide construction_year instead.",
+    description: "Accepted period label, a 4-digit year, or a YYYY-YYYY range.",
     example: "1971-1990",
   },
   construction_year: {
     description:
-      "Alternative to construction_period. Provide a single year between 1800 and 2030 and omit construction_period.",
+      "Alternative to construction_period. A single year between 1800 and 2030.",
   },
   number_of_floors: {
     description: "Integer value between 1 and 100.",
     example: "12",
   },
   archetype_name: {
-    description: "Exact archetype name, used instead of automatic matching.",
+    description: "Exact archetype name. Skips automatic matching.",
   },
   floor_number: {
     description:
@@ -86,17 +84,17 @@ const CSV_COLUMN_DETAILS: Record<
     example: "4",
   },
   capex: {
-    description: "CAPEX in EUR. Overrides the global CAPEX for this building.",
+    description: "CAPEX in EUR. Overrides the global CAPEX.",
     example: "1450000",
   },
   annual_maintenance_cost: {
     description:
-      "Annual maintenance cost in EUR/year. Overrides the global maintenance cost for this building.",
+      "Annual maintenance cost in EUR/year. Overrides the global value.",
     example: "52000",
   },
   measures: {
     description:
-      "Semicolon-separated IDs from the accepted list. Some are imported but excluded from PRA analysis.",
+      "Semicolon-separated IDs from the accepted list. Some are imported but excluded from analysis.",
     example: "wall-insulation;roof-insulation;windows",
   },
 };
@@ -146,17 +144,11 @@ export function CSVUploadHelp() {
                 <IconInfoCircle size={16} />
               </ThemeIcon>
               <div>
-                <Group gap="xs" wrap="nowrap">
-                  <Text size="sm" fw={700} c="teal.9">
-                    CSV upload guide
-                  </Text>
-                  <Badge color="teal" variant="filled" size="xs">
-                    Help
-                  </Badge>
-                </Group>
+                <Text size="sm" fw={700} c="teal.9">
+                  CSV upload guide
+                </Text>
                 <Text size="sm" c="teal.8">
-                  Expand for the sample file, column reference, and accepted
-                  values.
+                  Sample file, column reference, and accepted values.
                 </Text>
               </div>
             </Group>
@@ -170,11 +162,7 @@ export function CSVUploadHelp() {
 
         <Collapse in={opened}>
           <Stack gap="md">
-            <Group justify="space-between" gap="sm" align="flex-start">
-              <Text size="sm" c="teal.8">
-                Prepare your portfolio CSV here before uploading it for later
-                import into Portfolio Advisor.
-              </Text>
+            <Group justify="flex-end" gap="sm" align="flex-start">
               <Anchor
                 href={`${import.meta.env.BASE_URL}portfolio_example.csv`}
                 download="portfolio_example.csv"
@@ -238,10 +226,6 @@ export function CSVUploadHelp() {
             <Divider label="Column schema" labelPosition="left" c="teal.8" />
 
             <Paper withBorder radius="md" p="sm" bg="white">
-              <Text size="xs" c="dimmed" mb="sm">
-                Required, optional, and alternative fields in one compact
-                reference.
-              </Text>
               <Table.ScrollContainer minWidth={720}>
                 <Table striped highlightOnHover withTableBorder>
                   <Table.Thead>
@@ -323,11 +307,9 @@ export function CSVUploadHelp() {
                   construction_period accepted values
                 </Text>
                 <Text size="sm" c="dimmed">
-                  Use one of these labels: {CONSTRUCTION_PERIODS.join(", ")}.
-                  You can also provide a single year such as <Code>1984</Code>,
-                  a year range such as <Code>1971-1990</Code>, or use{" "}
-                  <Code>construction_year</Code> with a single year from 1800 to
-                  2030 instead.
+                  Use one of these labels: {CONSTRUCTION_PERIODS.join(", ")}, a
+                  single year such as <Code>1984</Code>, or a range such as{" "}
+                  <Code>1971-1990</Code>.
                 </Text>
               </Box>
 

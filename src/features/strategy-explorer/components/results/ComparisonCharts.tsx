@@ -118,9 +118,8 @@ export function ComparisonCharts({
           <ConceptExplainer conceptId={hasNpv ? "npv" : "investment"} />
         </div>
         <Text size="xs" c="dimmed" mb="md">
-          Post-incentive investment
-          {hasNpv ? " and modeled net present value" : ""} per package, in
-          euros.
+          Investment after incentives
+          {hasNpv ? " and net present value" : ""} per package.
         </Text>
         <BarChart
           h={chartHeight}
@@ -159,9 +158,6 @@ export function ComparisonCharts({
           <h3>{impactConfig.title}</h3>
           <ConceptExplainer conceptId={impactConfig.conceptId} />
         </div>
-        <Text size="xs" c="dimmed" mb="md">
-          The primary impact metric for your selected goal, per package.
-        </Text>
         <BarChart
           h={chartHeight}
           data={impactData}

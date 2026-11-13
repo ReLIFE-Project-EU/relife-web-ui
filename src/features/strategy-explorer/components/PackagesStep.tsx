@@ -1,6 +1,5 @@
 import {
   Badge,
-  Box,
   Card,
   Checkbox,
   Group,
@@ -50,14 +49,7 @@ export function PackagesStep() {
 
   return (
     <Stack gap="xl">
-      <Box>
-        <Title order={2} mb="xs">
-          Renovation Packages
-        </Title>
-        <Text c="dimmed" size="sm">
-          Select the packages to compare across your portfolio.
-        </Text>
-      </Box>
+      <Title order={2}>Renovation packages</Title>
 
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
         {RSE_PACKAGE_IDS.map((packageId) => {
@@ -119,7 +111,7 @@ export function PackagesStep() {
         onPrevious={handlePrevious}
         previousLabel="Back to goal"
         onPrimaryAction={handleRunAnalysis}
-        primaryActionLabel="Run Analysis"
+        primaryActionLabel="Run analysis"
         isLoading={isRunning}
         primaryDisabled={selectedPackages.length === 0 || !areTariffsReady}
       />

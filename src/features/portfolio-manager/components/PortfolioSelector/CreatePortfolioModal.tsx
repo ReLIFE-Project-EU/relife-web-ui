@@ -68,13 +68,13 @@ export function CreatePortfolioModal({
     <Modal
       opened={opened}
       onClose={handleClose}
-      title="Create New Portfolio"
+      title="Create portfolio"
       centered
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
           <TextInput
-            label="Portfolio Name"
+            label="Portfolio name"
             placeholder="e.g., Q1 2026 Analysis"
             required
             {...form.getInputProps("name")}
@@ -92,7 +92,7 @@ export function CreatePortfolioModal({
               Cancel
             </Button>
             <Button type="submit" loading={loading}>
-              Create Portfolio
+              Create portfolio
             </Button>
           </Group>
         </Stack>

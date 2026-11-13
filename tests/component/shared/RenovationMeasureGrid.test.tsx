@@ -14,6 +14,9 @@ import {
 import type { RenovationMeasureId } from "../../../src/types/renovation";
 import { theme } from "../../../src/theme";
 
+const measureName = (id: RenovationMeasureId) =>
+  RENOVATION_MEASURES.find((measure) => measure.id === id)!.name;
+
 vi.mock(
   "../../../src/features/portfolio-advisor/hooks/usePortfolioAdvisorServices",
   () => ({
@@ -69,9 +72,11 @@ describe("shared renovation controls", () => {
         <Grid />
       </MantineProvider>,
     );
-    const boiler = screen.getByRole("button", { name: /Condensing Boiler/ });
+    const boiler = screen.getByRole("button", {
+      name: new RegExp(measureName("condensing-boiler")),
+    });
     const heatPump = screen.getByRole("button", {
-      name: /Air-Water Heat Pump/,
+      name: new RegExp(measureName("air-water-heat-pump")),
     });
     await user.click(boiler);
     expect(heatPump.getAttribute("aria-disabled")).toBe("true");
@@ -84,7 +89,7 @@ describe("shared renovation controls", () => {
     expect(boiler.getAttribute("aria-disabled")).toBe("false");
     expect(
       screen
-        .getByRole("button", { name: /PV Panels/ })
+        .getByRole("button", { name: new RegExp(measureName("pv")) })
         .getAttribute("aria-disabled"),
     ).toBe("true");
   });
@@ -122,11 +127,13 @@ describe("shared renovation controls", () => {
       </MantineProvider>,
     );
     const heatPump = screen.getByRole("checkbox", {
-      name: "Air-Water Heat Pump",
+      name: measureName("air-water-heat-pump"),
     }) as HTMLInputElement;
     expect(heatPump.disabled).toBe(true);
     await user.click(
-      screen.getByRole("checkbox", { name: "Condensing Boiler" }),
+      screen.getByRole("checkbox", {
+        name: measureName("condensing-boiler"),
+      }),
     );
     expect(
       (screen.getByRole("button", { name: "Save" }) as HTMLButtonElement)
@@ -136,7 +143,7 @@ describe("shared renovation controls", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(onSave).toHaveBeenCalledWith("a", ["air-water-heat-pump"]);
     await user.click(
-      screen.getByRole("button", { name: "Reset to Portfolio Default" }),
+      screen.getByRole("button", { name: "Reset to portfolio default" }),
     );
     expect(onReset).toHaveBeenCalledWith("a");
     expect(onClose).toHaveBeenCalledTimes(2);

@@ -228,11 +228,8 @@ function rankingNotice(
     case "loading":
       return "Computing ranking…";
     case "failed":
-      return "Ranking unavailable.";
     case "cannot-rank":
-      return status.reason === "too-few-packages"
-        ? "Ranking unavailable. Add at least two packages with complete data."
-        : "Ranking unavailable.";
+      return "Ranking unavailable.";
   }
 }
 
@@ -310,16 +307,11 @@ function RecommendationBody({
           footer={
             paybackRange ? (
               <Text size="xs" c="dimmed">
-                P10–P90: {paybackRange.text}
+                Range: {paybackRange.text}
               </Text>
             ) : undefined
           }
         />
-      </div>
-
-      <div className={shared.recoFootnote}>
-        <IconInfoCircle size={14} />
-        Recommendation re-ranks automatically when you change profile.
       </div>
     </>
   );
@@ -393,9 +385,8 @@ function SavingsCopy({
   if (savings.kind === "not-priceable") {
     return (
       <Text size="sm" c="dark.6" mt={8} maw={560}>
-        {formatThermalNeedsChange(thermalNeedsChangePct)}. We could not work out
-        what this package costs to run, so we cannot show savings or payback for
-        it.
+        {formatThermalNeedsChange(thermalNeedsChangePct)}. Running cost
+        unavailable, so no savings or payback.
       </Text>
     );
   }
@@ -413,8 +404,8 @@ function SavingsCopy({
   if (savings.kind === "fully-funded") {
     return (
       <Text size="sm" c="dark.6" mt={8} maw={560}>
-        {formatThermalNeedsChange(thermalNeedsChangePct)}, and a grant covers
-        the whole cost, so there is nothing to pay back.
+        {formatThermalNeedsChange(thermalNeedsChangePct)}, fully covered by
+        subsidy.
       </Text>
     );
   }
@@ -437,7 +428,7 @@ function SavingsCopy({
       ) : null}
       {savings.kind === "ok" ? (
         <>
-          , with a modeled cash benefit of <b>{readingText(benefit)}</b>
+          , with a cash benefit of <b>{readingText(benefit)}</b>
         </>
       ) : null}
       .

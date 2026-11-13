@@ -557,7 +557,7 @@ export class RenovationService implements IRenovationService {
     auditLog.info(
       "renovation",
       "renovation.scenario.start",
-      { packageId: "current", packageLabel: "Current Status", measureIds: [] },
+      { packageId: "current", packageLabel: "Current status", measureIds: [] },
       auditCtx,
     );
 
@@ -568,7 +568,7 @@ export class RenovationService implements IRenovationService {
       {
         id: "current",
         packageId: null,
-        label: "Current Status",
+        label: "Current status",
         measureIds: [],
         measures: [],
       },

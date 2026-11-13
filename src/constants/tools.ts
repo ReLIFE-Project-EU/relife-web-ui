@@ -11,7 +11,7 @@ export const RELIFE_TOOLS = [
     navLabel: "Strategy Explorer",
     audience: "Policymakers & Researchers",
     description:
-      "Compare renovation packages for representative building stock against budget, energy, or emissions goals.",
+      "Compare renovation packages for a building stock by budget, energy, or emissions.",
     icon: IconBuildingEstate,
     link: "/strategy-explorer",
     color: "blue",
@@ -21,7 +21,7 @@ export const RELIFE_TOOLS = [
     navLabel: "Portfolio Advisor",
     audience: "Financial Institutions & ESCOs",
     description:
-      "Estimate renovation costs, energy savings, and financial returns across your buildings.",
+      "Assess renovation costs, energy savings, and financial returns across your buildings.",
     icon: IconBriefcase,
     link: "/portfolio-advisor",
     color: "teal",
@@ -31,7 +31,7 @@ export const RELIFE_TOOLS = [
     navLabel: "Home Assistant",
     audience: "Homeowners",
     description:
-      "Compare renovation options and estimate costs and energy savings for your home.",
+      "Compare renovation options for your home by cost, energy savings, and financial return.",
     icon: IconHomeHeart,
     link: "/home-assistant",
     color: "orange",

@@ -88,13 +88,13 @@ export function PortfolioSummaryStrip({ state }: PortfolioSummaryStripProps) {
             </Text>
           )}
         </Cell>
-        <Cell label="Estimated CAPEX">
+        <Cell label="CAPEX">
           {totals.totalCapex > 0 ? (
             <>
               {formatCurrency(totals.totalCapex)}
               {totals.hasAutoEstimated && (
                 <Text component="span" size="xs" c="dimmed" ml={4}>
-                  + auto-est.
+                  + auto-estimated
                 </Text>
               )}
             </>

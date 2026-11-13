@@ -3,7 +3,7 @@
  * Step 2: Financing configuration and portfolio analysis trigger.
  */
 
-import { Box, Card, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import { Card, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 import { useMemo } from "react";
 import { StepNavigation } from "../../../../components/shared/StepNavigation";
 import { ErrorAlert } from "../../../../components/shared/ErrorAlert";
@@ -118,15 +118,7 @@ export function FinancingStep() {
   return (
     <Stack gap="xl">
       {/* Header */}
-      <Box>
-        <Title order={2} mb="xs">
-          Financing Configuration
-        </Title>
-        <Text c="dimmed" size="sm">
-          Choose how the renovation is paid for and add any subsidy that lowers
-          the cost first.
-        </Text>
-      </Box>
+      <Title order={2}>Financing configuration</Title>
 
       <Card withBorder radius="md" p="lg">
         <Stack gap="lg">
@@ -138,7 +130,7 @@ export function FinancingStep() {
             loan={state.funding.loan}
             onLoanChange={(loan) => dispatch({ type: "SET_LOAN", loan })}
             loanPercentageLabel="Loan percentage"
-            loanPercentageDescription="Share of the post-subsidy CAPEX financed by the loan."
+            loanPercentageDescription="Share of the post-subsidy cost financed by the loan."
           />
 
           <SubsidyInput
@@ -172,8 +164,7 @@ export function FinancingStep() {
             </SimpleGrid>
             {hasAutoEstimated && (
               <Text size="xs" c="dimmed" mt="xs">
-                Excludes buildings whose costs will be estimated during
-                analysis.
+                Excludes buildings with auto-estimated costs.
               </Text>
             )}
           </div>
@@ -190,7 +181,7 @@ export function FinancingStep() {
       />
 
       {/* Error display */}
-      <ErrorAlert error={state.error} title="Analysis Error" />
+      <ErrorAlert error={state.error} title="Analysis error" />
 
       {/* Navigation
           Note: a global Progress bar already shows during analysis at the
@@ -201,7 +192,7 @@ export function FinancingStep() {
         onPrevious={handlePrevious}
         previousLabel="Back to renovation options"
         onPrimaryAction={handleAnalyze}
-        primaryActionLabel="Analyse portfolio"
+        primaryActionLabel="Analyze portfolio"
         isLoading={state.isEvaluating}
         primaryDisabled={
           state.buildings.length === 0 ||

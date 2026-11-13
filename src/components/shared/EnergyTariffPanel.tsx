@@ -8,7 +8,6 @@ import {
   NumberInput,
   SimpleGrid,
   Stack,
-  Text,
   ThemeIcon,
   Title,
 } from "@mantine/core";
@@ -118,13 +117,7 @@ function EnergyTariffForm({
             <ThemeIcon color="blue" variant="light" size="lg" radius="md">
               <IconBolt size={18} />
             </ThemeIcon>
-            <div>
-              <Title order={4}>Energy tariffs</Title>
-              <Text size="sm" c="dimmed">
-                Gas and grid electricity tariffs used to value annual savings
-                for NPV, ROI, and payback.
-              </Text>
-            </div>
+            <Title order={4}>Energy tariffs</Title>
           </Group>
           <Badge
             variant="light"

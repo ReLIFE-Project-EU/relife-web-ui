@@ -4,7 +4,6 @@ import {
   Button,
   Card,
   Container,
-  List,
   SimpleGrid,
   Stack,
   Text,
@@ -20,19 +19,20 @@ import {
 } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
 import { relifeConcepts } from "../constants/relifeConcepts";
+import { RELIFE_TOOLS } from "../constants/tools";
+
+const tool = RELIFE_TOOLS.find((entry) => entry.link === "/home-assistant")!;
 
 const features = [
   {
     icon: IconHome2,
     title: "Your home",
-    description:
-      "Add your home's location, type, and construction period to find a reference building for the energy estimate.",
+    description: "Add your home's location, type, and construction period.",
   },
   {
     icon: IconListCheck,
     title: "Renovation options",
-    description:
-      "Choose insulation, windows, heating, or solar panels. Review the estimated costs for each package.",
+    description: "Choose insulation, windows, heating, or solar panels.",
   },
   {
     icon: IconCoin,
@@ -59,8 +59,7 @@ export const HomeAssistantLanding = () => {
             Home Renovation Assistant
           </Title>
           <Text c="dimmed" size="lg" maw={700} mb="lg">
-            Compare renovation options for your home, with estimates of costs,
-            energy savings, and financial returns.
+            {tool.description}
           </Text>
           <Button
             component={Link}
@@ -72,18 +71,6 @@ export const HomeAssistantLanding = () => {
             Start planning
           </Button>
         </Box>
-
-        {/* Target Users */}
-        <Card withBorder radius="md" p="lg" bg="orange.0">
-          <Title order={4} mb="sm">
-            Designed for
-          </Title>
-          <List spacing="xs">
-            <List.Item>Homeowners</List.Item>
-            <List.Item>Tenants interested in energy improvements</List.Item>
-            <List.Item>Small building owners</List.Item>
-          </List>
-        </Card>
 
         {/* Features */}
         <Box>

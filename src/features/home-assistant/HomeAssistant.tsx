@@ -10,7 +10,6 @@ import {
   Group,
   Stack,
   Stepper,
-  Text,
   Title,
 } from "@mantine/core";
 import {
@@ -84,14 +83,7 @@ function HomeAssistantWizard() {
       <Stack gap="xl">
         {/* Header */}
         <Group justify="space-between" align="flex-start">
-          <div>
-            <Title order={1} mb="xs">
-              Home Renovation Assistant
-            </Title>
-            <Text c="dimmed" size="lg">
-              Your personal guide to home renovation planning
-            </Text>
-          </div>
+          <Title order={1}>Home Renovation Assistant</Title>
 
           {/* Reset button - only show after step 1 */}
           {state.currentStep > 0 && (
@@ -103,7 +95,7 @@ function HomeAssistantWizard() {
               size="sm"
               disabled={isLoading}
             >
-              Start Over
+              Start over
             </Button>
           )}
         </Group>
@@ -116,7 +108,6 @@ function HomeAssistantWizard() {
           >
             <Stepper.Step
               label="Building Information"
-              description="Enter your building details"
               icon={<IconHome size={18} />}
               loading={state.isEstimating}
               color={canAccessStep(0) ? "relife" : "gray"}
@@ -126,7 +117,6 @@ function HomeAssistantWizard() {
 
             <Stepper.Step
               label="Energy & Renovation"
-              description="Review and select options"
               icon={<IconBolt size={18} />}
               loading={state.isEvaluating}
               color={canAccessStep(1) ? "relife" : "gray"}
@@ -136,7 +126,6 @@ function HomeAssistantWizard() {
 
             <Stepper.Step
               label="Results"
-              description="Compare and decide"
               icon={<IconChartBar size={18} />}
               loading={state.isRanking}
               color={canAccessStep(2) ? "relife" : "gray"}

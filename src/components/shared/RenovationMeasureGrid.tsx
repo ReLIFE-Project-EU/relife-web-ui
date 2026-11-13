@@ -1,4 +1,4 @@
-import { Box, SimpleGrid, Stack, Text, Title, Tooltip } from "@mantine/core";
+import { Box, SimpleGrid, Stack, Title, Tooltip } from "@mantine/core";
 import { HEATING_SYSTEM_CONFLICT_MESSAGE } from "../../constants/relifeConcepts";
 import { getMeasureSelectionState } from "../../services/measureNormalization";
 import type {
@@ -29,12 +29,9 @@ export function RenovationMeasureGrid({
     <Stack gap="lg">
       {categories.map((category) => (
         <Box key={category.id}>
-          <Title order={5} tt="uppercase" c="dimmed" size="sm" mb={2}>
+          <Title order={5} tt="uppercase" c="dimmed" size="sm" mb="sm">
             {category.label}
           </Title>
-          <Text size="xs" c="dimmed" mb="sm">
-            {category.description}
-          </Text>
           <SimpleGrid cols={{ base: 1, xs: 2, md: 4 }} spacing="sm">
             {measures
               .filter((measure) => measure.category === category.id)

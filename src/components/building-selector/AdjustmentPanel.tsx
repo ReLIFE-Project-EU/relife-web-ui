@@ -32,7 +32,6 @@ import {
   FLAT_MODE_TEXT,
   FULL_FIELD_GROUPS,
   LIMITED_FIELDS,
-  OVERRIDE_FOOTER_TEXT,
   VALUATION_ONLY_NOTE,
   formatFloorArea,
   formatPerFloorArea,
@@ -118,11 +117,6 @@ export function AdjustmentPanel({
             ? { ...group, fields: FLAT_LIMITED_FIELDS }
             : group,
         );
-
-  const footerText =
-    !flatUnit && scope === "full" && isApartmentSelection(details)
-      ? `${OVERRIDE_FOOTER_TEXT} Apartment level sets the floor number used in property valuation; energy is simulated for the whole building.`
-      : OVERRIDE_FOOTER_TEXT;
 
   const { floorArea, numberOfFloors, floorHeight, apartmentLocation } = draft;
   const hasFloorCount =
@@ -320,10 +314,7 @@ export function AdjustmentPanel({
               </Alert>
             )}
 
-            <Group justify="space-between" align="center">
-              <Text size="xs" c="dimmed">
-                {footerText}
-              </Text>
+            <Group justify="flex-end" align="center">
               <Button
                 size="xs"
                 color={copy.accentColor}

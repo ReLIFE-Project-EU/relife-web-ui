@@ -7,25 +7,20 @@
  */
 
 import {
-  Accordion,
   Badge,
   Box,
   Card,
   Group,
-  List,
   SimpleGrid,
   Stack,
   Tabs,
   Text,
-  ThemeIcon,
   Title,
 } from "@mantine/core";
 import {
   IconArrowRight,
   IconBuilding,
   IconChartBar,
-  IconInfoCircle,
-  IconShieldCheck,
 } from "@tabler/icons-react";
 import { memo, useMemo, useState, type ReactNode } from "react";
 import { ConceptMetricCard } from "../../../../components/shared/ConceptMetricCard";
@@ -36,10 +31,6 @@ import {
   formatMetricValue,
   readPooledPayback,
 } from "../../../../services/appraisalReadout";
-import {
-  relifeConcepts,
-  type ConceptId,
-} from "../../../../constants/relifeConcepts";
 import {
   formatCurrency,
   formatDecimal,
@@ -61,11 +52,6 @@ import {
   type PortfolioPackageAggregate,
 } from "../../services/portfolioAggregation";
 import { ResultsExportMenu } from "../results/ResultsExportMenu";
-
-function ConceptSentence(conceptId: ConceptId) {
-  const concept = relifeConcepts[conceptId];
-  return `${concept.description}${concept.caveat ? ` ${concept.caveat}` : ""}`;
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Portfolio summary tab content
@@ -317,8 +303,7 @@ const PortfolioSummary = memo(function PortfolioSummary({
             <Box>
               <Title order={5}>System energy consumption</Title>
               <Text size="xs" c="dimmed">
-                Total annual delivered energy, which drives the financial
-                analysis.
+                Total annual delivered energy.
               </Text>
             </Box>
             {deliveredBefore !== undefined && deliveredAfter !== undefined ? (
@@ -336,73 +321,6 @@ const PortfolioSummary = memo(function PortfolioSummary({
     </Stack>
   );
 });
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Data transparency content (shown inline under Portfolio summary)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function DataTransparencyContent() {
-  return (
-    <List
-      size="xs"
-      spacing={6}
-      icon={
-        <ThemeIcon color="gray" variant="transparent" size="sm">
-          <IconInfoCircle size={14} />
-        </ThemeIcon>
-      }
-    >
-      <List.Item>
-        <Text size="xs" c="dimmed">
-          <Text span size="xs" fw={500} c="dimmed">
-            Energy reduction
-          </Text>{" "}
-          — Calculated from annual building thermal needs as (after − before) /
-          before. Negative values indicate lower modeled heating and cooling
-          needs.
-        </Text>
-      </List.Item>
-      <List.Item>
-        <Text size="xs" c="dimmed">
-          <Text span size="xs" fw={500} c="dimmed">
-            System energy consumption
-          </Text>{" "}
-          — {ConceptSentence("system-energy-consumption")} Financial savings are
-          based on reductions in this value when available.
-        </Text>
-      </List.Item>
-      <List.Item>
-        <Text size="xs" c="dimmed">
-          <Text span size="xs" fw={500} c="dimmed">
-            Financial indicators
-          </Text>{" "}
-          (NPV, ROI, payback period) — Computed by the Financial Service; risk
-          ranges use Monte Carlo simulation when available.
-        </Text>
-      </List.Item>
-      <List.Item>
-        <Text size="xs" c="dimmed">
-          <Text span size="xs" fw={500} c="dimmed">
-            Portfolio totals
-          </Text>{" "}
-          — Money is summed across buildings, portfolio ROI is total profit over
-          total investment, and payback comes from the summed yearly cash flows.
-          Totals with missing building data are shown as unavailable.
-        </Text>
-      </List.Item>
-      <List.Item>
-        <Text size="xs" c="dimmed">
-          <Text span size="xs" fw={500} c="dimmed">
-            IRR, discounted payback and risk ranges
-          </Text>{" "}
-          — Reported per building; open a row in the per-building tab. They come
-          from a Monte Carlo simulation whose distributions cannot be pooled
-          across buildings, so no portfolio-wide equivalent is shown.
-        </Text>
-      </List.Item>
-    </List>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Component
@@ -435,10 +353,10 @@ export function ResultsStep() {
       <Stack gap="xl">
         <Box>
           <Title order={2} mb="xs">
-            Analysis Results
+            Analysis results
           </Title>
           <Text c="dimmed">
-            No results available. Please run the portfolio analysis first.
+            No results yet. Run the portfolio analysis first.
           </Text>
         </Box>
         <StepNavigation
@@ -454,16 +372,9 @@ export function ResultsStep() {
   return (
     <Stack gap="xl">
       {/* Header */}
-      <Box>
-        <Title order={2} mb="xs">
-          Portfolio Analysis Results
-        </Title>
-        <Text c="dimmed" size="sm">
-          Estimated portfolio totals and results for each building.
-        </Text>
-      </Box>
+      <Title order={2}>Portfolio analysis results</Title>
 
-      <ErrorAlert error={state.error} title="Analysis Error" />
+      <ErrorAlert error={state.error} title="Analysis error" />
 
       <Group justify="flex-end">
         <ResultsExportMenu
@@ -497,29 +408,7 @@ export function ResultsStep() {
         </Tabs.List>
 
         <Tabs.Panel value="portfolio" pt="lg">
-          <Stack gap="lg">
-            <PortfolioSummary aggregate={aggregate} />
-            <Accordion
-              chevronPosition="right"
-              variant="default"
-              multiple={false}
-            >
-              <Accordion.Item value="data-transparency">
-                <Accordion.Control
-                  icon={
-                    <ThemeIcon color="gray" variant="light" size="sm">
-                      <IconShieldCheck size={16} />
-                    </ThemeIcon>
-                  }
-                >
-                  Methodology & data transparency
-                </Accordion.Control>
-                <Accordion.Panel>
-                  <DataTransparencyContent />
-                </Accordion.Panel>
-              </Accordion.Item>
-            </Accordion>
-          </Stack>
+          <PortfolioSummary aggregate={aggregate} />
         </Tabs.Panel>
 
         <Tabs.Panel value="buildings" pt="lg">

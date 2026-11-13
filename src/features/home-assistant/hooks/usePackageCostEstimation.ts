@@ -84,7 +84,7 @@ export function usePackageCostEstimation(): PackageCostEstimation {
           [packageId]:
             error instanceof Error
               ? error.message
-              : "Failed to estimate costs from reference data.",
+              : "Failed to estimate costs.",
         }));
       } finally {
         inFlightRef.current.delete(packageId);

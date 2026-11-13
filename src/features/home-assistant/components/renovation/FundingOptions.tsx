@@ -4,7 +4,7 @@
  * (own funds or a loan) and any upfront subsidy that reduces it first.
  */
 
-import { Card, Stack, Text, Title } from "@mantine/core";
+import { Card, Stack, Title } from "@mantine/core";
 import {
   FinancingTypeCards,
   SubsidyInput,
@@ -18,12 +18,7 @@ export function FundingOptions() {
   return (
     <Card withBorder radius="md" p="lg">
       <Stack gap="lg">
-        <Title order={4}>Financing Options</Title>
-
-        <Text size="sm" c="dimmed">
-          Choose the setup that best matches how you expect to pay for the
-          renovation.
-        </Text>
+        <Title order={4}>Financing options</Title>
 
         <FinancingTypeCards
           value={funding.financingType}

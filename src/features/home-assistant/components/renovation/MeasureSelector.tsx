@@ -28,12 +28,9 @@ export function MeasureSelector() {
 
   return (
     <Box>
-      <Title order={4} mb="xs">
-        Renovation Measures
+      <Title order={4} mb="md">
+        Renovation measures
       </Title>
-      <Text size="sm" c="dimmed" mb="md">
-        Select the renovation actions to include in your assessment
-      </Text>
 
       <RenovationMeasureGrid
         categories={renovation.getCategories()}
@@ -51,41 +48,28 @@ export function MeasureSelector() {
           color="blue"
           icon={<IconInfoCircle size={16} />}
           mt="lg"
-          title="About PV assumptions"
         >
           {pvKwp !== null && state.building.floorArea !== null ? (
             <>
-              Estimated PV size from roof area:{" "}
+              PV size:{" "}
               {/* The API uses archetype-basis sizing; this shows the user-equivalent size. */}
               <Text span inherit fw={700}>
                 {formatDecimal(pvKwp)} kWp
               </Text>
-              , assuming south-facing panels. Output varies with orientation,
-              shade and space. Savings count only solar electricity used on
-              site.
+              . Savings count only solar electricity used on site.
             </>
           ) : (
-            <>
-              PV estimates use roof area and assume south-facing panels. Enter a
-              valid floor area to include PV.
-            </>
+            "Enter a valid floor area to include PV."
           )}
         </Alert>
       )}
 
       {/* Selection summary */}
       {selectedMeasures.length > 0 && (
-        <>
-          <Box mt="lg">
-            <Text size="sm" c="dimmed">
-              Selected measures
-            </Text>
-            <Text fw={500}>
-              {selectedMeasures.length}{" "}
-              {selectedMeasures.length === 1 ? "measure" : "measures"} selected
-            </Text>
-          </Box>
-        </>
+        <Text fw={500} mt="lg">
+          {selectedMeasures.length}{" "}
+          {selectedMeasures.length === 1 ? "measure" : "measures"} selected
+        </Text>
       )}
     </Box>
   );

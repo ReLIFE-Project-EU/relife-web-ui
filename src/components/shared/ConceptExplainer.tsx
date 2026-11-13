@@ -7,13 +7,11 @@ import { relifeConcepts } from "../../constants/relifeConcepts";
 interface ConceptExplainerProps {
   conceptId: ConceptId;
   children?: ReactNode;
-  professional?: boolean;
 }
 
 export function ConceptExplainer({
   conceptId,
   children,
-  professional = false,
 }: ConceptExplainerProps) {
   const concept = relifeConcepts[conceptId];
 
@@ -43,11 +41,6 @@ export function ConceptExplainer({
           {concept.caveat ? (
             <Text size="xs" c="dimmed">
               {concept.caveat}
-            </Text>
-          ) : null}
-          {professional && concept.professionalDetail ? (
-            <Text size="xs" c="dimmed" fs="italic">
-              {concept.professionalDetail}
             </Text>
           ) : null}
         </Stack>

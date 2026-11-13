@@ -54,8 +54,7 @@ export function FinancingPanel() {
             <div>
               <Title order={4}>Financing scenario</Title>
               <Text size="sm" c="dimmed">
-                Applies to every archetype and package. Subsidies can change the
-                ranking.
+                Applies to every archetype and package.
               </Text>
             </div>
           </Group>
@@ -76,7 +75,7 @@ export function FinancingPanel() {
         <SubsidyInput
           incentives={draft.incentives}
           onChange={(incentives) => setDraft({ ...draft, incentives })}
-          amountHelperText="Applied per property, to every archetype in the portfolio."
+          amountHelperText="Applied per property."
         />
 
         <Group justify="flex-end">

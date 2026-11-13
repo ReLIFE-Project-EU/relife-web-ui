@@ -10,7 +10,6 @@ import {
   Group,
   Stack,
   Stepper,
-  Text,
   Title,
 } from "@mantine/core";
 import {
@@ -105,14 +104,7 @@ function PortfolioAdvisorWizard() {
       <Stack gap="xl">
         {/* Header */}
         <Group justify="space-between" align="flex-start">
-          <div>
-            <Title order={1} mb="xs">
-              Portfolio Renovation Advisor
-            </Title>
-            <Text c="dimmed" size="lg">
-              Professional portfolio-level renovation assessment
-            </Text>
-          </div>
+          <Title order={1}>Portfolio Renovation Advisor</Title>
 
           {/* Reset button - only show after step 1 */}
           {state.currentStep > 0 && (
@@ -124,7 +116,7 @@ function PortfolioAdvisorWizard() {
               size="sm"
               disabled={isLoading}
             >
-              Start Over
+              Start over
             </Button>
           )}
         </Group>
@@ -142,7 +134,6 @@ function PortfolioAdvisorWizard() {
           >
             <Stepper.Step
               label="Building Portfolio"
-              description="Add buildings"
               icon={<IconBuilding size={18} />}
               color={canAccessStep(0) ? "teal" : "gray"}
             >
@@ -151,7 +142,6 @@ function PortfolioAdvisorWizard() {
 
             <Stepper.Step
               label="Energy & Renovation"
-              description="Select measures"
               icon={<IconBolt size={18} />}
               color={canAccessStep(1) ? "teal" : "gray"}
             >
@@ -160,7 +150,6 @@ function PortfolioAdvisorWizard() {
 
             <Stepper.Step
               label="Financing"
-              description="Configure funding"
               icon={<IconCash size={18} />}
               loading={state.isEvaluating}
               color={canAccessStep(2) ? "teal" : "gray"}
@@ -170,7 +159,6 @@ function PortfolioAdvisorWizard() {
 
             <Stepper.Step
               label="Results"
-              description="Portfolio analysis"
               icon={<IconChartBar size={18} />}
               color={canAccessStep(3) ? "teal" : "gray"}
             >

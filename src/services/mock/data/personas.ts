@@ -4,7 +4,7 @@ export const MCDA_PERSONAS: MCDAPersona[] = [
   {
     id: "environmentally-conscious",
     name: "Environmentally Conscious",
-    description: "Prioritizes sustainability and renewable energy integration",
+    description: "Prioritizes sustainability and renewable energy",
     weights: {
       sustainability: 0.333,
       resIntegration: 0.267,
@@ -17,7 +17,7 @@ export const MCDA_PERSONAS: MCDAPersona[] = [
     id: "health-oriented",
     name: "Health-Oriented",
     description:
-      "Prioritizes reduced thermal health burden and energy efficiency",
+      "Prioritizes healthy indoor temperatures and energy efficiency",
     weights: {
       health: 0.333,
       energyEfficiency: 0.267,

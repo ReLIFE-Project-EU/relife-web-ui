@@ -141,7 +141,7 @@ function ArchetypeRow({
             </Text>
             <Text size="xs" c={detailError ? "red" : "dimmed"}>
               {details
-                ? `${formatNumber(details.floorArea)} m2, ${details.numberOfFloors} floors`
+                ? `${formatNumber(details.floorArea)} m², ${details.numberOfFloors} floors`
                 : detailError
                   ? "Details unavailable"
                   : "Details loading"}
@@ -391,8 +391,7 @@ export function BrowseMode({
 
         {totalCount > visibleItems.length && (
           <Text size="xs" c="dimmed">
-            Showing first {visibleItems.length} of {totalCount} matches. Narrow
-            the filters to see more specific results.
+            Showing first {visibleItems.length} of {totalCount} matches.
           </Text>
         )}
       </Stack>

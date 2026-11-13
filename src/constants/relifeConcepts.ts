@@ -67,7 +67,6 @@ export type ConceptId =
   | "pv-generation"
   | "pv-self-consumption"
   | "pv-grid-export"
-  | "pv-self-consumption-rate"
   | "operational-co2-emissions"
   | "thermal-health-impact"
   | "embodied-carbon"
@@ -85,10 +84,8 @@ export type ConceptId =
   | "arv"
   | "monthly-cash-benefit"
   | "success-probability"
-  | "break-even-year"
   | "priority-profile"
   | "ranking-score"
-  | "rse-ranking-method"
   | "mcda"
   | "rse-energy-saved-per-eur"
   | "rse-total-energy-savings"
@@ -104,7 +101,6 @@ export interface ReLifeConcept {
   description: string;
   unit?: string;
   caveat?: string;
-  professionalDetail?: string;
 }
 
 export type MeasureEffectKind =
@@ -120,20 +116,13 @@ export interface MeasureEffectStatement {
   kind: MeasureEffectKind;
   conceptId?: ConceptId;
   label: string;
-  description: string;
 }
 
 export interface MeasureEffectProfile {
   measureId: RenovationMeasureId;
-  summary: string;
   affects: MeasureEffectStatement[];
   doesNotAffect: MeasureEffectStatement[];
-  caveat?: string;
-  professionalDetail?: string;
 }
-
-const STOCK_SCALING_CAVEAT =
-  "Estimated by multiplying representative building results by the number of properties. Apartment results are first scaled to one flat by floor area; Single-Family and Multi-Family Houses use whole-building results.";
 
 /** Qualifier word for a figure calculated from a concept, e.g. a sum. */
 export type ConceptPrefix =
@@ -169,15 +158,13 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
   "electricity-tariff": {
     id: "electricity-tariff",
     label: "Electricity tariff",
-    description:
-      "First-year grid electricity price used to value savings. Future prices follow the Financial service's growth and uncertainty assumptions.",
+    description: "First-year grid electricity price.",
     unit: "€/kWh",
   },
   "gas-tariff": {
     id: "gas-tariff",
     label: "Gas tariff",
-    description:
-      "Price per gross kWh of natural gas used to value carrier savings.",
+    description: "Natural gas price per gross kWh.",
     unit: "€/kWh",
   },
   "modeled-property": {
@@ -185,200 +172,155 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     label: "Properties",
     unit: "properties",
     description:
-      "One property is one Apartment or one whole Single-Family or Multi-Family House. A Multi-Family House represents the owner renovating the entire residential building, including all family units.",
+      "One Apartment, or one whole Single-Family or Multi-Family House.",
   },
   "total-floor-area": {
     id: "total-floor-area",
     label: "Total floor area (m²)",
-    description:
-      "Floor area of all floors added together. For an apartment, the floor area of the flat.",
+    description: "All floors added together. For an apartment, the flat alone.",
   },
   "apartment-floor-area": {
     id: "apartment-floor-area",
     label: "Apartment floor area (m²)",
-    description:
-      "Floor area of the individual flat within the reference building.",
-    caveat:
-      "The flat's share of the reference building's simulated energy use is estimated by floor area.",
+    description: "Floor area of the flat.",
   },
   "annual-building-thermal-needs": {
     id: "annual-building-thermal-needs",
     label: "Annual building thermal needs",
     description:
-      "Heat that must be added or removed each year to keep rooms at the temperatures used in the calculation.",
+      "Heat that must be added or removed each year to keep rooms at the set temperatures.",
     unit: "kWh thermal/year",
-    caveat:
-      "These are heating and cooling needs before accounting for equipment efficiency or solar electricity.",
-    professionalDetail:
-      "Needs depend on the building, weather, airflow, heat from people and appliances, and temperature settings.",
+    caveat: "Before equipment efficiency and solar electricity.",
   },
   "system-energy-consumption": {
     id: "system-energy-consumption",
     label: "System energy consumption",
     description:
-      "Energy supplied for heating and cooling each year, after accounting for system efficiency and solar electricity used on site.",
+      "Energy supplied for heating and cooling each year, after system efficiency and on-site solar electricity.",
     unit: "kWh delivered/year",
     caveat: "Hot water, lighting and appliances are not included.",
-    professionalDetail:
-      "Energy savings are used in the financial analysis when comparable before-and-after results are available.",
   },
   "recovered-loss-fraction": {
     id: "recovered-loss-fraction",
     label: "Heat recovery share",
     description:
-      "How much heat released by equipment or pipes is counted as heat inside the building. For example, 0.8 means 80%. This heat reduces heating needs but adds to cooling needs.",
+      "Share of the heat released by equipment and pipes that stays inside the building. 0.8 means 80%.",
   },
   "auxiliary-electricity-fraction": {
     id: "auxiliary-electricity-fraction",
     label: "Extra electricity factor",
     description:
-      "Estimates electricity used by supporting equipment, such as pumps and fans. For example, 0.005 means 0.5% of the energy amount for that part of the system.",
+      "Electricity used by pumps and fans, as a share of the energy that part of the system handles. 0.005 means 0.5%.",
   },
   "primary-energy": {
     id: "primary-energy",
     label: "Primary energy",
     description:
-      "Energy needed to supply the building's heating and cooling, including energy used to produce and deliver that energy.",
+      "Energy needed to supply heating and cooling, including the energy used to produce and deliver it.",
     unit: "kWh primary/year",
-    caveat:
-      "Hot water, lighting and appliances are not included. This is not a whole-building energy certificate result.",
+    caveat: "Hot water, lighting and appliances are not included.",
   },
   "energy-intensity": {
     id: "energy-intensity",
     label: "Energy intensity",
-    description:
-      "Annual energy use or need per square metre of floor area, for comparison across buildings.",
+    description: "Annual energy per square metre of floor area.",
     unit: "kWh/m²/year",
   },
   "pv-generation": {
     id: "pv-generation",
     label: "PV generation",
-    description: "Solar electricity generated by the panels over a full year.",
+    description: "Solar electricity the panels generate in a year.",
     unit: "kWh/year",
   },
   "pv-self-consumption": {
     id: "pv-self-consumption",
     label: "PV self-consumption",
     description:
-      "Solar electricity used on site for heating and cooling over a full year.",
+      "Solar electricity used on site for heating and cooling in a year.",
     unit: "kWh/year",
-    professionalDetail:
-      "Only electricity used at the same time it is generated counts as self-consumption.",
   },
   "pv-grid-export": {
     id: "pv-grid-export",
     label: "PV grid export",
     description:
-      "Solar electricity left to send to the grid after meeting the heating and cooling needs in the calculation.",
+      "Solar electricity sent to the grid after covering heating and cooling.",
     unit: "kWh/year",
-  },
-  "pv-self-consumption-rate": {
-    id: "pv-self-consumption-rate",
-    label: "PV self-consumption rate",
-    description:
-      "Percentage of the solar electricity generated that is used on site for heating and cooling.",
-    unit: "%",
   },
   "operational-co2-emissions": {
     id: "operational-co2-emissions",
     label: "CO₂ emissions",
     description:
-      "The greenhouse gases released each year to produce the energy your heating and cooling use.",
+      "Greenhouse gases released each year to produce the energy used for heating and cooling.",
     unit: "t CO₂e/year",
     caveat:
       "Hot water, lighting, appliances and renovation materials are not included.",
-    professionalDetail:
-      "The estimate accounts for the greenhouse gases released by each energy source, including solar electricity used in the building. Sending electricity to the grid does not reduce this estimate.",
   },
   "thermal-health-impact": {
     id: "thermal-health-impact",
     label: "Health impact from indoor temperature",
     unit: "healthy-life days lost per person/year",
     description:
-      "Estimated days of healthy life lost per person each year due to indoor temperatures that are too cold or too hot.",
-    professionalDetail:
-      "The model assumes health harm from daily average indoor temperatures below 20 °C or above 26 °C. Results are converted from disability-adjusted life years (DALYs): one DALY is one year of healthy life lost through illness or early death.",
-    caveat:
-      "The number is an average across a population, rather than a forecast for one resident.",
+      "Days of healthy life lost per person each year because rooms are too cold or too hot.",
+    caveat: "An average across a population, not a forecast for one resident.",
   },
   "embodied-carbon": {
     id: "embodied-carbon",
     label: "Material carbon",
     description:
-      "Estimated one-off greenhouse gas emissions associated with the materials and equipment installed in the renovation.",
+      "One-off greenhouse gas emissions from the materials and equipment installed.",
     unit: "t CO₂e",
-    caveat:
-      "Uses standard material choices, not the specific products you would buy. It does not include every stage from making materials to disposing of them.",
-    professionalDetail:
-      "The estimate assumes polystyrene (EPS) insulation and PVC window frames. Heating equipment and solar panels use the same sizes as the cost estimate; solar panel size follows the simulated roof and is scaled to the home like its energy output. Solar inverters, installation, maintenance, replacements and disposal are not counted.",
+    caveat: "Based on standard materials, not specific products.",
   },
   "whole-life-carbon": {
     id: "whole-life-carbon",
     label: "Lifetime carbon",
     description:
-      "Estimated material emissions plus heating and cooling emissions over the analysis period.",
+      "Material emissions plus heating and cooling emissions over the project lifetime.",
     unit: "t CO₂e",
-    caveat:
-      "Uses the same number of years as the financial results and assumes the same emissions every year. This is a total, not a saving. It does not include every stage from making materials to disposing of them.",
-    professionalDetail:
-      "Annual heating and cooling emissions are multiplied by the number of years, then added to material emissions. The calculation does not allow for energy supplies becoming cleaner in future.",
+    caveat: "A total, not a saving.",
   },
   investment: {
     id: "investment",
     label: "Investment",
-    description: "Upfront renovation cost used in the financial calculation.",
+    description: "Upfront renovation cost.",
     unit: "EUR",
-    professionalDetail:
-      "Also referred to as CAPEX or capital expenditure in professional financial outputs.",
   },
   "annual-maintenance-cost": {
     id: "annual-maintenance-cost",
     label: "Annual maintenance cost",
     description: "Yearly cost to run and maintain the renovated systems.",
     unit: "EUR/year",
-    professionalDetail:
-      "Also referred to as annual O&M (operation and maintenance) cost in professional financial outputs.",
   },
   "own-funds": {
     id: "own-funds",
     label: "Own funds",
-    description:
-      "Paying for the renovation with your own money, without borrowing. Any subsidy is applied first, and the rest is paid at the start of the project.",
+    description: "Pay for the renovation without borrowing.",
   },
   "renovation-loan": {
     id: "renovation-loan",
     label: "Loan",
     description:
-      "Borrowing part of the renovation cost and repaying it over a fixed number of years. Any subsidy is applied first, and the loan covers a share of what is left.",
-    caveat:
-      "The calculation tries different possible interest rates. These are estimates, not rates offered by a lender.",
-    professionalDetail:
-      "The amount not covered by the subsidy or loan is paid at the start.",
+      "Borrow part of the cost and repay it over a fixed number of years.",
+    caveat: "The interest rate is simulated, not a lender's offer.",
   },
   "upfront-subsidy": {
     id: "upfront-subsidy",
     label: "Subsidy",
-    description:
-      "A grant or public contribution that lowers the renovation cost at the start, entered either as a share of the cost or as a fixed amount.",
-    caveat:
-      "The grant is subtracted from the renovation cost before calculating how much you borrow and how much you could earn or save.",
+    description: "A grant that lowers the upfront cost.",
   },
   npv: {
     id: "npv",
     label: "Net present value",
     shortLabel: "NPV",
-    description:
-      "Expected savings and income minus costs, including the initial payment, expressed in today's money.",
+    description: "Savings and income minus all costs, in today's money.",
     unit: "EUR",
-    caveat:
-      "A positive value means expected savings and income are worth more than the costs, taking account of when money is paid and received.",
+    caveat: "Positive means the renovation earns more than it costs.",
   },
   irr: {
     id: "irr",
     label: "Internal rate of return",
     shortLabel: "IRR",
-    description:
-      "Estimated yearly percentage return on the money invested, based on when money is paid and received.",
+    description: "Yearly percentage return on the money invested.",
     unit: "%",
   },
   roi: {
@@ -386,27 +328,24 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     label: "Return on investment",
     shortLabel: "ROI",
     description:
-      "Profit over the years included in the calculation, after subtracting costs, as a percentage of the money invested.",
+      "Profit over the project lifetime as a percentage of the money invested.",
     unit: "%",
   },
   "payback-period": {
     id: "payback-period",
     label: "Payback period",
     description:
-      "Estimated years until savings and income, after ongoing costs, cover the money paid at the start.",
+      "Years until savings and income, after running costs, cover the upfront cost.",
     unit: "years",
-    caveat:
-      "This treats money saved in later years as worth the same as money saved today.",
+    caveat: "Money saved in later years counts the same as money saved today.",
   },
   "discounted-payback-period": {
     id: "discounted-payback-period",
     label: "Discounted payback period",
     shortLabel: "DPP",
     description:
-      "Estimated years until savings and income, after ongoing costs and adjusted to today's money, cover the money paid at the start.",
+      "Years until savings and income, after running costs and in today's money, cover the upfront cost.",
     unit: "years",
-    professionalDetail:
-      "This treats money saved in later years as worth less than money saved today.",
   },
   arv: {
     id: "arv",
@@ -418,127 +357,87 @@ export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
     id: "monthly-cash-benefit",
     label: "Monthly cash benefit",
     description:
-      "Average money saved or earned each month after maintenance and loan payments, over the years included in the calculation. The money paid at the start is not included.",
+      "Average money saved or earned each month, after maintenance and loan payments.",
     unit: "EUR/month",
-    caveat:
-      "Use this as a comparison estimate, not as a monthly bill forecast.",
+    caveat: "The upfront cost is not included.",
   },
   "success-probability": {
     id: "success-probability",
     label: "Success probability",
     description:
-      "Percentage of simulated results where savings and income are worth more than the costs in today's money. This means a positive net present value.",
+      "Share of simulated outcomes with a positive net present value.",
     unit: "%",
-    caveat:
-      "The result depends on the simulation assumptions and does not guarantee a profit.",
-    professionalDetail:
-      "Simulations test different energy prices, inflation and interest rates.",
-  },
-  "break-even-year": {
-    id: "break-even-year",
-    label: "Break-even year",
-    description:
-      "First year when total savings and income so far cover total costs so far.",
-    unit: "year",
   },
   "priority-profile": {
     id: "priority-profile",
     label: "Priority profile",
     description:
-      "Your priorities for balancing cost, health, energy, renewable energy and environmental outcomes.",
-    professionalDetail:
-      "Higher priorities carry more weight when comparing renovation packages.",
+      "How much weight cost, health, energy, renewables and the environment get in the ranking.",
   },
   "ranking-score": {
     id: "ranking-score",
     label: "Ranking score",
     description:
-      "How well a package matches the selected priority profile compared with the other packages.",
+      "How well a package fits the selected priorities, relative to the other packages.",
     unit: "%",
-    caveat:
-      "Scores depend on the packages compared and the ranking method used by each tool.",
-    professionalDetail:
-      "A higher score indicates a better match to the selected priorities.",
-  },
-  "rse-ranking-method": {
-    id: "rse-ranking-method",
-    label: "How this ranking is calculated",
-    description:
-      "Packages are compared on results such as payback, energy savings and emissions reductions. The selected goal determines how much each result counts; the highest combined score ranks first.",
-    caveat:
-      "Scores are relative to the packages shown. Adding or removing packages can change the ranking.",
   },
   mcda: {
     id: "mcda",
-    label: "MCDA",
+    label: "Package ranking",
     description:
-      "Multi-Criteria Decision Analysis compares renovation packages across several outcomes using your selected priorities.",
-    caveat:
-      "The environmental score looks at two things separately: the carbon in the materials, and the yearly emissions from heating and cooling.",
-    professionalDetail:
-      "The comparison combines energy, renewable energy, environmental, health and financial results. Scores depend on the packages being compared. If heating and cooling emissions are unavailable, they are left out of the score.",
+      "Scores each package on cost, health, energy, renewables and the environment, weighted by your priorities.",
   },
   "rse-energy-saved-per-eur": {
     id: "rse-energy-saved-per-eur",
     label: "Primary energy saved per euro",
     description:
-      "Annual primary energy savings for each euro of upfront renovation cost after subsidy. Maintenance costs are excluded.",
+      "Annual primary energy savings per euro of upfront cost after subsidy.",
     unit: "kWh/€",
   },
   "rse-total-energy-savings": {
     id: "rse-total-energy-savings",
     label: "Total annual primary energy savings",
-    description:
-      "Estimated annual primary energy savings across all selected properties for one renovation package.",
+    description: "Annual primary energy savings across all properties.",
     unit: "kWh/year",
-    caveat: STOCK_SCALING_CAVEAT,
   },
   "rse-co2-reduced-per-eur": {
     id: "rse-co2-reduced-per-eur",
     label: "CO₂ reduced per euro",
     description:
-      "Annual emissions reduction for each euro of upfront renovation cost after subsidy. Maintenance costs are excluded.",
+      "Annual emissions reduction per euro of upfront cost after subsidy.",
     unit: "kg CO₂e/€",
   },
   "rse-total-co2-reduction": {
     id: "rse-total-co2-reduction",
     label: "Total annual CO₂ reduction",
     description:
-      "Estimated annual heating and cooling emissions reduction across all selected properties for one renovation package.",
+      "Annual heating and cooling emissions reduction across all properties.",
     unit: "t CO₂e/year",
-    caveat: STOCK_SCALING_CAVEAT,
   },
   "rse-renovatable-buildings": {
     id: "rse-renovatable-buildings",
     label: "Renovatable properties",
-    description:
-      "Number of properties that can be renovated within the specified budget when using a given package.",
+    description: "Properties the budget covers with this package.",
     unit: "properties",
     caveat:
-      "Assumes the same mix of properties is renovated, rather than choosing the cheapest first. Subsidies are assumed to come from outside the renovation budget; if they come from the same budget, fewer properties can be renovated.",
+      "Keeps the same mix of properties instead of picking the cheapest first. Subsidies come from outside the budget.",
   },
 };
 
 const envelopeMeasureEffect = (
   measureId: RenovationMeasureId,
-  surface: string,
 ): MeasureEffectProfile => ({
   measureId,
-  summary: `${surface} improvement can reduce the building's heating and cooling needs.`,
   affects: [
     {
       kind: "lowers",
       conceptId: "annual-building-thermal-needs",
-      label: "Can lower thermal needs",
-      description:
-        "Reducing heat loss or heat gain can lower the heating or cooling needed to maintain indoor temperatures.",
+      label: "Lowers thermal needs",
     },
     {
       kind: "indirectly-lowers",
       conceptId: "system-energy-consumption",
-      label: "Can indirectly lower system energy",
-      description:
-        "The system has less heating or cooling work to deliver, so its energy use can fall too.",
+      label: "Indirectly lowers system energy",
     },
   ],
   doesNotAffect: [],
@@ -546,17 +445,13 @@ const envelopeMeasureEffect = (
 
 const systemMeasureEffect = (
   measureId: RenovationMeasureId,
-  system: string,
 ): MeasureEffectProfile => ({
   measureId,
-  summary: `${system} changes how much electricity or fuel is used to provide the heating the building needs.`,
   affects: [
     {
       kind: "lowers",
       conceptId: "system-energy-consumption",
-      label: "Can lower system energy",
-      description:
-        "A more efficient system can use less electricity or fuel to provide the same amount of heating.",
+      label: "Lowers system energy",
     },
   ],
   doesNotAffect: [
@@ -564,56 +459,31 @@ const systemMeasureEffect = (
       kind: "does-not-lower",
       conceptId: "annual-building-thermal-needs",
       label: "Does not lower thermal needs",
-      description:
-        "Changing equipment efficiency does not change the modeled amount of heat that must be added or removed.",
     },
   ],
-  professionalDetail:
-    "Savings on energy costs can be estimated when energy use before and after renovation can be compared.",
 });
 
 export const measureEffectProfiles: Record<
   RenovationMeasureId,
   MeasureEffectProfile
 > = {
-  "wall-insulation": envelopeMeasureEffect(
-    "wall-insulation",
-    "Wall insulation",
-  ),
-  "roof-insulation": envelopeMeasureEffect(
-    "roof-insulation",
-    "Roof insulation",
-  ),
-  "floor-insulation": envelopeMeasureEffect(
-    "floor-insulation",
-    "Floor insulation",
-  ),
-  windows: envelopeMeasureEffect("windows", "Window replacement"),
-  "air-water-heat-pump": systemMeasureEffect(
-    "air-water-heat-pump",
-    "An air-water heat pump",
-  ),
-  "condensing-boiler": systemMeasureEffect(
-    "condensing-boiler",
-    "A condensing boiler",
-  ),
+  "wall-insulation": envelopeMeasureEffect("wall-insulation"),
+  "roof-insulation": envelopeMeasureEffect("roof-insulation"),
+  "floor-insulation": envelopeMeasureEffect("floor-insulation"),
+  windows: envelopeMeasureEffect("windows"),
+  "air-water-heat-pump": systemMeasureEffect("air-water-heat-pump"),
+  "condensing-boiler": systemMeasureEffect("condensing-boiler"),
   pv: {
     measureId: "pv",
-    summary:
-      "PV panels generate electricity. They do not change the building's heating and cooling needs.",
     affects: [
       {
         kind: "generates",
         label: "Generates electricity",
-        description:
-          "PV panels produce electricity that can be used by the building or exported.",
       },
       {
         kind: "reduces-grid-use",
         conceptId: "system-energy-consumption",
-        label: "Can reduce grid electricity",
-        description:
-          "Solar electricity used on site can reduce grid electricity needed for heating and cooling.",
+        label: "Reduces grid electricity",
       },
     ],
     doesNotAffect: [
@@ -621,23 +491,16 @@ export const measureEffectProfiles: Record<
         kind: "does-not-lower",
         conceptId: "annual-building-thermal-needs",
         label: "Does not lower thermal needs",
-        description:
-          "PV changes electricity supply, not the heat the building needs to stay comfortable.",
       },
     ],
-    caveat:
-      "Solar panel results depend on roof size, the direction panels face, shade, weather and how much of the electricity is used in the building.",
   },
   "solar-thermal": {
     measureId: "solar-thermal",
-    summary: "This tool does not currently assess solar thermal systems.",
     affects: [],
     doesNotAffect: [
       {
         kind: "not-analyzed",
-        label: "Not currently analyzed",
-        description:
-          "Solar thermal is excluded from the simulation and ranking.",
+        label: "Not analyzed",
       },
     ],
   },
@@ -653,10 +516,4 @@ export const financialMetricConceptIds = {
   DPP: "discounted-payback-period",
   IRR: "irr",
   ROI: "roi",
-  MonthlyAvgSavings: "monthly-cash-benefit",
-  SuccessRate: "success-probability",
-  CAPEX: "investment",
-  ARV: "arv",
-  BreakEven: "break-even-year",
-  EnergyReduction: "annual-building-thermal-needs",
 } as const satisfies Record<string, ConceptId>;

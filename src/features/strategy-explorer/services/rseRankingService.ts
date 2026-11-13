@@ -62,7 +62,6 @@ export function rankPackages(
         rank: 0,
         score,
         scoreComponents,
-        explanation: explainRanking(goal),
       };
     })
     .sort(compareRankingResults)
@@ -261,15 +260,4 @@ function compareRankingResults(
 
 function packageOrder(packageId: RSEPackageAggregate["packageId"]): number {
   return RSE_PACKAGE_IDS.indexOf(packageId);
-}
-
-function explainRanking(goal: RSERenovationGoal): string {
-  switch (goal.kind) {
-    case "energy":
-      return "Ranks packages by annual primary energy saved per euro and total annual primary energy savings.";
-    case "emission":
-      return "Ranks packages by annual CO2 reduction per euro and total annual CO2 reduction.";
-    case "financial":
-      return "Ranks packages by properties renovated within budget, aggregate ROI, aggregate NPV, and aggregate payback when available.";
-  }
 }

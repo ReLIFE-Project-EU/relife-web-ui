@@ -61,8 +61,6 @@ export function FileList() {
           </ThemeIcon>
           <Text c="dimmed" ta="center">
             No files in this portfolio yet.
-            <br />
-            Upload files using the dropzone above.
           </Text>
         </Stack>
       </Paper>

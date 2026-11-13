@@ -262,7 +262,6 @@ export interface RSERankingResult {
   rank: number;
   score: number;
   scoreComponents: Record<string, number>;
-  explanation: string;
 }
 
 export interface RSEWorkflowRequest {

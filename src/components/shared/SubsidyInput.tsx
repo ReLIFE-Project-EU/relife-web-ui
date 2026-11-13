@@ -22,7 +22,6 @@ import { IconGift } from "@tabler/icons-react";
 import { relifeConcepts } from "../../constants/relifeConcepts";
 import type { IncentiveDetails, IncentiveMode } from "../../types/renovation";
 import { browserNumberSeparators } from "../../utils/formatters";
-import { ConceptExplainer } from "./ConceptExplainer";
 
 const subsidy = relifeConcepts["upfront-subsidy"];
 
@@ -48,7 +47,7 @@ export function SubsidyInput({
             </ThemeIcon>
             <div>
               <Text size="sm" fw={600}>
-                {subsidy.label} <ConceptExplainer conceptId="upfront-subsidy" />
+                {subsidy.label}
               </Text>
               <Text size="xs" c="dimmed">
                 {subsidy.description}

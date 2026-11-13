@@ -79,14 +79,14 @@ export function ManualAddPanel({
       {withCard && (
         <Group mb="md">
           <IconPlus size={20} />
-          <Title order={4}>Add Building Manually</Title>
+          <Title order={4}>Add building manually</Title>
         </Group>
       )}
 
       <Stack gap="md">
         <TextInput
           label="Building name"
-          description="Optional. A reference-based name is generated when left blank."
+          description="Optional"
           placeholder="e.g., Office Building A"
           value={name}
           onChange={(event) => setName(event.currentTarget.value)}
@@ -103,17 +103,15 @@ export function ManualAddPanel({
         />
 
         <Group justify="space-between" align="center">
-          <Text size="sm" c={selection ? "dimmed" : "red"}>
-            {selection
-              ? "Reference building selected."
-              : "Select a reference building before adding it."}
+          <Text size="sm" c="red">
+            {selection ? null : "Select a reference building before adding it."}
           </Text>
           <Button
             leftSection={<IconPlus size={16} />}
             onClick={handleAdd}
             disabled={!selection}
           >
-            Add Building
+            Add building
           </Button>
         </Group>
       </Stack>

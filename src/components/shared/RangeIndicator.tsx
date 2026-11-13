@@ -62,10 +62,6 @@ export function RangeIndicator({
             <Text size="xs">Lower (P10): {formatter(min)}</Text>
             <Text size="xs">Median (P50): {formatter(median)}</Text>
             <Text size="xs">Upper (P90): {formatter(max)}</Text>
-            <Text size="xs" c="dimmed">
-              About 80% of modeled outcomes fall in this range; ~10% fall below
-              and ~10% above.
-            </Text>
           </Box>
         }
         withArrow

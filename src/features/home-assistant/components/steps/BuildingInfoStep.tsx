@@ -3,18 +3,7 @@
  * Screen 1: Collects building information and triggers energy estimation.
  */
 
-import {
-  Alert,
-  Badge,
-  Box,
-  Button,
-  Grid,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
-import { IconInfoCircle } from "@tabler/icons-react";
+import { Badge, Grid, Stack, Text, Title } from "@mantine/core";
 import { useCallback, useMemo } from "react";
 import {
   BuildingSelector,
@@ -35,7 +24,6 @@ import { deriveConstructionYear } from "../../../../utils/apiMappings";
 export function BuildingInfoStep() {
   const { state, dispatch } = useHomeAssistant();
   const { energy, building } = useHomeAssistantServices();
-  const [howItWorksOpened, howItWorks] = useDisclosure(true);
 
   const hasCoordinates =
     state.building.lat !== null && state.building.lng !== null;
@@ -185,13 +173,7 @@ export function BuildingInfoStep() {
     },
   ];
 
-  const summaryNote = archetypeDone ? (
-    <Text size="xs" c="dimmed">
-      <Text component="span" fw={600} c="var(--mantine-color-text)">
-        Energy figures come next.
-      </Text>
-    </Text>
-  ) : (
+  const summaryNote = archetypeDone ? null : (
     <Text size="xs" c="dimmed">
       Choose a reference building or use the map matcher before continuing.
     </Text>
@@ -200,42 +182,7 @@ export function BuildingInfoStep() {
   return (
     <Stack gap="lg">
       {/* Heading */}
-      <Box>
-        <Title order={2} mb={4}>
-          Tell us about your building
-        </Title>
-        <Text c="dimmed" size="sm">
-          Pick a typical home from the catalog, or place yours on the map and
-          let the tool match a representative archetype.
-        </Text>
-      </Box>
-
-      {/* Collapsible "How matching works" info card, restorable once hidden */}
-      {howItWorksOpened ? (
-        <Alert
-          variant="light"
-          color="blue"
-          icon={<IconInfoCircle size={16} />}
-          withCloseButton
-          onClose={howItWorks.close}
-          title="How this works"
-        >
-          <Text size="sm">
-            We match buildings to archetypes based on country, type, and
-            construction period. Closer matches produce more reliable estimates.
-          </Text>
-        </Alert>
-      ) : (
-        <Button
-          variant="subtle"
-          size="compact-xs"
-          w="fit-content"
-          leftSection={<IconInfoCircle size={14} />}
-          onClick={howItWorks.open}
-        >
-          How this works
-        </Button>
-      )}
+      <Title order={2}>Tell us about your building</Title>
 
       {/* Two-column: selector + sticky summary */}
       <Grid gutter="lg">
@@ -271,7 +218,7 @@ export function BuildingInfoStep() {
       </Grid>
 
       {/* Error display */}
-      <ErrorAlert error={state.error} title="Estimation Error" />
+      <ErrorAlert error={state.error} title="Estimation error" />
 
       {/* Sticky progress footer with primary CTA */}
       <StepProgressFooter

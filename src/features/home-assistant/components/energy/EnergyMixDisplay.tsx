@@ -38,30 +38,23 @@ export function EnergyMixDisplay() {
   return (
     <Card withBorder radius="md" p="lg">
       <Stack gap="lg">
-        <Box>
-          <Title order={4} mb="xs">
-            Building Thermal Needs Breakdown
-          </Title>
-          <Text size="sm" c="dimmed">
-            Annual heating and cooling needs from the building simulation
-          </Text>
-        </Box>
+        <Title order={4}>Thermal needs breakdown</Title>
 
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
           <DemandSection
-            title="Heating Demand"
+            title="Heating demand"
             value={heatingNeed}
             icon={<IconFlame size={16} color="var(--mantine-color-orange-6)" />}
           />
           <DemandSection
-            title="Cooling Demand"
+            title="Cooling demand"
             value={coolingNeed}
             icon={
               <IconSnowflake size={16} color="var(--mantine-color-blue-5)" />
             }
           />
           <DemandSection
-            title="Total HVAC Demand"
+            title="Total HVAC demand"
             value={thermalNeed}
             icon={<IconFlame size={16} color="var(--mantine-color-gray-6)" />}
           />

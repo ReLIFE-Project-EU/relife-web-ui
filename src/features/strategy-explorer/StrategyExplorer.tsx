@@ -212,9 +212,6 @@ function StrategyExplorerWizard() {
             <Title order={1} mb="xs">
               Renovation Strategy Explorer
             </Title>
-            <Text c="dimmed" size="lg">
-              Public-authority strategy comparison tool
-            </Text>
             <Text
               size="xs"
               c="dimmed"
@@ -252,7 +249,7 @@ function StrategyExplorerWizard() {
               size="sm"
               disabled={isLoading}
             >
-              Start Over
+              Start over
             </Button>
           )}
         </Group>
@@ -273,7 +270,6 @@ function StrategyExplorerWizard() {
           >
             <Stepper.Step
               label="Portfolio"
-              description="Select archetypes"
               icon={<IconBuildingCommunity size={18} />}
               color={canAccessStep(0) ? "relife" : "gray"}
             >
@@ -282,7 +278,6 @@ function StrategyExplorerWizard() {
 
             <Stepper.Step
               label="Goal"
-              description="Choose objective"
               icon={<IconChartAreaLine size={18} />}
               color={canAccessStep(1) ? "relife" : "gray"}
             >
@@ -291,7 +286,6 @@ function StrategyExplorerWizard() {
 
             <Stepper.Step
               label="Packages"
-              description="Compare strategies"
               icon={<IconPresentation size={18} />}
               loading={state.isRunningWorkflow}
               color={canAccessStep(2) ? "relife" : "gray"}
@@ -301,7 +295,6 @@ function StrategyExplorerWizard() {
 
             <Stepper.Step
               label="Results"
-              description="View rankings"
               icon={<IconChartBar size={18} />}
               color={canAccessStep(3) ? "relife" : "gray"}
             >

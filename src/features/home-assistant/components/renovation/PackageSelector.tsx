@@ -21,10 +21,10 @@ import { checkCapexPerSqm } from "../../../../utils/inputSanityChecks";
 import { ConceptLabel, ErrorAlert } from "../../../../components/shared";
 import { browserNumberSeparators } from "../../../../utils/formatters";
 
-/** Outline "Estimated" tag (with caveat) used to mark an auto-filled cost. */
+/** Outline "Estimated" tag used to mark an auto-filled cost. */
 function EstimatedTag() {
   return (
-    <Tooltip label="Estimated from EU reference data — edit to override.">
+    <Tooltip label="Edit to override.">
       <Badge color="blue" variant="outline" size="xs">
         Estimated
       </Badge>
@@ -97,15 +97,9 @@ export function PackageSelector({
         Choose up to {PACKAGE_SELECTION_MAX} options for the results comparison.
       </Text>
 
-      <Text size="sm" c="dimmed">
-        Costs are estimated automatically from EU reference data when you select
-        an option. Review and adjust them to match your project.
-      </Text>
-
       {selectionLimitReached && (
         <Alert variant="light" color="blue">
-          You can compare up to {PACKAGE_SELECTION_MAX} packages at once.
-          Deselect one package to choose another.
+          Deselect one to choose another.
         </Alert>
       )}
 
@@ -176,7 +170,7 @@ export function PackageSelector({
                     <Group gap="xs" py="xs">
                       <Loader size="sm" />
                       <Text size="sm" c="dimmed">
-                        Estimating costs from EU reference data…
+                        Estimating costs…
                       </Text>
                     </Group>
                   )}

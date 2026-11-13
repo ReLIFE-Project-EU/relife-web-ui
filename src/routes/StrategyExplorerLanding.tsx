@@ -4,7 +4,6 @@ import {
   Button,
   Card,
   Container,
-  List,
   SimpleGrid,
   Stack,
   Text,
@@ -20,6 +19,9 @@ import {
 } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
 import { relifeConcepts } from "../constants/relifeConcepts";
+import { RELIFE_TOOLS } from "../constants/tools";
+
+const tool = RELIFE_TOOLS.find((entry) => entry.link === "/strategy-explorer")!;
 
 const features = [
   {
@@ -37,8 +39,7 @@ const features = [
   {
     icon: IconBuildingCommunity,
     title: "Renovation packages",
-    description:
-      "Compare predefined packages using simulated building performance.",
+    description: "Compare predefined packages.",
   },
   {
     icon: IconChartBar,
@@ -60,8 +61,7 @@ export function StrategyExplorerLanding() {
             Renovation Strategy Explorer
           </Title>
           <Text c="dimmed" size="lg" maw={700} mb="lg">
-            Compare renovation packages for representative building stock. Rank
-            them by budget, primary energy savings, or CO₂ reduction.
+            {tool.description}
           </Text>
           <Button
             component={Link}
@@ -73,19 +73,6 @@ export function StrategyExplorerLanding() {
             Compare strategies
           </Button>
         </Box>
-
-        {/* Target Users */}
-        <Card withBorder radius="md" p="lg" bg="blue.0">
-          <Title order={4} mb="sm">
-            Designed for
-          </Title>
-          <List spacing="xs">
-            <List.Item>Policymakers and public authorities</List.Item>
-            <List.Item>Urban planners and regional administrators</List.Item>
-            <List.Item>Researchers and academic institutions</List.Item>
-            <List.Item>Energy agencies and regulatory bodies</List.Item>
-          </List>
-        </Card>
 
         {/* Features */}
         <Box>

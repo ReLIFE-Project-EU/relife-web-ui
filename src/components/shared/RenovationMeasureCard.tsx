@@ -113,7 +113,7 @@ export function RenovationMeasureCard({
           </Tooltip>
         </Group>
 
-        <MeasureEffectSummary measureId={measure.id} compact />
+        <MeasureEffectSummary measureId={measure.id} />
 
         <Stack gap="xs">
           <Group justify="space-between" align="center">
@@ -143,7 +143,7 @@ export function RenovationMeasureCard({
 
           {!measure.isSupported && (
             <Badge color="yellow" size="sm" variant="light" fullWidth>
-              Coming Soon
+              Coming soon
             </Badge>
           )}
         </Stack>

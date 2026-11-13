@@ -32,14 +32,13 @@ const GOAL_OPTIONS: Array<{
   {
     kind: "energy",
     label: "Energy efficiency",
-    description:
-      "Prioritize primary energy savings and primary energy saved per euro invested.",
+    description: "Rank by primary energy saved, in total and per euro.",
     icon: IconBolt,
   },
   {
     kind: "emission",
     label: "Emission reduction",
-    description: "Prioritize CO₂ reduction and CO₂ reduced per euro invested.",
+    description: "Rank by CO₂ reduced, in total and per euro.",
     icon: IconLeaf,
   },
 ];
@@ -81,14 +80,7 @@ export function GoalStep() {
 
   return (
     <Stack gap="xl">
-      <Box>
-        <Title order={2} mb="xs">
-          Renovation Goal
-        </Title>
-        <Text c="dimmed" size="sm">
-          Choose the primary objective for comparing renovation strategies.
-        </Text>
-      </Box>
+      <Title order={2}>Renovation goal</Title>
 
       <Stack gap="md">
         {GOAL_OPTIONS.map((option) => {
@@ -140,7 +132,7 @@ export function GoalStep() {
                   {option.kind === "financial" && isSelected && (
                     <NumberInput
                       label="Maximum budget"
-                      description="Total investment ceiling across all properties."
+                      description="Across all properties."
                       placeholder="e.g. 1,000,000"
                       prefix="€ "
                       value={budget}

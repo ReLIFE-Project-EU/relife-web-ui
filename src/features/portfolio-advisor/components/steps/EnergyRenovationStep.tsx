@@ -55,7 +55,6 @@ export function EnergyRenovationStep() {
   const { renovation } = usePortfolioAdvisorServices();
 
   const selectedMeasures = state.renovation.selectedMeasures;
-  const hasPv = selectedMeasures.includes("pv");
   const analysisEligibleMeasures = renovation
     .getAnalysisEligibleMeasures()
     .map((measure) => measure.id);
@@ -123,24 +122,15 @@ export function EnergyRenovationStep() {
   return (
     <Stack gap="xl">
       {/* Header */}
-      <Box>
-        <Title order={2} mb="xs">
-          Energy & Renovation Options
-        </Title>
-        <Text c="dimmed" size="sm">
-          Pick the renovation measures to evaluate, then tune the project
-          settings used for the calculation.
-        </Text>
-      </Box>
+      <Title order={2}>Energy & renovation options</Title>
 
       {/* Renovation Measures */}
       <Card withBorder radius="md" p="lg">
         <Group justify="space-between" mb="md" wrap="wrap">
           <Box>
-            <Title order={4}>Renovation Measures</Title>
+            <Title order={4}>Renovation measures</Title>
             <Text size="sm" c="dimmed">
-              Select the measures to apply across the portfolio. Each building
-              will be evaluated with these measures.
+              Applied across the portfolio.
             </Text>
           </Box>
           <Group gap="xs">
@@ -165,24 +155,8 @@ export function EnergyRenovationStep() {
         />
       </Card>
 
-      {hasPv && (
-        <Alert
-          variant="light"
-          color="blue"
-          icon={<IconInfoCircle size={16} />}
-          title="About PV assumptions"
-        >
-          We estimate solar production for each building from its roof area,
-          assuming a typical south-facing setup.
-        </Alert>
-      )}
-
       {unsupportedSelected.length > 0 && (
-        <Alert
-          color="yellow"
-          icon={<IconInfoCircle size={16} />}
-          title="Limited Simulation Support"
-        >
+        <Alert color="yellow" icon={<IconInfoCircle size={16} />}>
           Excluded from analysis:{" "}
           <Text span fw={700}>
             {unsupportedSelected
@@ -255,20 +229,13 @@ export function EnergyRenovationStep() {
 
       {/* Project Settings & Cost Overrides — merged into a single card */}
       <Card withBorder radius="md" p="lg">
-        <Title order={4} mb="xs">
+        <Title order={4} mb="md">
           Project settings & cost overrides
         </Title>
-        <Text size="sm" c="dimmed" mb="md">
-          Used as defaults for buildings that don&apos;t override these values
-          individually.
-        </Text>
 
         <Box pb="xl" mb="md">
-          <Text size="sm" mb="xs">
-            Project Lifetime: {state.projectLifetime} years
-          </Text>
-          <Text size="xs" c="dimmed" mb="sm">
-            Horizon used for NPV, ROI and payback computations.
+          <Text size="sm" mb="sm">
+            Project lifetime: {state.projectLifetime} years
           </Text>
           <Slider
             value={state.projectLifetime}
@@ -284,20 +251,12 @@ export function EnergyRenovationStep() {
 
         <Divider my="md" label="Cost overrides" labelPosition="left" />
 
-        <Alert
-          variant="light"
-          color="blue"
-          icon={<IconInfoCircle size={16} />}
-          mb="md"
-        >
-          Automatic cost estimates use EU reference data.
-        </Alert>
         <Grid>
           <Grid.Col span={{ base: 12, sm: 6 }}>
             <NumberInput
-              label="Per-building CAPEX override (EUR)"
-              description="Applied to each building that has no per-building CAPEX of its own. Leave blank to auto-estimate."
-              placeholder="Auto-estimated from reference data"
+              label="CAPEX per building (EUR)"
+              description="Leave blank to auto-estimate."
+              placeholder="Auto-estimated"
               value={state.renovation.estimatedCapex ?? ""}
               onChange={(val) =>
                 dispatch({
@@ -326,9 +285,9 @@ export function EnergyRenovationStep() {
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 6 }}>
             <NumberInput
-              label="Annual Maintenance Cost (EUR/year)"
-              description="Override post-renovation O&M cost. Leave blank to auto-estimate."
-              placeholder="Auto-estimated from reference data"
+              label="Annual maintenance cost (EUR/year)"
+              description="Leave blank to auto-estimate."
+              placeholder="Auto-estimated"
               value={state.renovation.estimatedMaintenanceCost ?? ""}
               onChange={(val) =>
                 dispatch({

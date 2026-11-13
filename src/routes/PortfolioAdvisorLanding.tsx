@@ -4,7 +4,6 @@ import {
   Button,
   Card,
   Container,
-  List,
   SimpleGrid,
   Stack,
   Text,
@@ -20,6 +19,9 @@ import {
 } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
 import { relifeConcepts } from "../constants/relifeConcepts";
+import { RELIFE_TOOLS } from "../constants/tools";
+
+const tool = RELIFE_TOOLS.find((entry) => entry.link === "/portfolio-advisor")!;
 
 const features = [
   {
@@ -60,8 +62,7 @@ export const PortfolioAdvisorLanding = () => {
             Portfolio Renovation Advisor
           </Title>
           <Text c="dimmed" size="lg" maw={700} mb="lg">
-            Assess renovation costs, energy savings, and financial returns for
-            each building and your portfolio.
+            {tool.description}
           </Text>
           <Button
             component={Link}
@@ -73,19 +74,6 @@ export const PortfolioAdvisorLanding = () => {
             Start portfolio analysis
           </Button>
         </Box>
-
-        {/* Target Users */}
-        <Card withBorder radius="md" p="lg" bg="teal.0">
-          <Title order={4} mb="sm">
-            Designed for
-          </Title>
-          <List spacing="xs">
-            <List.Item>Financial institutions and banks</List.Item>
-            <List.Item>Energy Service Companies (ESCOs)</List.Item>
-            <List.Item>Building owners and managers</List.Item>
-            <List.Item>Real estate investment funds</List.Item>
-          </List>
-        </Card>
 
         {/* Features */}
         <Box>

@@ -202,7 +202,7 @@ function renderReading(reading: Reading) {
         text: "—",
         hint:
           reading.cause === "missing-cash-flow"
-            ? "At least one building has no cash flows, for example because its appraisal was skipped, so the portfolio payback cannot be calculated."
+            ? "A building has no cash flows, so portfolio payback cannot be calculated."
             : undefined,
       };
   }

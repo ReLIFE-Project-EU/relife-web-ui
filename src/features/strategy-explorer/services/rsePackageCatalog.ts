@@ -11,22 +11,22 @@ import type { RSEPackageDefinition } from "../types";
 export const RSE_PACKAGES: Record<RSEPackageId, RSEPackageDefinition> = {
   envelope: {
     id: "envelope",
-    label: "Envelope Package",
+    label: "Envelope package",
     measureIds: [...RSE_MVP_PACKAGE_MEASURE_IDS.envelope],
   },
   "systems-heat-pump": {
     id: "systems-heat-pump",
-    label: "Heat Pump Package",
+    label: "Heat pump package",
     measureIds: [...RSE_MVP_PACKAGE_MEASURE_IDS["systems-heat-pump"]],
   },
   "systems-boiler": {
     id: "systems-boiler",
-    label: "Condensing Boiler Package",
+    label: "Condensing boiler package",
     measureIds: [...RSE_MVP_PACKAGE_MEASURE_IDS["systems-boiler"]],
   },
   combined: {
     id: "combined",
-    label: "Combined Package",
+    label: "Combined package",
     measureIds: [...RSE_MVP_PACKAGE_MEASURE_IDS.combined],
   },
 };

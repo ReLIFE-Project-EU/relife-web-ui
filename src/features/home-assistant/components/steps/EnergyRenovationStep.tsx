@@ -169,10 +169,7 @@ export function EnergyRenovationStep() {
   if (!state.estimation) {
     return (
       <Box>
-        <Alert color="yellow" title="No estimation data">
-          Please complete Step 1 first to estimate your building's energy
-          performance.
-        </Alert>
+        <Alert color="yellow">Complete step 1 first.</Alert>
         <StepNavigation
           currentStep={1}
           totalSteps={3}
@@ -192,13 +189,7 @@ export function EnergyRenovationStep() {
         gap="md"
       >
         <Box style={{ flex: 1, minWidth: 0 }}>
-          <Title order={2} mb="xs">
-            Energy Results & Renovation Options
-          </Title>
-          <Text c="dimmed" size="sm">
-            Review your building's current energy performance and select
-            renovation options.
-          </Text>
+          <Title order={2}>Energy results & renovation options</Title>
         </Box>
         <LineageLink scope="hra" />
       </Flex>
@@ -216,11 +207,7 @@ export function EnergyRenovationStep() {
 
       {/* Warning for unsupported measures */}
       {unsupportedSelected.length > 0 && (
-        <Alert
-          color="yellow"
-          icon={<IconInfoCircle size={16} />}
-          title="Limited Simulation Support"
-        >
+        <Alert color="yellow" icon={<IconInfoCircle size={16} />}>
           Excluded from analysis:{" "}
           <Text span fw={700}>
             {unsupportedSelected
@@ -239,9 +226,7 @@ export function EnergyRenovationStep() {
         />
       ) : selectedMeasures.length > 0 ? (
         <Alert color="yellow" icon={<IconInfoCircle size={16} />}>
-          No evaluation options are available from the current selection. Select
-          at least one envelope measure, a supported system upgrade, or a
-          combination of both to continue.
+          Select at least one supported measure to continue.
         </Alert>
       ) : null}
 
@@ -260,7 +245,7 @@ export function EnergyRenovationStep() {
       />
 
       {/* Error display */}
-      <ErrorAlert error={state.error} title="Evaluation Error" />
+      <ErrorAlert error={state.error} title="Evaluation error" />
 
       {/* Navigation */}
       <StepNavigation

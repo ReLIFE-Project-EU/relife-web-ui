@@ -209,8 +209,8 @@ export function FileActions({
         opened={deleteOpened}
         onClose={closeDelete}
         onConfirm={handleConfirmDelete}
-        title="Delete File"
-        message="This will permanently delete the file. This action cannot be undone."
+        title="Delete file"
+        message="Permanently deletes the file."
         itemName={file.originalFilename}
         loading={loading}
       />

@@ -3,7 +3,7 @@
  * Shows the key baseline energy metrics.
  */
 
-import { Box, Card, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import { Card, SimpleGrid, Stack, Title } from "@mantine/core";
 import { useHomeAssistant } from "../../hooks/useHomeAssistant";
 import { formatEnergyPerYear } from "../../utils/formatters";
 import { ConceptMetricCard, ReferenceAdjustedComparisonCard } from "../shared";
@@ -24,14 +24,7 @@ export function EPCDisplay() {
 
       <Card withBorder radius="md" p="lg">
         <Stack gap="lg">
-          <Box>
-            <Title order={3} mb="xs">
-              Energy Overview
-            </Title>
-            <Text size="sm" c="dimmed">
-              Building needs and, when available, estimated system consumption
-            </Text>
-          </Box>
+          <Title order={3}>Energy overview</Title>
 
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             <ConceptMetricCard

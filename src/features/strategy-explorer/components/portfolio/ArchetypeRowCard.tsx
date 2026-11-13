@@ -95,11 +95,11 @@ export function ArchetypeRowCard({
                   ? selectedLabel
                   : `Archetype ${index + 1}`}
               </Text>
-              <Text size="xs" c="dimmed" truncate>
-                {isComplete
-                  ? `ID: ${selectedArchetype.name}`
-                  : `Pick a reference building and how many ${relifeConcepts["modeled-property"].unit} it represents`}
-              </Text>
+              {isComplete ? (
+                <Text size="xs" c="dimmed" truncate>
+                  ID: {selectedArchetype.name}
+                </Text>
+              ) : null}
             </Box>
           </Group>
 

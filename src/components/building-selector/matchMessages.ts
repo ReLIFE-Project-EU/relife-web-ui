@@ -39,5 +39,5 @@ export function buildMatchFallbackText(
 
   return messages.length > 0
     ? messages.join(" ")
-    : "No exact local reference is available for these inputs, so the closest available reference is used.";
+    : "No exact local reference is available, so the closest one is used.";
 }

@@ -52,11 +52,6 @@ export const Home = () => {
               </Title>
             </Box>
 
-            <Text c="dimmed" size="xl" maw={600}>
-              Estimate costs and energy savings for a home, a building
-              portfolio, or representative building stock.
-            </Text>
-
             <Group justify="center" gap="md">
               <Button
                 variant="default"

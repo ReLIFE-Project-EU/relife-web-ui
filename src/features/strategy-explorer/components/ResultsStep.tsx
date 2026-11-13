@@ -4,7 +4,6 @@ import { IconInfoCircle } from "@tabler/icons-react";
 import { relifeConcepts } from "../../../constants/relifeConcepts";
 import { ErrorAlert } from "../../../components/shared/ErrorAlert";
 import { formatNumber } from "../../../utils/formatters";
-import { RSE_REFERENCE_DATA_COST_NOTE } from "../constants";
 import { useStrategyExplorer } from "../hooks/useStrategyExplorer";
 import type { RSEPackageId } from "../types";
 import {
@@ -51,9 +50,7 @@ export function ResultsStep() {
           <Title order={2} mb="xs">
             Results
           </Title>
-          <Text c="dimmed">
-            No results available. Please run the analysis first.
-          </Text>
+          <Text c="dimmed">No results yet. Run the analysis first.</Text>
         </Box>
       </Stack>
     );
@@ -76,7 +73,7 @@ export function ResultsStep() {
     <Stack gap="xl">
       <Box>
         <Title order={2} mb="xs">
-          Strategy Comparison Results
+          Strategy comparison results
         </Title>
         <Text c="dimmed" size="sm">
           How each renovation package performs across your stock of{" "}
@@ -85,7 +82,7 @@ export function ResultsStep() {
         </Text>
       </Box>
 
-      <ErrorAlert error={state.error} title="Analysis Error" />
+      <ErrorAlert error={state.error} title="Analysis error" />
 
       {unavailableCombinations.length > 0 && (
         <UnavailableCombinationsAlert combinations={unavailableCombinations} />
@@ -137,27 +134,19 @@ export function ResultsStep() {
           <EnergyTariffPanel />
 
           <FinancingPanel />
-
-          <Alert
-            color="blue"
-            icon={<IconInfoCircle size={16} />}
-            title="Cost estimates"
-          >
-            {RSE_REFERENCE_DATA_COST_NOTE}
-          </Alert>
         </>
       )}
 
       {!hasRankings && unavailableCombinations.length === 0 && (
         <Alert color="yellow" icon={<IconInfoCircle size={16} />}>
-          No packages could be ranked. Please check your portfolio and package
+          No packages could be ranked. Check your portfolio and package
           selections.
         </Alert>
       )}
 
       <Group justify="flex-start">
         <Button onClick={handleReset} variant="default">
-          Start Over
+          Start over
         </Button>
       </Group>
     </Stack>

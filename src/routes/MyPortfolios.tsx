@@ -18,9 +18,7 @@ export const MyPortfolios = () => {
             <Title order={1}>My Portfolios</Title>
           </div>
           <Text c="dimmed" size="lg" maw={760}>
-            Manage your building data portfolios. Upload CSV files and organize
-            them into reusable workspaces for later analysis in Portfolio
-            Advisor.
+            Upload CSV files into portfolios for analysis in Portfolio Advisor.
           </Text>
         </Stack>
 

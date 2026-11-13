@@ -147,7 +147,7 @@ export function CSVImportPanel({
         <Group justify="space-between">
           <Group>
             <IconFileSpreadsheet size={20} />
-            <Title order={4}>Import from Portfolio</Title>
+            <Title order={4}>Import from portfolio</Title>
           </Group>
           {opened ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
         </Group>
@@ -257,7 +257,7 @@ export function CSVImportPanel({
             <Alert
               color="red"
               icon={<IconAlertCircle size={16} />}
-              title="Import Errors"
+              title="Import errors"
             >
               {importErrors.map((err, i) => (
                 <Text key={i} size="sm">

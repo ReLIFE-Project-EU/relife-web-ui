@@ -61,9 +61,7 @@ export function FinancialDeepDive({
           <div className={classes.emptyTitle}>
             Financial results unavailable
           </div>
-          <Text size="sm">
-            No package-level details available for {selected.label}.
-          </Text>
+          <Text size="sm">No details available for {selected.label}.</Text>
         </div>
       ) : (
         <>

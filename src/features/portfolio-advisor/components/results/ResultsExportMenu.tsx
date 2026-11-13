@@ -72,13 +72,13 @@ export function ResultsExportMenu({
           leftSection={<IconBuilding size={16} />}
           onClick={exportBuildings}
         >
-          Per-building results (CSV)
+          Per-building results
         </Menu.Item>
         <Menu.Item
           leftSection={<IconChartBar size={16} />}
           onClick={exportSummary}
         >
-          Portfolio summary (CSV)
+          Portfolio summary
         </Menu.Item>
       </Menu.Dropdown>
     </Menu>

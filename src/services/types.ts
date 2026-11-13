@@ -169,7 +169,6 @@ export type MeasureCategory = "envelope" | "systems" | "renewable";
 export interface MeasureCategoryInfo {
   id: MeasureCategory;
   label: string;
-  description: string;
 }
 
 /**

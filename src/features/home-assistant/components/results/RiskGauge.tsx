@@ -24,22 +24,21 @@ function getRiskLevel(percentage: number): {
   if (percentage >= 80) {
     return {
       color: "green",
-      label: "Low Risk",
-      description: "Most simulated scenarios end profitably",
+      label: "Low risk",
+      description: "Most simulated outcomes are profitable",
     };
   }
   if (percentage >= 60) {
     return {
       color: "yellow",
-      label: "Moderate Risk",
-      description: "A majority of simulated scenarios end profitably",
+      label: "Moderate risk",
+      description: "More than half of simulated outcomes are profitable",
     };
   }
   return {
     color: "red",
-    label: "Higher Risk",
-    description:
-      "Many simulated scenarios do not end profitably — review the plan",
+    label: "Higher risk",
+    description: "Many simulated outcomes are not profitable",
   };
 }
 

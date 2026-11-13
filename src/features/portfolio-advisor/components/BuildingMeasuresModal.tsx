@@ -90,29 +90,20 @@ function ModalContent({
   return (
     <>
       <Text size="sm" c="dimmed" mb="lg">
-        Select renovation measures for this building. These will override the
-        portfolio-level selection.
+        Overrides the portfolio selection for this building.
       </Text>
 
-      <Alert
-        color={localUnsupportedMeasures.length > 0 ? "yellow" : "blue"}
-        mb="lg"
-      >
-        This workflow can analyze envelope measures, condensing-boiler,
-        air-water heat-pump, and photovoltaic panels.
-        {localUnsupportedMeasures.length > 0 && (
-          <>
-            {" "}
-            The following selected measures are still excluded from analysis:{" "}
-            <Text span fw={700}>
-              {localUnsupportedMeasures
-                .map((measureId) => renovation.getMeasure(measureId)?.name)
-                .join(", ")}
-            </Text>
-            .
-          </>
-        )}
-      </Alert>
+      {localUnsupportedMeasures.length > 0 && (
+        <Alert color="yellow" mb="lg">
+          Excluded from analysis:{" "}
+          <Text span fw={700}>
+            {localUnsupportedMeasures
+              .map((measureId) => renovation.getMeasure(measureId)?.name)
+              .join(", ")}
+          </Text>
+          .
+        </Alert>
+      )}
 
       <Stack gap="md">
         {categorizedMeasures.map(({ cat, measures }) => (
@@ -167,7 +158,7 @@ function ModalContent({
           onClick={handleReset}
           disabled={!hasOverride}
         >
-          Reset to Portfolio Default
+          Reset to portfolio default
         </Button>
         <Group>
           <Button variant="default" onClick={onClose}>

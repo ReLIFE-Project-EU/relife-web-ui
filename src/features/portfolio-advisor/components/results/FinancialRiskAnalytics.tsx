@@ -136,7 +136,7 @@ export function FinancialRiskAnalytics({
   if (!appraised) {
     return (
       <Alert color="gray" variant="light" icon={<IconInfoCircle size={16} />}>
-        Professional risk analytics are not available for this building.
+        Risk analytics are not available for this building.
       </Alert>
     );
   }
@@ -144,21 +144,14 @@ export function FinancialRiskAnalytics({
   if (availableIndicators.length === 0 && !hasProbabilities(probabilities)) {
     return (
       <Alert color="gray" variant="light" icon={<IconInfoCircle size={16} />}>
-        The financial service did not return professional risk distributions for
-        this building.
+        No risk distributions for this building.
       </Alert>
     );
   }
 
   return (
     <Stack gap="lg">
-      <Stack gap="xs">
-        <MetricEyebrow>Professional risk analytics</MetricEyebrow>
-        <Text size="xs" c="dimmed">
-          Monte Carlo ranges and probability outputs from the financial risk
-          assessment.
-        </Text>
-      </Stack>
+      <MetricEyebrow>Risk analytics</MetricEyebrow>
 
       {availableIndicators.length > 0 ? (
         <RiskRangeTable
@@ -291,7 +284,7 @@ function RiskRangeRow({
             size="xs"
             withExplainer={false}
           />
-          <ConceptExplainer conceptId={config.conceptId} professional />
+          <ConceptExplainer conceptId={config.conceptId} />
         </Group>
         <Text
           fz={17}
@@ -321,7 +314,7 @@ function RiskRangeRow({
         <Text size="xs" c="dimmed" style={{ gridColumn: "2 / -1" }}>
           {hasPercentileData(percentiles)
             ? readingHint(reading)
-            : `${concept.label} range was not returned.`}
+            : `${concept.label} range not available.`}
         </Text>
       )}
     </Box>

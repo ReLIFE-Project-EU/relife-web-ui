@@ -106,7 +106,7 @@ export function PortfolioStep() {
 
         return {
           value: archetype.name,
-          label: uncached ? `${label} — no published results yet` : label,
+          label: uncached ? `${label} — no results` : label,
           disabled: uncached,
         };
       })
@@ -167,7 +167,7 @@ export function PortfolioStep() {
 
   const validate = (): RSEPortfolioDefinition | null => {
     if (rows.length === 0) {
-      setValidationError("Please add at least one archetype.");
+      setValidationError("Add at least one archetype.");
       return null;
     }
 
@@ -176,9 +176,7 @@ export function PortfolioStep() {
 
     for (const row of rows) {
       if (!row.country || !row.category || !row.name) {
-        setValidationError(
-          "Please complete the archetype selection for every row.",
-        );
+        setValidationError("Complete the archetype selection for every row.");
         return null;
       }
       if (
@@ -243,12 +241,11 @@ export function PortfolioStep() {
       <Group justify="space-between" align="flex-start" wrap="wrap">
         <Box>
           <Title order={2} mb="xs">
-            Building Portfolio
+            Building portfolio
           </Title>
           <Text c="dimmed" size="sm">
-            Describe your building stock as reference archetypes, each with the
-            number of {relifeConcepts["modeled-property"].unit} it represents.{" "}
-            {relifeConcepts["modeled-property"].description}
+            Add reference archetypes and the number of{" "}
+            {relifeConcepts["modeled-property"].unit} each represents.
           </Text>
         </Box>
         {completedSelections > 0 ? (

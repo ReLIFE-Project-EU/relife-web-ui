@@ -41,16 +41,17 @@ test("homeowner completes the HRA journey with plausible results", async ({
 
   // ── Step 2: Energy & Renovation ───────────────────────────────────────
   // EPC estimation runs a building simulation on the forecasting service.
-  await expect(
-    page.getByRole("heading", { name: "Energy Results & Renovation Options" }),
-  ).toBeVisible({ timeout: 180_000 });
+  const wallInsulation = page.getByRole("button", {
+    name: /wall insulation/i,
+  });
+  await expect(wallInsulation).toBeVisible({ timeout: 180_000 });
 
   // One envelope measure and one system measure.
-  await page.getByRole("button", { name: /Wall Insulation/ }).click();
-  await page.getByRole("button", { name: /Air-Water Heat Pump/ }).click();
+  await wallInsulation.click();
+  await page.getByRole("button", { name: /air-water heat pump/i }).click();
 
   // Select the first two suggested packages; their CAPEX/OPEX are then
-  // auto-estimated from EU reference data. Two packages are required for the
+  // auto-estimated. Two packages are required for the
   // MCDA ranking to run at all — ResultsStep only auto-ranks with at least
   // two eligible scenarios. After a click the button flips to "Remove", so
   // .first() resolves to the next remaining "Select" button.

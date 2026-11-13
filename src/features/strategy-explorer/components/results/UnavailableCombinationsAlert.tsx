@@ -14,14 +14,14 @@ import type { RSEUnavailableReason, RSEWorkflowResult } from "../../types";
 
 /** Skipped appraisals reuse the shared skip labels, as HRA and PRA do. */
 const UNAVAILABLE_REASON_LABELS: Record<RSEUnavailableReason, string> = {
-  [RSE_UNAVAILABLE_REASONS.missingCacheEntry]: "Missing cache entry",
+  [RSE_UNAVAILABLE_REASONS.missingCacheEntry]: "No results",
   [RSE_UNAVAILABLE_REASONS.emptyPortfolio]: "Empty portfolio",
   [RSE_UNAVAILABLE_REASONS.incompleteArchetypeRef]:
     "Incomplete archetype reference",
   [RSE_UNAVAILABLE_REASONS.duplicateArchetype]: "Duplicate archetype",
   [RSE_UNAVAILABLE_REASONS.invalidBuildingCount]: "Invalid property count",
   [RSE_UNAVAILABLE_REASONS.invalidFloorArea]: "Invalid floor area",
-  [RSE_UNAVAILABLE_REASONS.invalidCacheEntry]: "Invalid cache entry",
+  [RSE_UNAVAILABLE_REASONS.invalidCacheEntry]: "Invalid results",
   [RSE_UNAVAILABLE_REASONS.costLookupFailed]: "Cost lookup failed",
   [RSE_UNAVAILABLE_REASONS.nonPositiveEnergySavings]:
     savingsAvailabilityLabel["no-savings"],
@@ -44,10 +44,6 @@ export function UnavailableCombinationsAlert({
       icon={<IconAlertTriangle size={16} />}
       title="Some combinations were excluded"
     >
-      <Text size="sm" mb="sm">
-        The following archetype and package combinations could not be analyzed
-        and are not part of the results:
-      </Text>
       <Stack gap={6}>
         {combinations.map((combo, index) => (
           <Group key={index} gap="xs" wrap="nowrap">

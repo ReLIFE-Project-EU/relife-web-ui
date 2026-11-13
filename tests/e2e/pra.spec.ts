@@ -41,7 +41,7 @@ test("portfolio manager completes the PRA journey with plausible results", async
       chooseLabel: "Select",
     });
     await drawer
-      .getByRole("button", { name: "Add Building", exact: true })
+      .getByRole("button", { name: "Add building", exact: true })
       .click();
     await expect(drawer).toBeHidden();
   }
@@ -54,23 +54,17 @@ test("portfolio manager completes the PRA journey with plausible results", async
     .click();
 
   // ── Step 2: Energy & Renovation Options ───────────────────────────────
-  await expect(
-    page.getByRole("heading", { name: "Energy & Renovation Options" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: /Wall Insulation/ }).click();
-  await page.getByRole("button", { name: /Air-Water Heat Pump/ }).click();
+  await page.getByRole("button", { name: /wall insulation/i }).click();
+  await page.getByRole("button", { name: /air-water heat pump/i }).click();
   await page.getByRole("button", { name: "Configure financing" }).click();
 
   // ── Step 3: Financing (equity is preselected) ─────────────────────────
-  await expect(
-    page.getByRole("heading", { name: "Financing Configuration" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Analyse portfolio" }).click();
+  await page.getByRole("button", { name: "Analyze portfolio" }).click();
 
   // ── Step 4: Results ───────────────────────────────────────────────────
-  await expect(
-    page.getByRole("heading", { name: "Portfolio Analysis Results" }),
-  ).toBeVisible({ timeout: 720_000 });
+  await expect(page.getByRole("tab").first()).toBeVisible({
+    timeout: 720_000,
+  });
 
   // ── Audit trace gates + artifact handoff ──────────────────────────────
   const events = await captureRunArtifacts(page, "pra");

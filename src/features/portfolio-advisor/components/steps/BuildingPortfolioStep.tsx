@@ -177,12 +177,10 @@ export function BuildingPortfolioStep() {
       {/* Header */}
       <Box>
         <Title order={2} mb="xs">
-          Building Portfolio
+          Building portfolio
         </Title>
         <Text c="dimmed" size="sm">
-          Import buildings from a CSV file or add them manually. Each building
-          is matched to an archetype that determines defaults for energy use and
-          renovation cost.
+          Import buildings from a CSV file or add them manually.
         </Text>
       </Box>
 
@@ -204,10 +202,6 @@ export function BuildingPortfolioStep() {
             <Stack align="center" gap="xs">
               <IconBuilding size={36} color="var(--mantine-color-gray-5)" />
               <Text fw={600}>No buildings yet</Text>
-              <Text size="sm" c="dimmed" ta="center" maw={420}>
-                Use the CSV importer above to upload a portfolio file, or add
-                buildings one by one.
-              </Text>
               <Button
                 mt="xs"
                 leftSection={<IconPlus size={16} />}
@@ -387,7 +381,7 @@ export function BuildingPortfolioStep() {
                         variant="light"
                         color={building.source === "csv" ? "blue" : "green"}
                       >
-                        {building.source}
+                        {building.source === "csv" ? "CSV" : "Manual"}
                       </Badge>
                     </Table.Td>
                     <Table.Td>

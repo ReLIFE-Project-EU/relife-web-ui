@@ -75,9 +75,8 @@ const STRATEGY_RULES: Record<ArchetypeMatchStrategy, StrategyRule> = {
   },
   [ArchetypeMatchStrategy.SELECTED_NOT_FOUND]: {
     level: "unusable",
-    message:
-      "The user-selected archetype is no longer present in the catalogue.",
-    remediation: () => "Re-select an archetype from the current catalogue.",
+    message: "The user-selected archetype is no longer present in the catalog.",
+    remediation: () => "Re-select an archetype from the current catalog.",
   },
 };
 

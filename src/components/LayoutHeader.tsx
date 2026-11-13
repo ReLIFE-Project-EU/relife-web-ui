@@ -150,7 +150,7 @@ export const LayoutHeader = ({
                     leftSection={<IconLogin size={20} stroke={1.5} />}
                     visibleFrom="sm"
                   >
-                    Sign In
+                    Sign in
                   </Button>
                   <ActionIcon
                     disabled={isLoading}
@@ -158,7 +158,7 @@ export const LayoutHeader = ({
                     size="lg"
                     onClick={handleLogin}
                     hiddenFrom="sm"
-                    aria-label="Sign In"
+                    aria-label="Sign in"
                   >
                     <IconLogin size={20} stroke={1.5} />
                   </ActionIcon>

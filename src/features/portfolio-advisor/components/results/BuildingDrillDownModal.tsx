@@ -310,10 +310,10 @@ export function BuildingDrillDownModal({
                 >
                   {result.costSource.capexFromLookup &&
                   result.costSource.opexFromLookup
-                    ? "CAPEX and annual maintenance cost were estimated from EU reference data."
+                    ? "CAPEX and annual maintenance cost were auto-estimated."
                     : result.costSource.capexFromLookup
-                      ? "CAPEX was estimated from EU reference data."
-                      : "Annual maintenance cost was estimated from EU reference data."}
+                      ? "CAPEX was auto-estimated."
+                      : "Annual maintenance cost was auto-estimated."}
                 </Alert>
               )}
 
@@ -332,7 +332,7 @@ export function BuildingDrillDownModal({
                   variant="light"
                   icon={<IconInfoCircle size={16} />}
                 >
-                  Detailed cash-flow timeline not available for this building.
+                  Cash-flow timeline not available for this building.
                 </Alert>
               ) : null}
             </>

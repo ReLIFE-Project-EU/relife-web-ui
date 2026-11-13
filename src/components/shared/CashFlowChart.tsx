@@ -135,10 +135,6 @@ export function CashFlowChart({
         <Group justify="space-between" align="flex-start">
           <div>
             <Text fw={600}>{title}</Text>
-            <Text size="sm" c="dimmed">
-              Annual inflows, outflows, and cumulative position across the
-              project lifetime.
-            </Text>
             {scenarioLabel ? (
               <Text size="xs" c="dimmed" mt={4}>
                 Showing package: {scenarioLabel}
@@ -147,7 +143,7 @@ export function CashFlowChart({
           </div>
           {projectLifetime ? (
             <Text size="sm" c="dimmed">
-              Horizon: {projectLifetime} years
+              Project lifetime: {projectLifetime} years
             </Text>
           ) : null}
         </Group>

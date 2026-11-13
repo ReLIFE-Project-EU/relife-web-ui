@@ -158,8 +158,7 @@ export function ArchetypeDetailsPanel({
           </SimpleGrid>
         ) : loadFailed ? (
           <Text size="xs" c="dimmed">
-            Characteristic details could not be loaded. The selected archetype
-            can still be used for analysis.
+            Details could not be loaded. The archetype can still be analyzed.
           </Text>
         ) : null}
       </Stack>

@@ -27,7 +27,7 @@ export function QuotaIndicator() {
           <Group gap="xs">
             <IconDatabase size={16} color="var(--mantine-color-dimmed)" />
             <Text size="sm" c="dimmed">
-              Storage Used
+              Storage used
             </Text>
           </Group>
           <Text size="sm" fw={500}>
