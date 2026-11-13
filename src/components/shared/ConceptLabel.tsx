@@ -5,7 +5,6 @@ import { ConceptExplainer } from "./ConceptExplainer";
 
 interface ConceptLabelProps {
   conceptId: ConceptId;
-  descriptionVisible?: boolean;
   withExplainer?: boolean;
   /** Off where the unit is shown elsewhere, such as beside a value. */
   withUnit?: boolean;
@@ -14,7 +13,6 @@ interface ConceptLabelProps {
 
 export function ConceptLabel({
   conceptId,
-  descriptionVisible = false,
   withExplainer = true,
   withUnit = true,
   size = "sm",
@@ -38,12 +36,6 @@ export function ConceptLabel({
           </>
         ) : null}
       </Text>
-      {descriptionVisible ? (
-        <Text size="xs" c="dimmed">
-          {concept.description}
-          {concept.caveat ? ` ${concept.caveat}` : ""}
-        </Text>
-      ) : null}
     </Stack>
   );
 }

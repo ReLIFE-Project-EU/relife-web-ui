@@ -1,45 +1,37 @@
 interface LongRunningRequestDefinition {
   method: string;
   pattern: RegExp;
-  message: string;
 }
 
 const LONG_RUNNING_REQUESTS: LongRunningRequestDefinition[] = [
   {
     method: "POST",
-    pattern: /^\/forecasting\/ecm_application/,
     // Covers both the baseline estimate and the renovation scenarios.
-    message: "Running building energy simulation",
+    pattern: /^\/forecasting\/ecm_application/,
   },
   {
     method: "POST",
     pattern: /^\/financial\/risk-assessment$/,
-    message: "Running financial risk assessment",
   },
   {
     method: "POST",
     pattern: /^\/technical\/technical\/ee$/,
-    message: "Calculating baseline energy performance",
   },
   {
     method: "POST",
     pattern: /^\/technical\/technical\/sei$/,
-    message: "Calculating savings and efficiency impact",
   },
   {
     method: "POST",
     pattern: /^\/technical\/technical\/uc$/,
-    message: "Calculating energy use and consumption profile",
   },
   {
     method: "POST",
     pattern: /^\/technical\/technical\/fv$/,
-    message: "Calculating financial value indicators",
   },
   {
     method: "POST",
     pattern: /^\/technical\/financial\/rei$/,
-    message: "Calculating renovation impact indicators",
   },
 ];
 
@@ -47,19 +39,10 @@ function normalizeMethod(method: string): string {
   return method.toUpperCase();
 }
 
-export function getLongRunningRequestMessage(
-  method: string,
-  path: string,
-): string | null {
+export function isLongRunningRequest(method: string, path: string): boolean {
   const normalizedMethod = normalizeMethod(method);
-  const matchedRequest = LONG_RUNNING_REQUESTS.find(
+  return LONG_RUNNING_REQUESTS.some(
     (request) =>
       request.method === normalizedMethod && request.pattern.test(path),
   );
-
-  return matchedRequest?.message || null;
-}
-
-export function isLongRunningRequest(method: string, path: string): boolean {
-  return getLongRunningRequestMessage(method, path) !== null;
 }

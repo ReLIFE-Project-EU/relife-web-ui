@@ -14,7 +14,6 @@ interface ConceptMetricCardProps {
   /** Set when `value` is a bare number, so the concept's unit follows it. */
   withUnit?: boolean;
   valueColor?: MantineColor;
-  descriptionVisible?: boolean;
   variant?: "default" | "highlight";
   /**
    * Qualifier such as "Total" or "Portfolio". Rendered as an eyebrow above the
@@ -30,7 +29,6 @@ export function ConceptMetricCard({
   value,
   withUnit = false,
   valueColor,
-  descriptionVisible = false,
   variant = "default",
   prefix,
   footer,
@@ -40,12 +38,7 @@ export function ConceptMetricCard({
       label={
         // The unit sits beside the value, never in the label, so the two
         // cannot disagree and the label stays on one line.
-        <ConceptLabel
-          conceptId={conceptId}
-          descriptionVisible={descriptionVisible}
-          withUnit={false}
-          size="xs"
-        />
+        <ConceptLabel conceptId={conceptId} withUnit={false} size="xs" />
       }
       value={value}
       unit={withUnit ? relifeConcepts[conceptId].unit : undefined}
