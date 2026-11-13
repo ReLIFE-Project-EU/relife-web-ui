@@ -1,26 +1,30 @@
 import { EnergyTariffPanel as SharedEnergyTariffPanel } from "../../../../components/shared/EnergyTariffPanel";
 import { useRSEWorkflow } from "../../hooks/useRSEWorkflow";
 import { useStrategyExplorer } from "../../hooks/useStrategyExplorer";
+import type { EnergyTariffOverrides } from "../../../../services/energyTariffService";
 
 export function EnergyTariffPanel() {
-  const { state, dispatch, gasTariff } = useStrategyExplorer();
+  const { state, dispatch, gasTariff, electricityTariff } =
+    useStrategyExplorer();
   const { run, isRunning } = useRSEWorkflow();
 
-  const handleApply = async (gasTariffEurPerKwh: number) => {
-    dispatch({ type: "SET_GAS_TARIFF", gasTariffEurPerKwh });
-    await run({ gasTariffEurPerKwh });
-  };
-
-  const handleReset = async () => {
-    dispatch({ type: "RESET_GAS_TARIFF" });
-    await run({ gasTariffEurPerKwh: gasTariff.reference.eurPerKwh });
+  const handleApply = async (tariffs: EnergyTariffOverrides) => {
+    const gasTariffEurPerKwh =
+      tariffs.gasTariffEurPerKwh ?? gasTariff.reference.eurPerKwh;
+    const electricityTariffEurPerKwh =
+      tariffs.electricityTariffEurPerKwh ??
+      electricityTariff.reference.eurPerKwh;
+    if (gasTariffEurPerKwh === null || electricityTariffEurPerKwh === null)
+      return;
+    dispatch({ type: "SET_ENERGY_TARIFFS", ...tariffs });
+    await run({ gasTariffEurPerKwh, electricityTariffEurPerKwh });
   };
 
   return (
     <SharedEnergyTariffPanel
       gasTariff={gasTariff}
-      onApplyGasTariff={handleApply}
-      onResetGasTariff={handleReset}
+      electricityTariff={electricityTariff}
+      onApplyTariffs={handleApply}
       isApplying={isRunning}
       canApply={
         state.goal !== null &&
@@ -28,7 +32,6 @@ export function EnergyTariffPanel() {
         state.packageIds.length > 0
       }
       applyLabel="Apply and recalculate"
-      applyingLabel="Recalculating financial indicators across your portfolio..."
     />
   );
 }

@@ -1,7 +1,6 @@
 import { describe, expect, test } from "vitest";
 
 import {
-  FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
   computeCarrierAnnualCostEur,
   computeCarrierAnnualSavingsEur,
   computeCarrierFinancialEnergySavings,
@@ -12,7 +11,7 @@ import {
 } from "../../../src/services/carrierSavingsService";
 
 const gasTariff = 0.115;
-const elecRef = FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH;
+const elecRef = 0.3;
 
 describe("carrierSavingsService", () => {
   test("values gas and grid deltas separately", () => {

@@ -11,6 +11,7 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import { StepNavigation } from "../../../components/shared/StepNavigation";
+import { EnergyTariffPanel } from "../../../components/shared/EnergyTariffPanel";
 import { RSE_PACKAGE_IDS } from "../constants";
 import {
   useRSEPackages,
@@ -23,9 +24,10 @@ import { RSE_MEASURE_LABELS } from "./results/rseResultsVm";
 import classes from "./StrategySteps.module.css";
 
 export function PackagesStep() {
-  const { state, dispatch } = useStrategyExplorer();
+  const { state, dispatch, gasTariff, electricityTariff } =
+    useStrategyExplorer();
   const selectedPackages = useRSEPackages();
-  const { run, isRunning, isGasTariffLoading } = useRSEWorkflow();
+  const { run, isRunning, areTariffsReady } = useRSEWorkflow();
 
   const togglePackage = (packageId: RSEPackageId) => {
     const ids = selectedPackages.includes(packageId)
@@ -39,6 +41,7 @@ export function PackagesStep() {
   };
 
   const handleRunAnalysis = async () => {
+    if (!areTariffsReady) return;
     await run();
     if (!state.error) {
       dispatch({ type: "SET_STEP", step: 3 });
@@ -102,6 +105,14 @@ export function PackagesStep() {
         })}
       </SimpleGrid>
 
+      <EnergyTariffPanel
+        gasTariff={gasTariff}
+        electricityTariff={electricityTariff}
+        onApplyTariffs={(tariffs) =>
+          dispatch({ type: "SET_ENERGY_TARIFFS", ...tariffs })
+        }
+        isApplying={isRunning}
+      />
       <StepNavigation
         currentStep={2}
         totalSteps={4}
@@ -110,7 +121,7 @@ export function PackagesStep() {
         onPrimaryAction={handleRunAnalysis}
         primaryActionLabel="Run Analysis"
         isLoading={isRunning}
-        primaryDisabled={selectedPackages.length === 0 || isGasTariffLoading}
+        primaryDisabled={selectedPackages.length === 0 || !areTariffsReady}
       />
     </Stack>
   );

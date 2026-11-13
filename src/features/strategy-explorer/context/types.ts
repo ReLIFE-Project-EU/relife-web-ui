@@ -1,3 +1,4 @@
+import type { EnergyTariffOverrides } from "../../../services/energyTariffService";
 import type { FundingOptions } from "../../../types/renovation";
 import type {
   RSEArchetypeRef,
@@ -14,6 +15,7 @@ export interface StrategyExplorerState {
   packageIds: RSEPackageId[];
   /** Null follows the reference gas price; a number is the user’s value. */
   gasTariffOverrideEurPerKwh: number | null;
+  electricityTariffOverrideEurPerKwh: number | null;
   /** Applied portfolio-wide financing scenario. */
   funding: FundingOptions;
   availableArchetypes: RSEArchetypeRef[];
@@ -27,8 +29,7 @@ export type StrategyExplorerAction =
   | { type: "SET_PORTFOLIO"; portfolio: RSEPortfolioDefinition }
   | { type: "SET_GOAL"; goal: RSERenovationGoal }
   | { type: "SET_PACKAGES"; packageIds: RSEPackageId[] }
-  | { type: "SET_GAS_TARIFF"; gasTariffEurPerKwh: number }
-  | { type: "RESET_GAS_TARIFF" }
+  | ({ type: "SET_ENERGY_TARIFFS" } & EnergyTariffOverrides)
   | { type: "SET_FUNDING"; funding: FundingOptions }
   | { type: "SET_AVAILABLE_ARCHETYPES"; archetypes: RSEArchetypeRef[] }
   | { type: "START_WORKFLOW" }

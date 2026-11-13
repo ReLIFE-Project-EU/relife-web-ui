@@ -9,7 +9,6 @@ import type {
 import type { CalculateFinancialScenariosRequest } from "../../../src/services/types";
 import type { RiskAssessmentRequest } from "../../../src/types/financial";
 import { APIError } from "../../../src/types/common";
-import { FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH } from "../../../src/services/carrierSavingsService";
 
 const { mockCalculateARV, mockAssessRisk } = vi.hoisted(() => ({
   mockCalculateARV: vi.fn(),
@@ -152,6 +151,7 @@ const packageFinancialInputs: PackageFinancialInputsById = {
 };
 
 const scenarioRequest: CalculateFinancialScenariosRequest = {
+  financialAssumptions: { electricityTariffEurPerKwh: 0.3 },
   scenarios: [currentScenario, renovatedScenario],
   fundingOptions: selfFundedOptions,
   floorArea: 100,
@@ -266,7 +266,10 @@ describe("FinancialService", () => {
     await service.calculateForAllScenarios({
       ...scenarioRequest,
       building: { ...mockBuilding, projectLifetime: 25 },
-      financialAssumptions: { gasTariffEurPerKwh: 0.2 },
+      financialAssumptions: {
+        gasTariffEurPerKwh: 0.2,
+        electricityTariffEurPerKwh: 0.3,
+      },
       scenarios: [currentScenario, systemOnlyScenario],
       packageFinancialInputs: {
         "scenario-condensing-boiler": {
@@ -279,10 +282,9 @@ describe("FinancialService", () => {
     expect(mockAssessRisk).toHaveBeenCalledWith(
       expect.objectContaining({
         project_lifetime: 25,
+        electricity_tariff_eur_per_kwh: 0.3,
         annual_energy_savings: expect.closeTo(
-          ((1000 / 0.9) * 0.2 +
-            1000 * FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH) /
-            FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
+          ((1000 / 0.9) * 0.2 + 1000 * 0.3) / 0.3,
           6,
         ),
       }),

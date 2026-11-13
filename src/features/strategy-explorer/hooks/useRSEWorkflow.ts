@@ -6,16 +6,24 @@ import type { RSEWorkflowRequest } from "../types";
 import { useStrategyExplorer } from "./useStrategyExplorer";
 
 export function useRSEWorkflow() {
-  const { state, dispatch, gasTariff, setWorkflowStage } =
+  const { state, dispatch, gasTariff, electricityTariff, setWorkflowStage } =
     useStrategyExplorer();
 
   const run = useCallback(
     async (options?: {
       gasTariffEurPerKwh?: number;
+      electricityTariffEurPerKwh?: number;
       funding?: FundingOptions;
     }) => {
+      const gasTariffEurPerKwh =
+        options?.gasTariffEurPerKwh ?? gasTariff.eurPerKwh;
+      const electricityTariffEurPerKwh =
+        options?.electricityTariffEurPerKwh ?? electricityTariff.eurPerKwh;
       if (
         gasTariff.isLoading ||
+        electricityTariff.isLoading ||
+        gasTariffEurPerKwh === null ||
+        electricityTariffEurPerKwh === null ||
         !state.goal ||
         state.portfolio.selections.length === 0 ||
         state.packageIds.length === 0
@@ -36,9 +44,10 @@ export function useRSEWorkflow() {
               options?.funding ??
               state.funding ??
               RSE_FINANCIAL_DEFAULTS.funding,
-            gasTariffEurPerKwh:
-              options?.gasTariffEurPerKwh ?? gasTariff.eurPerKwh,
+            gasTariffEurPerKwh,
             gasTariffReference: gasTariff.reference,
+            electricityTariffEurPerKwh,
+            electricityTariffReference: electricityTariff.reference,
           },
         };
 
@@ -57,6 +66,7 @@ export function useRSEWorkflow() {
       state.portfolio,
       state.packageIds,
       gasTariff,
+      electricityTariff,
       state.funding,
       dispatch,
       setWorkflowStage,
@@ -66,6 +76,10 @@ export function useRSEWorkflow() {
   return {
     run,
     isRunning: state.isRunningWorkflow,
-    isGasTariffLoading: gasTariff.isLoading,
+    areTariffsReady:
+      !gasTariff.isLoading &&
+      !electricityTariff.isLoading &&
+      gasTariff.eurPerKwh !== null &&
+      electricityTariff.eurPerKwh !== null,
   };
 }

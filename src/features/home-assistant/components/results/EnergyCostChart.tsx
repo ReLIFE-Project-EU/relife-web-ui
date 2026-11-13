@@ -13,10 +13,7 @@
 
 import { Group, Progress, Stack, Text } from "@mantine/core";
 import { IconChartBar } from "@tabler/icons-react";
-import {
-  computeCarrierAnnualCostEur,
-  FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
-} from "../../../../services/carrierSavingsService";
+import { computeCarrierAnnualCostEur } from "../../../../services/carrierSavingsService";
 import { getScenarioColor } from "../../utils/colorUtils";
 import { formatApproxCurrency } from "../../utils/formatters";
 import type { RenovationScenario } from "../../context/types";
@@ -30,25 +27,29 @@ interface EnergyCostChartProps {
   /** Packages in rank order. */
   rankedScenarios: RenovationScenario[];
   /** User-adjustable gas tariff from HRA state. */
-  gasTariffEurPerKwh: number;
+  gasTariffEurPerKwh: number | null;
+  electricityTariffEurPerKwh: number | null;
 }
 
 export function EnergyCostChart({
   current,
   rankedScenarios,
   gasTariffEurPerKwh,
+  electricityTariffEurPerKwh,
 }: EnergyCostChartProps) {
-  const tariffs = {
-    gasTariffEurPerKwh,
-    electricityReferencePriceEurPerKwh:
-      FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
-  };
+  const tariffs =
+    gasTariffEurPerKwh !== null && electricityTariffEurPerKwh !== null
+      ? {
+          gasTariffEurPerKwh,
+          electricityReferencePriceEurPerKwh: electricityTariffEurPerKwh,
+        }
+      : null;
 
   const bars = [
     ...(current ? [{ ...current, label: "Today" }] : []),
     ...rankedScenarios,
   ].flatMap((scenario) =>
-    scenario.carrierBreakdown
+    scenario.carrierBreakdown && tariffs
       ? [
           {
             id: scenario.id,

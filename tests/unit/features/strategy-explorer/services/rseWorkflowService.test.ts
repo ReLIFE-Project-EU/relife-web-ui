@@ -41,6 +41,7 @@ function makeRequest(
       projectLifetimeYears: 20,
       funding: DEFAULT_FUNDING_OPTIONS,
       gasTariffEurPerKwh: 0.115,
+      electricityTariffEurPerKwh: 0.3,
     },
   };
 }

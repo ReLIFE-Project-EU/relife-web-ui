@@ -1,8 +1,22 @@
 import { expect, test } from "vitest";
-import { pickGasReference } from "../../../src/services/gasTariffService";
+import { pickTariffReference } from "../../../src/services/energyTariffService";
+
+test("missing or unreviewed electricity data produces no invented price", () => {
+  const reference = pickTariffReference(
+    "electricity",
+    [
+      { geo: "ES", period: "2026-S1", value: 0.3 },
+      { geo: "EU27_2020", period: "2026-S1", value: null },
+    ],
+    [{ geo: "ES", period: "2026-S1", status: "open" }],
+    ["Spain"],
+  );
+  expect(reference.eurPerKwh).toBeNull();
+});
 
 test("reference gas price skips half-years awaiting review or rejected", () => {
-  const reference = pickGasReference(
+  const reference = pickTariffReference(
+    "gas",
     [
       { geo: "ES", period: "2026-S2", value: 0.8 },
       { geo: "ES", period: "2026-S1", value: 0.7 },
@@ -24,7 +38,8 @@ test("reference gas price skips half-years awaiting review or rejected", () => {
 });
 
 test("reference gas price uses the EU average for buildings in several countries", () => {
-  const reference = pickGasReference(
+  const reference = pickTariffReference(
+    "gas",
     [
       { geo: "ES", period: "2026-S1", value: 0.0787 },
       { geo: "EU27_2020", period: "2026-S1", value: 0.1103 },
@@ -40,7 +55,8 @@ test("reference gas price uses the EU average for buildings in several countries
 });
 
 test("reference gas price uses the EU average for a country with no price", () => {
-  const reference = pickGasReference(
+  const reference = pickTariffReference(
+    "gas",
     [
       { geo: "CY", period: "2026-S1", value: null },
       { geo: "EU27_2020", period: "2026-S1", value: 0.1103 },

@@ -111,6 +111,9 @@ export interface RiskAssessmentRequest {
   /** Electricity-equivalent annual savings in kWh (> 0) for the current scalar API contract. */
   annual_energy_savings: number;
 
+  /** Optional positive first-year median electricity price (EUR/kWh). Omitted/null keeps the model default. */
+  electricity_tariff_eur_per_kwh?: number | null;
+
   /**
    * Annual maintenance/operational cost in euros (>= 0). Optional: omit to have
    * it computed server-side from `country` + `renovation_actions`.

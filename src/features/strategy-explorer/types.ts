@@ -6,7 +6,7 @@ import type {
 import type { PooledPayback } from "../../utils/financialCalculations";
 import type { DeliveredEnergyCarrierBreakdown } from "../../types/energy";
 import type { SimulatedBuilding } from "../../services/simulatedBuilding";
-import type { GasReference } from "../../services/gasTariffService";
+import type { TariffReference } from "../../services/energyTariffService";
 import type {
   RSE_CACHE_PAYLOAD_SCHEMA_VERSION,
   RSE_MVP_THERMAL_EMISSION_SOURCE,
@@ -197,7 +197,9 @@ export interface RSEFinancialAssumptions {
   funding: FundingOptions;
   /** User-editable gas tariff (EUR/kWh) for carrier-aware savings valuation. */
   gasTariffEurPerKwh: number;
-  gasTariffReference?: GasReference;
+  gasTariffReference?: TariffReference;
+  electricityTariffEurPerKwh: number;
+  electricityTariffReference?: TariffReference;
 }
 
 export interface RSEFinancialResult {

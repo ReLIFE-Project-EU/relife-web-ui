@@ -7,6 +7,7 @@ export const initialState: StrategyExplorerState = {
   goal: null,
   packageIds: [...RSE_PACKAGE_IDS],
   gasTariffOverrideEurPerKwh: null,
+  electricityTariffOverrideEurPerKwh: null,
   funding: RSE_FINANCIAL_DEFAULTS.funding,
   availableArchetypes: [],
   workflowResult: null,
@@ -47,17 +48,11 @@ export function strategyExplorerReducer(
         ...clearedWorkflowResults,
       };
 
-    case "RESET_GAS_TARIFF":
-      return {
-        ...state,
-        gasTariffOverrideEurPerKwh: null,
-        ...clearedWorkflowResults,
-      };
-
-    case "SET_GAS_TARIFF":
+    case "SET_ENERGY_TARIFFS":
       return {
         ...state,
         gasTariffOverrideEurPerKwh: action.gasTariffEurPerKwh,
+        electricityTariffOverrideEurPerKwh: action.electricityTariffEurPerKwh,
         ...clearedWorkflowResults,
       };
 

@@ -91,6 +91,7 @@ function makeCarrierInput(overrides?: {
   gridBaseline?: number;
   gridRenovated?: number;
   gasTariffEurPerKwh?: number;
+  electricityTariffEurPerKwh?: number;
 }) {
   const gasBaseline = overrides?.gasBaseline ?? 12_000;
   const gasRenovated = overrides?.gasRenovated ?? 8_000;
@@ -117,6 +118,7 @@ function makeCarrierInput(overrides?: {
       },
     },
     financialAssumptions: {
+      electricityTariffEurPerKwh: overrides?.electricityTariffEurPerKwh ?? 0.3,
       projectLifetimeYears: 20,
       funding: DEFAULT_FUNDING_OPTIONS,
       gasTariffEurPerKwh:
@@ -283,7 +285,10 @@ describe("computeFinancials", () => {
   });
 
   test("appraises carrier savings at professional output level and preserves the result", async () => {
-    const input = makeCarrierInput({ gasTariffEurPerKwh: 0.2 });
+    const input = makeCarrierInput({
+      gasTariffEurPerKwh: 0.2,
+      electricityTariffEurPerKwh: 0.3,
+    });
     const result = await computeFinancials(input);
     const [request] = mockAssessRisk.mock.calls[1];
 
@@ -292,7 +297,8 @@ describe("computeFinancials", () => {
       output_level: "professional",
       project_lifetime: 20,
       schemes: [{ scheme_type: "equity" }],
-      annual_energy_savings: expect.closeTo(((4000 / 0.9) * 0.2) / 0.246, 5),
+      electricity_tariff_eur_per_kwh: 0.3,
+      annual_energy_savings: expect.closeTo(((4000 / 0.9) * 0.2) / 0.3, 5),
     });
     expect(result).toMatchObject({
       archetype: input.archetype,
@@ -333,6 +339,7 @@ describe("computeFinancials", () => {
           },
         },
         gasTariffEurPerKwh: 0.115,
+        electricityTariffEurPerKwh: 0.3,
       },
     });
 
@@ -362,6 +369,7 @@ describe("computeFinancials", () => {
           },
         },
         gasTariffEurPerKwh: 0.115,
+        electricityTariffEurPerKwh: 0.3,
       },
     });
 

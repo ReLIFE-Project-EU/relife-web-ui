@@ -12,7 +12,6 @@ vi.mock("../../../src/api", () => ({
 
 import {
   ENERGY_TARIFF_DEFAULTS,
-  FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
   NATURAL_GAS_NET_PER_GROSS_KWH,
 } from "../../../src/services/carrierSavingsService";
 import {
@@ -70,6 +69,7 @@ const baseInput: PackageAppraisalInput = {
   baselineCarriers: { naturalGasKwh: 10000, gridElectricityKwh: 1000 },
   packageCarriers: { naturalGasKwh: 6000, gridElectricityKwh: 1000 },
   gasTariffEurPerKwh: ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
+  electricityTariffEurPerKwh: 0.3,
   outputLevel: "private",
 };
 
@@ -92,10 +92,13 @@ describe("appraisePackage", () => {
     expect(mockAssessRisk).toHaveBeenCalledWith({
       capex: 10000,
       annual_maintenance_cost: 300,
-      annual_energy_savings:
+      annual_energy_savings: expect.closeTo(
         ((4000 / NATURAL_GAS_NET_PER_GROSS_KWH) *
           ENERGY_TARIFF_DEFAULTS.gasEurPerKwh) /
-        FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
+          baseInput.electricityTariffEurPerKwh,
+        8,
+      ),
+      electricity_tariff_eur_per_kwh: baseInput.electricityTariffEurPerKwh,
       project_lifetime: 20,
       output_level: "private",
       schemes: [{ scheme_type: "equity" }],
@@ -139,6 +142,33 @@ describe("appraisePackage", () => {
     );
     expect(result.effectiveCapex).toBe(8000);
   });
+
+  test.each([
+    [
+      "gas only",
+      { naturalGasKwh: 6000, gridElectricityKwh: 1000 },
+      (4000 / NATURAL_GAS_NET_PER_GROSS_KWH) * baseInput.gasTariffEurPerKwh,
+    ],
+    ["electricity only", { naturalGasKwh: 10000, gridElectricityKwh: 0 }, 300],
+    [
+      "mixed fuels",
+      { naturalGasKwh: 6000, gridElectricityKwh: 2000 },
+      (4000 / NATURAL_GAS_NET_PER_GROSS_KWH) * baseInput.gasTariffEurPerKwh -
+        300,
+    ],
+  ])(
+    "uses one electricity price for %s valuation, conversion and the API",
+    async (_, packageCarriers, euros) => {
+      await appraisePackage({
+        ...baseInput,
+        packageCarriers,
+        electricityTariffEurPerKwh: 0.3,
+      });
+      const [request] = mockAssessRisk.mock.calls[0];
+      expect(request.electricity_tariff_eur_per_kwh).toBe(0.3);
+      expect(request.annual_energy_savings * 0.3).toBeCloseTo(euros, 8);
+    },
+  );
 
   test.each<[string, Partial<PackageAppraisalInput>, string]>([
     [

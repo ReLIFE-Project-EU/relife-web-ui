@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Alert,
   Badge,
   Button,
   Card,
@@ -8,40 +9,32 @@ import {
   SimpleGrid,
   Stack,
   Text,
-  TextInput,
   ThemeIcon,
   Title,
 } from "@mantine/core";
-import { IconBolt, IconFlame, IconLock } from "@tabler/icons-react";
-import { FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH } from "../../services/carrierSavingsService";
+import { IconBolt, IconFlame } from "@tabler/icons-react";
 import {
-  gasTariffDescription,
-  type GasTariff,
-} from "../../services/gasTariffService";
-import { relifeConcepts } from "../../constants/relifeConcepts";
-import {
-  browserNumberSeparators,
-  formatDecimal,
-  formatFixed,
-} from "../../utils/formatters";
-
-const electricityDisplayValue = `${formatDecimal(FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH)} €/kWh`;
+  tariffDescription,
+  type EnergyTariff,
+  type EnergyTariffOverrides,
+} from "../../services/energyTariffService";
+import { ConceptLabel } from "./ConceptLabel";
+import { browserNumberSeparators } from "../../utils/formatters";
 
 interface EnergyTariffPanelProps {
-  gasTariff: GasTariff;
-  onApplyGasTariff: (value: number) => void | Promise<void>;
-  onResetGasTariff: () => void | Promise<void>;
+  gasTariff: EnergyTariff;
+  electricityTariff: EnergyTariff;
+  onApplyTariffs: (tariffs: EnergyTariffOverrides) => void | Promise<void>;
   isApplying?: boolean;
   canApply?: boolean;
   applyLabel?: string;
-  applyingLabel?: string;
 }
 
 export function EnergyTariffPanel(props: EnergyTariffPanelProps) {
-  const { gasTariff } = props;
+  const { gasTariff, electricityTariff } = props;
   return (
     <EnergyTariffForm
-      key={`${gasTariff.eurPerKwh}:${gasTariff.reference.eurPerKwh}:${gasTariff.isUserValue}`}
+      key={`${gasTariff.eurPerKwh}:${gasTariff.reference.eurPerKwh}:${gasTariff.isUserValue}:${electricityTariff.eurPerKwh}:${electricityTariff.isUserValue}`}
       {...props}
     />
   );
@@ -49,66 +42,76 @@ export function EnergyTariffPanel(props: EnergyTariffPanelProps) {
 
 function EnergyTariffForm({
   gasTariff,
-  onApplyGasTariff,
-  onResetGasTariff,
+  electricityTariff,
+  onApplyTariffs,
   isApplying = false,
   canApply = true,
-  applyLabel = "Apply tariff",
-  applyingLabel = "Applying tariff...",
+  applyLabel = "Apply tariffs",
 }: EnergyTariffPanelProps) {
-  const appliedGasTariff = gasTariff.eurPerKwh;
-  const referenceGasTariff = gasTariff.reference.eurPerKwh;
-  const isUserValue = gasTariff.isUserValue;
-  // Null follows the reference; an empty string is an incomplete user value.
-  const [draftGasTariff, setDraftGasTariff] = useState<number | "" | null>(
-    isUserValue ? appliedGasTariff : null,
+  const [draftGas, setDraftGas] = useState<number | string | null>(
+    gasTariff.isUserValue ? gasTariff.eurPerKwh : null,
   );
-  const draftUsesReference = draftGasTariff === null;
-  const draftValue =
-    draftGasTariff === "" ? null : (draftGasTariff ?? referenceGasTariff);
+  const [draftElectricity, setDraftElectricity] = useState<
+    number | string | null
+  >(electricityTariff.isUserValue ? electricityTariff.eurPerKwh : null);
+  const gasValue = draftGas ?? gasTariff.reference.eurPerKwh ?? "";
+  const electricityValue =
+    draftElectricity ?? electricityTariff.reference.eurPerKwh ?? "";
+  const gasNumber = Number(gasValue),
+    electricityNumber = Number(electricityValue);
   const isDirty =
-    draftValue !== null &&
-    (Math.abs(draftValue - appliedGasTariff) > 0.000_001 ||
-      draftUsesReference === isUserValue);
-  const isDisabled = isApplying || gasTariff.isLoading;
+    gasNumber !== gasTariff.eurPerKwh ||
+    (draftGas !== null) !== gasTariff.isUserValue ||
+    electricityNumber !== electricityTariff.eurPerKwh ||
+    (draftElectricity !== null) !== electricityTariff.isUserValue;
+  const isDisabled =
+    isApplying || gasTariff.isLoading || electricityTariff.isLoading;
+  const hasMissingTariff =
+    gasTariff.eurPerKwh === null || electricityTariff.eurPerKwh === null;
   const canSubmit =
-    isDirty && draftValue !== null && draftValue > 0 && !isDisabled && canApply;
-
-  const statusBadge = (
-    <Badge
-      variant="light"
-      color={isDisabled ? "blue" : isDirty ? "yellow" : "gray"}
-    >
-      {gasTariff.isLoading
-        ? "Loading"
-        : isApplying
-          ? "Updating"
-          : isDirty
-            ? "Unsaved changes"
-            : "Applied"}
-    </Badge>
-  );
-
-  const statusText = gasTariff.isLoading
-    ? "Loading Eurostat reference gas price..."
-    : isApplying
-      ? applyingLabel
-      : isDirty
-        ? `Draft gas tariff: ${formatFixed(draftValue ?? 0, 5)} €/kWh. Applied: ${formatFixed(appliedGasTariff, 5)} €/kWh.`
-        : `Gas tariff applied: ${formatFixed(appliedGasTariff, 5)} €/kWh.`;
+    isDirty &&
+    canApply &&
+    !isDisabled &&
+    Number.isFinite(gasNumber) &&
+    gasNumber > 0 &&
+    Number.isFinite(electricityNumber) &&
+    electricityNumber > 0;
+  const fields = [
+    {
+      fuel: "gas",
+      tariff: gasTariff,
+      draft: draftGas,
+      value: gasValue,
+      onChange: setDraftGas,
+      icon: IconFlame,
+    },
+    {
+      fuel: "electricity",
+      tariff: electricityTariff,
+      draft: draftElectricity,
+      value: electricityValue,
+      onChange: setDraftElectricity,
+      icon: IconBolt,
+    },
+  ] as const;
 
   const handleApply = async () => {
-    if (draftValue === null || draftValue <= 0) {
-      return;
-    }
-
-    await (draftUsesReference
-      ? onResetGasTariff()
-      : onApplyGasTariff(draftValue));
+    if (!canSubmit) return;
+    await onApplyTariffs({
+      gasTariffEurPerKwh: draftGas === null ? null : gasNumber,
+      electricityTariffEurPerKwh:
+        draftElectricity === null ? null : electricityNumber,
+    });
   };
 
   return (
-    <Card withBorder radius="md" p="lg">
+    <Card
+      component="section"
+      aria-label="Energy tariffs"
+      withBorder
+      radius="md"
+      p="lg"
+    >
       <Stack gap="md">
         <Group justify="space-between" align="flex-start" wrap="wrap" gap="sm">
           <Group gap="sm" align="center">
@@ -123,77 +126,72 @@ function EnergyTariffForm({
               </Text>
             </div>
           </Group>
-          {statusBadge}
+          <Badge
+            variant="light"
+            color={isDisabled ? "blue" : isDirty ? "yellow" : "gray"}
+          >
+            {gasTariff.isLoading || electricityTariff.isLoading
+              ? "Loading"
+              : isApplying
+                ? "Updating"
+                : hasMissingTariff
+                  ? "Missing tariff"
+                  : isDirty
+                    ? "Unsaved changes"
+                    : "Applied"}
+          </Badge>
         </Group>
-
+        {!isDisabled && hasMissingTariff && (
+          <Alert color="yellow">Enter the missing tariff to continue.</Alert>
+        )}
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-          <NumberInput
-            label={relifeConcepts["gas-tariff"].label}
-            description={gasTariffDescription(gasTariff)}
-            value={draftGasTariff ?? referenceGasTariff}
-            onChange={(value) =>
-              setDraftGasTariff(typeof value === "number" ? value : "")
-            }
-            min={0.001}
-            max={1}
-            step={0.001}
-            decimalScale={5}
-            fixedDecimalScale={false}
-            suffix=" €/kWh"
-            leftSection={<IconFlame size={16} />}
-            size="sm"
-            disabled={isDisabled}
-            {...browserNumberSeparators}
-          />
-          <TextInput
-            label={
-              <Group gap="xs" wrap="nowrap">
-                <span>Electricity tariff</span>
-                <Badge variant="light" color="blue" size="xs">
-                  Financial model
-                </Badge>
-              </Group>
-            }
-            description="Fixed by the Financial service reference curve"
-            value={electricityDisplayValue}
-            readOnly
-            variant="filled"
-            leftSection={<IconBolt size={16} />}
-            rightSection={<IconLock size={14} aria-hidden />}
-            size="sm"
-            styles={{
-              input: {
-                cursor: "default",
-              },
-            }}
-          />
+          {fields.map(
+            ({ fuel, tariff, draft, value, onChange, icon: Icon }) => (
+              <Stack gap="xs" key={fuel}>
+                <NumberInput
+                  label={
+                    <ConceptLabel
+                      conceptId={`${fuel}-tariff`}
+                      withUnit={false}
+                    />
+                  }
+                  description={tariffDescription(fuel, tariff)}
+                  value={value}
+                  onChange={onChange}
+                  min={0.001}
+                  max={fuel === "gas" ? 1 : undefined}
+                  step={0.001}
+                  decimalScale={5}
+                  suffix=" €/kWh"
+                  size="sm"
+                  disabled={isDisabled}
+                  leftSection={<Icon size={16} />}
+                  {...browserNumberSeparators}
+                />
+                {draft !== null && (
+                  <Button
+                    variant="subtle"
+                    size="xs"
+                    aria-label={`Reset ${fuel} tariff`}
+                    onClick={() => onChange(null)}
+                    disabled={isDisabled || tariff.reference.eurPerKwh === null}
+                  >
+                    Reset
+                  </Button>
+                )}
+              </Stack>
+            ),
+          )}
         </SimpleGrid>
-
-        <Group justify="space-between" align="center" wrap="wrap" gap="sm">
-          <Text size="xs" c="dimmed">
-            {statusText}
-          </Text>
-          <Group gap="xs">
-            {!draftUsesReference ? (
-              <Button
-                variant="subtle"
-                size="sm"
-                onClick={() => setDraftGasTariff(null)}
-                disabled={isDisabled}
-              >
-                {gasTariff.reference.source === "eurostat"
-                  ? "Reset to Eurostat price"
-                  : "Reset to default"}
-              </Button>
-            ) : null}
-            <Button
-              onClick={() => void handleApply()}
-              loading={isApplying}
-              disabled={!canSubmit}
-            >
-              {applyLabel}
-            </Button>
-          </Group>
+        <Group justify="flex-end">
+          <Button
+            onClick={() => void handleApply()}
+            disabled={!canSubmit}
+            loading={isApplying}
+            size="sm"
+          >
+            {applyLabel}
+          </Button>
         </Group>
       </Stack>
     </Card>

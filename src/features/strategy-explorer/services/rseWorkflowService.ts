@@ -1,6 +1,6 @@
 import { mapWithConcurrencyLimit } from "../../../utils/concurrency";
 import { auditLog } from "../../../utils/auditLogger";
-import { logGasTariff } from "../../../services/gasTariffService";
+import { logEnergyTariff } from "../../../services/energyTariffService";
 import { simulatedFloorArea } from "../../../services/simulatedBuilding";
 import {
   RSE_FINANCIAL_CONCURRENCY_LIMIT,
@@ -129,9 +129,16 @@ async function runWorkflowWithDependencies(
   onStage?: (stage: RSEWorkflowStage) => void,
 ): Promise<RSEWorkflowResult> {
   const auditCtx = auditLog.startRun("rse");
-  logGasTariff(
+  logEnergyTariff(
+    "gas",
     request.financialAssumptions.gasTariffEurPerKwh,
     request.financialAssumptions.gasTariffReference,
+    auditCtx,
+  );
+  logEnergyTariff(
+    "electricity",
+    request.financialAssumptions.electricityTariffEurPerKwh,
+    request.financialAssumptions.electricityTariffReference,
     auditCtx,
   );
 

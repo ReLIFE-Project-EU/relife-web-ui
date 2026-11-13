@@ -1,3 +1,4 @@
+import type { EnergyTariffOverrides } from "../../../services/energyTariffService";
 /**
  * State and action types for the Home Renovation Assistant wizard.
  *
@@ -64,6 +65,7 @@ export interface HomeAssistantState {
   renovation: RenovationSelections;
   funding: FundingOptions;
   gasTariffOverrideEurPerKwh: number | null;
+  electricityTariffOverrideEurPerKwh: number | null;
   suggestedPackages: RenovationPackage[];
   selectedPackageIds: string[];
   packageFinancialInputs: PackageFinancialInputsById;
@@ -127,8 +129,7 @@ export type HomeAssistantAction =
   | { type: "SET_FINANCING_TYPE"; financingType: FinancingType }
   | { type: "SET_LOAN"; loan: LoanDetails }
   | { type: "SET_INCENTIVES"; incentives: IncentiveDetails }
-  | { type: "SET_GAS_TARIFF"; gasTariffEurPerKwh: number }
-  | { type: "RESET_GAS_TARIFF" }
+  | ({ type: "SET_ENERGY_TARIFFS" } & EnergyTariffOverrides)
 
   // Evaluation
   | { type: "START_EVALUATION" }

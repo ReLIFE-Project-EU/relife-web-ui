@@ -330,12 +330,14 @@ describe("homeAssistantReducer package financial inputs", () => {
         ],
       },
       {
-        type: "SET_GAS_TARIFF",
+        type: "SET_ENERGY_TARIFFS",
         gasTariffEurPerKwh: 0.12,
+        electricityTariffEurPerKwh: 0.3,
       },
     );
 
     expect(state.gasTariffOverrideEurPerKwh).toBe(0.12);
+    expect(state.electricityTariffOverrideEurPerKwh).toBe(0.3);
     expect(state.financialResults).toEqual({});
     expect(state.mcdaRanking).toBeNull();
   });

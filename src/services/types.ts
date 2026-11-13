@@ -26,7 +26,7 @@ import type {
 import type { RenovationAction } from "../types/financial";
 import type { APIPropertyType } from "../utils/apiMappings";
 import type { AuditCtx } from "../utils/auditLogger";
-import type { GasReference } from "./gasTariffService";
+import type { TariffReference } from "./energyTariffService";
 
 export type PeriodAvailabilityScope = "local" | "fallback";
 
@@ -279,7 +279,9 @@ export interface ARVRequest {
 /** User-editable valuation inputs for the package appraisal. */
 export interface FinancialAssumptions {
   gasTariffEurPerKwh?: number;
-  gasTariffReference?: GasReference;
+  gasTariffReference?: TariffReference;
+  electricityTariffEurPerKwh: number;
+  electricityTariffReference?: TariffReference;
 }
 
 /**
@@ -310,7 +312,7 @@ export interface CalculateFinancialScenariosRequest {
   floorArea: number;
   packageFinancialInputs: PackageFinancialInputsById;
   building: BuildingInfo;
-  financialAssumptions?: FinancialAssumptions;
+  financialAssumptions: FinancialAssumptions;
   auditCtx?: AuditCtx;
 }
 

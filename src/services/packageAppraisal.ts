@@ -13,10 +13,7 @@ import type { DeliveredEnergyCarrierBreakdown } from "../types/energy";
 import type { OutputLevel } from "../utils/apiMappings";
 import { applyFundingReduction } from "../utils/financialCalculations";
 import { auditLog, type AuditCtx } from "../utils/auditLogger";
-import {
-  computeCarrierFinancialEnergySavings,
-  FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
-} from "./carrierSavingsService";
+import { computeCarrierFinancialEnergySavings } from "./carrierSavingsService";
 import { buildSchemes, mapWireRiskResponse } from "./riskAssessmentAdapter";
 
 export interface PackageAppraisalInput {
@@ -28,6 +25,7 @@ export interface PackageAppraisalInput {
   baselineCarriers: DeliveredEnergyCarrierBreakdown | undefined;
   packageCarriers: DeliveredEnergyCarrierBreakdown | undefined;
   gasTariffEurPerKwh: number;
+  electricityTariffEurPerKwh: number;
   outputLevel: OutputLevel;
   /** Events are logged only when given; the RSE passes none. */
   auditCtx?: AuditCtx;
@@ -56,6 +54,7 @@ export async function appraisePackage(
     funding,
   );
   const loanTerm = funding.financingType === "loan" ? funding.loan.duration : 0;
+  const electricityReferencePriceEurPerKwh = input.electricityTariffEurPerKwh;
 
   // The Financial API accepts one scalar kWh value and prices it with the
   // electricity curve. Value gas and grid-electricity deltas separately, then
@@ -65,8 +64,7 @@ export async function appraisePackage(
   const { annualSavingsEur, electricityEquivalentKwh } = canUseCarrierPricing
     ? computeCarrierFinancialEnergySavings(baselineCarriers, packageCarriers, {
         gasTariffEurPerKwh,
-        electricityReferencePriceEurPerKwh:
-          FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
+        electricityReferencePriceEurPerKwh,
       })
     : { annualSavingsEur: 0, electricityEquivalentKwh: 0 };
 
@@ -80,8 +78,7 @@ export async function appraisePackage(
       annualSavingsEur,
       electricityEquivalentKwh,
       gasTariffEurPerKwh,
-      electricityReferencePriceEurPerKwh:
-        FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
+      electricityReferencePriceEurPerKwh,
       renovationCost: input.capex,
       fundingFinancingType: funding.financingType,
       effectiveCost,
@@ -128,6 +125,7 @@ export async function appraisePackage(
     capex: effectiveCost,
     annual_maintenance_cost: input.annualMaintenanceCost,
     annual_energy_savings: electricityEquivalentKwh,
+    electricity_tariff_eur_per_kwh: input.electricityTariffEurPerKwh,
     project_lifetime: input.projectLifetime,
     output_level: input.outputLevel,
     schemes,

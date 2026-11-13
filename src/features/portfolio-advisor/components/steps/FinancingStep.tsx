@@ -19,7 +19,8 @@ import { usePortfolioAdvisor } from "../../hooks/usePortfolioAdvisor";
 import { usePortfolioAdvisorServices } from "../../hooks/usePortfolioAdvisorServices";
 
 export function FinancingStep() {
-  const { state, dispatch, gasTariff } = usePortfolioAdvisor();
+  const { state, dispatch, gasTariff, electricityTariff } =
+    usePortfolioAdvisor();
   const services = usePortfolioAdvisorServices();
 
   const handlePrevious = () => {
@@ -27,7 +28,13 @@ export function FinancingStep() {
   };
 
   const handleAnalyze = async () => {
-    if (gasTariff.isLoading) return;
+    if (
+      gasTariff.isLoading ||
+      electricityTariff.isLoading ||
+      gasTariff.eurPerKwh === null ||
+      electricityTariff.eurPerKwh === null
+    )
+      return;
     dispatch({ type: "START_ANALYSIS" });
 
     try {
@@ -49,6 +56,8 @@ export function FinancingStep() {
         financialAssumptions: {
           gasTariffEurPerKwh: gasTariff.eurPerKwh,
           gasTariffReference: gasTariff.reference,
+          electricityTariffEurPerKwh: electricityTariff.eurPerKwh,
+          electricityTariffReference: electricityTariff.reference,
         },
       });
 
@@ -173,10 +182,10 @@ export function FinancingStep() {
 
       <EnergyTariffPanel
         gasTariff={gasTariff}
-        onApplyGasTariff={(gasTariffEurPerKwh) =>
-          dispatch({ type: "SET_GAS_TARIFF", gasTariffEurPerKwh })
+        electricityTariff={electricityTariff}
+        onApplyTariffs={(tariffs) =>
+          dispatch({ type: "SET_ENERGY_TARIFFS", ...tariffs })
         }
-        onResetGasTariff={() => dispatch({ type: "RESET_GAS_TARIFF" })}
         isApplying={state.isEvaluating}
       />
 
@@ -194,7 +203,13 @@ export function FinancingStep() {
         onPrimaryAction={handleAnalyze}
         primaryActionLabel="Analyse portfolio"
         isLoading={state.isEvaluating}
-        primaryDisabled={state.buildings.length === 0 || gasTariff.isLoading}
+        primaryDisabled={
+          state.buildings.length === 0 ||
+          gasTariff.isLoading ||
+          electricityTariff.isLoading ||
+          gasTariff.eurPerKwh === null ||
+          electricityTariff.eurPerKwh === null
+        }
         disabled={state.isEvaluating}
       />
     </Stack>

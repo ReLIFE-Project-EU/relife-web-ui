@@ -9,7 +9,7 @@ import { IconInfoCircle } from "@tabler/icons-react";
 import { EnergyTariffPanel } from "../../../../components/shared/EnergyTariffPanel";
 import { GlobalLoadingContext } from "../../../../contexts/global-loading";
 import { estimatePackageEmbodiedCarbon } from "../../../../services/embodiedCarbon";
-import { logGasTariff } from "../../../../services/gasTariffService";
+import { logEnergyTariff } from "../../../../services/energyTariffService";
 import { auditLog } from "../../../../utils/auditLogger";
 import { errorMessage } from "../../../../utils/errorMessage";
 import { LineageLink } from "../../../lineage";
@@ -26,7 +26,7 @@ import {
 import { ErrorAlert, StepNavigation } from "../shared";
 
 export function EnergyRenovationStep() {
-  const { state, dispatch, gasTariff } = useHomeAssistant();
+  const { state, dispatch, gasTariff, electricityTariff } = useHomeAssistant();
   const { financial, renovation } = useHomeAssistantServices();
   const { withLoading } = useContext(GlobalLoadingContext);
 
@@ -77,11 +77,24 @@ export function EnergyRenovationStep() {
   };
 
   const handleEvaluate = async () => {
-    if (!state.estimation || gasTariff.isLoading) return;
+    if (
+      !state.estimation ||
+      gasTariff.isLoading ||
+      electricityTariff.isLoading ||
+      gasTariff.eurPerKwh === null ||
+      electricityTariff.eurPerKwh === null
+    )
+      return;
 
     dispatch({ type: "START_EVALUATION" });
     const auditCtx = auditLog.current() ?? undefined;
-    logGasTariff(gasTariff.eurPerKwh, gasTariff.reference, auditCtx);
+    logEnergyTariff("gas", gasTariff.eurPerKwh, gasTariff.reference, auditCtx);
+    logEnergyTariff(
+      "electricity",
+      electricityTariff.eurPerKwh,
+      electricityTariff.reference,
+      auditCtx,
+    );
 
     try {
       const selectedPackages = suggestedPackages.filter((pkg) =>
@@ -127,6 +140,7 @@ export function EnergyRenovationStep() {
           building: state.building,
           financialAssumptions: {
             gasTariffEurPerKwh: gasTariff.eurPerKwh,
+            electricityTariffEurPerKwh: electricityTariff.eurPerKwh,
           },
           auditCtx,
         }),
@@ -238,10 +252,10 @@ export function EnergyRenovationStep() {
 
       <EnergyTariffPanel
         gasTariff={gasTariff}
-        onApplyGasTariff={(gasTariffEurPerKwh) =>
-          dispatch({ type: "SET_GAS_TARIFF", gasTariffEurPerKwh })
+        electricityTariff={electricityTariff}
+        onApplyTariffs={(tariffs) =>
+          dispatch({ type: "SET_ENERGY_TARIFFS", ...tariffs })
         }
-        onResetGasTariff={() => dispatch({ type: "RESET_GAS_TARIFF" })}
         isApplying={state.isEvaluating}
       />
 
@@ -257,7 +271,13 @@ export function EnergyRenovationStep() {
         onPrimaryAction={handleEvaluate}
         primaryActionLabel="Compare renovation options"
         isLoading={state.isEvaluating}
-        primaryDisabled={!canEvaluate || gasTariff.isLoading}
+        primaryDisabled={
+          !canEvaluate ||
+          gasTariff.isLoading ||
+          electricityTariff.isLoading ||
+          gasTariff.eurPerKwh === null ||
+          electricityTariff.eurPerKwh === null
+        }
         disabled={isEstimatingCosts}
       />
     </Stack>

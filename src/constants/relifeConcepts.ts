@@ -54,6 +54,7 @@ export const analysisLoadingCopy = {
 
 export type ConceptId =
   | "gas-tariff"
+  | "electricity-tariff"
   | "modeled-property"
   | "total-floor-area"
   | "apartment-floor-area"
@@ -165,6 +166,13 @@ export function compactConceptLabel(conceptId: ConceptId): string {
 }
 
 export const relifeConcepts: Record<ConceptId, ReLifeConcept> = {
+  "electricity-tariff": {
+    id: "electricity-tariff",
+    label: "Electricity tariff",
+    description:
+      "First-year grid electricity price used to value savings. Future prices follow the Financial service's growth and uncertainty assumptions.",
+    unit: "€/kWh",
+  },
   "gas-tariff": {
     id: "gas-tariff",
     label: "Gas tariff",

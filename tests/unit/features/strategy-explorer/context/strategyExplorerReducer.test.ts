@@ -20,6 +20,7 @@ const mockWorkflowResult: NonNullable<StrategyExplorerState["workflowResult"]> =
         projectLifetimeYears: 20,
         funding: DEFAULT_FUNDING_OPTIONS,
         gasTariffEurPerKwh: RSE_ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
+        electricityTariffEurPerKwh: 0.3,
       },
     },
     cacheVersion: "v1",
@@ -84,12 +85,17 @@ describe("strategyExplorerReducer", () => {
     expect(state.workflowResult).toBeNull();
   });
 
-  test("SET_GAS_TARIFF updates gas tariff and clears workflow result", () => {
+  test("SET_ENERGY_TARIFFS updates gas tariff and clears workflow result", () => {
     const state = strategyExplorerReducer(
       { ...initialState, workflowResult: mockWorkflowResult },
-      { type: "SET_GAS_TARIFF", gasTariffEurPerKwh: 0.12 },
+      {
+        type: "SET_ENERGY_TARIFFS",
+        gasTariffEurPerKwh: 0.12,
+        electricityTariffEurPerKwh: 0.3,
+      },
     );
     expect(state.gasTariffOverrideEurPerKwh).toBe(0.12);
+    expect(state.electricityTariffOverrideEurPerKwh).toBe(0.3);
     expect(state.workflowResult).toBeNull();
   });
 

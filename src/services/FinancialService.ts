@@ -36,10 +36,7 @@ import type {
   IFinancialService,
 } from "./types";
 import { auditLog, type AuditCtx } from "../utils/auditLogger";
-import {
-  ENERGY_TARIFF_DEFAULTS,
-  FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
-} from "./carrierSavingsService";
+import { ENERGY_TARIFF_DEFAULTS } from "./carrierSavingsService";
 import { resolveEpcRatingIntensity } from "./energyUtils";
 import { normalizeArvFloorFields } from "../utils/buildingFloorNumbers";
 import { appraisePackage } from "./packageAppraisal";
@@ -294,6 +291,8 @@ export class FinancialService implements IFinancialService {
     const gasTariffEurPerKwh =
       resolvedFinancialAssumptions?.gasTariffEurPerKwh ??
       ENERGY_TARIFF_DEFAULTS.gasEurPerKwh;
+    const electricityTariffEurPerKwh =
+      resolvedFinancialAssumptions.electricityTariffEurPerKwh;
 
     // The "current" scenario is re-simulated through the ECM engine by
     // RenovationService, so energy savings compare like-for-like against the
@@ -318,8 +317,7 @@ export class FinancialService implements IFinancialService {
         projectLifetime: resolvedBuilding.projectLifetime,
         financingType: resolvedFundingOptions.financingType,
         gasTariffEurPerKwh,
-        electricityReferencePriceEurPerKwh:
-          FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH,
+        electricityReferencePriceEurPerKwh: electricityTariffEurPerKwh,
       },
       parentAuditCtx,
     );
@@ -393,6 +391,7 @@ export class FinancialService implements IFinancialService {
           baselineCarriers: baselineScenario.carrierBreakdown,
           packageCarriers: scenario.carrierBreakdown,
           gasTariffEurPerKwh,
+          electricityTariffEurPerKwh,
           outputLevel: this.outputLevel,
           auditCtx,
         }),

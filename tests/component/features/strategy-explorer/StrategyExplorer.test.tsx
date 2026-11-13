@@ -51,6 +51,13 @@ vi.mock("@mantine/charts", () => ({
   BarChart: () => null,
 }));
 
+vi.mock("../../../../src/api/eurostat", () => ({
+  loadEurostatTariffData: vi.fn().mockResolvedValue({
+    prices: [{ geo: "IT", period: "2026-S1", value: 0.3 }],
+    flags: [],
+  }),
+}));
+
 vi.mock(
   "../../../../src/features/strategy-explorer/services/archetypePortfolioService",
   () => ({

@@ -117,6 +117,7 @@ export async function computeFinancials(
       baselineCarriers: input.carrierSourceBreakdown.baseline,
       packageCarriers: input.carrierSourceBreakdown.renovated,
       gasTariffEurPerKwh: assumptions.gasTariffEurPerKwh,
+      electricityTariffEurPerKwh: assumptions.electricityTariffEurPerKwh,
       outputLevel: RSE_FINANCIAL_OUTPUT_LEVEL,
     });
 

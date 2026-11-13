@@ -101,11 +101,7 @@ export const RSE_FINANCIAL_DEFAULTS = {
   funding: DEFAULT_FUNDING_OPTIONS,
 } as const;
 
-/**
- * Planning tariffs for the interim carrier-aware financial translation.
- * Gas is user-editable; electricity is read-only and must match
- * `FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH` (backend calibration).
- */
+/** Gas fallback when Eurostat reference prices are unavailable. */
 export const RSE_ENERGY_TARIFF_DEFAULTS = {
   ...ENERGY_TARIFF_DEFAULTS,
 } as const;

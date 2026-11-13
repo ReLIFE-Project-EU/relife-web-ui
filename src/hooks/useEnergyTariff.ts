@@ -1,32 +1,37 @@
 import { useEffect, useState } from "react";
-import { loadEurostatGasData, type EurostatGasData } from "../api/eurostat";
+import {
+  loadEurostatTariffData,
+  type EurostatTariffData,
+  type TariffFuel,
+} from "../api/eurostat";
 import { APIError } from "../types/common";
 import { auditLog } from "../utils/auditLogger";
 import {
-  pickGasReference,
-  planningGasReference,
-  type GasTariff,
-} from "../services/gasTariffService";
+  pickTariffReference,
+  fallbackTariffReference,
+  type EnergyTariff,
+} from "../services/energyTariffService";
 
 /** One reference-data load per wizard; country selection stays synchronous. */
-export function useGasTariff(
+export function useEnergyTariff(
+  fuel: TariffFuel,
   countries: string[],
   userValue: number | null,
-): GasTariff {
+): EnergyTariff {
   // Undefined is loading; null is a failed read.
-  const [data, setData] = useState<EurostatGasData | null>();
+  const [data, setData] = useState<EurostatTariffData | null>();
 
   useEffect(() => {
     const controller = new AbortController();
     let cancelled = false;
     const timeout = window.setTimeout(() => controller.abort(), 15_000);
-    loadEurostatGasData(controller.signal)
+    loadEurostatTariffData(fuel, controller.signal)
       .then((loaded) => {
         if (!cancelled) setData(loaded);
       })
       .catch((error: unknown) => {
         if (cancelled) return;
-        auditLog.error("api", "gas-tariff.load.failed", {
+        auditLog.error("api", `${fuel}-tariff.load.failed`, {
           message:
             error instanceof Error
               ? error.message
@@ -41,11 +46,12 @@ export function useGasTariff(
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, []);
+  }, [fuel]);
 
+  const defaultReference = fallbackTariffReference(fuel);
   const reference = data
-    ? pickGasReference(data.prices, data.flags, countries)
-    : planningGasReference();
+    ? pickTariffReference(fuel, data.prices, data.flags, countries)
+    : defaultReference;
   return {
     eurPerKwh: userValue ?? reference.eurPerKwh,
     reference,

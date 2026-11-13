@@ -140,6 +140,8 @@ function createBuilding(overrides?: Partial<PRABuilding>): PRABuilding {
   };
 }
 
+const financialAssumptions = { electricityTariffEurPerKwh: 0.3 };
+
 describe("PortfolioAnalysisService", () => {
   const mockEstimateEPC = vi.fn();
   const mockIsAnalysisEligibleMeasure = vi.fn();
@@ -197,6 +199,7 @@ describe("PortfolioAnalysisService", () => {
     for (const source of ["csv", "manual"] as const) {
       for (const existing of [undefined, { wallUValue: 0.3, floorArea: 90 }]) {
         await service.analyzePortfolio({
+          financialAssumptions,
           buildings: [
             createBuilding({
               source,
@@ -247,6 +250,7 @@ describe("PortfolioAnalysisService", () => {
     "%s selections produce the PRA renovated scenario and reach finance",
     async (_label, selectedMeasures, expectedMeasureIds) => {
       const results = await service.analyzePortfolio({
+        financialAssumptions,
         buildings: [createBuilding()],
         selectedMeasures: selectedMeasures as RenovationMeasureId[],
         funding,
@@ -285,12 +289,18 @@ describe("PortfolioAnalysisService", () => {
       onProgress: vi.fn(),
       globalCapex: 12000,
       globalMaintenanceCost: 500,
-      financialAssumptions: { gasTariffEurPerKwh: 0.12 },
+      financialAssumptions: {
+        gasTariffEurPerKwh: 0.12,
+        electricityTariffEurPerKwh: 0.3,
+      },
     });
 
     expect(mockCalculateForAllScenarios).toHaveBeenCalledWith(
       expect.objectContaining({
-        financialAssumptions: { gasTariffEurPerKwh: 0.12 },
+        financialAssumptions: {
+          gasTariffEurPerKwh: 0.12,
+          electricityTariffEurPerKwh: 0.3,
+        },
       }),
     );
   });
@@ -299,6 +309,7 @@ describe("PortfolioAnalysisService", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const results = await service.analyzePortfolio({
+      financialAssumptions,
       buildings: [createBuilding()],
       selectedMeasures: ["condensing-boiler", "air-water-heat-pump"],
       funding,
@@ -353,6 +364,7 @@ describe("PortfolioAnalysisService", () => {
       const runScenarios = scenarios.map((scenario) => ({ ...scenario }));
       mockEvaluateScenarios.mockResolvedValue(runScenarios);
       const results = await service.analyzePortfolio({
+        financialAssumptions,
         buildings: [
           createBuilding({
             category,
@@ -402,6 +414,7 @@ describe("PortfolioAnalysisService", () => {
 
   test("per-building and global values take precedence over the lookup", async () => {
     const results = await service.analyzePortfolio({
+      financialAssumptions,
       // Per-building CAPEX overrides; OPEX falls back to the global override.
       buildings: [createBuilding({ estimatedCapex: 25000 })],
       selectedMeasures: ["wall-insulation"],
@@ -434,6 +447,7 @@ describe("PortfolioAnalysisService", () => {
     );
 
     const results = await service.analyzePortfolio({
+      financialAssumptions,
       buildings: [
         createBuilding({ id: "needs-lookup", name: "Needs lookup" }),
         createBuilding({
@@ -499,6 +513,7 @@ describe("PortfolioAnalysisService", () => {
     });
 
     const results = await service.analyzePortfolio({
+      financialAssumptions,
       buildings: [createBuilding()],
       selectedMeasures: ["wall-insulation"],
       funding,
@@ -513,6 +528,7 @@ describe("PortfolioAnalysisService", () => {
 
   test("unsupported-only selections fail before scenario evaluation", async () => {
     const results = await service.analyzePortfolio({
+      financialAssumptions,
       buildings: [createBuilding()],
       selectedMeasures: ["solar-thermal"],
       funding,
@@ -532,6 +548,7 @@ describe("PortfolioAnalysisService", () => {
 
   test("empty selections fail before scenario evaluation", async () => {
     const results = await service.analyzePortfolio({
+      financialAssumptions,
       buildings: [createBuilding()],
       selectedMeasures: [],
       funding,
@@ -557,13 +574,15 @@ describe("portfolioAdvisorReducer", () => {
     expect(initialState.gasTariffOverrideEurPerKwh).toBeNull();
   });
 
-  test("SET_GAS_TARIFF updates tariff and clears stale analysis results", () => {
+  test("SET_ENERGY_TARIFFS updates tariff and clears stale analysis results", () => {
     const state = portfolioAdvisorReducer(stateWithResults, {
-      type: "SET_GAS_TARIFF",
+      type: "SET_ENERGY_TARIFFS",
       gasTariffEurPerKwh: 0.12,
+      electricityTariffEurPerKwh: 0.3,
     });
 
     expect(state.gasTariffOverrideEurPerKwh).toBe(0.12);
+    expect(state.electricityTariffOverrideEurPerKwh).toBe(0.3);
     expect(state.buildingResults).toEqual({});
     expect(state.analysisProgress).toBeNull();
   });

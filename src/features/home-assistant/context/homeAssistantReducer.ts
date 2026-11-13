@@ -69,6 +69,7 @@ export const initialState: HomeAssistantState = {
   renovation: initialRenovation,
   funding: initialFunding,
   gasTariffOverrideEurPerKwh: null,
+  electricityTariffOverrideEurPerKwh: null,
   suggestedPackages: [],
   selectedPackageIds: [],
   packageFinancialInputs: {},
@@ -354,17 +355,11 @@ export function homeAssistantReducer(
       };
     }
 
-    case "RESET_GAS_TARIFF":
-      return {
-        ...state,
-        gasTariffOverrideEurPerKwh: null,
-        ...clearedFinancialResults,
-      };
-
-    case "SET_GAS_TARIFF": {
+    case "SET_ENERGY_TARIFFS": {
       return {
         ...state,
         gasTariffOverrideEurPerKwh: action.gasTariffEurPerKwh,
+        electricityTariffOverrideEurPerKwh: action.electricityTariffEurPerKwh,
         ...clearedFinancialResults,
       };
     }

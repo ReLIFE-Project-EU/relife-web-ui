@@ -24,14 +24,6 @@ export const ENERGY_TARIFF_DEFAULTS = {
 /** Net kWh per gross kWh of natural gas (Eurostat energy balances convention). */
 export const NATURAL_GAS_NET_PER_GROSS_KWH = 0.9;
 
-/**
- * Year-1 moderate electricity price from relife-financial-service
- * `simulation_engine.py` (`electricity_prices_data.moderate[0]`).
- * Used to calibrate electricity-equivalent kWh sent to the current scalar
- * Financial API risk-assessment contract.
- */
-export const FINANCIAL_ELECTRICITY_REFERENCE_EUR_PER_KWH = 0.246;
-
 export function extractCarrierSourceBreakdown(
   sourceBreakdownKwh: {
     naturalGas: number;

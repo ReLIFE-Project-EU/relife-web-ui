@@ -24,6 +24,7 @@ export const initialState: PortfolioAdvisorState = {
   projectLifetime: PRA_DEFAULT_PROJECT_LIFETIME,
   funding: DEFAULT_FUNDING_OPTIONS,
   gasTariffOverrideEurPerKwh: null,
+  electricityTariffOverrideEurPerKwh: null,
   buildingResults: {},
   analysisProgress: null,
   isEvaluating: false,
@@ -177,17 +178,11 @@ export function portfolioAdvisorReducer(
         ...clearedAnalysisResults,
       };
 
-    case "RESET_GAS_TARIFF":
-      return {
-        ...state,
-        gasTariffOverrideEurPerKwh: null,
-        ...clearedAnalysisResults,
-      };
-
-    case "SET_GAS_TARIFF":
+    case "SET_ENERGY_TARIFFS":
       return {
         ...state,
         gasTariffOverrideEurPerKwh: action.gasTariffEurPerKwh,
+        electricityTariffOverrideEurPerKwh: action.electricityTariffEurPerKwh,
         ...clearedAnalysisResults,
       };
 

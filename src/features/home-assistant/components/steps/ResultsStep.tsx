@@ -54,7 +54,7 @@ const RECOMMENDATION_ERROR =
   "We couldn’t complete the recommendation. Please try again.";
 
 export function ResultsStep() {
-  const { state, dispatch, gasTariff } = useHomeAssistant();
+  const { state, dispatch, gasTariff, electricityTariff } = useHomeAssistant();
   const { mcda } = useHomeAssistantServices();
   const {
     scenarios,
@@ -320,6 +320,7 @@ export function ResultsStep() {
         current={currentScenario}
         rankedScenarios={rankedScenarios}
         gasTariffEurPerKwh={gasTariff.eurPerKwh}
+        electricityTariffEurPerKwh={electricityTariff.eurPerKwh}
       />
 
       {rankedScenarios.length > 0 ? (

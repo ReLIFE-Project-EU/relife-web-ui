@@ -26,8 +26,7 @@ import { deriveConstructionYear } from "../../../utils/apiMappings";
 import { auditLog, type AuditCtx } from "../../../utils/auditLogger";
 import { errorMessage } from "../../../utils/errorMessage";
 import { validateEstimation } from "../../../services/estimationValidation";
-import { logGasTariff } from "../../../services/gasTariffService";
-import { ENERGY_TARIFF_DEFAULTS } from "../../../services/carrierSavingsService";
+import { logEnergyTariff } from "../../../services/energyTariffService";
 import { PRA_CONCURRENCY_LIMIT } from "../constants";
 import type {
   BuildingAnalysisResult,
@@ -71,10 +70,16 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     let completed = 0;
 
     const parentCtx = auditLog.startRun("pra");
-    logGasTariff(
-      financialAssumptions?.gasTariffEurPerKwh ??
-        ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
+    logEnergyTariff(
+      "gas",
+      financialAssumptions?.gasTariffEurPerKwh,
       financialAssumptions?.gasTariffReference,
+      parentCtx,
+    );
+    logEnergyTariff(
+      "electricity",
+      financialAssumptions?.electricityTariffEurPerKwh,
+      financialAssumptions?.electricityTariffReference,
       parentCtx,
     );
     auditLog.info(
@@ -103,9 +108,9 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
             b.selectedMeasures ?? selectedMeasures,
             funding,
             projectLifetime,
+            financialAssumptions,
             globalCapex,
             globalMaintenanceCost,
-            financialAssumptions,
             parentCtx,
           ),
         ),
@@ -175,9 +180,9 @@ export class PortfolioAnalysisService implements IPortfolioAnalysisService {
     selectedMeasures: RenovationMeasureId[],
     funding: FundingOptions,
     projectLifetime: number,
+    financialAssumptions: PortfolioAnalysisRequest["financialAssumptions"],
     globalCapex?: number | null,
     globalMaintenanceCost?: number | null,
-    financialAssumptions?: PortfolioAnalysisRequest["financialAssumptions"],
     parentCtx?: AuditCtx,
   ): Promise<BuildingAnalysisResult> {
     const auditCtx = parentCtx?.child({ buildingId: building.id });

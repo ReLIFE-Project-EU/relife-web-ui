@@ -4,7 +4,7 @@
  */
 
 import { useReducer, type ReactNode } from "react";
-import { useGasTariff } from "../../../hooks/useGasTariff";
+import { useEnergyTariff } from "../../../hooks/useEnergyTariff";
 import { homeAssistantReducer, initialState } from "./homeAssistantReducer";
 import { HomeAssistantContext } from "./HomeAssistantContextDefinition";
 
@@ -20,13 +20,22 @@ export function HomeAssistantProvider({
   children,
 }: HomeAssistantProviderProps) {
   const [state, dispatch] = useReducer(homeAssistantReducer, initialState);
-  const gasTariff = useGasTariff(
+  const gasTariff = useEnergyTariff(
+    "gas",
     [state.building.country],
     state.gasTariffOverrideEurPerKwh,
   );
 
+  const electricityTariff = useEnergyTariff(
+    "electricity",
+    [state.building.country],
+    state.electricityTariffOverrideEurPerKwh,
+  );
+
   return (
-    <HomeAssistantContext.Provider value={{ state, dispatch, gasTariff }}>
+    <HomeAssistantContext.Provider
+      value={{ state, dispatch, gasTariff, electricityTariff }}
+    >
       {children}
     </HomeAssistantContext.Provider>
   );

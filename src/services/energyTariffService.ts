@@ -1,29 +1,38 @@
-import type { EurostatGasPrice, EurostatGasQualityFlag } from "../api/eurostat";
+import type {
+  EurostatPrice,
+  EurostatQualityFlag,
+  TariffFuel,
+} from "../api/eurostat";
 import { getCountryCode, getCountryDisplayName } from "../utils/countries";
 import { auditLog, type AuditCtx } from "../utils/auditLogger";
 import { formatFixed } from "../utils/formatters";
 import { ENERGY_TARIFF_DEFAULTS } from "./carrierSavingsService";
 
-export interface GasReference {
-  eurPerKwh: number;
-  source: "eurostat" | "planning-default";
+export interface EnergyTariffOverrides {
+  gasTariffEurPerKwh: number | null;
+  electricityTariffEurPerKwh: number | null;
+}
+
+export interface TariffReference {
+  eurPerKwh: number | null;
+  source: "eurostat" | "planning-default" | "unavailable";
   geo: string | null;
   countryName: string | null;
   periods: string[];
   fallback: "multiple-countries" | "no-country-price" | "load-failed" | null;
 }
 
-export interface GasTariff {
-  eurPerKwh: number;
-  reference: GasReference;
+export interface EnergyTariff {
+  eurPerKwh: number | null;
+  reference: TariffReference;
   isUserValue: boolean;
   isLoading: boolean;
 }
 
-export function planningGasReference(): GasReference {
+export function fallbackTariffReference(fuel: TariffFuel): TariffReference {
   return {
-    eurPerKwh: ENERGY_TARIFF_DEFAULTS.gasEurPerKwh,
-    source: "planning-default",
+    eurPerKwh: fuel === "gas" ? ENERGY_TARIFF_DEFAULTS.gasEurPerKwh : null,
+    source: fuel === "gas" ? "planning-default" : "unavailable",
     geo: null,
     countryName: null,
     periods: [],
@@ -31,11 +40,12 @@ export function planningGasReference(): GasReference {
   };
 }
 
-export function pickGasReference(
-  prices: EurostatGasPrice[],
-  flags: EurostatGasQualityFlag[],
+export function pickTariffReference(
+  fuel: TariffFuel,
+  prices: EurostatPrice[],
+  flags: EurostatQualityFlag[],
   countries: string[],
-): GasReference {
+): TariffReference {
   const codes = [
     ...new Set(
       countries.map(
@@ -50,7 +60,7 @@ export function pickGasReference(
   const multipleCountries = codes.length > 1;
   let geo =
     multipleCountries || !code ? "EU27_2020" : code === "GR" ? "EL" : code;
-  let fallback: GasReference["fallback"] = multipleCountries
+  let fallback: TariffReference["fallback"] = multipleCountries
     ? "multiple-countries"
     : null;
   const blocked = new Set(
@@ -63,6 +73,7 @@ export function pickGasReference(
       (price) =>
         price.value !== null &&
         Number.isFinite(price.value) &&
+        price.value > 0 &&
         !blocked.has(`${price.geo}:${price.period}`),
     )
     .sort((a, b) => b.period.localeCompare(a.period));
@@ -72,7 +83,7 @@ export function pickGasReference(
   }
   const selected = usable.filter((price) => price.geo === geo).slice(0, 2);
 
-  if (selected.length === 0) return planningGasReference();
+  if (selected.length === 0) return fallbackTariffReference(fuel);
 
   return {
     eurPerKwh:
@@ -102,45 +113,49 @@ function periodLabel(periods: string[]): string {
     : `July ${firstYear} to June ${lastYear}`;
 }
 
-export function gasTariffDescription(tariff: GasTariff): string {
-  if (tariff.isLoading) return "Loading Eurostat reference gas price...";
+export function tariffDescription(
+  fuel: TariffFuel,
+  tariff: EnergyTariff,
+): string {
+  const prefix = tariff.isUserValue ? "Your value. " : "";
+  if (tariff.isLoading)
+    return `${prefix}Loading Eurostat reference ${fuel} price...`;
   const { reference } = tariff;
   const eurostat = reference.source === "eurostat";
   const location =
     reference.geo === "EU27_2020" ? "EU average" : reference.countryName;
-  if (tariff.isUserValue) {
-    const price = `${formatFixed(reference.eurPerKwh, 3)} €/kWh`;
-    return eurostat
-      ? `Your value. Eurostat reference: ${price} (${location}, ${periodLabel(reference.periods)}).`
-      : `Your value. Planning default: ${price}. Eurostat prices could not be loaded.`;
-  }
-  if (!eurostat)
-    return "Planning default. Eurostat prices could not be loaded.";
+  if (!eurostat || reference.eurPerKwh === null)
+    return `${prefix}${reference.source === "planning-default" ? "Planning default. " : ""}Eurostat reference unavailable.`;
 
-  const note =
-    reference.geo === "EU27_2020"
+  const note = tariff.isUserValue
+    ? `${prefix}Eurostat reference: ${formatFixed(reference.eurPerKwh, 3)} €/kWh (${location}, ${periodLabel(reference.periods)}).`
+    : reference.geo === "EU27_2020"
       ? `Eurostat EU average, ${periodLabel(reference.periods)}.`
       : `Eurostat household price for ${reference.countryName}, ${periodLabel(reference.periods)}.`;
   if (reference.fallback === "multiple-countries") {
     return `${note} Your buildings are in more than one country.`;
   }
   if (reference.fallback === "no-country-price") {
-    return `${note} Eurostat has no gas price for ${reference.countryName}.`;
+    return `${note} Eurostat has no ${fuel} price for ${reference.countryName}.`;
   }
   return note;
 }
 
-export function logGasTariff(
-  eurPerKwh: number,
-  reference: GasReference | undefined,
+export function logEnergyTariff(
+  fuel: TariffFuel,
+  eurPerKwh: number | undefined,
+  reference: TariffReference | undefined,
   auditCtx?: AuditCtx,
 ): void {
-  const data = { eurPerKwh, reference };
-  auditLog.info("financial", "gas-tariff.selected", data, auditCtx);
+  const data = {
+    eurPerKwh: eurPerKwh ?? fallbackTariffReference(fuel).eurPerKwh,
+    reference,
+  };
+  auditLog.info("financial", `${fuel}-tariff.selected`, data, auditCtx);
   if (reference?.fallback) {
     auditLog.warn(
       "financial",
-      "gas-tariff.fallback",
+      `${fuel}-tariff.fallback`,
       { ...data, reason: reference.fallback },
       auditCtx,
     );

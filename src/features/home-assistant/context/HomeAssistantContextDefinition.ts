@@ -1,9 +1,10 @@
 import { createContext, type Dispatch } from "react";
-import type { GasTariff } from "../../../services/gasTariffService";
+import type { EnergyTariff } from "../../../services/energyTariffService";
 import type { HomeAssistantAction, HomeAssistantState } from "./types";
 
 export interface HomeAssistantContextValue {
-  gasTariff: GasTariff;
+  gasTariff: EnergyTariff;
+  electricityTariff: EnergyTariff;
   state: HomeAssistantState;
   dispatch: Dispatch<HomeAssistantAction>;
 }
