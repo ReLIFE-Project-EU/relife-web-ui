@@ -36,7 +36,7 @@ export function BuildingInfoStep() {
     });
   }, [hasCoordinates, state.building.lat, state.building.lng, building]);
 
-  const locationDone = hasCoordinates;
+  const locationDone = Boolean(state.building.country || detectedCountry);
   const buildingDone =
     Boolean(state.building.buildingType) &&
     Boolean(state.building.constructionPeriod);
@@ -50,7 +50,9 @@ export function BuildingInfoStep() {
 
   const selectorInitialValue = useMemo<BuildingSelectorInitialValue>(
     () => ({
-      mode: "map",
+      // A catalogue pick has no pin; reopen it where it was chosen.
+      mode:
+        !hasCoordinates && state.building.selectedArchetype ? "browse" : "map",
       coords: hasCoordinates
         ? {
             lat: state.building.lat ?? undefined,
@@ -97,8 +99,8 @@ export function BuildingInfoStep() {
         type: "SET_BUILDING",
         building: {
           country: selection.country,
-          lat: selection.coords.lat,
-          lng: selection.coords.lng,
+          lat: selection.coords?.lat ?? null,
+          lng: selection.coords?.lng ?? null,
           buildingType: selection.category,
           constructionPeriod: selection.constructionPeriod,
           constructionYear: deriveConstructionYear(

@@ -262,8 +262,11 @@ describe("BuildingSelector", () => {
     };
     renderSelector({ service, initialValue, onSelectionChange });
 
-    await waitFor(() => expect(onSelectionChange).toHaveBeenCalled());
-    onSelectionChange.mockClear();
+    // Restoring shows the saved pick as is; searching again would drop its edits.
+    await waitFor(() =>
+      expect(screen.getByText("Adjust to my home")).toBeTruthy(),
+    );
+    expect(service.findMatchingArchetype).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Mock map click" }));
 

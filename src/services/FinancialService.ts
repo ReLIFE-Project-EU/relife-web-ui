@@ -49,7 +49,6 @@ import { appraisePackage } from "./packageAppraisal";
  */
 const ESTIMATION_PLACEHOLDER_ANNUAL_ENERGY_SAVINGS_KWH = 1;
 const ESTIMATION_DEFAULT_PROJECT_LIFETIME_YEARS = 20;
-const DEFAULT_COORDINATE = 0;
 const HTTP_BAD_REQUEST_STATUS = 400;
 const HTTP_UNPROCESSABLE_ENTITY_STATUS = 422;
 const ARV_UNKNOWN_TARGET_COUNTRY_PATTERN = /unknown target_country/i;
@@ -105,13 +104,15 @@ function resolveArvEnergyIntensity(
   return resolveEpcRatingIntensity(source, floorArea).intensity;
 }
 
+/** Null without the user's own location: the ARV values that property, not a catalogue point. */
 function buildArvRequestBase(
   building: BuildingInfo,
   floorArea: number,
-): ArvRequestBase {
+): ArvRequestBase | null {
+  if (building.lat === null || building.lng === null) return null;
   return {
-    lat: building.lat ?? DEFAULT_COORDINATE,
-    lng: building.lng ?? DEFAULT_COORDINATE,
+    lat: building.lat,
+    lng: building.lng,
     floor_area: floorArea,
     construction_year: resolveConstructionYear(building),
     ...normalizeArvFloorFields({
@@ -322,6 +323,19 @@ export class FinancialService implements IFinancialService {
       parentAuditCtx,
     );
 
+    const arvRequestBase = buildArvRequestBase(
+      resolvedBuilding,
+      resolvedFloorArea,
+    );
+    if (!arvRequestBase) {
+      auditLog.warn(
+        "financial",
+        "financial.arv.skipped",
+        { reason: "missing-location" },
+        parentAuditCtx,
+      );
+    }
+
     const baselineEnergyIntensity = resolveArvEnergyIntensity(
       {
         primaryEnergy: baselineScenario.primaryEnergy,
@@ -362,8 +376,8 @@ export class FinancialService implements IFinancialService {
       }
 
       // ARV Request for renovated scenario
-      const arvRequest: ARVRequest = {
-        ...buildArvRequestBase(resolvedBuilding, resolvedFloorArea),
+      const arvRequest: ARVRequest | null = arvRequestBase && {
+        ...arvRequestBase,
         energy_consumption_before: baselineEnergyIntensity,
         energy_consumption_after: resolveArvEnergyIntensity(
           {
@@ -374,15 +388,22 @@ export class FinancialService implements IFinancialService {
           resolvedFloorArea,
         ),
       };
-      auditLog.debug(
-        "financial",
-        "financial.arv.request",
-        { request: arvRequest as unknown as Record<string, unknown> },
-        auditCtx,
-      );
+      if (arvRequest) {
+        auditLog.debug(
+          "financial",
+          "financial.arv.request",
+          { request: arvRequest as unknown as Record<string, unknown> },
+          auditCtx,
+        );
+      }
 
       const [arvAttempt, { effectiveCapex, appraisal }] = await Promise.all([
-        this.tryCalculateARV(arvRequest, auditCtx),
+        arvRequest
+          ? this.tryCalculateARV(arvRequest, auditCtx)
+          : Promise.resolve<ArvAttemptResult>({
+              result: null,
+              unavailableReason: "missing-location",
+            }),
         appraisePackage({
           capex: packageInput.capex,
           annualMaintenanceCost: packageInput.annualMaintenanceCost,

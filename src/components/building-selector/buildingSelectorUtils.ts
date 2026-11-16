@@ -193,7 +193,7 @@ export function buildSelection(params: {
   scope: "limited" | "full";
   country: string;
   constructionPeriod: string;
-  coords: { lat: number; lng: number };
+  coords: { lat: number; lng: number } | null;
   matchResult?: ArchetypeMatchResult;
   flatUnit?: boolean;
 }): BuildingSelectorSelection {

@@ -41,8 +41,9 @@ export interface PRABuilding {
   archetypeCountry?: string;
   archetypeName?: string;
   modifications?: BuildingModifications;
-  lat: number;
-  lng: number;
+  /** User's location (map pin or CSV); null for catalogue picks. */
+  lat: number | null;
+  lng: number | null;
   floorArea: number;
   archetypeFloorArea?: number; // floor area of the matched archetype (m²) — used for mismatch warnings
   constructionPeriod: string;

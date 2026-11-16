@@ -37,7 +37,8 @@ export interface BuildingSelectorMatchMeta {
 
 export interface BuildingSelectorSelection {
   mode: BuildingSelectorMode;
-  coords: BuildingSelectorCoordinates;
+  /** User's map pin; null when the building was picked from the catalogue. */
+  coords: BuildingSelectorCoordinates | null;
   country: string;
   category: string;
   constructionPeriod: string;

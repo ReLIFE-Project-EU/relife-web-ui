@@ -17,8 +17,9 @@ import type { DeliveredEnergyCarrierBreakdown } from "./energy";
 export interface BuildingInfo {
   // Location and basic identification
   country: string;
-  lat: number | null; // Required for PVGIS weather and archetype matching, range: -90 to 90
-  lng: number | null; // Required for PVGIS weather and archetype matching, range: -180 to 180
+  // User's location (map pin or CSV); null for catalogue picks.
+  lat: number | null;
+  lng: number | null;
 
   // Building category (from archetype)
   buildingType: string; // Maps to archetype category (e.g., "Single Family House")
@@ -323,6 +324,7 @@ export interface RiskAssessmentPercentiles {
  * Complete financial results combining ARV and Risk Assessment
  */
 export type ArvUnavailableReason =
+  | "missing-location"
   | "unsupported-country"
   | "invalid-request"
   | "api-error";

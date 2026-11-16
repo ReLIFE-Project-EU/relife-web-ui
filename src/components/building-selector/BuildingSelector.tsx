@@ -81,6 +81,18 @@ function buildInitialValueSignature(
   });
 }
 
+/** Identifies the map inputs a match was made from; null until all are set. */
+function buildMapInputsKey(
+  lat: number | null | undefined,
+  lng: number | null | undefined,
+  category: string | null | undefined,
+  period: string | null | undefined,
+): string | null {
+  if (typeof lat !== "number" || typeof lng !== "number") return null;
+  if (!category || !period) return null;
+  return JSON.stringify([lat, lng, category, period]);
+}
+
 interface BuildingSelectorProps {
   service: BuildingSelectorService;
   host: BuildingSelectorHost;
@@ -168,6 +180,8 @@ export function BuildingSelector({
   const periodRequestIdRef = useRef(0);
   const matchRequestIdRef = useRef(0);
   const lastInitialValueSignatureRef = useRef<string | null>(null);
+  // Map inputs of a restored pick: showing it again must not re-run the match.
+  const restoredMapInputsRef = useRef<string | null>(null);
 
   const detectedCountry = useMemo(() => {
     if (debouncedLat === null || debouncedLng === null) return null;
@@ -220,7 +234,7 @@ export function BuildingSelector({
       mode: BuildingSelectorMode;
       details: ArchetypeDetails;
       nextDraft: BuildingSelectorDraft;
-      coords: { lat: number; lng: number };
+      coords: { lat: number; lng: number } | null;
       country: string;
       constructionPeriod: string;
       nextMatchResult?: ArchetypeMatchResult;
@@ -271,11 +285,19 @@ export function BuildingSelector({
 
     if (lastInitialValueSignatureRef.current === initialValueSignature) return;
     lastInitialValueSignatureRef.current = initialValueSignature;
+    restoredMapInputsRef.current = buildMapInputsKey(
+      initialValue.coords?.lat,
+      initialValue.coords?.lng,
+      initialValue.category,
+      initialValue.constructionPeriod,
+    );
     let cancelled = false;
+    let settled = false;
 
     service
       .getArchetypeDetails(initialValue.archetype)
       .then((details) => {
+        settled = true;
         if (cancelled) return;
         const key = getArchetypeKey(details);
         const period =
@@ -305,15 +327,18 @@ export function BuildingSelector({
         );
         setMapCategory(initialValue.category ?? details.category);
         setMapPeriod(period);
-        setMapLat(initialValue.coords?.lat ?? details.location.lat);
-        setMapLng(initialValue.coords?.lng ?? details.location.lng);
+        setMapLat(initialValue.coords?.lat ?? null);
+        setMapLng(initialValue.coords?.lng ?? null);
       })
       .catch(() => {
+        settled = true;
         if (!cancelled) clearSelection(false);
       });
 
     return () => {
       cancelled = true;
+      // An interrupted restore must run again on the next pass.
+      if (!settled) lastInitialValueSignatureRef.current = null;
     };
   }, [
     cacheDetails,
@@ -403,6 +428,13 @@ export function BuildingSelector({
       !mapPeriod ||
       debouncedLat === null ||
       debouncedLng === null
+    ) {
+      return;
+    }
+
+    if (
+      restoredMapInputsRef.current ===
+      buildMapInputsKey(debouncedLat, debouncedLng, mapCategory, mapPeriod)
     ) {
       return;
     }
@@ -498,7 +530,7 @@ export function BuildingSelector({
           mode: "browse",
           details,
           nextDraft,
-          coords: details.location,
+          coords: null,
           country: getDisplayCountry(details.country),
           constructionPeriod: period,
         });
@@ -521,6 +553,7 @@ export function BuildingSelector({
 
   const handleMapLocationChange = useCallback(
     (nextLat: number, nextLng: number) => {
+      restoredMapInputsRef.current = null;
       setMapLat(Math.round(nextLat * 10000) / 10000);
       setMapLng(Math.round(nextLng * 10000) / 10000);
       clearSelection(false);
@@ -530,6 +563,7 @@ export function BuildingSelector({
 
   const handleMapCategoryChange = useCallback(
     (value: string | null) => {
+      restoredMapInputsRef.current = null;
       setMapCategory(value);
       setMapPeriod(null);
       clearSelection(false);
@@ -539,6 +573,7 @@ export function BuildingSelector({
 
   const handleMapPeriodChange = useCallback(
     (value: string | null) => {
+      restoredMapInputsRef.current = null;
       setMapPeriod(value);
       clearSelection(false);
     },
@@ -556,12 +591,9 @@ export function BuildingSelector({
     if (!validation.isValid) return;
 
     const coords =
-      mode === "browse"
-        ? selectedDetails.location
-        : {
-            lat: mapLat ?? selectedDetails.location.lat,
-            lng: mapLng ?? selectedDetails.location.lng,
-          };
+      mode === "map" && mapLat !== null && mapLng !== null
+        ? { lat: mapLat, lng: mapLng }
+        : null;
     const country =
       mode === "map"
         ? getDisplayCountry(matchResult?.detectedCountry) ||
