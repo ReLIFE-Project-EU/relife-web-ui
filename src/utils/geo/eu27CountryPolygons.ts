@@ -40,7 +40,8 @@ export interface EuropeanCountryPolygonFeature
   bbox: [number, number, number, number];
 }
 
-// Generated from Natural Earth 50M country polygons, with GISCO 20M used for Cyprus.
+// Generated from Natural Earth 50M country polygons, with GISCO 20M used for Cyprus
+// and one vertex added to Sweden so Forecasting's catalogue point falls inside.
 export const EU27_COUNTRY_POLYGONS: EuropeanCountryPolygonFeature[] = [
   {
     type: "Feature",
@@ -8729,6 +8730,7 @@ export const EU27_COUNTRY_POLYGONS: EuropeanCountryPolygonFeature[] = [
             [18.5575, 60.2536],
             [18.5354, 60.1529],
             [18.6012, 60.1192],
+            [18.66, 60.14],
             [18.787, 60.0795],
             [18.8527, 60.0259],
             [18.8843, 59.9802],
