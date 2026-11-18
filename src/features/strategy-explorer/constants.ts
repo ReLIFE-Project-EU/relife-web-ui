@@ -9,9 +9,6 @@ import { ENERGY_TARIFF_DEFAULTS } from "../../services/carrierSavingsService.ts"
 
 export const RSE_CACHE_PAYLOAD_SCHEMA_VERSION = 1;
 
-export const RSE_CACHE_STATUSES = ["draft", "published", "retired"] as const;
-export type RSECacheStatus = (typeof RSE_CACHE_STATUSES)[number];
-
 export const RSE_CACHE_SOURCES = ["manual-seed", "offline-pipeline"] as const;
 export type RSECacheSource = (typeof RSE_CACHE_SOURCES)[number];
 
@@ -66,8 +63,6 @@ export const RSE_SUPPORTED_EMISSION_FACTOR_COUNTRIES = [
   "EU",
   "DE",
 ] as const;
-export type RSESupportedEmissionFactorCountry =
-  (typeof RSE_SUPPORTED_EMISSION_FACTOR_COUNTRIES)[number];
 
 export const RSE_DEFAULT_EMISSION_FACTOR_COUNTRY = "EU";
 

@@ -21,11 +21,9 @@ import type {
 
 export type {
   RSECacheSource,
-  RSECacheStatus,
   RSECo2Method,
   RSEEmissionEnergySource,
   RSEPackageId,
-  RSESupportedEmissionFactorCountry,
   RSEUnavailableReason,
 } from "./constants";
 
