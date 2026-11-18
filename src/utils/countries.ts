@@ -187,16 +187,6 @@ for (const country of COUNTRY_DEFINITIONS) {
   }
 }
 
-export const CANONICAL_COUNTRY_REFERENCE_LOCATIONS: Record<
-  string,
-  CountryReferenceLocation
-> = Object.fromEntries(
-  COUNTRY_DEFINITIONS.map((country) => [
-    country.displayName,
-    country.referenceLocation,
-  ]),
-);
-
 export function getCountryCode(
   countryNameOrCode?: string | null,
 ): string | undefined {

@@ -366,8 +366,6 @@ export interface FinancialResults {
   afterRenovationValue: number | null; // From arv.totalPrice; null when ARV is unavailable (e.g. unsupported country)
 }
 
-export type FinancialScenario = "baseline" | "optimistic" | "pessimistic";
-
 export interface MCDARankingResult {
   scenarioId: ScenarioId;
   rank: number;

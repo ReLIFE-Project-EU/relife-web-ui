@@ -177,16 +177,6 @@ export interface RSEEmissionResult {
   equivalent_km_car: number;
 }
 
-/**
- * Mirrors the Forecasting service SavingResult Pydantic model. Keep snake_case.
- */
-export interface RSEEmissionSavingResult {
-  scenario_name: string;
-  absolute_kg_co2eq: number;
-  absolute_ton_co2eq: number;
-  percentage: number;
-}
-
 export interface RSEFinancialAssumptions {
   projectLifetimeYears: number;
   /**

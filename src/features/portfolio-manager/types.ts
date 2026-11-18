@@ -80,13 +80,6 @@ export interface PortfolioFileRow {
   updated_at: string;
 }
 
-export interface StorageQuotaRow {
-  user_id: string;
-  used_bytes: number;
-  max_bytes: number;
-  updated_at: string;
-}
-
 export type PortfolioApiErrorCode =
   | "auth"
   | "validation"
